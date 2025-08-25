@@ -32,9 +32,18 @@ const Auth = () => {
     const { error } = await signIn(email, password);
     
     if (error) {
+      let errorMessage = error.message;
+      
+      // Handle specific errors with better messaging
+      if (error.message.includes('Invalid login credentials')) {
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (error.message.includes('Email address') && error.message.includes('invalid')) {
+        errorMessage = `Email domain not allowed. Please contact administrator to allow ${email.split('@')[1]} domain, or try a different email address.`;
+      }
+      
       toast({
         title: "Sign in failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } else {
@@ -55,9 +64,16 @@ const Auth = () => {
     const { error } = await signUp(email, password, fullName, role);
     
     if (error) {
+      let errorMessage = error.message;
+      
+      // Handle specific email validation errors
+      if (error.message.includes('Email address') && error.message.includes('invalid')) {
+        errorMessage = `Email domain not allowed. Please contact administrator to allow ${email.split('@')[1]} domain, or try a different email address.`;
+      }
+      
       toast({
         title: "Sign up failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } else {
