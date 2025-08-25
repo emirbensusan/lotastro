@@ -1,0 +1,233 @@
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { Package, Truck, AlertTriangle, TrendingUp } from 'lucide-react';
+
+interface DashboardStats {
+  totalLots: number;
+  inStockLots: number;
+  outOfStockLots: number;
+  pendingOrders: number;
+  oldestLotDays: number;
+}
+
+const Dashboard = () => {
+  const { profile } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalLots: 0,
+    inStockLots: 0,
+    outOfStockLots: 0,
+    pendingOrders: 0,
+    oldestLotDays: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    try {
+      // Fetch LOT statistics
+      const { data: lots, error: lotsError } = await supabase
+        .from('lots')
+        .select('status, entry_date');
+
+      if (lotsError) throw lotsError;
+
+      // Fetch pending orders
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id')
+        .is('fulfilled_at', null);
+
+      if (ordersError) throw ordersError;
+
+      // Calculate statistics
+      const totalLots = lots?.length || 0;
+      const inStockLots = lots?.filter(lot => lot.status === 'in_stock').length || 0;
+      const outOfStockLots = lots?.filter(lot => lot.status === 'out_of_stock').length || 0;
+      const pendingOrders = orders?.length || 0;
+
+      // Calculate oldest LOT age
+      let oldestLotDays = 0;
+      if (lots && lots.length > 0) {
+        const oldestDate = Math.min(
+          ...lots.map(lot => new Date(lot.entry_date).getTime())
+        );
+        oldestLotDays = Math.floor((Date.now() - oldestDate) / (1000 * 60 * 60 * 24));
+      }
+
+      setStats({
+        totalLots,
+        inStockLots,
+        outOfStockLots,
+        pendingOrders,
+        oldestLotDays,
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statCards = [
+    {
+      title: 'Total LOTs',
+      value: stats.totalLots.toString(),
+      description: 'Total rolls in system',
+      icon: Package,
+      color: 'text-primary',
+    },
+    {
+      title: 'In Stock',
+      value: stats.inStockLots.toString(),
+      description: 'Available for orders',
+      icon: Package,
+      color: 'text-green-600',
+    },
+    {
+      title: 'Out of Stock',
+      value: stats.outOfStockLots.toString(),
+      description: 'Fulfilled or dispatched',
+      icon: Package,
+      color: 'text-red-600',
+    },
+    {
+      title: 'Pending Orders',
+      value: stats.pendingOrders.toString(),
+      description: 'Awaiting fulfillment',
+      icon: Truck,
+      color: 'text-blue-600',
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-2">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="text-sm text-muted-foreground">
+          Welcome back, {profile?.full_name || profile?.email}
+        </div>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.title}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {stat.title}
+                </CardTitle>
+                <Icon className={`h-4 w-4 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stat.description}
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Alerts and Notifications */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2 text-yellow-600" />
+              LOT Aging Alert
+            </CardTitle>
+            <CardDescription>
+              Monitor old inventory
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {stats.oldestLotDays > 0 ? (
+              <div className="space-y-2">
+                <div className="text-2xl font-bold">{stats.oldestLotDays} days</div>
+                <p className="text-sm text-muted-foreground">
+                  Oldest LOT in inventory
+                </p>
+                {stats.oldestLotDays > 90 && (
+                  <Badge variant="destructive">
+                    Consider reviewing old stock
+                  </Badge>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No LOTs in inventory
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <TrendingUp className="h-5 w-5 mr-2 text-green-600" />
+              Quick Actions
+            </CardTitle>
+            <CardDescription>
+              Common tasks for your role
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {profile?.role === 'warehouse_staff' && (
+              <>
+                <p className="text-sm">• Create new LOT entries</p>
+                <p className="text-sm">• Scan QR codes</p>
+                <p className="text-sm">• Fulfill orders</p>
+              </>
+            )}
+            {profile?.role === 'accounting' && (
+              <>
+                <p className="text-sm">• Create new orders</p>
+                <p className="text-sm">• Check stock levels</p>
+                <p className="text-sm">• Generate reports</p>
+              </>
+            )}
+            {profile?.role === 'admin' && (
+              <>
+                <p className="text-sm">• Manage suppliers</p>
+                <p className="text-sm">• Delete LOTs</p>
+                <p className="text-sm">• Reprint QR codes</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
