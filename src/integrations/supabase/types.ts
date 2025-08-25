@@ -14,16 +14,212 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lots: {
+        Row: {
+          color: string
+          created_at: string
+          entry_date: string
+          id: string
+          lot_number: string
+          meters: number
+          qr_code_url: string | null
+          quality: string
+          roll_count: number
+          status: Database["public"]["Enums"]["stock_status"]
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          entry_date?: string
+          id?: string
+          lot_number: string
+          meters: number
+          qr_code_url?: string | null
+          quality: string
+          roll_count?: number
+          status?: Database["public"]["Enums"]["stock_status"]
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          entry_date?: string
+          id?: string
+          lot_number?: string
+          meters?: number
+          qr_code_url?: string | null
+          quality?: string
+          roll_count?: number
+          status?: Database["public"]["Enums"]["stock_status"]
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lots_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_lots: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          line_type: Database["public"]["Enums"]["order_line_type"]
+          lot_id: string
+          order_id: string
+          quality: string
+          roll_count: number
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          line_type?: Database["public"]["Enums"]["order_line_type"]
+          lot_id: string
+          order_id: string
+          quality: string
+          roll_count: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          line_type?: Database["public"]["Enums"]["order_line_type"]
+          lot_id?: string
+          order_id?: string
+          quality?: string
+          roll_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_lots_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_lots_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          created_by: string
+          customer_name: string
+          fulfilled_at: string | null
+          fulfilled_by: string | null
+          id: string
+          order_number: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          customer_name: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          id?: string
+          order_number: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          customer_name?: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          id?: string
+          order_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      has_role: {
+        Args: {
+          required_role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      order_line_type: "sample" | "standard"
+      stock_status: "in_stock" | "out_of_stock" | "partially_fulfilled"
+      user_role: "warehouse_staff" | "accounting" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +346,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      order_line_type: ["sample", "standard"],
+      stock_status: ["in_stock", "out_of_stock", "partially_fulfilled"],
+      user_role: ["warehouse_staff", "accounting", "admin"],
+    },
   },
 } as const
