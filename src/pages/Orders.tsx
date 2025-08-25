@@ -270,6 +270,110 @@ const Orders = () => {
                   New Order
                 </Button>
               </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New Order</DialogTitle>
+                  <DialogDescription>
+                    Enter order details and select LOTs for fulfillment
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="orderNumber">Order Number</Label>
+                      <Input
+                        id="orderNumber"
+                        value={orderNumber}
+                        onChange={(e) => setOrderNumber(e.target.value)}
+                        placeholder="ORD-001"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="customerName">Customer Name</Label>
+                      <Input
+                        id="customerName"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="Customer Inc."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label>Selected LOTs</Label>
+                      <Button type="button" variant="outline" onClick={addLotToOrder}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add LOT
+                      </Button>
+                    </div>
+
+                    {selectedLots.map((selectedLot, index) => (
+                      <div key={index} className="grid grid-cols-5 gap-2 p-4 border rounded-lg">
+                        <div className="space-y-2">
+                          <Label>LOT</Label>
+                          <Select value={selectedLot.lotId} onValueChange={(value) => updateSelectedLot(index, 'lotId', value)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select LOT" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {lots.map((lot) => (
+                                <SelectItem key={lot.id} value={lot.id}>
+                                  {lot.lot_number} ({lot.quality} - {lot.color})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Roll Count</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={selectedLot.rollCount}
+                            onChange={(e) => updateSelectedLot(index, 'rollCount', parseInt(e.target.value))}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Type</Label>
+                          <Select value={selectedLot.lineType} onValueChange={(value) => updateSelectedLot(index, 'lineType', value)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="standard">Standard</SelectItem>
+                              <SelectItem value="sample">Sample</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex items-end">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removeLotFromOrder(index)}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleCreateOrder}>
+                      Create Order
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
             </Dialog>
           )}
         </div>
@@ -345,112 +449,6 @@ const Orders = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Create Order Dialog */}
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create New Order</DialogTitle>
-          <DialogDescription>
-            Enter order details and select LOTs for fulfillment
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="orderNumber">Order Number</Label>
-              <Input
-                id="orderNumber"
-                value={orderNumber}
-                onChange={(e) => setOrderNumber(e.target.value)}
-                placeholder="ORD-001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customerName">Customer Name</Label>
-              <Input
-                id="customerName"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Customer Inc."
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Selected LOTs</Label>
-              <Button type="button" variant="outline" onClick={addLotToOrder}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add LOT
-              </Button>
-            </div>
-
-            {selectedLots.map((selectedLot, index) => (
-              <div key={index} className="grid grid-cols-5 gap-2 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <Label>LOT</Label>
-                  <Select value={selectedLot.lotId} onValueChange={(value) => updateSelectedLot(index, 'lotId', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select LOT" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {lots.map((lot) => (
-                        <SelectItem key={lot.id} value={lot.id}>
-                          {lot.lot_number} ({lot.quality} - {lot.color})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Roll Count</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={selectedLot.rollCount}
-                    onChange={(e) => updateSelectedLot(index, 'rollCount', parseInt(e.target.value))}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Type</Label>
-                  <Select value={selectedLot.lineType} onValueChange={(value) => updateSelectedLot(index, 'lineType', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="sample">Sample</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => removeLotFromOrder(index)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateOrder}>
-              Create Order
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
 
       {/* Order Details Dialog */}
       {selectedOrder && (
