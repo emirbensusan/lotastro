@@ -3,7 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
+import GlobalSearch from '@/components/GlobalSearch';
 import { 
   Package, 
   ClipboardList, 
@@ -12,7 +15,8 @@ import {
   LogOut, 
   QrCode,
   Users,
-  Truck
+  Truck,
+  Globe
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -21,18 +25,19 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
   const navigationItems = [
-    { path: '/', label: 'Dashboard', icon: Package, roles: ['warehouse_staff', 'accounting', 'admin'] },
-    { path: '/lot-intake', label: 'LOT Intake', icon: Package, roles: ['warehouse_staff', 'admin'] },
-    { path: '/inventory', label: 'Inventory', icon: ClipboardList, roles: ['warehouse_staff', 'accounting', 'admin'] },
-    { path: '/orders', label: 'Orders', icon: Truck, roles: ['accounting', 'admin'] },
-    { path: '/qr-scan', label: 'QR Scan', icon: QrCode, roles: ['warehouse_staff', 'accounting', 'admin'] },
-    { path: '/reports', label: 'Reports', icon: BarChart3, roles: ['accounting', 'admin'] },
-    { path: '/suppliers', label: 'Suppliers', icon: Users, roles: ['admin'] },
-    { path: '/admin', label: 'Admin', icon: Settings, roles: ['admin'] },
+    { path: '/', label: t('dashboard'), icon: Package, roles: ['warehouse_staff', 'accounting', 'admin'] },
+    { path: '/lot-intake', label: t('lotIntake'), icon: Package, roles: ['warehouse_staff', 'admin'] },
+    { path: '/inventory', label: t('inventory'), icon: ClipboardList, roles: ['warehouse_staff', 'accounting', 'admin'] },
+    { path: '/orders', label: t('orders'), icon: Truck, roles: ['accounting', 'admin'] },
+    { path: '/qr-scan', label: t('qrScan'), icon: QrCode, roles: ['warehouse_staff', 'accounting', 'admin'] },
+    { path: '/reports', label: t('reports'), icon: BarChart3, roles: ['accounting', 'admin'] },
+    { path: '/suppliers', label: t('suppliers'), icon: Users, roles: ['admin'] },
+    { path: '/admin', label: t('admin'), icon: Settings, roles: ['admin'] },
   ];
 
   const filteredNavigation = navigationItems.filter(item => 
@@ -61,14 +66,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </Badge>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-4">
+            <GlobalSearch />
+            
+            <Select value={language} onValueChange={(value: 'en' | 'tr') => setLanguage(value)}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">🇺🇸</SelectItem>
+                <SelectItem value="tr">🇹🇷</SelectItem>
+              </SelectContent>
+            </Select>
+            
             <span className="text-sm text-muted-foreground">
               {profile?.full_name || profile?.email}
             </span>
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
+              {t('signOut')}
             </Button>
           </div>
         </div>

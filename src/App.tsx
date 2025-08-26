@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import Layout from "@/components/Layout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -11,6 +12,9 @@ import LotIntake from "./pages/LotIntake";
 import Inventory from "./pages/Inventory";
 import Orders from "./pages/Orders";
 import QRScan from "./pages/QRScan";
+import Reports from "./pages/Reports";
+import Admin from "./pages/Admin";
+import Suppliers from "./pages/Suppliers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,45 +40,62 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/lot-intake" element={
-              <ProtectedRoute>
-                <LotIntake />
-              </ProtectedRoute>
-            } />
-            <Route path="/inventory" element={
-              <ProtectedRoute>
-                <Inventory />
-              </ProtectedRoute>
-            } />
-            <Route path="/orders" element={
-              <ProtectedRoute>
-                <Orders />
-              </ProtectedRoute>
-            } />
-            <Route path="/qr-scan" element={
-              <ProtectedRoute>
-                <QRScan />
-              </ProtectedRoute>
-            } />
-            <Route path="/qr/:lotNumber" element={<QRScan />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <LanguageProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/lot-intake" element={
+                <ProtectedRoute>
+                  <LotIntake />
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory" element={
+                <ProtectedRoute>
+                  <Inventory />
+                </ProtectedRoute>
+              } />
+              <Route path="/orders" element={
+                <ProtectedRoute>
+                  <Orders />
+                </ProtectedRoute>
+              } />
+              <Route path="/qr-scan" element={
+                <ProtectedRoute>
+                  <QRScan />
+                </ProtectedRoute>
+              } />
+              <Route path="/qr/:lotNumber" element={<QRScan />} />
+              <Route path="/reports" element={
+                <ProtectedRoute>
+                  <Reports />
+                </ProtectedRoute>
+              } />
+              <Route path="/suppliers" element={
+                <ProtectedRoute>
+                  <Suppliers />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <Admin />
+                </ProtectedRoute>
+              } />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </LanguageProvider>
   </QueryClientProvider>
 );
 
