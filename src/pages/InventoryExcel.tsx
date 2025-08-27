@@ -191,29 +191,49 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Import the utility functions
+    const { parseCSVFile, importLotsToDatabase } = await import('@/utils/excelImport');
+
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const csv = e.target?.result as string;
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',');
         
         toast({
-          title: 'Import Started',
-          description: `Processing ${lines.length - 1} rows from CSV file...`
+          title: t('importStarted') as string,
+          description: `Processing CSV file...`
         });
+
+        // Parse CSV
+        const lots = parseCSVFile(csv);
         
-        // Here you would implement the actual import logic
-        // This would involve parsing the CSV and inserting into the database
+        // Import to database
+        const result = await importLotsToDatabase(lots);
         
-      } catch (error) {
+        if (result.success) {
+          toast({
+            title: t('success') as string,
+            description: result.message
+          });
+          
+          // Refresh data
+          fetchLots();
+        } else {
+          toast({
+            title: t('importError') as string,
+            description: result.message,
+            variant: 'destructive'
+          });
+        }
+        
+      } catch (error: any) {
         toast({
-          title: 'Import Error',
-          description: 'Failed to parse CSV file.',
+          title: t('importError') as string,
+          description: error.message,
           variant: 'destructive'
         });
       }
@@ -250,7 +270,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder={t('searchPlaceholder')}
+              placeholder={t('searchPlaceholder') as string}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 w-64"
@@ -295,6 +315,10 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
         </div>
 
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => import('@/utils/excelImport').then(({ generateExcelTemplate }) => generateExcelTemplate())}>
+            <Download className="h-4 w-4 mr-2" />
+            {t('downloadTemplate')}
+          </Button>
           <input
             type="file"
             accept=".csv,.xlsx,.xls"

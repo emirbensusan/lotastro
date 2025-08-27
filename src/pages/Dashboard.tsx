@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Package, Truck, AlertTriangle, TrendingUp } from 'lucide-react';
 
 interface DashboardStats {
@@ -15,6 +16,7 @@ interface DashboardStats {
 
 const Dashboard = () => {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [stats, setStats] = useState<DashboardStats>({
     totalLots: 0,
     inStockLots: 0,
@@ -76,28 +78,28 @@ const Dashboard = () => {
 
   const statCards = [
     {
-      title: 'Total LOTs',
+      title: t('totalLots'),
       value: stats.totalLots.toString(),
       description: 'Total rolls in system',
       icon: Package,
       color: 'text-primary',
     },
     {
-      title: 'In Stock',
+      title: t('inStock'),
       value: stats.inStockLots.toString(),
       description: 'Available for orders',
       icon: Package,
       color: 'text-green-600',
     },
     {
-      title: 'Out of Stock',
+      title: t('outOfStock'),
       value: stats.outOfStockLots.toString(),
       description: 'Fulfilled or dispatched',
       icon: Package,
       color: 'text-red-600',
     },
     {
-      title: 'Pending Orders',
+      title: t('pendingOrders'),
       value: stats.pendingOrders.toString(),
       description: 'Awaiting fulfillment',
       icon: Truck,
@@ -108,7 +110,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="animate-pulse">
@@ -129,9 +131,9 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
         <div className="text-sm text-muted-foreground">
-          Welcome back, {profile?.full_name || profile?.email}
+          {t('welcomeBack')}, {profile?.full_name || profile?.email}
         </div>
       </div>
 
@@ -140,7 +142,7 @@ const Dashboard = () => {
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title}>
+            <Card key={stat.title as string}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   {stat.title}
@@ -164,28 +166,28 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <AlertTriangle className="h-5 w-5 mr-2 text-yellow-600" />
-              LOT Aging Alert
+              {t('lotAgingAlert')}
             </CardTitle>
             <CardDescription>
-              Monitor old inventory
+              {t('monitorOldInventory')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {stats.oldestLotDays > 0 ? (
               <div className="space-y-2">
-                <div className="text-2xl font-bold">{stats.oldestLotDays} days</div>
+                <div className="text-2xl font-bold">{stats.oldestLotDays} {t('days')}</div>
                 <p className="text-sm text-muted-foreground">
-                  Oldest LOT in inventory
+                  {t('oldestLot')}
                 </p>
                 {stats.oldestLotDays > 90 && (
                   <Badge variant="destructive">
-                    Consider reviewing old stock
+                    {t('considerReviewing')}
                   </Badge>
                 )}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No LOTs in inventory
+                {t('noLotsInInventory')}
               </p>
             )}
           </CardContent>
@@ -195,10 +197,10 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <TrendingUp className="h-5 w-5 mr-2 text-green-600" />
-              Quick Actions
+              {t('quickActions')}
             </CardTitle>
             <CardDescription>
-              Common tasks for your role
+              {t('commonTasks')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">

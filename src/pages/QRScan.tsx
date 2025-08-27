@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/components/ui/use-toast';
-import { QrCode, Search, Package, Calendar, MapPin } from 'lucide-react';
+import { QrCode, Upload, Camera, Package, Calendar, MapPin } from 'lucide-react';
 
 interface LotDetails {
   id: string;
@@ -26,19 +27,38 @@ const QRScan = () => {
   const { lotNumber } = useParams();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const [manualLotNumber, setManualLotNumber] = useState('');
+  const { t } = useLanguage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [selectedLotId, setSelectedLotId] = useState('');
   const [lotDetails, setLotDetails] = useState<LotDetails | null>(null);
+  const [availableLots, setAvailableLots] = useState<{id: string, lot_number: string, quality: string, color: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    fetchAvailableLots();
     // If we have a LOT number from URL params (QR scan), fetch it immediately
     if (lotNumber) {
-      fetchLotDetails(lotNumber);
+      fetchLotDetailsByNumber(lotNumber);
     }
   }, [lotNumber]);
 
-  const fetchLotDetails = async (lotNum: string) => {
+  const fetchAvailableLots = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('lots')
+        .select('id, lot_number, quality, color')
+        .order('lot_number');
+
+      if (error) throw error;
+      setAvailableLots(data || []);
+    } catch (error) {
+      console.error('Error fetching lots:', error);
+    }
+  };
+
+  const fetchLotDetailsByNumber = async (lotNum: string) => {
     setLoading(true);
     setError('');
     setLotDetails(null);
@@ -55,7 +75,7 @@ const QRScan = () => {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          setError(`LOT number "${lotNum}" not found`);
+          setError((t('lotNotFound') as string).replace('{lotNumber}', lotNum));
         } else {
           throw error;
         }
@@ -64,10 +84,10 @@ const QRScan = () => {
       }
     } catch (error: any) {
       console.error('Error fetching lot details:', error);
-      setError('Failed to fetch LOT details');
+      setError(t('failedToFetch') as string);
       toast({
-        title: "Error",
-        description: "Failed to fetch LOT details",
+        title: t('error') as string,
+        description: t('failedToFetch') as string,
         variant: "destructive",
       });
     } finally {
@@ -75,11 +95,71 @@ const QRScan = () => {
     }
   };
 
-  const handleManualSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualLotNumber.trim()) {
-      fetchLotDetails(manualLotNumber.trim());
+  const fetchLotDetailsById = async (lotId: string) => {
+    setLoading(true);
+    setError('');
+    setLotDetails(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('lots')
+        .select(`
+          *,
+          supplier:suppliers(name)
+        `)
+        .eq('id', lotId)
+        .single();
+
+      if (error) throw error;
+      setLotDetails(data);
+    } catch (error: any) {
+      console.error('Error fetching lot details:', error);
+      setError(t('failedToFetch') as string);
+      toast({
+        title: t('error') as string,
+        description: t('failedToFetch') as string,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleLotSelect = (lotId: string) => {
+    setSelectedLotId(lotId);
+    if (lotId) {
+      fetchLotDetailsById(lotId);
+    } else {
+      setLotDetails(null);
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // In a real implementation, you would:
+    // 1. Send the image to a QR code reading service
+    // 2. Extract the LOT number from the QR code
+    // 3. Fetch the lot details
+    
+    toast({
+      title: "QR Image Upload",
+      description: "QR code processing would be implemented here. For now, please use the dropdown to select a LOT.",
+    });
+  };
+
+  const startCameraScanning = () => {
+    // In a real implementation, you would:
+    // 1. Request camera permissions
+    // 2. Start video stream
+    // 3. Use a library like jsQR to scan QR codes
+    // 4. Extract LOT number and fetch details
+    
+    toast({
+      title: "Camera Scanning",
+      description: "Camera QR scanning would be implemented here. For now, please use the dropdown to select a LOT.",
+    });
   };
 
   const getLotAge = (entryDate: string) => {
@@ -90,11 +170,11 @@ const QRScan = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'in_stock':
-        return <Badge className="bg-green-100 text-green-800">In Stock</Badge>;
+        return <Badge className="bg-green-100 text-green-800">{t('inStock')}</Badge>;
       case 'out_of_stock':
-        return <Badge variant="destructive">Out of Stock</Badge>;
+        return <Badge variant="destructive">{t('outOfStock')}</Badge>;
       case 'partially_fulfilled':
-        return <Badge className="bg-yellow-100 text-yellow-800">Partially Fulfilled</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800">{t('partiallyFulfilled')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -107,17 +187,17 @@ const QRScan = () => {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <QrCode className="h-12 w-12 mx-auto mb-4 text-primary" />
-            <CardTitle>QR Code Scanned</CardTitle>
+            <CardTitle>{t('qrCodeScanned')}</CardTitle>
             <CardDescription>
-              Please log in to view LOT details
+              {t('pleaseLogin')}
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-muted-foreground mb-4">
-              LOT Number: <span className="font-mono">{lotNumber}</span>
+              {t('lotNumber')}: <span className="font-mono">{lotNumber}</span>
             </p>
             <Button onClick={() => window.location.href = '/auth'} className="w-full">
-              Sign In to View Details
+              {t('signInToView')}
             </Button>
           </CardContent>
         </Card>
@@ -128,36 +208,74 @@ const QRScan = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">QR Code Scanner</h1>
+        <h1 className="text-3xl font-bold">{t('qrCodeScanner')}</h1>
         <QrCode className="h-8 w-8 text-primary" />
       </div>
 
-      {/* Manual Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Search className="mr-2 h-5 w-5" />
-            LOT Lookup
-          </CardTitle>
-          <CardDescription>
-            Search for LOT details by number or scan QR code
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleManualSearch} className="flex space-x-2">
-            <div className="flex-1">
-              <Input
-                value={manualLotNumber}
-                onChange={(e) => setManualLotNumber(e.target.value)}
-                placeholder="Enter LOT number (e.g., LOT001)"
-              />
-            </div>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Searching...' : 'Search'}
+      {/* QR Scanner Options */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+              <Camera className="mr-2 h-5 w-5" />
+              {t('scanQrCode')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={startCameraScanning} className="w-full">
+              {t('scanQrCode')}
             </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+              <Upload className="mr-2 h-5 w-5" />
+              {t('uploadQrImage')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              ref={fileInputRef}
+              className="hidden"
+            />
+            <Button 
+              onClick={() => fileInputRef.current?.click()} 
+              variant="outline" 
+              className="w-full"
+            >
+              {t('uploadFile')}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+              <Package className="mr-2 h-5 w-5" />
+              {t('selectLotFrom')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedLotId} onValueChange={handleLotSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('selectLots')} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableLots.map((lot) => (
+                  <SelectItem key={lot.id} value={lot.id}>
+                    {lot.lot_number} - {lot.quality} ({lot.color})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* LOT Details */}
       {error && (
@@ -176,7 +294,7 @@ const QRScan = () => {
           <CardContent className="p-6">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading LOT details...</p>
+              <p className="text-muted-foreground">{t('loading')}</p>
             </div>
           </CardContent>
         </Card>
@@ -188,56 +306,56 @@ const QRScan = () => {
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center">
                 <Package className="mr-2 h-5 w-5" />
-                LOT Details
+                {t('lotDetails')}
               </span>
               {getStatusBadge(lotDetails.status)}
             </CardTitle>
             <CardDescription>
-              LOT Number: <span className="font-mono text-foreground">{lotDetails.lot_number}</span>
+              {t('lotNumber')}: <span className="font-mono text-foreground">{lotDetails.lot_number}</span>
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Quality</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">{t('quality')}</Label>
                   <p className="text-lg font-semibold">{lotDetails.quality}</p>
                 </div>
                 
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Color</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">{t('color')}</Label>
                   <p className="text-lg font-semibold">{lotDetails.color}</p>
                 </div>
                 
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Meters</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">{t('meters')}</Label>
                   <p className="text-lg font-semibold">{lotDetails.meters.toFixed(2)} m</p>
                 </div>
               </div>
               
               <div className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Roll Count</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">{t('rollCount')}</Label>
                   <p className="text-lg font-semibold">{lotDetails.roll_count}</p>
                 </div>
                 
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground flex items-center">
                     <Calendar className="mr-1 h-4 w-4" />
-                    Entry Date
+                    {t('entryDate')}
                   </Label>
                   <p className="text-lg font-semibold">
                     {new Date(lotDetails.entry_date).toLocaleDateString()}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {getLotAge(lotDetails.entry_date)} days old
+                    {getLotAge(lotDetails.entry_date)} {t('days') as string} {(t('age') as string).toLowerCase()}
                   </p>
                 </div>
                 
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground flex items-center">
                     <MapPin className="mr-1 h-4 w-4" />
-                    Supplier
+                    {t('supplier')}
                   </Label>
                   <p className="text-lg font-semibold">{lotDetails.supplier.name}</p>
                 </div>
@@ -247,7 +365,7 @@ const QRScan = () => {
             {getLotAge(lotDetails.entry_date) > 90 && (
               <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
-                  ⚠️ This LOT is over {getLotAge(lotDetails.entry_date)} days old. Consider reviewing for aging inventory.
+                  ⚠️ {(t('oldLotWarning') as string).replace('{days}', getLotAge(lotDetails.entry_date).toString())}
                 </p>
               </div>
             )}
@@ -258,13 +376,12 @@ const QRScan = () => {
       {/* Instructions */}
       <Card>
         <CardHeader>
-          <CardTitle>How to Use QR Scanner</CardTitle>
+          <CardTitle>{t('howToUse')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>• Use any QR code scanner app on your mobile device</p>
-          <p>• Scan the QR code printed on the textile roll</p>
-          <p>• You'll be redirected to this page with LOT details</p>
-          <p>• Alternatively, you can manually enter the LOT number above</p>
+          {(t('qrInstructions') as string[]).map((instruction: string, index: number) => (
+            <p key={index}>• {instruction}</p>
+          ))}
         </CardContent>
       </Card>
     </div>

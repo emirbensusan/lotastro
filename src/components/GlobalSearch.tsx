@@ -149,7 +149,7 @@ const GlobalSearch: React.FC = () => {
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder={t('searchPlaceholder')}
+          placeholder={t('searchPlaceholder') as string}
           className="pl-10"
         />
       </div>
