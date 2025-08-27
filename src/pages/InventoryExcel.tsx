@@ -107,9 +107,9 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
         lot.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (lot.suppliers?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesQuality = !qualityFilter || lot.quality === qualityFilter;
-      const matchesColor = !colorFilter || lot.color === colorFilter;
-      const matchesStatus = !statusFilter || lot.status === statusFilter;
+      const matchesQuality = !qualityFilter || qualityFilter === 'all' || lot.quality === qualityFilter;
+      const matchesColor = !colorFilter || colorFilter === 'all' || lot.color === colorFilter;
+      const matchesStatus = !statusFilter || statusFilter === 'all' || lot.status === statusFilter;
       
       return matchesSearch && matchesQuality && matchesColor && matchesStatus;
     });
@@ -282,7 +282,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
               <SelectValue placeholder="Quality" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Qualities</SelectItem>
+              <SelectItem value="all">All Qualities</SelectItem>
               {qualities.map(quality => (
                 <SelectItem key={quality} value={quality}>{quality}</SelectItem>
               ))}
@@ -294,7 +294,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
               <SelectValue placeholder="Color" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Colors</SelectItem>
+              <SelectItem value="all">All Colors</SelectItem>
               {colors.map(color => (
                 <SelectItem key={color} value={color}>{color}</SelectItem>
               ))}
@@ -306,7 +306,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Status</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
               {statuses.map(status => (
                 <SelectItem key={status} value={status}>{status.replace('_', ' ').toUpperCase()}</SelectItem>
               ))}
