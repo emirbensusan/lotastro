@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2, Package, QrCode, Printer } from 'lucide-react';
 
 interface Supplier {
@@ -21,10 +22,15 @@ interface LotFormData {
   lotNumber: string;
   entryDate: string;
   supplierId: string;
+  productionDate: string;
+  invoiceDate: string;
+  poNumber: string;
+  warehouseLocation: string;
 }
 
 const LotIntake = () => {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<LotFormData>({
@@ -34,6 +40,10 @@ const LotIntake = () => {
     lotNumber: '',
     entryDate: new Date().toISOString().split('T')[0],
     supplierId: '',
+    productionDate: '',
+    invoiceDate: '',
+    poNumber: '',
+    warehouseLocation: '',
   });
   const [createdLot, setCreatedLot] = useState<any>(null);
 
@@ -53,7 +63,7 @@ const LotIntake = () => {
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       toast({
-        title: "Error",
+        title: t('error') as string,
         description: "Failed to load suppliers",
         variant: "destructive",
       });
@@ -112,7 +122,7 @@ const LotIntake = () => {
       setCreatedLot(data);
       
       toast({
-        title: "LOT Created Successfully",
+        title: t('lotCreated') as string,
         description: `LOT ${formData.lotNumber} has been added to inventory`,
       });
 
@@ -124,11 +134,15 @@ const LotIntake = () => {
         lotNumber: '',
         entryDate: new Date().toISOString().split('T')[0],
         supplierId: '',
+        productionDate: '',
+        invoiceDate: '',
+        poNumber: '',
+        warehouseLocation: '',
       });
 
     } catch (error: any) {
       toast({
-        title: "Error Creating LOT",
+        title: t('failedToCreateLot') as string,
         description: error.message,
         variant: "destructive",
       });
@@ -191,7 +205,7 @@ const LotIntake = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">LOT Intake</h1>
+        <h1 className="text-3xl font-bold">{t('lotIntake')}</h1>
         <Package className="h-8 w-8 text-primary" />
       </div>
 
@@ -199,15 +213,15 @@ const LotIntake = () => {
         {/* LOT Entry Form */}
         <Card>
           <CardHeader>
-            <CardTitle>New LOT Entry</CardTitle>
+            <CardTitle>{t('newLotEntry')}</CardTitle>
             <CardDescription>
-              Enter details for a new textile roll LOT
+              {t('newLotDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="quality">Quality *</Label>
+                <Label htmlFor="quality">{t('quality')} *</Label>
                 <Input
                   id="quality"
                   value={formData.quality}
@@ -218,7 +232,7 @@ const LotIntake = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="color">Color *</Label>
+                <Label htmlFor="color">{t('color')} *</Label>
                 <Input
                   id="color"
                   value={formData.color}
@@ -229,7 +243,7 @@ const LotIntake = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="meters">Meters *</Label>
+                <Label htmlFor="meters">{t('meters')} *</Label>
                 <Input
                   id="meters"
                   type="number"
@@ -243,7 +257,7 @@ const LotIntake = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lotNumber">LOT Number *</Label>
+                <Label htmlFor="lotNumber">{t('lotNumber')} *</Label>
                 <Input
                   id="lotNumber"
                   value={formData.lotNumber}
@@ -254,7 +268,7 @@ const LotIntake = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="entryDate">Entry Date *</Label>
+                <Label htmlFor="entryDate">{t('entryDate')} *</Label>
                 <Input
                   id="entryDate"
                   type="date"
@@ -265,7 +279,7 @@ const LotIntake = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="supplier">Supplier *</Label>
+                <Label htmlFor="supplier">{t('supplier')} *</Label>
                 <Select value={formData.supplierId} onValueChange={(value) => handleInputChange('supplierId', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a supplier" />
@@ -280,16 +294,61 @@ const LotIntake = () => {
                 </Select>
               </div>
 
+              {/* Optional Fields */}
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-medium text-muted-foreground">{t('optional')} Fields</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="productionDate">{t('productionDate')}</Label>
+                  <Input
+                    id="productionDate"
+                    type="date"
+                    value={formData.productionDate}
+                    onChange={(e) => handleInputChange('productionDate', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="invoiceDate">{t('invoiceDate')}</Label>
+                  <Input
+                    id="invoiceDate"
+                    type="date"
+                    value={formData.invoiceDate}
+                    onChange={(e) => handleInputChange('invoiceDate', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="poNumber">{t('poNumber')}</Label>
+                  <Input
+                    id="poNumber"
+                    value={formData.poNumber}
+                    onChange={(e) => handleInputChange('poNumber', e.target.value)}
+                    placeholder="e.g., PO-2024-001"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="warehouseLocation">{t('warehouseLocation')}</Label>
+                  <Input
+                    id="warehouseLocation"
+                    value={formData.warehouseLocation}
+                    onChange={(e) => handleInputChange('warehouseLocation', e.target.value)}
+                    placeholder="e.g., A1-B2-C3"
+                  />
+                </div>
+              </div>
+
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating LOT...
+                    {t('creatingLot')}
                   </>
                 ) : (
                   <>
                     <Package className="mr-2 h-4 w-4" />
-                    Create LOT
+                    {t('createLot')}
                   </>
                 )}
               </Button>
@@ -303,7 +362,7 @@ const LotIntake = () => {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <QrCode className="mr-2 h-5 w-5" />
-                QR Code Generated
+                {t('qrCodeGenerated')}
               </CardTitle>
               <CardDescription>
                 LOT {createdLot.lot_number} created successfully
@@ -313,16 +372,16 @@ const LotIntake = () => {
               <div className="text-center">
                 <div id="qr-display" className="mb-4"></div>
                 <div className="space-y-2 text-sm">
-                  <p><strong>Quality:</strong> {createdLot.quality}</p>
-                  <p><strong>Color:</strong> {createdLot.color}</p>
-                  <p><strong>Meters:</strong> {createdLot.meters}</p>
-                  <p><strong>LOT Number:</strong> {createdLot.lot_number}</p>
+                  <p><strong>{t('quality')}:</strong> {createdLot.quality}</p>
+                  <p><strong>{t('color')}:</strong> {createdLot.color}</p>
+                  <p><strong>{t('meters')}:</strong> {createdLot.meters}</p>
+                  <p><strong>{t('lotNumber')}:</strong> {createdLot.lot_number}</p>
                 </div>
               </div>
               
               <Button onClick={handlePrintQR} className="w-full">
                 <Printer className="mr-2 h-4 w-4" />
-                Print QR Code
+                {t('printQrCode')}
               </Button>
               
               <div className="text-xs text-muted-foreground break-all">

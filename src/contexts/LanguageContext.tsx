@@ -55,6 +55,11 @@ const translations = {
     days: 'days',
     noLotsInInventory: 'No LOTs in inventory',
     considerReviewing: 'Consider reviewing old stock',
+    overview: 'Overview',
+    lotIntakeShort: 'LOT Intake',
+    scanQr: 'Scan QR',
+    createOrderShort: 'Create Order',
+    viewReports: 'View Reports',
     
     // Inventory
     qualityFilter: 'Filter by Quality',
@@ -88,6 +93,10 @@ const translations = {
     showing: 'Showing',
     addToOrder: 'Add to Order',
     clear: 'Clear',
+    quality: 'Quality',
+    color: 'Color',
+    lotNumber: 'LOT Number',
+    supplier: 'Supplier',
     
     // Orders
     orderNumber: 'Order Number',
@@ -108,6 +117,21 @@ const translations = {
     pending: 'Pending',
     fulfilled: 'Fulfilled',
     noOrdersFound: 'No orders found.',
+    newOrder: 'New Order',
+    customer: 'Customer',
+    selectedLots: 'Selected LOTs',
+    addLotButton: 'Add LOT',
+    rollCount: 'Roll Count',
+    type: 'Type',
+    standard: 'Standard',
+    sample: 'Sample',
+    remove: 'Remove',
+    createOrderButton: 'Create Order',
+    orderManagementDesc: 'View and manage customer orders',
+    lotsCount: 'LOTs Count',
+    created: 'Created',
+    actions: 'Actions',
+    orderDetails: 'Order Details',
     
     // Lot Intake
     lotIntakeNumber: 'Lot Number',
@@ -123,6 +147,16 @@ const translations = {
     lotCreatedSuccessfully: 'LOT created successfully',
     failedToCreateLot: 'Failed to create LOT',
     required: 'Required',
+    newLotEntry: 'New LOT Entry',
+    newLotDescription: 'Enter details for a new textile roll LOT',
+    productionDate: 'Production Date',
+    invoiceDate: 'Invoice Date',
+    poNumber: 'PO Number',
+    warehouseLocation: 'Warehouse Location',
+    creatingLot: 'Creating LOT...',
+    qrCodeGenerated: 'QR Code Generated',
+    printQrCode: 'Print QR Code',
+    optional: 'Optional',
     
     // QR Scanner
     qrCodeScanner: 'QR Code Scanner',
@@ -147,6 +181,13 @@ const translations = {
     qrCodeScanned: 'QR Code Scanned',
     pleaseLogin: 'Please log in to view LOT details',
     signInToView: 'Sign In to View Details',
+    qrScanner: 'QR Scanner',
+    scanCode: 'Scan Code',
+    uploadImage: 'Upload Image',
+    selectLot: 'Select LOT',
+    selectLotPlaceholder: 'Choose a LOT to view details',
+    noFileSelected: 'No file selected',
+    chooseFile: 'Choose File',
     
     // Reports
     reportsAnalytics: 'Reports & Analytics',
@@ -206,6 +247,11 @@ const translations = {
     days: 'gün',
     noLotsInInventory: 'Envanterde LOT yok',
     considerReviewing: 'Eski stoku gözden geçirmeyi düşünün',
+    overview: 'Genel Bakış',
+    lotIntakeShort: 'LOT Girişi',
+    scanQr: 'QR Tara',
+    createOrderShort: 'Sipariş Oluştur',
+    viewReports: 'Raporları Gör',
     
     // Inventory
     qualityFilter: 'Kaliteye Göre Filtrele',
@@ -239,6 +285,10 @@ const translations = {
     showing: 'Gösteriliyor',
     addToOrder: 'Siparişe Ekle',
     clear: 'Temizle',
+    quality: 'Kalite',
+    color: 'Renk',
+    lotNumber: 'LOT Numarası',
+    supplier: 'Tedarikçi',
     
     // Orders
     orderNumber: 'Sipariş Numarası',
@@ -259,6 +309,21 @@ const translations = {
     pending: 'Beklemede',
     fulfilled: 'Karşılandı',
     noOrdersFound: 'Sipariş bulunamadı.',
+    newOrder: 'Yeni Sipariş',
+    customer: 'Müşteri',
+    selectedLots: 'Seçilen LOTlar',
+    addLotButton: 'LOT Ekle',
+    rollCount: 'Rulo Sayısı',
+    type: 'Tür',
+    standard: 'Standart',
+    sample: 'Numune',
+    remove: 'Kaldır',
+    createOrderButton: 'Sipariş Oluştur',
+    orderManagementDesc: 'Müşteri siparişlerini görüntüle ve yönet',
+    lotsCount: 'LOT Sayısı',
+    created: 'Oluşturuldu',
+    actions: 'İşlemler',
+    orderDetails: 'Sipariş Detayları',
     
     // Lot Intake
     lotIntakeNumber: 'Lot Numarası',
@@ -274,6 +339,16 @@ const translations = {
     lotCreatedSuccessfully: 'LOT başarıyla oluşturuldu',
     failedToCreateLot: 'LOT oluşturulamadı',
     required: 'Gerekli',
+    newLotEntry: 'Yeni LOT Girişi',
+    newLotDescription: 'Yeni tekstil rulosu LOT detaylarını girin',
+    productionDate: 'Üretim Tarihi',
+    invoiceDate: 'Fatura Tarihi',
+    poNumber: 'PO Numarası',
+    warehouseLocation: 'Depo Konumu',
+    creatingLot: 'LOT Oluşturuluyor...',
+    qrCodeGenerated: 'QR Kod Oluşturuldu',
+    printQrCode: 'QR Kodu Yazdır',
+    optional: 'Opsiyonel',
     
     // QR Scanner
     qrCodeScanner: 'QR Kod Tarayıcısı',
@@ -298,6 +373,13 @@ const translations = {
     qrCodeScanned: 'QR Kod Tarandı',
     pleaseLogin: 'LOT detaylarını görüntülemek için lütfen giriş yapın',
     signInToView: 'Detayları Görüntülemek İçin Giriş Yap',
+    qrScanner: 'QR Tarayıcı',
+    scanCode: 'Kod Tara',
+    uploadImage: 'Resim Yükle',
+    selectLot: 'LOT Seç',
+    selectLotPlaceholder: 'Detayları görmek için bir LOT seçin',
+    noFileSelected: 'Dosya seçilmedi',
+    chooseFile: 'Dosya Seç',
     
     // Reports
     reportsAnalytics: 'Raporlar ve Analitik',

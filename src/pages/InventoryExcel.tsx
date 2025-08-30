@@ -109,9 +109,8 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
       
       const matchesQuality = !qualityFilter || qualityFilter === 'all' || lot.quality === qualityFilter;
       const matchesColor = !colorFilter || colorFilter === 'all' || lot.color === colorFilter;
-      const matchesStatus = !statusFilter || statusFilter === 'all' || lot.status === statusFilter;
       
-      return matchesSearch && matchesQuality && matchesColor && matchesStatus;
+      return matchesSearch && matchesQuality && matchesColor;
     });
 
     // Sort
