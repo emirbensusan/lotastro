@@ -58,8 +58,55 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(50);
   
+  const [expandedQualities, setExpandedQualities] = useState<Set<string>>(new Set());
+  const [expandedColors, setExpandedColors] = useState<Set<string>>(new Set());
+  
   const { t } = useLanguage();
   const { toast } = useToast();
+
+  // Group lots by quality -> color -> lots
+  const groupedData = React.useMemo(() => {
+    const groups: Record<string, Record<string, Lot[]>> = {};
+    
+    filteredLots.forEach(lot => {
+      if (!groups[lot.quality]) {
+        groups[lot.quality] = {};
+      }
+      if (!groups[lot.quality][lot.color]) {
+        groups[lot.quality][lot.color] = [];
+      }
+      groups[lot.quality][lot.color].push(lot);
+    });
+    
+    return groups;
+  }, [filteredLots]);
+
+  const toggleQuality = (quality: string) => {
+    const newExpanded = new Set(expandedQualities);
+    if (newExpanded.has(quality)) {
+      newExpanded.delete(quality);
+      // Also collapse all colors under this quality
+      Object.keys(groupedData[quality] || {}).forEach(color => {
+        const colorKey = `${quality}-${color}`;
+        expandedColors.delete(colorKey);
+      });
+      setExpandedColors(new Set(expandedColors));
+    } else {
+      newExpanded.add(quality);
+    }
+    setExpandedQualities(newExpanded);
+  };
+
+  const toggleColor = (quality: string, color: string) => {
+    const colorKey = `${quality}-${color}`;
+    const newExpanded = new Set(expandedColors);
+    if (newExpanded.has(colorKey)) {
+      newExpanded.delete(colorKey);
+    } else {
+      newExpanded.add(colorKey);
+    }
+    setExpandedColors(newExpanded);
+  };
 
   // Get unique values for filters
   const qualities = [...new Set(lots.map(lot => lot.quality))];
@@ -278,10 +325,10 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
           
           <Select value={qualityFilter} onValueChange={setQualityFilter}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Quality" />
+              <SelectValue placeholder={t('quality')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Qualities</SelectItem>
+              <SelectItem value="all">{t('allQualities')}</SelectItem>
               {qualities.map(quality => (
                 <SelectItem key={quality} value={quality}>{quality}</SelectItem>
               ))}
@@ -290,10 +337,10 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
 
           <Select value={colorFilter} onValueChange={setColorFilter}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Color" />
+              <SelectValue placeholder={t('color')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Colors</SelectItem>
+              <SelectItem value="all">{t('allColors')}</SelectItem>
               {colors.map(color => (
                 <SelectItem key={color} value={color}>{color}</SelectItem>
               ))}
@@ -338,15 +385,15 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
 
       {/* Results Summary */}
       <div className="text-sm text-muted-foreground">
-        Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, filteredLots.length)} of {filteredLots.length} lots
+        {t('showing')} {Object.keys(groupedData).length} {(t('quality') as string).toLowerCase()}, {Object.values(groupedData).flatMap(colors => Object.keys(colors)).length} {(t('color') as string).toLowerCase()}, {filteredLots.length} {(t('lots') as string).toLowerCase()}
         {mode === 'select' && selectedItems.length > 0 && (
           <span className="ml-4 font-medium">
-            {selectedItems.length} selected
+            {selectedItems.length} {t('selected')}
           </span>
         )}
       </div>
 
-      {/* Table */}
+      {/* Hierarchical Inventory Structure */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -360,57 +407,108 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                     />
                   </TableHead>
                 )}
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('lot_number')} className="h-8 p-1">
-                    Lot Number <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('quality')} className="h-8 p-1">
-                    Quality <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('color')} className="h-8 p-1">
-                    Color <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('meters')} className="h-8 p-1">
-                    Meters <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead>Rolls</TableHead>
-                <TableHead>
-                  <Button variant="ghost" onClick={() => handleSort('entry_date')} className="h-8 p-1">
-                    Entry Date <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead>Supplier</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('quality')}</TableHead>
+                <TableHead>{t('color')}</TableHead>
+                <TableHead>{t('lotNumber')}</TableHead>
+                <TableHead>{t('meters')}</TableHead>
+                <TableHead>{t('rolls')}</TableHead>
+                <TableHead>{t('entryDate')}</TableHead>
+                <TableHead>{t('supplier')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentPageLots.map((lot) => (
-                <TableRow key={lot.id}>
-                  {mode === 'select' && (
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedItems.includes(lot.id)}
-                        onCheckedChange={() => handleSelectLot(lot.id)}
-                      />
-                    </TableCell>
-                  )}
-                  <TableCell className="font-medium">{lot.lot_number}</TableCell>
-                  <TableCell>{lot.quality}</TableCell>
-                  <TableCell>{lot.color}</TableCell>
-                  <TableCell>{lot.meters.toLocaleString()}</TableCell>
-                  <TableCell>{lot.roll_count}</TableCell>
-                  <TableCell>{formatDate(lot.entry_date)}</TableCell>
-                  <TableCell>{lot.suppliers?.name || '-'}</TableCell>
-                  <TableCell>{getStatusBadge(lot.status)}</TableCell>
-                </TableRow>
-              ))}
+              {Object.entries(groupedData).map(([quality, colors]) => {
+                const isQualityExpanded = expandedQualities.has(quality);
+                const qualityTotalLots = Object.values(colors).flat().length;
+                const qualityTotalMeters = Object.values(colors).flat().reduce((sum, lot) => sum + lot.meters, 0);
+                const qualityTotalRolls = Object.values(colors).flat().reduce((sum, lot) => sum + lot.roll_count, 0);
+                
+                return (
+                  <React.Fragment key={quality}>
+                    {/* Quality Row */}
+                    <TableRow 
+                      className="bg-muted/50 font-semibold cursor-pointer hover:bg-muted/70"
+                      onClick={() => toggleQuality(quality)}
+                    >
+                      {mode === 'select' && <TableCell></TableCell>}
+                      <TableCell className="flex items-center">
+                        <span className="mr-2">
+                          {isQualityExpanded ? '▼' : '▶'}
+                        </span>
+                        <Package className="h-4 w-4 mr-2" />
+                        {quality} ({Object.keys(colors).length} colors, {qualityTotalLots} lots)
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{Object.keys(colors).length} colors</TableCell>
+                      <TableCell className="text-muted-foreground">{qualityTotalLots} lots</TableCell>
+                      <TableCell className="font-medium">{qualityTotalMeters.toLocaleString()}</TableCell>
+                      <TableCell className="font-medium">{qualityTotalRolls}</TableCell>
+                      <TableCell></TableCell>
+                      <TableCell></TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
+                    
+                    {/* Color Rows */}
+                    {isQualityExpanded && Object.entries(colors).map(([color, lots]) => {
+                      const colorKey = `${quality}-${color}`;
+                      const isColorExpanded = expandedColors.has(colorKey);
+                      const colorTotalMeters = lots.reduce((sum, lot) => sum + lot.meters, 0);
+                      const colorTotalRolls = lots.reduce((sum, lot) => sum + lot.roll_count, 0);
+                      
+                      return (
+                        <React.Fragment key={colorKey}>
+                          {/* Color Row */}
+                          <TableRow 
+                            className="bg-muted/25 cursor-pointer hover:bg-muted/40"
+                            onClick={() => toggleColor(quality, color)}
+                          >
+                            {mode === 'select' && <TableCell></TableCell>}
+                            <TableCell className="pl-8"></TableCell>
+                            <TableCell className="flex items-center">
+                              <span className="mr-2">
+                                {isColorExpanded ? '▼' : '▶'}
+                              </span>
+                              <div 
+                                className="w-4 h-4 rounded mr-2 border"
+                                style={{ backgroundColor: color.toLowerCase() }}
+                              ></div>
+                              {color} ({lots.length} lots)
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{lots.length} lots</TableCell>
+                            <TableCell className="font-medium">{colorTotalMeters.toLocaleString()}</TableCell>
+                            <TableCell className="font-medium">{colorTotalRolls}</TableCell>
+                            <TableCell></TableCell>
+                            <TableCell></TableCell>
+                            <TableCell></TableCell>
+                          </TableRow>
+                          
+                          {/* LOT Rows */}
+                          {isColorExpanded && lots.map((lot) => (
+                            <TableRow key={lot.id} className="hover:bg-muted/10">
+                              {mode === 'select' && (
+                                <TableCell>
+                                  <Checkbox
+                                    checked={selectedItems.includes(lot.id)}
+                                    onCheckedChange={() => handleSelectLot(lot.id)}
+                                  />
+                                </TableCell>
+                              )}
+                              <TableCell className="pl-8"></TableCell>
+                              <TableCell className="pl-8"></TableCell>
+                              <TableCell className="font-medium pl-8">{lot.lot_number}</TableCell>
+                              <TableCell>{lot.meters.toLocaleString()}</TableCell>
+                              <TableCell>{lot.roll_count}</TableCell>
+                              <TableCell>{formatDate(lot.entry_date)}</TableCell>
+                              <TableCell>{lot.suppliers?.name || '-'}</TableCell>
+                              <TableCell>{getStatusBadge(lot.status)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
