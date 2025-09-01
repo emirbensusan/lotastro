@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Package, Truck, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DashboardStats {
   totalLots: number;
@@ -203,26 +204,53 @@ const Dashboard = () => {
               {t('commonTasks')}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-3">
             {profile?.role === 'warehouse_staff' && (
               <>
-                <p className="text-sm">• Create new LOT entries</p>
-                <p className="text-sm">• Scan QR codes</p>
-                <p className="text-sm">• Fulfill orders</p>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/lot-intake'}>
+                  <Package className="mr-2 h-4 w-4" />
+                  {t('createNewLotEntries')}
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/qr-scan'}>
+                  <Package className="mr-2 h-4 w-4" />
+                  {t('scanQrCodes')}
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/orders'}>
+                  <Truck className="mr-2 h-4 w-4" />
+                  {t('fulfillOrders')}
+                </Button>
               </>
             )}
             {profile?.role === 'accounting' && (
               <>
-                <p className="text-sm">• Create new orders</p>
-                <p className="text-sm">• Check stock levels</p>
-                <p className="text-sm">• Generate reports</p>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/orders'}>
+                  <Truck className="mr-2 h-4 w-4" />
+                  {t('createNewOrders')}
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/inventory'}>
+                  <Package className="mr-2 h-4 w-4" />
+                  {t('checkStockLevels')}
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/reports'}>
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  {t('generateReportsAction')}
+                </Button>
               </>
             )}
             {profile?.role === 'admin' && (
               <>
-                <p className="text-sm">• Manage suppliers</p>
-                <p className="text-sm">• Delete LOTs</p>
-                <p className="text-sm">• Reprint QR codes</p>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/suppliers'}>
+                  <Package className="mr-2 h-4 w-4" />
+                  {t('manageSuppliersAction')}
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/inventory'}>
+                  <Package className="mr-2 h-4 w-4" />
+                  {t('deleteLots')}
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/lot-intake'}>
+                  <Package className="mr-2 h-4 w-4" />
+                  {t('reprintQrCodes')}
+                </Button>
               </>
             )}
           </CardContent>

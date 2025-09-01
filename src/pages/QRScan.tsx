@@ -263,7 +263,7 @@ const QRScan = () => {
           <CardContent>
             <Select value={selectedLotId} onValueChange={handleLotSelect}>
               <SelectTrigger>
-                <SelectValue placeholder={t('selectLots')} />
+                <SelectValue placeholder={t('selectLotPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {availableLots.map((lot) => (

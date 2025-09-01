@@ -200,6 +200,38 @@ const translations = {
     // Suppliers
     supplierManagement: 'Supplier Management',
     manageSuppliers: 'Manage all suppliers in the system',
+    
+    // Dashboard Quick Actions
+    createNewLotEntries: 'Create new LOT entries',
+    scanQrCodes: 'Scan QR codes', 
+    fulfillOrders: 'Fulfill orders',
+    createNewOrders: 'Create new orders',
+    checkStockLevels: 'Check stock levels',
+    generateReportsAction: 'Generate reports',
+    manageSuppliersAction: 'Manage suppliers',
+    deleteLots: 'Delete LOTs',
+    reprintQrCodes: 'Reprint QR codes',
+    
+    // Additional Orders translations
+    newOrderCreate: 'New Order',
+    createOrderForm: 'Create New Order',
+    enterOrderDetails: 'Enter order details and select LOTs for fulfillment',
+    orderNumberField: 'Order Number',
+    customerNameField: 'Customer Name',
+    orderManagementSection: 'Order Management',
+    viewManageOrders: 'View and manage customer orders',
+    lotNumberShort: 'LOT Number',
+    rollsShort: 'Rolls',
+    typeShort: 'Type',
+    orderDetailsModal: 'Order Details',
+    fulfilledStatus: 'Fulfilled',
+    validationError: 'Validation Error',
+    fillAllFields: 'Please fill in all fields and select at least one LOT',
+    orderCreatedDesc: 'has been created successfully',
+    errorCreatingOrder: 'Error Creating Order',
+    orderFulfilled: 'Order Fulfilled',
+    orderMarkedFulfilled: 'Order has been marked as fulfilled',
+    errorFulfillingOrder: 'Error Fulfilling Order',
   },
   tr: {
     // Navigation
@@ -392,6 +424,38 @@ const translations = {
     // Suppliers
     supplierManagement: 'Tedarikçi Yönetimi',
     manageSuppliers: 'Sistemdeki tüm tedarikçileri yönet',
+    
+    // Dashboard Quick Actions
+    createNewLotEntries: 'Yeni LOT girişleri oluştur',
+    scanQrCodes: 'QR kodları tara',
+    fulfillOrders: 'Siparişleri karşıla',
+    createNewOrders: 'Yeni siparişler oluştur', 
+    checkStockLevels: 'Stok seviyelerini kontrol et',
+    generateReportsAction: 'Raporlar oluştur',
+    manageSuppliersAction: 'Tedarikçileri yönet',
+    deleteLots: 'LOTları sil',
+    reprintQrCodes: 'QR kodlarını yeniden yazdır',
+    
+    // Additional Orders translations
+    newOrderCreate: 'Yeni Sipariş',
+    createOrderForm: 'Yeni Sipariş Oluştur',
+    enterOrderDetails: 'Sipariş detaylarını girin ve karşılanacak LOTları seçin',
+    orderNumberField: 'Sipariş Numarası',
+    customerNameField: 'Müşteri Adı',
+    orderManagementSection: 'Sipariş Yönetimi',
+    viewManageOrders: 'Müşteri siparişlerini görüntüle ve yönet',
+    lotNumberShort: 'LOT Numarası',
+    rollsShort: 'Rulo',
+    typeShort: 'Tür',
+    orderDetailsModal: 'Sipariş Detayları',
+    fulfilledStatus: 'Karşılandı',
+    validationError: 'Doğrulama Hatası',
+    fillAllFields: 'Lütfen tüm alanları doldurun ve en az bir LOT seçin',
+    orderCreatedDesc: 'başarıyla oluşturuldu',
+    errorCreatingOrder: 'Sipariş Oluşturma Hatası',
+    orderFulfilled: 'Sipariş Karşılandı',
+    orderMarkedFulfilled: 'Sipariş karşılandı olarak işaretlendi',
+    errorFulfillingOrder: 'Sipariş Karşılama Hatası',
   }
 };
 

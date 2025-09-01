@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import { Truck, Plus, CheckCircle, Download, Eye } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Order {
   id: string;
@@ -45,6 +46,7 @@ interface Lot {
 
 const Orders = () => {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,7 @@ const Orders = () => {
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
-        title: "Error",
+        title: t('error') as string,
         description: "Failed to load orders",
         variant: "destructive",
       });
@@ -117,8 +119,8 @@ const Orders = () => {
   const handleCreateOrder = async () => {
     if (!orderNumber || !customerName || selectedLots.length === 0) {
       toast({
-        title: "Validation Error",
-        description: "Please fill in all fields and select at least one LOT",
+        title: t('validationError') as string,
+        description: t('fillAllFields') as string,
         variant: "destructive",
       });
       return;
@@ -158,8 +160,8 @@ const Orders = () => {
       }
 
       toast({
-        title: "Order Created",
-        description: `Order ${orderNumber} has been created successfully`,
+        title: t('orderCreated') as string,
+        description: `${t('orderNumber')} ${orderNumber} ${t('orderCreatedDesc')}`,
       });
 
       // Reset form
@@ -172,7 +174,7 @@ const Orders = () => {
       fetchOrders();
     } catch (error: any) {
       toast({
-        title: "Error Creating Order",
+        title: t('errorCreatingOrder') as string,
         description: error.message,
         variant: "destructive",
       });
@@ -203,14 +205,14 @@ const Orders = () => {
       }
 
       toast({
-        title: "Order Fulfilled",
-        description: "Order has been marked as fulfilled",
+        title: t('orderFulfilled') as string,
+        description: t('orderMarkedFulfilled') as string,
       });
 
       fetchOrders();
     } catch (error: any) {
       toast({
-        title: "Error Fulfilling Order",
+        title: t('errorFulfillingOrder') as string,
         description: error.message,
         variant: "destructive",
       });
@@ -242,7 +244,7 @@ const Orders = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Orders</h1>
+        <h1 className="text-3xl font-bold">{t('orders')}</h1>
         <Card>
           <CardContent className="p-6">
             <div className="animate-pulse space-y-4">
@@ -259,7 +261,7 @@ const Orders = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Orders</h1>
+        <h1 className="text-3xl font-bold">{t('orders')}</h1>
         <div className="flex items-center space-x-4">
           <Truck className="h-8 w-8 text-primary" />
           {canCreateOrders && (
@@ -267,21 +269,21 @@ const Orders = () => {
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  New Order
+                  {t('newOrderCreate')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Create New Order</DialogTitle>
+                  <DialogTitle>{t('createOrderForm')}</DialogTitle>
                   <DialogDescription>
-                    Enter order details and select LOTs for fulfillment
+                    {t('enterOrderDetails')}
                   </DialogDescription>
                 </DialogHeader>
                 
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="orderNumber">Order Number</Label>
+                      <Label htmlFor="orderNumber">{t('orderNumberField')}</Label>
                       <Input
                         id="orderNumber"
                         value={orderNumber}
@@ -290,7 +292,7 @@ const Orders = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="customerName">Customer Name</Label>
+                      <Label htmlFor="customerName">{t('customerNameField')}</Label>
                       <Input
                         id="customerName"
                         value={customerName}
@@ -302,21 +304,21 @@ const Orders = () => {
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label>Selected LOTs</Label>
+                      <Label>{t('selectedLots')}</Label>
                       <Button type="button" variant="outline" onClick={addLotToOrder}>
                         <Plus className="mr-2 h-4 w-4" />
-                        Add LOT
+                        {t('addLot')}
                       </Button>
                     </div>
 
                     {selectedLots.map((selectedLot, index) => (
                       <div key={index} className="grid grid-cols-5 gap-2 p-4 border rounded-lg">
                         <div className="space-y-2">
-                          <Label>LOT</Label>
+                          <Label>{t('lotNumberShort')}</Label>
                           <Select value={selectedLot.lotId} onValueChange={(value) => updateSelectedLot(index, 'lotId', value)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select LOT" />
-                            </SelectTrigger>
+                             <SelectTrigger>
+                               <SelectValue placeholder={t('selectLots')} />
+                             </SelectTrigger>
                             <SelectContent>
                               {lots.map((lot) => (
                                 <SelectItem key={lot.id} value={lot.id}>
@@ -327,8 +329,8 @@ const Orders = () => {
                           </Select>
                         </div>
                         
-                        <div className="space-y-2">
-                          <Label>Roll Count</Label>
+                         <div className="space-y-2">
+                           <Label>{t('rollCount')}</Label>
                           <Input
                             type="number"
                             min="1"
@@ -337,41 +339,41 @@ const Orders = () => {
                           />
                         </div>
                         
-                        <div className="space-y-2">
-                          <Label>Type</Label>
+                         <div className="space-y-2">
+                           <Label>{t('type')}</Label>
                           <Select value={selectedLot.lineType} onValueChange={(value) => updateSelectedLot(index, 'lineType', value)}>
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="standard">Standard</SelectItem>
-                              <SelectItem value="sample">Sample</SelectItem>
-                            </SelectContent>
+                             <SelectContent>
+                               <SelectItem value="standard">{t('standard')}</SelectItem>
+                               <SelectItem value="sample">{t('sample')}</SelectItem>
+                             </SelectContent>
                           </Select>
                         </div>
                         
                         <div className="flex items-end">
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => removeLotFromOrder(index)}
-                          >
-                            Remove
-                          </Button>
+                           <Button
+                             type="button"
+                             variant="destructive"
+                             size="sm"
+                             onClick={() => removeLotFromOrder(index)}
+                           >
+                             {t('remove')}
+                           </Button>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleCreateOrder}>
-                      Create Order
-                    </Button>
-                  </div>
+                   <div className="flex justify-end space-x-2">
+                     <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                       {t('cancel')}
+                     </Button>
+                     <Button onClick={handleCreateOrder}>
+                       {t('createOrder')}
+                     </Button>
+                   </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -382,21 +384,21 @@ const Orders = () => {
       {/* Orders Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Order Management</CardTitle>
+          <CardTitle>{t('orderManagementSection')}</CardTitle>
           <CardDescription>
-            View and manage customer orders
+            {t('viewManageOrders')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order Number</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>LOTs Count</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('orderNumberField')}</TableHead>
+                <TableHead>{t('customer')}</TableHead>
+                <TableHead>{t('lotsCount')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
+                <TableHead>{t('created')}</TableHead>
+                <TableHead>{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -408,10 +410,10 @@ const Orders = () => {
                   <TableCell>
                     {order.fulfilled_at ? (
                       <Badge className="bg-green-100 text-green-800">
-                        Fulfilled
+                        {t('fulfilledStatus')}
                       </Badge>
                     ) : (
-                      <Badge variant="secondary">Pending</Badge>
+                      <Badge variant="secondary">{t('pending')}</Badge>
                     )}
                   </TableCell>
                   <TableCell>
@@ -444,7 +446,7 @@ const Orders = () => {
 
           {orders.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              No orders found.
+              {t('noOrdersFound')}
             </div>
           )}
         </CardContent>
@@ -455,9 +457,9 @@ const Orders = () => {
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Order Details - {selectedOrder.order_number}</DialogTitle>
+              <DialogTitle>{t('orderDetailsModal')} - {selectedOrder.order_number}</DialogTitle>
               <DialogDescription>
-                Customer: {selectedOrder.customer_name}
+                {t('customer')}: {selectedOrder.customer_name}
               </DialogDescription>
             </DialogHeader>
             
@@ -465,11 +467,11 @@ const Orders = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>LOT Number</TableHead>
-                    <TableHead>Quality</TableHead>
-                    <TableHead>Color</TableHead>
-                    <TableHead>Rolls</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead>{t('lotNumberShort')}</TableHead>
+                    <TableHead>{t('quality')}</TableHead>
+                    <TableHead>{t('color')}</TableHead>
+                    <TableHead>{t('rollsShort')}</TableHead>
+                    <TableHead>{t('typeShort')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
