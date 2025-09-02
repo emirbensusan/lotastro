@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
-import { Truck, Plus, CheckCircle, Download, Eye } from 'lucide-react';
+import { Truck, Plus, CheckCircle, Download, Eye, FileText } from 'lucide-react';
+import OrderPrintDialog from '@/components/OrderPrintDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useLocation } from 'react-router-dom';
 
 interface Order {
   id: string;
@@ -47,20 +49,36 @@ interface Lot {
 const Orders = () => {
   const { profile } = useAuth();
   const { t } = useLanguage();
+  const location = useLocation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
 
   // Create order form state
   const [orderNumber, setOrderNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [selectedLots, setSelectedLots] = useState<Array<{
     lotId: string;
+    quality: string;
+    color: string;
+    lotNumber: string;
+    meters: number;
+    availableRolls: number;
     rollCount: number;
     lineType: 'sample' | 'standard';
   }>>([]);
+
+  // Check for pre-filled data from inventory
+  useEffect(() => {
+    if (location.state?.prefilledLots) {
+      setSelectedLots(location.state.prefilledLots);
+      setShowCreateDialog(true);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     fetchOrders();
@@ -140,41 +158,58 @@ const Orders = () => {
 
       if (orderError) throw orderError;
 
-      // Create order_lots entries
+      // Create order lots
       for (const selectedLot of selectedLots) {
-        const lot = lots.find(l => l.id === selectedLot.lotId);
-        if (!lot) continue;
-
-        const { error: orderLotError } = await supabase
+        await supabase
           .from('order_lots')
           .insert({
             order_id: orderData.id,
             lot_id: selectedLot.lotId,
-            quality: lot.quality,
-            color: lot.color,
             roll_count: selectedLot.rollCount,
             line_type: selectedLot.lineType,
+            quality: selectedLot.quality || lots.find(l => l.id === selectedLot.lotId)?.quality || '',
+            color: selectedLot.color || lots.find(l => l.id === selectedLot.lotId)?.color || '',
           });
-
-        if (orderLotError) throw orderLotError;
       }
 
       toast({
         title: t('orderCreated') as string,
-        description: `${t('orderNumber')} ${orderNumber} ${t('orderCreatedDesc')}`,
+        description: `${t('orderCreatedSuccessfully')} ${orderNumber}`,
       });
 
-      // Reset form
+      // Show print dialog for new order
+      const newOrder = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_lots (
+            id,
+            quality,
+            color,
+            roll_count,
+            line_type,
+            lot:lots (
+              lot_number,
+              meters
+            )
+          )
+        `)
+        .eq('id', orderData.id)
+        .single();
+      
+      if (newOrder.data) {
+        setOrderToPrint(newOrder.data);
+        setShowPrintDialog(true);
+      }
+
+      setShowCreateDialog(false);
       setOrderNumber('');
       setCustomerName('');
       setSelectedLots([]);
-      setShowCreateDialog(false);
-      
-      // Refresh orders
       fetchOrders();
     } catch (error: any) {
       toast({
-        title: t('errorCreatingOrder') as string,
+        title: t('failedToCreateOrder') as string,
         description: error.message,
         variant: "destructive",
       });
@@ -222,8 +257,13 @@ const Orders = () => {
   const addLotToOrder = () => {
     setSelectedLots([...selectedLots, {
       lotId: '',
+      quality: '',
+      color: '',
+      lotNumber: '',
+      meters: 0,
+      availableRolls: 0,
       rollCount: 1,
-      lineType: 'standard',
+      lineType: 'standard' as const,
     }]);
   };
 
@@ -235,6 +275,11 @@ const Orders = () => {
     setSelectedLots(prev => prev.map((lot, i) => 
       i === index ? { ...lot, [field]: value } : lot
     ));
+  };
+
+  const handlePrintOrder = (order: Order) => {
+    setOrderToPrint(order);
+    setShowPrintDialog(true);
   };
 
   // Check permissions
@@ -304,76 +349,106 @@ const Orders = () => {
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label>{t('selectedLots')}</Label>
+                      <Label>{t('selectedLotsField')}</Label>
                       <Button type="button" variant="outline" onClick={addLotToOrder}>
                         <Plus className="mr-2 h-4 w-4" />
                         {t('addLot')}
                       </Button>
                     </div>
 
-                    {selectedLots.map((selectedLot, index) => (
-                      <div key={index} className="grid grid-cols-5 gap-2 p-4 border rounded-lg">
-                        <div className="space-y-2">
-                          <Label>{t('lotNumberShort')}</Label>
-                          <Select value={selectedLot.lotId} onValueChange={(value) => updateSelectedLot(index, 'lotId', value)}>
-                             <SelectTrigger>
-                               <SelectValue placeholder={t('selectLots')} />
-                             </SelectTrigger>
-                            <SelectContent>
-                              {lots.map((lot) => (
-                                <SelectItem key={lot.id} value={lot.id}>
-                                  {lot.lot_number} ({lot.quality} - {lot.color})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                         <div className="space-y-2">
-                           <Label>{t('rollCount')}</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={selectedLot.rollCount}
-                            onChange={(e) => updateSelectedLot(index, 'rollCount', parseInt(e.target.value))}
-                          />
-                        </div>
-                        
-                         <div className="space-y-2">
-                           <Label>{t('type')}</Label>
-                          <Select value={selectedLot.lineType} onValueChange={(value) => updateSelectedLot(index, 'lineType', value)}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                             <SelectContent>
-                               <SelectItem value="standard">{t('standard')}</SelectItem>
-                               <SelectItem value="sample">{t('sample')}</SelectItem>
-                             </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="flex items-end">
-                           <Button
-                             type="button"
-                             variant="destructive"
-                             size="sm"
-                             onClick={() => removeLotFromOrder(index)}
-                           >
-                             {t('remove')}
-                           </Button>
-                        </div>
-                      </div>
-                    ))}
+                    <div className="space-y-4">
+                      {selectedLots.map((selectedLot, index) => {
+                        const lot = lots.find(l => l.id === selectedLot.lotId);
+                        return (
+                          <div key={index} className="grid grid-cols-6 gap-2 items-end p-4 border rounded">
+                            <div className="space-y-2">
+                              <Label>{t('lot')}</Label>
+                              {selectedLot.quality && selectedLot.color ? (
+                                <div className="p-2 bg-muted rounded text-sm">
+                                  <div className="font-medium">{selectedLot.lotNumber}</div>
+                                  <div className="text-muted-foreground">{selectedLot.quality} - {selectedLot.color}</div>
+                                </div>
+                              ) : (
+                                <Select
+                                  value={selectedLot.lotId}
+                                  onValueChange={(value) => updateSelectedLot(index, 'lotId', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select lot" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {lots.filter(lot => lot.status === 'in_stock').map(lot => (
+                                      <SelectItem key={lot.id} value={lot.id}>
+                                        {lot.lot_number} - {lot.quality} ({lot.color})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <Label>{t('qualityField')}</Label>
+                              <div className="p-2 bg-muted rounded text-sm">
+                                {selectedLot.quality || lot?.quality || '-'}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>{t('colorField')}</Label>
+                              <div className="p-2 bg-muted rounded text-sm flex items-center">
+                                <div 
+                                  className="w-4 h-4 rounded mr-2 border"
+                                  style={{ backgroundColor: (selectedLot.color || lot?.color || '').toLowerCase() }}
+                                ></div>
+                                {selectedLot.color || lot?.color || '-'}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>{t('rollCountField')}</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max={selectedLot.availableRolls || lot?.roll_count || 1}
+                                value={selectedLot.rollCount}
+                                onChange={(e) => updateSelectedLot(index, 'rollCount', parseInt(e.target.value) || 1)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>{t('lineTypeField')}</Label>
+                              <Select
+                                value={selectedLot.lineType}
+                                onValueChange={(value) => updateSelectedLot(index, 'lineType', value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="standard">{t('standardType')}</SelectItem>
+                                  <SelectItem value="sample">{t('sampleType')}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeLotFromOrder(index)}
+                            >
+                              {t('removeField')}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                   <div className="flex justify-end space-x-2">
-                     <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                       {t('cancel')}
-                     </Button>
-                     <Button onClick={handleCreateOrder}>
-                       {t('createOrder')}
-                     </Button>
-                   </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                      {t('cancel')}
+                    </Button>
+                    <Button onClick={handleCreateOrder}>
+                      {t('createOrderButton')}
+                    </Button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -410,7 +485,7 @@ const Orders = () => {
                   <TableCell>
                     {order.fulfilled_at ? (
                       <Badge className="bg-green-100 text-green-800">
-                        {t('fulfilledStatus')}
+                        {t('fulfilled')}
                       </Badge>
                     ) : (
                       <Badge variant="secondary">{t('pending')}</Badge>
@@ -426,7 +501,16 @@ const Orders = () => {
                         size="sm"
                         onClick={() => setSelectedOrder(order)}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="mr-2 h-4 w-4" />
+                        {t('view')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handlePrintOrder(order)}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        {t('print')}
                       </Button>
                       {!order.fulfilled_at && canFulfillOrders && (
                         <Button
@@ -457,7 +541,7 @@ const Orders = () => {
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{t('orderDetailsModal')} - {selectedOrder.order_number}</DialogTitle>
+              <DialogTitle>{t('orderDetailsField')} - {selectedOrder.order_number}</DialogTitle>
               <DialogDescription>
                 {t('customer')}: {selectedOrder.customer_name}
               </DialogDescription>
@@ -468,8 +552,8 @@ const Orders = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('lotNumberShort')}</TableHead>
-                    <TableHead>{t('quality')}</TableHead>
-                    <TableHead>{t('color')}</TableHead>
+                    <TableHead>{t('qualityField')}</TableHead>
+                    <TableHead>{t('colorField')}</TableHead>
                     <TableHead>{t('rollsShort')}</TableHead>
                     <TableHead>{t('typeShort')}</TableHead>
                   </TableRow>
@@ -494,6 +578,13 @@ const Orders = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Print Dialog */}
+      <OrderPrintDialog
+        open={showPrintDialog}
+        onOpenChange={setShowPrintDialog}
+        order={orderToPrint}
+      />
     </div>
   );
 };

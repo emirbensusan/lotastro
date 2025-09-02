@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Search, 
@@ -18,7 +19,8 @@ import {
   Calendar,
   ArrowUpDown,
   CheckSquare,
-  Square
+  Square,
+  ShoppingCart
 } from 'lucide-react';
 
 interface Lot {
@@ -39,6 +41,69 @@ interface InventoryExcelProps {
   onLotSelect?: (lots: Lot[]) => void;
   selectedLots?: string[];
 }
+
+// Create Order Actions Component
+const CreateOrderActions = ({ selectedItems, lots, onClear, onLotSelect }: {
+  selectedItems: string[];
+  lots: Lot[];
+  onClear: () => void;
+  onLotSelect?: (lots: Lot[]) => void;
+}) => {
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+
+  const handleCreateOrder = () => {
+    const selectedLotObjects = lots.filter(lot => selectedItems.includes(lot.id));
+    // Navigate to orders page with pre-filled data
+    navigate('/orders', { 
+      state: { 
+        prefilledLots: selectedLotObjects.map(lot => ({
+          lotId: lot.id,
+          quality: lot.quality,
+          color: lot.color,
+          lotNumber: lot.lot_number,
+          meters: lot.meters,
+          availableRolls: lot.roll_count,
+          rollCount: 1,
+          lineType: 'standard' as const
+        }))
+      }
+    });
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 bg-primary text-primary-foreground p-4 rounded-lg shadow-lg">
+      <div className="flex items-center gap-4">
+        <span>{selectedItems.length} {t('selectedLots')}</span>
+        <Button 
+          variant="secondary"
+          onClick={handleCreateOrder}
+        >
+          <ShoppingCart className="mr-2 h-4 w-4" />
+          {t('createOrder')}
+        </Button>
+        {onLotSelect && (
+          <Button 
+            variant="secondary"
+            onClick={() => {
+              const selectedLotObjects = lots.filter(lot => selectedItems.includes(lot.id));
+              onLotSelect(selectedLotObjects);
+            }}
+          >
+            {t('addToOrder')}
+          </Button>
+        )}
+        <Button 
+          variant="ghost"
+          size="sm"
+          onClick={onClear}
+        >
+          {t('clear')}
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 const InventoryExcel: React.FC<InventoryExcelProps> = ({ 
   mode = 'view', 
@@ -63,6 +128,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
   
   const { t } = useLanguage();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Group lots by quality -> color -> lots
   const groupedData = React.useMemo(() => {
@@ -325,7 +391,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
           
           <Select value={qualityFilter} onValueChange={setQualityFilter}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder={t('quality')} />
+              <SelectValue placeholder={t('qualityField')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('allQualities')}</SelectItem>
@@ -337,24 +403,12 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
 
           <Select value={colorFilter} onValueChange={setColorFilter}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder={t('color')} />
+              <SelectValue placeholder={t('colorField')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('allColors')}</SelectItem>
               {colors.map(color => (
                 <SelectItem key={color} value={color}>{color}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {statuses.map(status => (
-                <SelectItem key={status} value={status}>{status.replace('_', ' ').toUpperCase()}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -385,8 +439,8 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
 
       {/* Results Summary */}
       <div className="text-sm text-muted-foreground">
-        {t('showing')} {Object.keys(groupedData).length} {(t('quality') as string).toLowerCase()}, {Object.values(groupedData).flatMap(colors => Object.keys(colors)).length} {(t('color') as string).toLowerCase()}, {filteredLots.length} {(t('lots') as string).toLowerCase()}
-        {mode === 'select' && selectedItems.length > 0 && (
+        {t('showing')} {Object.keys(groupedData).length} {(t('qualityField') as string).toLowerCase()}, {Object.values(groupedData).flatMap(colors => Object.keys(colors)).length} {(t('colorField') as string).toLowerCase()}, {filteredLots.length} {(t('lots') as string).toLowerCase()}
+        {selectedItems.length > 0 && (
           <span className="ml-4 font-medium">
             {selectedItems.length} {t('selected')}
           </span>
@@ -399,7 +453,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
           <Table>
             <TableHeader>
               <TableRow>
-                {mode === 'select' && (
+                {selectedItems.length > 0 && (
                   <TableHead className="w-12">
                     <Checkbox
                       checked={currentPageLots.length > 0 && currentPageLots.every(lot => selectedItems.includes(lot.id))}
@@ -407,13 +461,13 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                     />
                   </TableHead>
                 )}
-                <TableHead>{t('quality')}</TableHead>
-                <TableHead>{t('color')}</TableHead>
-                <TableHead>{t('lotNumber')}</TableHead>
+                <TableHead>{t('qualityField')}</TableHead>
+                <TableHead>{t('colorField')}</TableHead>
+                <TableHead>{t('lotNumberField')}</TableHead>
                 <TableHead>{t('meters')}</TableHead>
                 <TableHead>{t('rolls')}</TableHead>
                 <TableHead>{t('entryDate')}</TableHead>
-                <TableHead>{t('supplier')}</TableHead>
+                <TableHead>{t('supplierField')}</TableHead>
                 <TableHead>{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -431,7 +485,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                       className="bg-muted/50 font-semibold cursor-pointer hover:bg-muted/70"
                       onClick={() => toggleQuality(quality)}
                     >
-                      {mode === 'select' && <TableCell></TableCell>}
+                      {selectedItems.length > 0 && <TableCell></TableCell>}
                       <TableCell className="flex items-center">
                         <span className="mr-2">
                           {isQualityExpanded ? '▼' : '▶'}
@@ -462,7 +516,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                             className="bg-muted/25 cursor-pointer hover:bg-muted/40"
                             onClick={() => toggleColor(quality, color)}
                           >
-                            {mode === 'select' && <TableCell></TableCell>}
+                            {selectedItems.length > 0 && <TableCell></TableCell>}
                             <TableCell className="pl-8"></TableCell>
                             <TableCell className="flex items-center">
                               <span className="mr-2">
@@ -485,7 +539,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                           {/* LOT Rows */}
                           {isColorExpanded && lots.map((lot) => (
                             <TableRow key={lot.id} className="hover:bg-muted/10">
-                              {mode === 'select' && (
+                              {selectedItems.length > 0 && (
                                 <TableCell>
                                   <Checkbox
                                     checked={selectedItems.includes(lot.id)}
@@ -540,30 +594,13 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
       )}
 
       {/* Selection Actions */}
-      {mode === 'select' && selectedItems.length > 0 && (
-        <div className="fixed bottom-6 right-6 bg-primary text-primary-foreground p-4 rounded-lg shadow-lg">
-          <div className="flex items-center gap-4">
-            <span>{selectedItems.length} lots selected</span>
-            <Button 
-              variant="secondary"
-              onClick={() => {
-                if (onLotSelect) {
-                  const selectedLotObjects = lots.filter(lot => selectedItems.includes(lot.id));
-                  onLotSelect(selectedLotObjects);
-                }
-              }}
-            >
-              Add to Order
-            </Button>
-            <Button 
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedItems([])}
-            >
-              Clear
-            </Button>
-          </div>
-        </div>
+      {selectedItems.length > 0 && (
+        <CreateOrderActions 
+          selectedItems={selectedItems}
+          lots={lots}
+          onClear={() => setSelectedItems([])}
+          onLotSelect={onLotSelect}
+        />
       )}
     </div>
   );
