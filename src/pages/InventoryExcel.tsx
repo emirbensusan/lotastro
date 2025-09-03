@@ -390,8 +390,8 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
           </div>
           
           <Select value={qualityFilter} onValueChange={setQualityFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder={t('qualityField')} />
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder={t('quality')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('allQualities')}</SelectItem>
@@ -402,8 +402,8 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
           </Select>
 
           <Select value={colorFilter} onValueChange={setColorFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder={t('colorField')} />
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder={t('color')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('allColors')}</SelectItem>
@@ -439,7 +439,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
 
       {/* Results Summary */}
       <div className="text-sm text-muted-foreground">
-        {t('showing')} {Object.keys(groupedData).length} {(t('qualityField') as string).toLowerCase()}, {Object.values(groupedData).flatMap(colors => Object.keys(colors)).length} {(t('colorField') as string).toLowerCase()}, {filteredLots.length} {(t('lots') as string).toLowerCase()}
+        {t('showing')} {Object.keys(groupedData).length} {(t('quality') as string).toLowerCase()}, {Object.values(groupedData).flatMap(colors => Object.keys(colors)).length} {(t('color') as string).toLowerCase()}, {filteredLots.length} {(t('lots') as string).toLowerCase()}
         {selectedItems.length > 0 && (
           <span className="ml-4 font-medium">
             {selectedItems.length} {t('selected')}
@@ -461,13 +461,13 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                     />
                   </TableHead>
                 )}
-                <TableHead>{t('qualityField')}</TableHead>
-                <TableHead>{t('colorField')}</TableHead>
-                <TableHead>{t('lotNumberField')}</TableHead>
+                <TableHead>{t('quality')}</TableHead>
+                <TableHead>{t('color')}</TableHead>
+                <TableHead>{t('lotNumber')}</TableHead>
                 <TableHead>{t('meters')}</TableHead>
                 <TableHead>{t('rolls')}</TableHead>
                 <TableHead>{t('entryDate')}</TableHead>
-                <TableHead>{t('supplierField')}</TableHead>
+                <TableHead>{t('supplier')}</TableHead>
                 <TableHead>{t('status')}</TableHead>
               </TableRow>
             </TableHeader>

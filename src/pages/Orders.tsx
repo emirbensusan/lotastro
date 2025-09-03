@@ -387,13 +387,13 @@ const Orders = () => {
                               )}
                             </div>
                             <div className="space-y-2">
-                              <Label>{t('qualityField')}</Label>
+                              <Label>{t('quality')}</Label>
                               <div className="p-2 bg-muted rounded text-sm">
                                 {selectedLot.quality || lot?.quality || '-'}
                               </div>
                             </div>
                             <div className="space-y-2">
-                              <Label>{t('colorField')}</Label>
+                              <Label>{t('color')}</Label>
                               <div className="p-2 bg-muted rounded text-sm flex items-center">
                                 <div 
                                   className="w-4 h-4 rounded mr-2 border"
@@ -403,7 +403,7 @@ const Orders = () => {
                               </div>
                             </div>
                             <div className="space-y-2">
-                              <Label>{t('rollCountField')}</Label>
+                              <Label>{t('rollCount')}</Label>
                               <Input
                                 type="number"
                                 min="1"
@@ -413,7 +413,7 @@ const Orders = () => {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label>{t('lineTypeField')}</Label>
+                              <Label>{t('type')}</Label>
                               <Select
                                 value={selectedLot.lineType}
                                 onValueChange={(value) => updateSelectedLot(index, 'lineType', value)}
@@ -422,8 +422,8 @@ const Orders = () => {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="standard">{t('standardType')}</SelectItem>
-                                  <SelectItem value="sample">{t('sampleType')}</SelectItem>
+                                  <SelectItem value="standard">{t('standard')}</SelectItem>
+                                  <SelectItem value="sample">{t('sample')}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -433,7 +433,7 @@ const Orders = () => {
                               size="sm"
                               onClick={() => removeLotFromOrder(index)}
                             >
-                              {t('removeField')}
+                              {t('remove')}
                             </Button>
                           </div>
                         );

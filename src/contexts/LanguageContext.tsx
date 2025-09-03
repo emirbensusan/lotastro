@@ -232,6 +232,9 @@ const translations = {
     orderFulfilled: 'Order Fulfilled',
     orderMarkedFulfilled: 'Order has been marked as fulfilled',
     errorFulfillingOrder: 'Error Fulfilling Order',
+    orderDate: 'Order Date',
+    lineType: 'Line Type',
+    metersPerRoll: 'Meters per Roll',
   },
   tr: {
     // Navigation
@@ -325,7 +328,6 @@ const translations = {
     totalRolls: 'Toplam Top',
     totalMeters: 'Toplam Metre',
     preparedBy: 'Hazırlayan',
-    metersPerRoll: 'Top Başına Metre',
     prepared: 'Hazırlandı',
     sample: 'Numune',
     standard: 'Standart',
@@ -476,6 +478,9 @@ const translations = {
     orderFulfilled: 'Sipariş Karşılandı',
     orderMarkedFulfilled: 'Sipariş karşılandı olarak işaretlendi',
     errorFulfillingOrder: 'Sipariş Karşılama Hatası',
+    orderDate: 'Sipariş Tarihi',
+    lineType: 'Hat Tipi',
+    metersPerRoll: 'Top Başına Metre',
   }
 };
 
