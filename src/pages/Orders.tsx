@@ -13,7 +13,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Truck, Plus, CheckCircle, Download, Eye, FileText } from 'lucide-react';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface Order {
   id: string;
@@ -50,6 +50,7 @@ const Orders = () => {
   const { profile } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +73,12 @@ const Orders = () => {
     lineType: 'sample' | 'standard';
   }>>([]);
 
+  // Quality and color selection for new order flow
+  const [selectedQuality, setSelectedQuality] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [availableQualities, setAvailableQualities] = useState<string[]>([]);
+  const [availableColors, setAvailableColors] = useState<string[]>([]);
+
   // Check for pre-filled data from inventory
   useEffect(() => {
     if (location.state?.prefilledLots) {
@@ -82,7 +89,7 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
-    fetchAvailableLots();
+    fetchAvailableQualities();
   }, []);
 
   const fetchOrders = async () => {
@@ -119,19 +126,59 @@ const Orders = () => {
     }
   };
 
-  const fetchAvailableLots = async () => {
+  const fetchAvailableQualities = async () => {
     try {
       const { data, error } = await supabase
         .from('lots')
-        .select('*')
-        .eq('status', 'in_stock')
-        .order('entry_date', { ascending: false });
+        .select('quality, color')
+        .eq('status', 'in_stock');
 
       if (error) throw error;
-      setLots(data || []);
+      
+      const uniqueQualities = [...new Set(data?.map(lot => lot.quality) || [])];
+      setAvailableQualities(uniqueQualities);
     } catch (error) {
-      console.error('Error fetching lots:', error);
+      console.error('Error fetching qualities:', error);
     }
+  };
+
+  const fetchColorsForQuality = async (quality: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('lots')
+        .select('color')
+        .eq('status', 'in_stock')
+        .eq('quality', quality);
+
+      if (error) throw error;
+      
+      const uniqueColors = [...new Set(data?.map(lot => lot.color) || [])];
+      setAvailableColors(uniqueColors);
+    } catch (error) {
+      console.error('Error fetching colors:', error);
+    }
+  };
+
+  const handleQualityChange = (quality: string) => {
+    setSelectedQuality(quality);
+    setSelectedColor('');
+    setAvailableColors([]);
+    if (quality) {
+      fetchColorsForQuality(quality);
+    }
+  };
+
+  const handleProceedToLotSelection = () => {
+    if (!selectedQuality || !selectedColor) {
+      toast({
+        title: t('validationError') as string,
+        description: "Please select both quality and color",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    navigate(`/lot-selection?quality=${encodeURIComponent(selectedQuality)}&color=${encodeURIComponent(selectedColor)}`);
   };
 
   const handleCreateOrder = async () => {
@@ -317,140 +364,138 @@ const Orders = () => {
                   {t('newOrderCreate')}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{t('createOrderForm')}</DialogTitle>
-                  <DialogDescription>
-                    {t('enterOrderDetails')}
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="orderNumber">{t('orderNumberField')}</Label>
-                      <Input
-                        id="orderNumber"
-                        value={orderNumber}
-                        onChange={(e) => setOrderNumber(e.target.value)}
-                        placeholder="ORD-001"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="customerName">{t('customerNameField')}</Label>
-                      <Input
-                        id="customerName"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Customer Inc."
-                      />
-                    </div>
-                  </div>
-
+              {selectedLots.length === 0 ? (
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>{t('selectQualityColor')}</DialogTitle>
+                    <DialogDescription>
+                      {t('selectQualityColorDescription')}
+                    </DialogDescription>
+                  </DialogHeader>
+                  
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label>{t('selectedLotsField')}</Label>
-                      <Button type="button" variant="outline" onClick={addLotToOrder}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        {t('addLot')}
-                      </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="quality">{t('quality')}</Label>
+                      <Select value={selectedQuality} onValueChange={handleQualityChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('selectQuality')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableQualities.map(quality => (
+                            <SelectItem key={quality} value={quality}>
+                              {quality}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    <div className="space-y-4">
-                      {selectedLots.map((selectedLot, index) => {
-                        const lot = lots.find(l => l.id === selectedLot.lotId);
-                        return (
-                          <div key={index} className="grid grid-cols-6 gap-2 items-end p-4 border rounded">
-                            <div className="space-y-2">
-                              <Label>{t('lot')}</Label>
-                              {selectedLot.quality && selectedLot.color ? (
-                                <div className="p-2 bg-muted rounded text-sm">
-                                  <div className="font-medium">{selectedLot.lotNumber}</div>
-                                  <div className="text-muted-foreground">{selectedLot.quality} - {selectedLot.color}</div>
-                                </div>
-                              ) : (
-                                <Select
-                                  value={selectedLot.lotId}
-                                  onValueChange={(value) => updateSelectedLot(index, 'lotId', value)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select lot" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {lots.filter(lot => lot.status === 'in_stock').map(lot => (
-                                      <SelectItem key={lot.id} value={lot.id}>
-                                        {lot.lot_number} - {lot.quality} ({lot.color})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            </div>
-                            <div className="space-y-2">
-                              <Label>{t('quality')}</Label>
-                              <div className="p-2 bg-muted rounded text-sm">
-                                {selectedLot.quality || lot?.quality || '-'}
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>{t('color')}</Label>
-                              <div className="p-2 bg-muted rounded text-sm flex items-center">
+                    <div className="space-y-2">
+                      <Label htmlFor="color">{t('color')}</Label>
+                      <Select 
+                        value={selectedColor} 
+                        onValueChange={setSelectedColor}
+                        disabled={!selectedQuality}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('selectColor')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableColors.map(color => (
+                            <SelectItem key={color} value={color}>
+                              <div className="flex items-center">
                                 <div 
                                   className="w-4 h-4 rounded mr-2 border"
-                                  style={{ backgroundColor: (selectedLot.color || lot?.color || '').toLowerCase() }}
+                                  style={{ backgroundColor: color.toLowerCase() }}
                                 ></div>
-                                {selectedLot.color || lot?.color || '-'}
+                                {color}
                               </div>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>{t('rollCount')}</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                max={selectedLot.availableRolls || lot?.roll_count || 1}
-                                value={selectedLot.rollCount}
-                                onChange={(e) => updateSelectedLot(index, 'rollCount', parseInt(e.target.value) || 1)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>{t('type')}</Label>
-                              <Select
-                                value={selectedLot.lineType}
-                                onValueChange={(value) => updateSelectedLot(index, 'lineType', value)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="standard">{t('standard')}</SelectItem>
-                                  <SelectItem value="sample">{t('sample')}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeLotFromOrder(index)}
-                            >
-                              {t('remove')}
-                            </Button>
-                          </div>
-                        );
-                      })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => {
+                        setShowCreateDialog(false);
+                        setSelectedQuality('');
+                        setSelectedColor('');
+                        setAvailableColors([]);
+                      }}>
+                        {t('cancel')}
+                      </Button>
+                      <Button 
+                        onClick={handleProceedToLotSelection}
+                        disabled={!selectedQuality || !selectedColor}
+                      >
+                        {t('selectLotsButton')}
+                      </Button>
                     </div>
                   </div>
+                </DialogContent>
+               ) : (
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{t('createOrderForm')}</DialogTitle>
+                    <DialogDescription>
+                      {t('enterCustomerDetails')}
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="orderNumber">{t('orderNumberField')}</Label>
+                        <Input
+                          id="orderNumber"
+                          value={orderNumber}
+                          onChange={(e) => setOrderNumber(e.target.value)}
+                          placeholder="ORD-001"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="customerName">{t('customerNameField')}</Label>
+                        <Input
+                          id="customerName"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="Customer Inc."
+                        />
+                      </div>
+                    </div>
 
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                      {t('cancel')}
-                    </Button>
-                    <Button onClick={handleCreateOrder}>
-                      {t('createOrderButton')}
-                    </Button>
+                    {/* Show selected lots summary */}
+                    {selectedLots.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>{t('selectedLotsLabel')}</Label>
+                        <div className="border rounded p-4 bg-muted/50">
+                          <div className="text-sm text-muted-foreground mb-2">
+                            {t('quality')}: {selectedLots[0]?.quality} | {t('color')}: {selectedLots[0]?.color}
+                          </div>
+                          <div className="space-y-1">
+                            {selectedLots.map((lot, index) => (
+                              <div key={index} className="flex justify-between items-center text-sm">
+                                <span className="font-mono">{lot.lotNumber}</span>
+                                <span>{lot.rollCount} {t('rollsLabel')} ({lot.lineType})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                        {t('cancel')}
+                      </Button>
+                      <Button onClick={handleCreateOrder}>
+                        {t('createOrderButton')}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </DialogContent>
+                </DialogContent>
+               )}
             </Dialog>
           )}
         </div>

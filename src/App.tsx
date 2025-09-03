@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import LotIntake from "./pages/LotIntake";
 import Inventory from "./pages/Inventory";
 import Orders from "./pages/Orders";
+import LotSelection from "./pages/LotSelection";
 import QRScan from "./pages/QRScan";
 import Reports from "./pages/Reports";
 import Admin from "./pages/Admin";
@@ -66,6 +67,11 @@ const App = () => (
               <Route path="/orders" element={
                 <ProtectedRoute>
                   <Orders />
+                </ProtectedRoute>
+              } />
+              <Route path="/lot-selection" element={
+                <ProtectedRoute>
+                  <LotSelection />
                 </ProtectedRoute>
               } />
               <Route path="/qr-scan" element={
