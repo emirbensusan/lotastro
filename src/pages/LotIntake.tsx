@@ -24,8 +24,9 @@ interface LotFormData {
   supplierId: string;
   productionDate: string;
   invoiceDate: string;
-  poNumber: string;
+  invoiceNumber: string;
   warehouseLocation: string;
+  notes: string;
 }
 
 const LotIntake = () => {
@@ -42,8 +43,9 @@ const LotIntake = () => {
     supplierId: '',
     productionDate: '',
     invoiceDate: '',
-    poNumber: '',
+    invoiceNumber: '',
     warehouseLocation: '',
+    notes: '',
   });
   const [createdLot, setCreatedLot] = useState<any>(null);
 
@@ -84,7 +86,7 @@ const LotIntake = () => {
 
     try {
       // Validate form
-      if (!formData.quality || !formData.color || !formData.meters || !formData.lotNumber || !formData.supplierId) {
+      if (!formData.quality || !formData.color || !formData.meters || !formData.lotNumber || !formData.supplierId || !formData.invoiceNumber || !formData.invoiceDate) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -136,8 +138,9 @@ const LotIntake = () => {
         supplierId: '',
         productionDate: '',
         invoiceDate: '',
-        poNumber: '',
+        invoiceNumber: '',
         warehouseLocation: '',
+        notes: '',
       });
 
     } catch (error: any) {
@@ -221,7 +224,7 @@ const LotIntake = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="quality">{t('quality')} *</Label>
+                <Label htmlFor="quality">{t('intakeQuality')} *</Label>
                 <Input
                   id="quality"
                   value={formData.quality}
@@ -232,7 +235,7 @@ const LotIntake = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="color">{t('color')} *</Label>
+                <Label htmlFor="color">{t('intakeColor')} *</Label>
                 <Input
                   id="color"
                   value={formData.color}
@@ -257,7 +260,7 @@ const LotIntake = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lotNumber">{t('lotNumber')} *</Label>
+                <Label htmlFor="lotNumber">{t('lotIntakeNumber')} *</Label>
                 <Input
                   id="lotNumber"
                   value={formData.lotNumber}
@@ -279,7 +282,7 @@ const LotIntake = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="supplier">{t('supplier')} *</Label>
+                <Label htmlFor="supplier">{t('intakeSupplier')} *</Label>
                 <Select value={formData.supplierId} onValueChange={(value) => handleInputChange('supplierId', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a supplier" />
@@ -294,9 +297,31 @@ const LotIntake = () => {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="invoiceNumber">{t('invoiceNumber')} *</Label>
+                <Input
+                  id="invoiceNumber"
+                  value={formData.invoiceNumber}
+                  onChange={(e) => handleInputChange('invoiceNumber', e.target.value)}
+                  placeholder="e.g., INV-2024-001"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="invoiceDate">{t('invoiceDate')} *</Label>
+                <Input
+                  id="invoiceDate"
+                  type="date"
+                  value={formData.invoiceDate}
+                  onChange={(e) => handleInputChange('invoiceDate', e.target.value)}
+                  required
+                />
+              </div>
+
               {/* Optional Fields */}
               <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-sm font-medium text-muted-foreground">{t('optional')} Fields</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">{t('optionalFields')}</h3>
                 
                 <div className="space-y-2">
                   <Label htmlFor="productionDate">{t('productionDate')}</Label>
@@ -309,32 +334,22 @@ const LotIntake = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="invoiceDate">{t('invoiceDate')}</Label>
-                  <Input
-                    id="invoiceDate"
-                    type="date"
-                    value={formData.invoiceDate}
-                    onChange={(e) => handleInputChange('invoiceDate', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="poNumber">{t('poNumber')}</Label>
-                  <Input
-                    id="poNumber"
-                    value={formData.poNumber}
-                    onChange={(e) => handleInputChange('poNumber', e.target.value)}
-                    placeholder="e.g., PO-2024-001"
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="warehouseLocation">{t('warehouseLocation')}</Label>
                   <Input
                     id="warehouseLocation"
                     value={formData.warehouseLocation}
                     onChange={(e) => handleInputChange('warehouseLocation', e.target.value)}
                     placeholder="e.g., A1-B2-C3"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">{t('notes')}</Label>
+                  <Input
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    placeholder="Additional notes..."
                   />
                 </div>
               </div>

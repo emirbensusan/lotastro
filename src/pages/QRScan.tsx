@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/components/ui/use-toast';
-import { QrCode, Upload, Camera, Package, Calendar, MapPin } from 'lucide-react';
+import { QrCode, Upload, Camera, Package, Calendar, MapPin, Plus } from 'lucide-react';
+import QuickQREntry from '@/components/QuickQREntry';
 
 interface LotDetails {
   id: string;
@@ -35,6 +37,7 @@ const QRScan = () => {
   const [availableLots, setAvailableLots] = useState<{id: string, lot_number: string, quality: string, color: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showQuickEntry, setShowQuickEntry] = useState(false);
 
   useEffect(() => {
     fetchAvailableLots();
@@ -213,7 +216,7 @@ const QRScan = () => {
       </div>
 
       {/* QR Scanner Options */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-lg">
@@ -273,6 +276,30 @@ const QRScan = () => {
                 ))}
               </SelectContent>
             </Select>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-lg">
+              <Plus className="mr-2 h-5 w-5" />
+              {t('generateQr')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Dialog open={showQuickEntry} onOpenChange={setShowQuickEntry}>
+              <DialogTrigger asChild>
+                <Button variant="secondary" className="w-full">
+                  {t('generateQr')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{t('quickQrEntry')}</DialogTitle>
+                </DialogHeader>
+                <QuickQREntry onClose={() => setShowQuickEntry(false)} />
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       </div>

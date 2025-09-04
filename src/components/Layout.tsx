@@ -16,7 +16,8 @@ import {
   QrCode,
   Users,
   Truck,
-  Globe
+  Globe,
+  Clock
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -32,6 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigationItems = [
     { path: '/', label: t('dashboard'), icon: Package, roles: ['warehouse_staff', 'accounting', 'admin'] },
     { path: '/lot-intake', label: t('lotIntake'), icon: Package, roles: ['warehouse_staff', 'admin'] },
+    { path: '/lot-queue', label: t('lotQueue'), icon: Clock, roles: ['accounting', 'admin'] },
     { path: '/inventory', label: t('inventory'), icon: ClipboardList, roles: ['warehouse_staff', 'accounting', 'admin'] },
     { path: '/orders', label: t('orders'), icon: Truck, roles: ['accounting', 'admin'] },
     { path: '/qr-scan', label: t('qrScan'), icon: QrCode, roles: ['warehouse_staff', 'accounting', 'admin'] },
