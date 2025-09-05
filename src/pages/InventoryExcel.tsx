@@ -371,7 +371,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
 
       toast({
         title: t('success') as string,
-        description: `${t('lot')} ${lotNumber} ${t('deletedSuccessfully')}`
+        description: `${t('lotNumber')}: ${lotNumber} ${t('deletedSuccessfully')}`
       });
 
       // Remove from selected items if it was selected

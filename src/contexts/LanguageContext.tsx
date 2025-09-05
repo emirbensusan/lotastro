@@ -131,7 +131,6 @@ const translations = {
     orderManagementDesc: 'View and manage customer orders',
     lotsCount: 'LOTs Count',
     created: 'Created',
-    actions: 'Actions',
     orderDetails: 'Order Details',
     deletedSuccessfully: 'deleted successfully',
     confirmDelete: 'Confirm Delete',
