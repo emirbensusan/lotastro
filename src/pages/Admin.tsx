@@ -103,6 +103,13 @@ const Admin: React.FC = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  if (authLoading) {
+    return <div className="text-sm text-muted-foreground">Loading…</div>;
+  }
+  if (!hasRole('admin')) {
+    return <div className="text-sm text-muted-foreground">You are not authorized to access this page.</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
