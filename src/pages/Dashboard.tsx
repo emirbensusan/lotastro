@@ -161,100 +161,177 @@ const Dashboard = () => {
         })}
       </div>
 
-      {/* Alerts and Notifications */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2 text-yellow-600" />
-              {t('lotAgingAlert')}
-            </CardTitle>
-            <CardDescription>
-              {t('monitorOldInventory')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {stats.oldestLotDays > 0 ? (
-              <div className="space-y-2">
-                <div className="text-2xl font-bold">{stats.oldestLotDays} {t('days')}</div>
-                <p className="text-sm text-muted-foreground">
-                  {t('oldestLot')}
-                </p>
-                {stats.oldestLotDays > 90 && (
-                  <Badge variant="destructive">
-                    {t('considerReviewing')}
-                  </Badge>
-                )}
-              </div>
-            ) : (
+      {/* Lot Aging Alert */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <AlertTriangle className="h-5 w-5 mr-2 text-yellow-600" />
+            {t('lotAgingAlert')}
+          </CardTitle>
+          <CardDescription>
+            {t('monitorOldInventory')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {stats.oldestLotDays > 0 ? (
+            <div className="space-y-2">
+              <div className="text-2xl font-bold">{stats.oldestLotDays} {t('days')}</div>
               <p className="text-sm text-muted-foreground">
-                {t('noLotsInInventory')}
+                {t('oldestLot')}
               </p>
-            )}
-          </CardContent>
-        </Card>
+              {stats.oldestLotDays > 90 && (
+                <Badge variant="destructive">
+                  {t('considerReviewing')}
+                </Badge>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {t('noLotsInInventory')}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2 text-green-600" />
-              {t('quickActions')}
-            </CardTitle>
-            <CardDescription>
-              {t('commonTasks')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {profile?.role === 'warehouse_staff' && (
-              <>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/lot-intake'}>
-                  <Package className="mr-2 h-4 w-4" />
-                  {t('createNewLotEntries')}
+      {/* Quick Actions - 3 Cards per Role */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {profile?.role === 'warehouse_staff' && (
+          <>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/lot-intake'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  📦 Generate QR Codes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Create new lot entries with QR codes</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Lot Intake
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/qr-scan'}>
-                  <Package className="mr-2 h-4 w-4" />
-                  {t('scanQrCodes')}
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/qr-scan'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  📦 Scan QR Codes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Scan existing QR codes for lot management</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to QR Scanner
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/orders'}>
-                  <Truck className="mr-2 h-4 w-4" />
-                  {t('fulfillOrders')}
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  🚛 Fulfill Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Process and fulfill customer orders</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Orders
                 </Button>
-              </>
-            )}
-            {profile?.role === 'accounting' && (
-              <>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/orders'}>
-                  <Truck className="mr-2 h-4 w-4" />
-                  {t('createNewOrders')}
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {profile?.role === 'accounting' && (
+          <>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/lot-queue'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  🚛 Check Lot Queue
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Monitor pending lot processing queue</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Lot Queue
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/inventory'}>
-                  <Package className="mr-2 h-4 w-4" />
-                  {t('checkStockLevels')}
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  📦 Create Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Create new customer orders</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Orders
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/reports'}>
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  {t('generateReportsAction')}
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/inventory'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  📈 Check Stock Levels
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Monitor inventory and stock levels</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Inventory
                 </Button>
-              </>
-            )}
-            {profile?.role === 'admin' && (
-              <>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/suppliers'}>
-                  <Package className="mr-2 h-4 w-4" />
-                  {t('manageSuppliersAction')}
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {profile?.role === 'admin' && (
+          <>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/suppliers'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  📦 Manage Suppliers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Add, edit, and manage supplier information</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Suppliers
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/inventory'}>
-                  <Package className="mr-2 h-4 w-4" />
-                  {t('deleteLots')}
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/inventory'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  📦 Delete Lots
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Remove lots from inventory system</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Inventory
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => window.location.href = '/lot-intake'}>
-                  <Package className="mr-2 h-4 w-4" />
-                  {t('reprintQrCodes')}
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/lot-intake'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  📦 Reprint QR Codes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Regenerate and print QR codes for lots</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Lot Intake
                 </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );

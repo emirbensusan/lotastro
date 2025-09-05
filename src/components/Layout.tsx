@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import GlobalSearch from '@/components/GlobalSearch';
@@ -16,8 +16,8 @@ import {
   QrCode,
   Users,
   Truck,
-  Globe,
-  Clock
+  Clock,
+  Menu
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -29,6 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigationItems = [
     { path: '/', label: t('dashboard'), icon: Package, roles: ['warehouse_staff', 'accounting', 'admin'] },
@@ -55,13 +56,59 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   };
 
+  const NavigationContent = () => (
+    <nav className="space-y-2">
+      {filteredNavigation.map((item) => {
+        const Icon = item.icon;
+        const isActive = location.pathname === item.path;
+        
+        return (
+          <Button
+            key={item.path}
+            variant={isActive ? "secondary" : "ghost"}
+            className="w-full justify-start"
+            onClick={() => {
+              navigate(item.path);
+              setSidebarOpen(false);
+            }}
+          >
+            <Icon className="h-4 w-4 mr-2" />
+            {item.label}
+          </Button>
+        );
+      })}
+    </nav>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation */}
       <header className="border-b bg-card">
-        <div className="flex h-16 items-center justify-between px-6">
+        <div className="flex h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-semibold">Warehouse LOT Tracking</h1>
+            {/* Mobile menu button */}
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-4">
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold text-primary">LotAstro</h2>
+                </div>
+                <NavigationContent />
+              </SheetContent>
+            </Sheet>
+
+            {/* Logo placeholder - you can provide the actual logo file */}
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Package className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <h1 className="text-xl font-semibold text-primary">LotAstro</h1>
+            </div>
+            
             {profile && (
               <Badge className={getRoleBadgeColor(profile.role)}>
                 {profile.role.replace('_', ' ').toUpperCase()}
@@ -69,11 +116,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             )}
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
             <GlobalSearch />
             
             <Select value={language} onValueChange={(value: 'en' | 'tr') => setLanguage(value)}>
-              <SelectTrigger className="w-20">
+              <SelectTrigger className="w-16 md:w-20">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -82,43 +129,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </SelectContent>
             </Select>
             
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground hidden md:block">
               {profile?.full_name || profile?.email}
             </span>
             <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              {t('signOut')}
+              <LogOut className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">{t('signOut')}</span>
             </Button>
           </div>
         </div>
       </header>
 
       <div className="flex h-[calc(100vh-4rem)]">
-        {/* Sidebar Navigation */}
-        <aside className="w-64 border-r bg-card">
-          <nav className="p-4 space-y-2">
-            {filteredNavigation.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              
-              return (
-                <Button
-                  key={item.path}
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  onClick={() => navigate(item.path)}
-                >
-                  <Icon className="h-4 w-4 mr-2" />
-                  {item.label}
-                </Button>
-              );
-            })}
-          </nav>
+        {/* Desktop Sidebar Navigation */}
+        <aside className="hidden md:block w-64 border-r bg-card">
+          <div className="p-4">
+            <NavigationContent />
+          </div>
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {children}
           </div>
         </main>

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Package } from 'lucide-react';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -90,7 +90,12 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Warehouse LOT Tracking</CardTitle>
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center">
+              <Package className="h-8 w-8 text-primary-foreground" />
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold text-primary">LotAstro</CardTitle>
           <CardDescription>
             Sign in to access the warehouse management system
           </CardDescription>

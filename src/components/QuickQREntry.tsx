@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, QrCode, Printer } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import QrCodeLib from 'qrcode';
 
 interface QuickQRData {
   quality: string;
@@ -79,6 +80,15 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
       if (error) throw error;
 
       setGeneratedQR(data);
+      
+      // Generate and display QR code immediately
+      const canvas = document.createElement('canvas');
+      await QrCodeLib.toCanvas(canvas, qrCodeUrl, { width: 200 });
+      const qrDisplay = document.getElementById('qr-display');
+      if (qrDisplay) {
+        qrDisplay.innerHTML = '';
+        qrDisplay.appendChild(canvas);
+      }
       
       toast({
         title: t('qrCodeGenerated') as string,
