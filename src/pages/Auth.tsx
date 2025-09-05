@@ -65,7 +65,7 @@ const Auth = () => {
     if (!resetEmail) {
       toast({
         title: t('validationError') as string,
-        description: 'Please enter your email address',
+        description: t('email') as string + ' ' + (language === 'en' ? 'is required' : 'gerekli'),
         variant: "destructive",
       });
       return;
@@ -81,15 +81,15 @@ const Auth = () => {
       if (error) throw error;
 
       toast({
-        title: 'Password Reset Email Sent',
-        description: 'Check your email for password reset instructions.',
+        title: t('resetEmailSent') as string,
+        description: t('resetEmailSentDescription') as string,
       });
 
       setResetDialogOpen(false);
       setResetEmail('');
     } catch (error: any) {
       toast({
-        title: 'Password Reset Failed',
+        title: t('resetEmailFailed') as string,
         description: error.message,
         variant: "destructive",
       });
@@ -163,14 +163,14 @@ const Auth = () => {
               <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="link" className="text-sm text-muted-foreground">
-                    Forgot Password?
+                    {t('forgotPassword')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Reset Password</DialogTitle>
+                    <DialogTitle>{t('resetPassword')}</DialogTitle>
                     <DialogDescription>
-                      Enter your email address and we'll send you a link to reset your password.
+                      {t('resetPasswordDescription')}
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleForgotPassword} className="space-y-4">
@@ -181,7 +181,7 @@ const Auth = () => {
                         type="email"
                         value={resetEmail}
                         onChange={(e) => setResetEmail(e.target.value)}
-                        placeholder="Enter your email address"
+                        placeholder={t('email') as string}
                         required
                       />
                     </div>
@@ -200,10 +200,10 @@ const Auth = () => {
                         {resetLoading ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Sending...
+                            {t('sending')}
                           </>
                         ) : (
-                          'Send Reset Link'
+                          t('sendResetLink')
                         )}
                       </Button>
                     </div>
