@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Settings, Database, Shield, Plus, Edit, Trash2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting';
 
@@ -33,12 +34,14 @@ const Admin: React.FC = () => {
     role: 'warehouse_staff' as UserRole
   });
   const { toast } = useToast();
+  const { hasRole, loading: authLoading } = useAuth();
 
   useEffect(() => {
     fetchProfiles();
   }, []);
 
   const fetchProfiles = async () => {
+    if (!hasRole('admin')) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
