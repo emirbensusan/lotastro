@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CheckCircle, XCircle, Shield } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Permission {
-  category: string;
-  action: string;
+  categoryKey: string;
+  actionKey: string;
   warehouse_staff: boolean;
   accounting: boolean;
   senior_manager: boolean;
@@ -15,43 +16,43 @@ interface Permission {
 
 const permissions: Permission[] = [
   // User Management (Admin Only)
-  { category: 'User Management', action: 'View Users', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'User Management', action: 'Create Users', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'User Management', action: 'Edit Users', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'User Management', action: 'Delete Users', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'User Management', action: 'Manage Roles', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'User Management', action: 'Change Permissions', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryUserManagement', actionKey: 'actionViewUsers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryUserManagement', actionKey: 'actionCreateUsers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryUserManagement', actionKey: 'actionEditUsers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryUserManagement', actionKey: 'actionDeleteUsers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryUserManagement', actionKey: 'actionManageRoles', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryUserManagement', actionKey: 'actionChangePermissions', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
 
   // Inventory Management
-  { category: 'Inventory', action: 'Create Lot Entries', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
-  { category: 'Inventory', action: 'View Inventory', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
-  { category: 'Inventory', action: 'Edit Lot Information', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
-  { category: 'Inventory', action: 'Delete Lot Entries', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'Inventory', action: 'Generate QR Codes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionCreateLotEntries', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionViewInventory', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionEditLotInfo', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionDeleteLotEntries', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionGenerateQrCodes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
 
   // Order Management
-  { category: 'Orders', action: 'View Orders', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
-  { category: 'Orders', action: 'Create Orders', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
-  { category: 'Orders', action: 'Edit Orders', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
-  { category: 'Orders', action: 'Delete Orders', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
-  { category: 'Orders', action: 'Fulfill Orders', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
-  { category: 'Orders', action: 'Print Order Documents', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryOrders', actionKey: 'actionViewOrders', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryOrders', actionKey: 'actionCreateOrders', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryOrders', actionKey: 'actionEditOrders', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryOrders', actionKey: 'actionDeleteOrders', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryOrders', actionKey: 'actionFulfillOrders', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryOrders', actionKey: 'actionPrintOrderDocs', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
 
   // Supplier Management (Admin Only)
-  { category: 'Suppliers', action: 'View Suppliers', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
-  { category: 'Suppliers', action: 'Create Suppliers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'Suppliers', action: 'Edit Suppliers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'Suppliers', action: 'Delete Suppliers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categorySuppliers', actionKey: 'actionViewSuppliers', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categorySuppliers', actionKey: 'actionCreateSuppliers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categorySuppliers', actionKey: 'actionEditSuppliers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categorySuppliers', actionKey: 'actionDeleteSuppliers', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
 
   // Reporting & Analytics (Admin Only)
-  { category: 'Reports', action: 'View Reports', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'Reports', action: 'Export Reports', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { category: 'Reports', action: 'Access Dashboard Analytics', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryReports', actionKey: 'actionViewReports', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryReports', actionKey: 'actionExportReports', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryReports', actionKey: 'actionAccessDashboard', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
 
   // QR Code & Document Management
-  { category: 'QR & Documents', action: 'Scan QR Codes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
-  { category: 'QR & Documents', action: 'Print Lot Labels', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
-  { category: 'QR & Documents', action: 'Bulk QR Generation', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryQrDocuments', actionKey: 'actionScanQrCodes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryQrDocuments', actionKey: 'actionPrintLotLabels', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryQrDocuments', actionKey: 'actionBulkQrGeneration', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
 ];
 
 const getRoleColor = (role: string) => {
@@ -65,7 +66,8 @@ const getRoleColor = (role: string) => {
 };
 
 const PermissionsTab: React.FC = () => {
-  const categories = [...new Set(permissions.map(p => p.category))];
+  const { t } = useLanguage();
+  const categories = [...new Set(permissions.map(p => p.categoryKey))];
   const roles = ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] as const;
 
   return (
@@ -74,25 +76,27 @@ const PermissionsTab: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Role Hierarchy & Permissions
+            {t('permissionsTitle')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {roles.map(role => (
-                <div key={role} className="text-center">
-                  <Badge className={getRoleColor(role)}>
-                    {role.replace('_', ' ').toUpperCase()}
-                  </Badge>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {role === 'warehouse_staff' && 'Basic operations'}
-                    {role === 'accounting' && 'Financial operations'}
-                    {role === 'senior_manager' && 'All operations except user management'}
-                    {role === 'admin' && 'Full system access'}
-                  </p>
-                </div>
-              ))}
+              {roles.map(role => {
+                const roleKey = role.split('_').map(word => 
+                  word.charAt(0).toUpperCase() + word.slice(1)
+                ).join('');
+                return (
+                  <div key={role} className="text-center">
+                    <Badge className={getRoleColor(role)}>
+                      {t(`role${roleKey}`)}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t(`roleDesc${roleKey}`)}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </CardContent>
@@ -101,25 +105,25 @@ const PermissionsTab: React.FC = () => {
       {categories.map(category => (
         <Card key={category}>
           <CardHeader>
-            <CardTitle className="text-lg">{category}</CardTitle>
+            <CardTitle className="text-lg">{t(category)}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Action</TableHead>
-                  <TableHead className="text-center">Warehouse Staff</TableHead>
-                  <TableHead className="text-center">Accounting</TableHead>
-                  <TableHead className="text-center">Senior Manager</TableHead>
-                  <TableHead className="text-center">Admin</TableHead>
-                </TableRow>
-              </TableHeader>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('tableHeaderAction')}</TableHead>
+                    <TableHead className="text-center">{t('tableHeaderWarehouseStaff')}</TableHead>
+                    <TableHead className="text-center">{t('tableHeaderAccounting')}</TableHead>
+                    <TableHead className="text-center">{t('tableHeaderSeniorManager')}</TableHead>
+                    <TableHead className="text-center">{t('tableHeaderAdmin')}</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {permissions
-                  .filter(p => p.category === category)
+                  .filter(p => p.categoryKey === category)
                   .map((permission, index) => (
                     <TableRow key={index}>
-                      <TableCell className="font-medium">{permission.action}</TableCell>
+                      <TableCell className="font-medium">{t(permission.actionKey)}</TableCell>
                       <TableCell className="text-center">
                         {permission.warehouse_staff ? (
                           <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />

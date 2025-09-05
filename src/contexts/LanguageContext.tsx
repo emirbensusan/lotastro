@@ -248,6 +248,75 @@ const translations = {
     orderDate: 'Order Date',
     lineType: 'Line Type',
     metersPerRoll: 'Meters per Roll',
+    
+    // Permissions
+    permissionsTitle: 'Role Hierarchy & Permissions',
+    
+    // Role Names
+    roleWarehouseStaff: 'WAREHOUSE STAFF',
+    roleAccounting: 'ACCOUNTING',
+    roleSeniorManager: 'SENIOR MANAGER',
+    roleAdmin: 'ADMIN',
+    
+    // Role Descriptions
+    roleDescWarehouseStaff: 'Basic operations',
+    roleDescAccounting: 'Financial operations',
+    roleDescSeniorManager: 'All operations except user management',
+    roleDescAdmin: 'Full system access',
+    
+    // Permission Categories
+    categoryUserManagement: 'User Management',
+    categoryInventory: 'Inventory',
+    categoryOrders: 'Orders',
+    categorySuppliers: 'Suppliers',
+    categoryReports: 'Reports',
+    categoryQrDocuments: 'QR & Documents',
+    
+    // User Management Actions
+    actionViewUsers: 'View Users',
+    actionCreateUsers: 'Create Users',
+    actionEditUsers: 'Edit Users',
+    actionDeleteUsers: 'Delete Users',
+    actionManageRoles: 'Manage Roles',
+    actionChangePermissions: 'Change Permissions',
+    
+    // Inventory Actions
+    actionCreateLotEntries: 'Create Lot Entries',
+    actionViewInventory: 'View Inventory',
+    actionEditLotInfo: 'Edit Lot Information',
+    actionDeleteLotEntries: 'Delete Lot Entries',
+    actionGenerateQrCodes: 'Generate QR Codes',
+    
+    // Order Actions
+    actionViewOrders: 'View Orders',
+    actionCreateOrders: 'Create Orders',
+    actionEditOrders: 'Edit Orders',
+    actionDeleteOrders: 'Delete Orders',
+    actionFulfillOrders: 'Fulfill Orders',
+    actionPrintOrderDocs: 'Print Order Documents',
+    
+    // Supplier Actions
+    actionViewSuppliers: 'View Suppliers',
+    actionCreateSuppliers: 'Create Suppliers',
+    actionEditSuppliers: 'Edit Suppliers',
+    actionDeleteSuppliers: 'Delete Suppliers',
+    
+    // Report Actions
+    actionViewReports: 'View Reports',
+    actionExportReports: 'Export Reports',
+    actionAccessDashboard: 'Access Dashboard Analytics',
+    
+    // QR & Documents Actions
+    actionScanQrCodes: 'Scan QR Codes',
+    actionPrintLotLabels: 'Print Lot Labels',
+    actionBulkQrGeneration: 'Bulk QR Generation',
+    
+    // Table Headers
+    tableHeaderAction: 'Action',
+    tableHeaderWarehouseStaff: 'Warehouse Staff',
+    tableHeaderAccounting: 'Accounting',
+    tableHeaderSeniorManager: 'Senior Manager',
+    tableHeaderAdmin: 'Admin',
 
     // Language keys for new order flow
     selectQualityColor: "Select Quality & Color",
@@ -586,6 +655,75 @@ const translations = {
     orderDate: 'Sipariş Tarihi',
     lineType: 'Hat Tipi',
     metersPerRoll: 'Top Başına Metre',
+    
+    // Permissions
+    permissionsTitle: 'Rol Hiyerarşisi ve İzinler',
+    
+    // Role Names
+    roleWarehouseStaff: 'DEPO PERSONELI',
+    roleAccounting: 'MUHASEBE',
+    roleSeniorManager: 'ÜST YÖNETİCİ',
+    roleAdmin: 'YÖNETİCİ',
+    
+    // Role Descriptions
+    roleDescWarehouseStaff: 'Temel işlemler',
+    roleDescAccounting: 'Mali işlemler',
+    roleDescSeniorManager: 'Kullanıcı yönetimi hariç tüm işlemler',
+    roleDescAdmin: 'Tam sistem erişimi',
+    
+    // Permission Categories
+    categoryUserManagement: 'Kullanıcı Yönetimi',
+    categoryInventory: 'Envanter',
+    categoryOrders: 'Siparişler',
+    categorySuppliers: 'Tedarikçiler',
+    categoryReports: 'Raporlar',
+    categoryQrDocuments: 'QR ve Belgeler',
+    
+    // User Management Actions
+    actionViewUsers: 'Kullanıcıları Görüntüle',
+    actionCreateUsers: 'Kullanıcı Oluştur',
+    actionEditUsers: 'Kullanıcıları Düzenle',
+    actionDeleteUsers: 'Kullanıcıları Sil',
+    actionManageRoles: 'Rolleri Yönet',
+    actionChangePermissions: 'İzinleri Değiştir',
+    
+    // Inventory Actions
+    actionCreateLotEntries: 'LOT Girişleri Oluştur',
+    actionViewInventory: 'Envanteri Görüntüle',
+    actionEditLotInfo: 'LOT Bilgilerini Düzenle',
+    actionDeleteLotEntries: 'LOT Girişlerini Sil',
+    actionGenerateQrCodes: 'QR Kodları Oluştur',
+    
+    // Order Actions
+    actionViewOrders: 'Siparişleri Görüntüle',
+    actionCreateOrders: 'Sipariş Oluştur',
+    actionEditOrders: 'Siparişleri Düzenle',
+    actionDeleteOrders: 'Siparişleri Sil',
+    actionFulfillOrders: 'Siparişleri Karşıla',
+    actionPrintOrderDocs: 'Sipariş Belgelerini Yazdır',
+    
+    // Supplier Actions
+    actionViewSuppliers: 'Tedarikçileri Görüntüle',
+    actionCreateSuppliers: 'Tedarikçi Oluştur',
+    actionEditSuppliers: 'Tedarikçileri Düzenle',
+    actionDeleteSuppliers: 'Tedarikçileri Sil',
+    
+    // Report Actions
+    actionViewReports: 'Raporları Görüntüle',
+    actionExportReports: 'Raporları Dışa Aktar',
+    actionAccessDashboard: 'Dashboard Analitiğine Eriş',
+    
+    // QR & Documents Actions
+    actionScanQrCodes: 'QR Kodlarını Tara',
+    actionPrintLotLabels: 'LOT Etiketlerini Yazdır',
+    actionBulkQrGeneration: 'Toplu QR Oluşturma',
+    
+    // Table Headers
+    tableHeaderAction: 'Eylem',
+    tableHeaderWarehouseStaff: 'Depo Personeli',
+    tableHeaderAccounting: 'Muhasebe',
+    tableHeaderSeniorManager: 'Üst Yönetici',
+    tableHeaderAdmin: 'Yönetici',
   }
 };
 
