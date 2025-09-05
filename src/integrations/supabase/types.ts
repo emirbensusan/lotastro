@@ -65,6 +65,8 @@ export type Database = {
           created_at: string
           entry_date: string
           id: string
+          invoice_date: string | null
+          invoice_number: string | null
           lot_number: string
           meters: number
           qr_code_url: string | null
@@ -79,6 +81,8 @@ export type Database = {
           created_at?: string
           entry_date?: string
           id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
           lot_number: string
           meters: number
           qr_code_url?: string | null
@@ -93,6 +97,8 @@ export type Database = {
           created_at?: string
           entry_date?: string
           id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
           lot_number?: string
           meters?: number
           qr_code_url?: string | null

@@ -34,6 +34,8 @@ interface Lot {
   status: string;
   supplier_id: string;
   suppliers?: { name: string };
+  invoice_number?: string;
+  invoice_date?: string;
 }
 
 interface InventoryExcelProps {
@@ -116,7 +118,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [qualityFilter, setQualityFilter] = useState('');
   const [colorFilter, setColorFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('in_stock');
   const [sortField, setSortField] = useState<keyof Lot>('entry_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedItems, setSelectedItems] = useState<string[]>(selectedLots);
@@ -222,8 +224,9 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
       
       const matchesQuality = !qualityFilter || qualityFilter === 'all' || lot.quality === qualityFilter;
       const matchesColor = !colorFilter || colorFilter === 'all' || lot.color === colorFilter;
+      const matchesStatus = !statusFilter || statusFilter === 'all' || lot.status === statusFilter;
       
-      return matchesSearch && matchesQuality && matchesColor;
+      return matchesSearch && matchesQuality && matchesColor && matchesStatus;
     });
 
     // Sort
@@ -412,6 +415,18 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
               ))}
             </SelectContent>
           </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder={t('status')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allStatuses')}</SelectItem>
+              {statuses.map(status => (
+                <SelectItem key={status} value={status}>{status.replace('_', ' ').toUpperCase()}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex gap-2">
@@ -469,14 +484,22 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                 <TableHead>{t('entryDate')}</TableHead>
                 <TableHead>{t('supplier')}</TableHead>
                 <TableHead>{t('status')}</TableHead>
+                <TableHead>{t('invoiceNumber')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {Object.entries(groupedData).map(([quality, colors]) => {
                 const isQualityExpanded = expandedQualities.has(quality);
-                const qualityTotalLots = Object.values(colors).flat().length;
-                const qualityTotalMeters = Object.values(colors).flat().reduce((sum, lot) => sum + lot.meters, 0);
-                const qualityTotalRolls = Object.values(colors).flat().reduce((sum, lot) => sum + lot.roll_count, 0);
+                const qualityLots = Object.values(colors).flat();
+                const qualityTotalLots = qualityLots.length;
+                const qualityTotalMeters = qualityLots.reduce((sum, lot) => sum + lot.meters, 0);
+                const qualityTotalRolls = qualityLots.reduce((sum, lot) => sum + lot.roll_count, 0);
+                const qualityEarliestDate = qualityLots.reduce((earliest, lot) => 
+                  new Date(lot.entry_date) < new Date(earliest) ? lot.entry_date : earliest, 
+                  qualityLots[0]?.entry_date || ''
+                );
+                const qualitySuppliers = [...new Set(qualityLots.map(lot => lot.suppliers?.name).filter(Boolean))];
+                const qualitySupplierText = qualitySuppliers.length > 1 ? t('multiple') : qualitySuppliers[0] || '-';
                 
                 return (
                   <React.Fragment key={quality}>
@@ -497,9 +520,11 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                       <TableCell className="text-muted-foreground">{qualityTotalLots} lots</TableCell>
                       <TableCell className="font-medium">{qualityTotalMeters.toLocaleString()}</TableCell>
                       <TableCell className="font-medium">{qualityTotalRolls}</TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
+                      <TableCell>{formatDate(qualityEarliestDate)}</TableCell>
+                      <TableCell>{qualitySupplierText}</TableCell>
+                      <TableCell><Badge variant="default">IN STOCK</Badge></TableCell>
+                      <TableCell>{qualityLots.filter(lot => lot.invoice_number).length > 0 ? 
+                        qualityLots.filter(lot => lot.invoice_number).length + ' invoices' : '-'}</TableCell>
                     </TableRow>
                     
                     {/* Color Rows */}
@@ -508,6 +533,12 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                       const isColorExpanded = expandedColors.has(colorKey);
                       const colorTotalMeters = lots.reduce((sum, lot) => sum + lot.meters, 0);
                       const colorTotalRolls = lots.reduce((sum, lot) => sum + lot.roll_count, 0);
+                      const colorEarliestDate = lots.reduce((earliest, lot) => 
+                        new Date(lot.entry_date) < new Date(earliest) ? lot.entry_date : earliest, 
+                        lots[0]?.entry_date || ''
+                      );
+                      const colorSuppliers = [...new Set(lots.map(lot => lot.suppliers?.name).filter(Boolean))];
+                      const colorSupplierText = colorSuppliers.length > 1 ? t('multiple') : colorSuppliers[0] || '-';
                       
                       return (
                         <React.Fragment key={colorKey}>
@@ -529,11 +560,13 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                               {color} ({lots.length} lots)
                             </TableCell>
                             <TableCell className="text-muted-foreground">{lots.length} lots</TableCell>
-                            <TableCell className="font-medium">{colorTotalMeters.toLocaleString()}</TableCell>
-                            <TableCell className="font-medium">{colorTotalRolls}</TableCell>
-                            <TableCell></TableCell>
-                            <TableCell></TableCell>
-                            <TableCell></TableCell>
+                             <TableCell className="font-medium">{colorTotalMeters.toLocaleString()}</TableCell>
+                             <TableCell className="font-medium">{colorTotalRolls}</TableCell>
+                             <TableCell>{formatDate(colorEarliestDate)}</TableCell>
+                             <TableCell>{colorSupplierText}</TableCell>
+                             <TableCell><Badge variant="default">IN STOCK</Badge></TableCell>
+                             <TableCell>{lots.filter(lot => lot.invoice_number).length > 0 ? 
+                               lots.filter(lot => lot.invoice_number).length + ' invoices' : '-'}</TableCell>
                           </TableRow>
                           
                           {/* LOT Rows */}
@@ -552,9 +585,10 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                               <TableCell className="font-medium pl-8">{lot.lot_number}</TableCell>
                               <TableCell>{lot.meters.toLocaleString()}</TableCell>
                               <TableCell>{lot.roll_count}</TableCell>
-                              <TableCell>{formatDate(lot.entry_date)}</TableCell>
-                              <TableCell>{lot.suppliers?.name || '-'}</TableCell>
-                              <TableCell>{getStatusBadge(lot.status)}</TableCell>
+                               <TableCell>{formatDate(lot.entry_date)}</TableCell>
+                               <TableCell>{lot.suppliers?.name || '-'}</TableCell>
+                               <TableCell>{getStatusBadge(lot.status)}</TableCell>
+                               <TableCell>{lot.invoice_number || '-'}</TableCell>
                             </TableRow>
                           ))}
                         </React.Fragment>
