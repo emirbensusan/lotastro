@@ -101,11 +101,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </SheetContent>
             </Sheet>
 
-            {/* Logo placeholder - you can provide the actual logo file */}
+            {/* LotAstro Logo */}
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Package className="h-5 w-5 text-primary-foreground" />
-              </div>
+              <img 
+                src="/lovable-uploads/e88a7a74-68e5-4ad6-834f-f061d5980ad0.png" 
+                alt="LotAstro Logo" 
+                className="w-8 h-8 object-contain"
+              />
               <h1 className="text-xl font-semibold text-primary">LotAstro</h1>
             </div>
             

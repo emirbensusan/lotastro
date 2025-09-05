@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,15 +81,6 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
 
       setGeneratedQR(data);
       
-      // Generate and display QR code immediately
-      const canvas = document.createElement('canvas');
-      await QrCodeLib.toCanvas(canvas, qrCodeUrl, { width: 200 });
-      const qrDisplay = document.getElementById('qr-display');
-      if (qrDisplay) {
-        qrDisplay.innerHTML = '';
-        qrDisplay.appendChild(canvas);
-      }
-      
       toast({
         title: t('qrCodeGenerated') as string,
         description: `QR code for LOT ${formData.lotNumber} generated successfully`,
@@ -105,6 +96,22 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
       setLoading(false);
     }
   };
+
+  // Generate QR code when generatedQR state changes
+  useEffect(() => {
+    if (generatedQR) {
+      const generateQRCode = async () => {
+        const canvas = document.createElement('canvas');
+        await QrCodeLib.toCanvas(canvas, generatedQR.qr_code_url, { width: 200 });
+        const qrDisplay = document.getElementById('qr-display');
+        if (qrDisplay) {
+          qrDisplay.innerHTML = '';
+          qrDisplay.appendChild(canvas);
+        }
+      };
+      generateQRCode();
+    }
+  }, [generatedQR]);
 
   const handlePrintQR = () => {
     if (!generatedQR) return;
