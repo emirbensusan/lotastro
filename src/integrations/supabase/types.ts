@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      lot_queue: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          id: string
+          lot_number: string
+          meters: number
+          qr_code_url: string | null
+          quality: string
+          status: string
+          updated_at: string
+          warehouse_location: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          lot_number: string
+          meters: number
+          qr_code_url?: string | null
+          quality: string
+          status?: string
+          updated_at?: string
+          warehouse_location: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          lot_number?: string
+          meters?: number
+          qr_code_url?: string | null
+          quality?: string
+          status?: string
+          updated_at?: string
+          warehouse_location?: string
+        }
+        Relationships: []
+      }
       lots: {
         Row: {
           color: string

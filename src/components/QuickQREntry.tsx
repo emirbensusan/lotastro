@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, QrCode, Printer } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QuickQRData {
   quality: string;
@@ -59,17 +60,25 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
       // Generate QR code URL
       const qrCodeUrl = generateQRCodeUrl(formData.lotNumber);
 
-      // Store in lot queue (you'll need to create this table)
-      // For now, we'll create a temporary data structure
-      const qrData = {
-        ...formData,
-        meters: meters,
-        qr_code_url: qrCodeUrl,
-        status: 'pending_completion',
-        created_at: new Date().toISOString(),
-      };
+      // Store in lot queue
+      const { data, error } = await supabase
+        .from('lot_queue')
+        .insert({
+          lot_number: formData.lotNumber,
+          quality: formData.quality,
+          color: formData.color,
+          meters: meters,
+          entry_date: formData.entryDate,
+          warehouse_location: formData.warehouseLocation,
+          qr_code_url: qrCodeUrl,
+          status: 'pending_completion',
+        })
+        .select()
+        .single();
 
-      setGeneratedQR(qrData);
+      if (error) throw error;
+
+      setGeneratedQR(data);
       
       toast({
         title: t('qrCodeGenerated') as string,
@@ -95,7 +104,7 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
       printWindow.document.write(`
         <html>
           <head>
-            <title>QR Code - LOT ${generatedQR.lotNumber}</title>
+            <title>QR Code - LOT ${generatedQR.lot_number}</title>
             <style>
               body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
               .qr-container { margin: 20px 0; }
@@ -103,12 +112,12 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
             </style>
           </head>
           <body>
-            <h2>LOT ${generatedQR.lotNumber}</h2>
+            <h2>LOT ${generatedQR.lot_number}</h2>
             <div class="lot-info">Quality: ${generatedQR.quality}</div>
             <div class="lot-info">Color: ${generatedQR.color}</div>
             <div class="lot-info">Meters: ${generatedQR.meters}</div>
-            <div class="lot-info">Entry Date: ${generatedQR.entryDate}</div>
-            <div class="lot-info">Location: ${generatedQR.warehouseLocation}</div>
+            <div class="lot-info">Entry Date: ${generatedQR.entry_date}</div>
+            <div class="lot-info">Location: ${generatedQR.warehouse_location}</div>
             <div class="qr-container">
               <div id="qrcode"></div>
               <p>Scan to view LOT details</p>
@@ -136,7 +145,7 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
             {t('qrCodeGenerated')}
           </CardTitle>
           <CardDescription>
-            LOT {generatedQR.lotNumber} QR code generated successfully
+            LOT {generatedQR.lot_number} QR code generated successfully
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -146,9 +155,9 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
               <p><strong>{t('intakeQuality')}:</strong> {generatedQR.quality}</p>
               <p><strong>{t('intakeColor')}:</strong> {generatedQR.color}</p>
               <p><strong>{t('meters')}:</strong> {generatedQR.meters}</p>
-              <p><strong>{t('lotIntakeNumber')}:</strong> {generatedQR.lotNumber}</p>
-              <p><strong>{t('entryDate')}:</strong> {generatedQR.entryDate}</p>
-              <p><strong>{t('warehouseLocation')}:</strong> {generatedQR.warehouseLocation}</p>
+              <p><strong>{t('lotIntakeNumber')}:</strong> {generatedQR.lot_number}</p>
+              <p><strong>{t('entryDate')}:</strong> {generatedQR.entry_date}</p>
+              <p><strong>{t('warehouseLocation')}:</strong> {generatedQR.warehouse_location}</p>
             </div>
           </div>
           

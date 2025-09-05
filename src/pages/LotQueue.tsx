@@ -51,9 +51,14 @@ const LotQueue = () => {
 
   const fetchPendingLots = async () => {
     try {
-      // This would fetch from a lot_queue table once created
-      // For now, we'll simulate with an empty array
-      setPendingLots([]);
+      const { data, error } = await supabase
+        .from('lot_queue')
+        .select('*')
+        .eq('status', 'pending_completion')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPendingLots(data || []);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching pending lots:', error);
@@ -102,7 +107,14 @@ const LotQueue = () => {
 
       if (error) throw error;
 
-      // Remove from queue (this would be a delete from lot_queue table)
+      // Remove from queue
+      const { error: deleteError } = await supabase
+        .from('lot_queue')
+        .delete()
+        .eq('id', selectedLot.id);
+
+      if (deleteError) throw deleteError;
+
       setPendingLots(prev => prev.filter(lot => lot.id !== selectedLot.id));
       setSelectedLot(null);
       setCompletionData({
