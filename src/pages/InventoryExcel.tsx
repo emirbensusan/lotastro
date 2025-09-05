@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 interface Lot {
   id: string;
   lot_number: string;
@@ -134,7 +134,11 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
   const { t } = useLanguage();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, hasRole } = useAuth();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editLot, setEditLot] = useState<Lot | null>(null);
+  const [pendingLot, setPendingLot] = useState<Partial<Lot> | null>(null);
 
   // Group lots by quality -> color -> lots
   const groupedData = React.useMemo(() => {
@@ -392,6 +396,55 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
     return new Date(dateString).toLocaleDateString();
   };
 
+  const handleOpenEdit = (lot: Lot) => {
+    setEditLot(lot);
+    setPendingLot({
+      lot_number: lot.lot_number,
+      quality: lot.quality,
+      color: lot.color,
+      meters: lot.meters,
+      roll_count: lot.roll_count,
+      status: lot.status,
+      invoice_number: lot.invoice_number || '',
+      invoice_date: lot.invoice_date || '',
+      entry_date: lot.entry_date,
+    });
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editLot || !pendingLot) return;
+    try {
+      const updateData: any = {
+        lot_number: pendingLot.lot_number,
+        quality: pendingLot.quality,
+        color: pendingLot.color,
+        meters: Number(pendingLot.meters),
+        roll_count: Number(pendingLot.roll_count),
+        status: pendingLot.status,
+        invoice_number: (pendingLot.invoice_number as string) || null,
+        invoice_date: pendingLot.invoice_date ? (pendingLot.invoice_date as string) : null,
+        entry_date: pendingLot.entry_date,
+      };
+      Object.keys(updateData).forEach((k) => (updateData as any)[k] === undefined && delete (updateData as any)[k]);
+
+      const { error } = await supabase.from('lots').update(updateData).eq('id', editLot.id);
+      if (error) throw error;
+
+      toast({ title: t('success') as string, description: (t('updatedSuccessfully') as string) || 'Changes saved.' });
+      setEditOpen(false);
+      setEditLot(null);
+      setPendingLot(null);
+      fetchLots();
+    } catch (error: any) {
+      toast({
+        title: t('error') as string,
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variant = status === 'in_stock' ? 'default' : 'secondary';
     return <Badge variant={variant}>{status.replace('_', ' ').toUpperCase()}</Badge>;
@@ -517,7 +570,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                 <TableHead>{t('supplier')}</TableHead>
                 <TableHead>{t('status')}</TableHead>
                 <TableHead>{t('invoiceNumber')}</TableHead>
-                {profile?.role === 'admin' && <TableHead className="w-20">{t('actions')}</TableHead>}
+                {(hasRole && (hasRole('accounting') || hasRole('admin'))) && <TableHead className="w-28">{t('actions')}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -622,32 +675,108 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                                <TableCell>{lot.suppliers?.name || '-'}</TableCell>
                                 <TableCell>{getStatusBadge(lot.status)}</TableCell>
                                 <TableCell>{lot.invoice_number || '-'}</TableCell>
-                                {profile?.role === 'admin' && (
-                                  <TableCell>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                          <Trash2 className="h-4 w-4 text-destructive" />
+                                {(hasRole && (hasRole('accounting') || hasRole('admin'))) && (
+                                  <TableCell className="space-x-1">
+                                    <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 px-2"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleOpenEdit(lot);
+                                          }}
+                                        >
+                                          {t('edit') as string || 'Edit'}
                                         </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            {t('confirmDeleteLot')} {lot.lot_number}? {t('actionCannotBeUndone')}
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                                          <AlertDialogAction 
-                                            onClick={() => handleDeleteLot(lot.id, lot.lot_number)}
-                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                          >
-                                            {t('delete')}
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                        <DialogHeader>
+                                          <DialogTitle>{t('edit') as string || 'Edit'} {t('lotNumber') as string}: {lot.lot_number}</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div>
+                                            <label className="text-sm">{t('lotNumber') as string}</label>
+                                            <Input value={pendingLot?.lot_number as string || ''} onChange={(e)=>setPendingLot(prev=>({...prev!, lot_number: e.target.value}))} />
+                                          </div>
+                                          <div>
+                                            <label className="text-sm">{t('quality') as string}</label>
+                                            <Input value={pendingLot?.quality as string || ''} onChange={(e)=>setPendingLot(prev=>({...prev!, quality: e.target.value}))} />
+                                          </div>
+                                          <div>
+                                            <label className="text-sm">{t('color') as string}</label>
+                                            <Input value={pendingLot?.color as string || ''} onChange={(e)=>setPendingLot(prev=>({...prev!, color: e.target.value}))} />
+                                          </div>
+                                          <div>
+                                            <label className="text-sm">{t('meters') as string}</label>
+                                            <Input type="number" value={(pendingLot?.meters as number) ?? 0} onChange={(e)=>setPendingLot(prev=>({...prev!, meters: Number(e.target.value)}))} />
+                                          </div>
+                                          <div>
+                                            <label className="text-sm">{t('rolls') as string}</label>
+                                            <Input type="number" value={(pendingLot?.roll_count as number) ?? 0} onChange={(e)=>setPendingLot(prev=>({...prev!, roll_count: Number(e.target.value)}))} />
+                                          </div>
+                                          <div>
+                                            <label className="text-sm">{t('entryDate') as string}</label>
+                                            <Input type="date" value={(pendingLot?.entry_date as string)?.slice(0,10) || ''} onChange={(e)=>setPendingLot(prev=>({...prev!, entry_date: e.target.value}))} />
+                                          </div>
+                                          <div>
+                                            <label className="text-sm">{t('status') as string}</label>
+                                            <Select value={(pendingLot?.status as string) || ''} onValueChange={(val)=>setPendingLot(prev=>({...prev!, status: val}))}>
+                                              <SelectTrigger>
+                                                <SelectValue placeholder={t('status') as string} />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                {statuses.map(status => (
+                                                  <SelectItem key={status} value={status}>
+                                                    {status.replace('_', ' ').toUpperCase()}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div>
+                                            <label className="text-sm">{t('invoiceNumber') as string}</label>
+                                            <Input value={(pendingLot?.invoice_number as string) || ''} onChange={(e)=>setPendingLot(prev=>({...prev!, invoice_number: e.target.value}))} />
+                                          </div>
+                                          <div>
+                                            <label className="text-sm">{t('invoiceDate') as string}</label>
+                                            <Input type="date" value={pendingLot?.invoice_date ? (pendingLot?.invoice_date as string).slice(0,10) : ''} onChange={(e)=>setPendingLot(prev=>({...prev!, invoice_date: e.target.value}))} />
+                                          </div>
+                                        </div>
+                                        <DialogFooter>
+                                          <Button variant="outline" onClick={()=>setEditOpen(false)}>{t('cancel')}</Button>
+                                          <Button onClick={handleSaveEdit}>{t('save') as string || 'Save'}</Button>
+                                        </DialogFooter>
+                                      </DialogContent>
+                                    </Dialog>
+
+                                    {hasRole('admin') && (
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e)=>e.stopPropagation()}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              {t('confirmDeleteLot')} {lot.lot_number}? {t('actionCannotBeUndone')}
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                                            <AlertDialogAction 
+                                              onClick={() => handleDeleteLot(lot.id, lot.lot_number)}
+                                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                            >
+                                              {t('delete')}
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    )}
                                   </TableCell>
                                 )}
                              </TableRow>
