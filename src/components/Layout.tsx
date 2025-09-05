@@ -103,11 +103,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* LotAstro Logo */}
             <div className="flex items-center space-x-2">
-              <img 
-                src="/lovable-uploads/e88a7a74-68e5-4ad6-834f-f061d5980ad0.png" 
-                alt="LotAstro Logo" 
-                className="w-8 h-8 object-contain"
-              />
+            <img 
+              src="/Futuristic%20%27lotastro%27%20Logo%20with%20Warehouse%20and%20Star%282%29.svg" 
+              alt="LotAstro Logo" 
+              className="w-8 h-8 object-contain"
+            />
               <h1 className="text-xl font-semibold text-primary">LotAstro</h1>
             </div>
             
