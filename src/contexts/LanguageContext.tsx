@@ -38,7 +38,6 @@ const translations = {
     next: 'Next',
     page: 'Page',
     of: 'of',
-    selected: 'selected',
     
     // Dashboard
     welcomeMessage: 'Welcome to Warehouse LOT Tracking',
@@ -134,6 +133,10 @@ const translations = {
     created: 'Created',
     actions: 'Actions',
     orderDetails: 'Order Details',
+    deletedSuccessfully: 'deleted successfully',
+    confirmDelete: 'Confirm Delete',
+    confirmDeleteLot: 'Are you sure you want to delete lot',
+    actionCannotBeUndone: 'This action cannot be undone.',
     
     // Lot Intake
     lotIntakeNumber: 'Lot Number',
@@ -467,6 +470,10 @@ const translations = {
     created: 'Oluşturuldu',
     actions: 'İşlemler',
     orderDetailsField: 'Sipariş Detayları',
+    deletedSuccessfully: 'başarıyla silindi',
+    confirmDelete: 'Silme İşlemini Onayla',
+    confirmDeleteLot: 'Şu lotu silmek istediğinizden emin misiniz:',
+    actionCannotBeUndone: 'Bu işlem geri alınamaz.',
     
     // Lot Intake
     lotIntakeNumber: 'Lot Numarası',

@@ -20,8 +20,11 @@ import {
   ArrowUpDown,
   CheckSquare,
   Square,
-  ShoppingCart
+  ShoppingCart,
+  Trash2
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface Lot {
   id: string;
@@ -131,6 +134,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
   const { t } = useLanguage();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { profile } = useAuth();
 
   // Group lots by quality -> color -> lots
   const groupedData = React.useMemo(() => {
@@ -356,6 +360,34 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
     reader.readAsText(file);
   };
 
+  const handleDeleteLot = async (lotId: string, lotNumber: string) => {
+    try {
+      const { error } = await supabase
+        .from('lots')
+        .delete()
+        .eq('id', lotId);
+
+      if (error) throw error;
+
+      toast({
+        title: t('success') as string,
+        description: `${t('lot')} ${lotNumber} ${t('deletedSuccessfully')}`
+      });
+
+      // Remove from selected items if it was selected
+      setSelectedItems(prev => prev.filter(id => id !== lotId));
+      
+      // Refresh data
+      fetchLots();
+    } catch (error: any) {
+      toast({
+        title: t('error') as string,
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -485,6 +517,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                 <TableHead>{t('supplier')}</TableHead>
                 <TableHead>{t('status')}</TableHead>
                 <TableHead>{t('invoiceNumber')}</TableHead>
+                {profile?.role === 'admin' && <TableHead className="w-20">{t('actions')}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -587,9 +620,37 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
                               <TableCell>{lot.roll_count}</TableCell>
                                <TableCell>{formatDate(lot.entry_date)}</TableCell>
                                <TableCell>{lot.suppliers?.name || '-'}</TableCell>
-                               <TableCell>{getStatusBadge(lot.status)}</TableCell>
-                               <TableCell>{lot.invoice_number || '-'}</TableCell>
-                            </TableRow>
+                                <TableCell>{getStatusBadge(lot.status)}</TableCell>
+                                <TableCell>{lot.invoice_number || '-'}</TableCell>
+                                {profile?.role === 'admin' && (
+                                  <TableCell>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                          <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            {t('confirmDeleteLot')} {lot.lot_number}? {t('actionCannotBeUndone')}
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                                          <AlertDialogAction 
+                                            onClick={() => handleDeleteLot(lot.id, lot.lot_number)}
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                          >
+                                            {t('delete')}
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </TableCell>
+                                )}
+                             </TableRow>
                           ))}
                         </React.Fragment>
                       );

@@ -62,7 +62,7 @@ const Auth = () => {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
-              src="/Futuristic%20%27lotastro%27%20Logo%20with%20Warehouse%20and%20Star%282%29.svg" 
+              src="/lotastro-logo.svg" 
               alt="LotAstro Logo" 
               className="w-16 h-16 object-contain"
             />
