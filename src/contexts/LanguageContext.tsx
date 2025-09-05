@@ -275,6 +275,18 @@ const translations = {
     enterCustomerDetails: "Enter customer details to complete the order",
     selectedLotsLabel: "Selected Lots",
     rollsLabel: "rolls",
+    
+    // Authentication
+    signIn: 'Sign In',
+    email: 'Email',
+    password: 'Password',
+    signingIn: 'Signing in...',
+    signInFailed: 'Sign in failed',
+    welcomeBackAuth: 'Welcome back!',
+    signInSuccess: 'You have been signed in successfully.',
+    invalidCredentials: 'Invalid email or password. Please check your credentials and try again.',
+    authDescription: 'Sign in to access the warehouse management system',
+    emailDomainNotAllowed: 'Email domain not allowed. Please contact administrator to allow {domain} domain, or try a different email address.',
   },
   tr: {
     // Navigation
@@ -399,6 +411,18 @@ const translations = {
     enterCustomerDetails: "Siparişi tamamlamak için müşteri bilgilerini girin",
     selectedLotsLabel: "Seçili Lotlar",
     rollsLabel: "toplar",
+    
+    // Authentication
+    signIn: 'Giriş Yap',
+    email: 'E-posta',
+    password: 'Şifre',
+    signingIn: 'Giriş yapılıyor...',
+    signInFailed: 'Giriş başarısız',
+    welcomeBackAuth: 'Tekrar hoş geldiniz!',
+    signInSuccess: 'Başarıyla giriş yapıldı.',
+    invalidCredentials: 'Geçersiz e-posta veya şifre. Bilgilerinizi kontrol edip tekrar deneyin.',
+    authDescription: 'Depo yönetim sistemine erişmek için giriş yapın',
+    emailDomainNotAllowed: 'E-posta domain\'i izin verilmemiş. {domain} domain\'ine izin vermek için yöneticiye başvurun veya farklı bir e-posta adresi deneyin.',
     prepared: 'Hazırlandı',
     sample: 'Numune',
     standard: 'Standart',
