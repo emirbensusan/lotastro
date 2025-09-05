@@ -91,9 +91,11 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center">
-              <Package className="h-8 w-8 text-primary-foreground" />
-            </div>
+            <img 
+              src="/Futuristic%20%27lotastro%27%20Logo%20with%20Warehouse%20and%20Star%282%29.svg" 
+              alt="LotAstro Logo" 
+              className="w-16 h-16 object-contain"
+            />
           </div>
           <CardTitle className="text-2xl font-bold text-primary">LotAstro</CardTitle>
           <CardDescription>
