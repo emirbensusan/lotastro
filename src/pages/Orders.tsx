@@ -330,8 +330,8 @@ const Orders = () => {
   };
 
   // Check permissions
-  const canCreateOrders = profile && ['accounting', 'admin'].includes(profile.role);
-  const canFulfillOrders = profile && ['warehouse_staff', 'admin'].includes(profile.role);
+  const canCreateOrders = profile && ['accounting', 'senior_manager', 'admin'].includes(profile.role);
+  const canFulfillOrders = profile && ['warehouse_staff', 'accounting', 'senior_manager', 'admin'].includes(profile.role);
 
   if (loading) {
     return (

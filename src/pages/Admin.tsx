@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -9,10 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Plus, Edit, Trash2 } from 'lucide-react';
+import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import PermissionsTab from '@/components/PermissionsTab';
 
-type UserRole = 'admin' | 'warehouse_staff' | 'accounting';
+type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
 interface Profile {
   id: string;
@@ -33,6 +35,7 @@ const Admin: React.FC = () => {
     full_name: '',
     role: 'warehouse_staff' as UserRole
   });
+  const [activeTab, setActiveTab] = useState('users');
   const { toast } = useToast();
   const { hasRole, loading: authLoading } = useAuth();
 
@@ -93,8 +96,9 @@ const Admin: React.FC = () => {
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin': return 'destructive';
-      case 'accounting': return 'default';
-      case 'warehouse_staff': return 'secondary';
+      case 'senior_manager': return 'default';
+      case 'accounting': return 'secondary';
+      case 'warehouse_staff': return 'outline';
       default: return 'outline';
     }
   };
@@ -120,8 +124,15 @@ const Admin: React.FC = () => {
         </Button>
       </div>
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="users">User Management</TabsTrigger>
+          <TabsTrigger value="permissions">Permissions</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="space-y-6">
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -146,6 +157,21 @@ const Admin: React.FC = () => {
             </div>
             <p className="text-xs text-muted-foreground">
               Administrator accounts
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Senior Managers</CardTitle>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {profiles.filter(p => p.role === 'senior_manager').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Senior managers
             </p>
           </CardContent>
         </Card>
@@ -236,6 +262,12 @@ const Admin: React.FC = () => {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="permissions" className="space-y-6">
+          <PermissionsTab />
+        </TabsContent>
+      </Tabs>
 
       {/* Edit/Add User Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -294,6 +326,7 @@ const Admin: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="warehouse_staff">Warehouse Staff</SelectItem>
                   <SelectItem value="accounting">Accounting</SelectItem>
+                  <SelectItem value="senior_manager">Senior Manager</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
