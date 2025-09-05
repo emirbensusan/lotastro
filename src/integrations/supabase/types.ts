@@ -270,7 +270,7 @@ export type Database = {
     Enums: {
       order_line_type: "sample" | "standard"
       stock_status: "in_stock" | "out_of_stock" | "partially_fulfilled"
-      user_role: "warehouse_staff" | "accounting" | "admin"
+      user_role: "warehouse_staff" | "accounting" | "admin" | "senior_manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -400,7 +400,7 @@ export const Constants = {
     Enums: {
       order_line_type: ["sample", "standard"],
       stock_status: ["in_stock", "out_of_stock", "partially_fulfilled"],
-      user_role: ["warehouse_staff", "accounting", "admin"],
+      user_role: ["warehouse_staff", "accounting", "admin", "senior_manager"],
     },
   },
 } as const
