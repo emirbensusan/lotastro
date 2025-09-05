@@ -564,7 +564,7 @@ interface LanguageProviderProps {
 }
 
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
-  const [language, setLanguage] = useState<'en' | 'tr'>('en');
+  const [language, setLanguage] = useState<'en' | 'tr'>('tr');
 
   const t = (key: string): string | string[] => {
     return translations[language][key as keyof typeof translations['en']] || key;
