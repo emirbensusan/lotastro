@@ -7,10 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
-import { Truck, Plus, CheckCircle, Download, Eye, FileText } from 'lucide-react';
+import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2 } from 'lucide-react';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -329,9 +330,34 @@ const Orders = () => {
     setShowPrintDialog(true);
   };
 
+  const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: t('success') as string,
+        description: `Order ${orderNumber} deleted successfully`,
+      });
+
+      fetchOrders();
+    } catch (error: any) {
+      toast({
+        title: t('error') as string,
+        description: 'Failed to delete order: ' + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   // Check permissions
   const canCreateOrders = profile && ['accounting', 'senior_manager', 'admin'].includes(profile.role);
   const canFulfillOrders = profile && ['warehouse_staff', 'accounting', 'senior_manager', 'admin'].includes(profile.role);
+  const canDeleteOrders = profile && ['accounting', 'senior_manager', 'admin'].includes(profile.role);
 
   if (loading) {
     return (
@@ -565,6 +591,36 @@ const Orders = () => {
                         >
                           <CheckCircle className="h-4 w-4" />
                         </Button>
+                      )}
+                      {canDeleteOrders && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Order</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete order "{order.order_number}" for customer "{order.customer_name}"? 
+                                This action cannot be undone and will permanently remove the order and all associated data.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteOrder(order.id, order.order_number)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete Order
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </TableCell>

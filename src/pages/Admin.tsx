@@ -12,7 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import PermissionsTab from '@/components/PermissionsTab';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
@@ -36,6 +37,8 @@ const Admin: React.FC = () => {
     role: 'warehouse_staff' as UserRole
   });
   const [activeTab, setActiveTab] = useState('users');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<Profile | null>(null);
   const { toast } = useToast();
   const { hasRole, loading: authLoading } = useAuth();
 
@@ -88,6 +91,31 @@ const Admin: React.FC = () => {
       toast({
         title: 'Error',
         description: 'Failed to update profile.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const deleteProfile = async (profile: Profile) => {
+    try {
+      // Delete from auth.users table (this will cascade to profiles due to foreign key)
+      const { error: authError } = await supabase.auth.admin.deleteUser(profile.user_id);
+      
+      if (authError) throw authError;
+
+      toast({
+        title: 'Success',
+        description: `User ${profile.full_name || profile.email} deleted successfully.`
+      });
+      
+      fetchProfiles();
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error('Error deleting profile:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete user. You may need admin service role key.',
         variant: 'destructive'
       });
     }
@@ -244,16 +272,52 @@ const Admin: React.FC = () => {
                     </TableCell>
                     <TableCell>{formatDate(profile.created_at)}</TableCell>
                     <TableCell>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setEditingProfile(profile);
-                          setDialogOpen(true);
-                        }}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setEditingProfile(profile);
+                            setDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setUserToDelete(profile)}
+                            >
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete User</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete user "{userToDelete?.full_name || userToDelete?.email}"? 
+                                This action cannot be undone and will permanently remove all user data.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={() => {
+                                setDeleteDialogOpen(false);
+                                setUserToDelete(null);
+                              }}>
+                                Cancel
+                              </AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => userToDelete && deleteProfile(userToDelete)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete User
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -265,7 +329,7 @@ const Admin: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="permissions" className="space-y-6">
-          <PermissionsTab />
+          <InteractivePermissionsTab />
         </TabsContent>
       </Tabs>
 
