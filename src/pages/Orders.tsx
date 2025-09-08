@@ -11,7 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from "sonner";
-import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2, Upload, FlaskConical } from 'lucide-react';
+import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2, Upload, FlaskConical, ChevronDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
 import MultiQualityOrderDialog from '@/components/MultiQualityOrderDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
@@ -356,146 +357,170 @@ const Orders = () => {
         <div className="flex items-center space-x-4">
           <Truck className="h-8 w-8 text-primary" />
           {canCreateOrders && (
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('newOrderCreate')}
-                </Button>
-              </DialogTrigger>
-              {selectedLots.length === 0 ? (
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>{t('selectQualityColor')}</DialogTitle>
-                    <DialogDescription>
-                      {t('selectQualityColorDescription')}
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="quality">{t('quality')}</Label>
-                      <Select value={selectedQuality} onValueChange={handleQualityChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('selectQuality')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableQualities.map(quality => (
-                            <SelectItem key={quality} value={quality}>
-                              {quality}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="color">{t('color')}</Label>
-                      <Select 
-                        value={selectedColor} 
-                        onValueChange={setSelectedColor}
-                        disabled={!selectedQuality}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('selectColor')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableColors.map(color => (
-                            <SelectItem key={color} value={color}>
-                              <div className="flex items-center">
-                                <div 
-                                  className="w-4 h-4 rounded mr-2 border"
-                                  style={{ backgroundColor: color.toLowerCase() }}
-                                ></div>
-                                {color}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => {
-                        setShowCreateDialog(false);
-                        setSelectedQuality('');
-                        setSelectedColor('');
-                        setAvailableColors([]);
-                      }}>
-                        {t('cancel')}
-                      </Button>
-                      <Button 
-                        onClick={handleProceedToLotSelection}
-                        disabled={!selectedQuality || !selectedColor}
-                      >
-                        {t('selectLotsButton')}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-               ) : (
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>{t('createOrderForm')}</DialogTitle>
-                    <DialogDescription>
-                      {t('enterCustomerDetails')}
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Order
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowCreateDialog(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Standard Order
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowMultiQualityDialog(true)}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Multi-Quality Order
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowBulkUpload(true)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Bulk Upload Orders
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowSampleDialog(true)}>
+                    <FlaskConical className="mr-2 h-4 w-4" />
+                    Sample Order
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                {selectedLots.length === 0 ? (
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>{t('selectQualityColor')}</DialogTitle>
+                      <DialogDescription>
+                        {t('selectQualityColorDescription')}
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="orderNumber">{t('orderNumberField')}</Label>
-                        <Input
-                          id="orderNumber"
-                          value={orderNumber}
-                          onChange={(e) => setOrderNumber(e.target.value)}
-                          placeholder="ORD-001"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="customerName">{t('customerNameField')}</Label>
-                        <Input
-                          id="customerName"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          placeholder="Customer Inc."
-                        />
-                      </div>
-                    </div>
-
-                    {/* Show selected lots summary */}
-                    {selectedLots.length > 0 && (
-                      <div className="space-y-2">
-                        <Label>{t('selectedLotsLabel')}</Label>
-                        <div className="border rounded p-4 bg-muted/50">
-                          <div className="text-sm text-muted-foreground mb-2">
-                            {t('quality')}: {selectedLots[0]?.quality} | {t('color')}: {selectedLots[0]?.color}
-                          </div>
-                          <div className="space-y-1">
-                            {selectedLots.map((lot, index) => (
-                              <div key={index} className="flex justify-between items-center text-sm">
-                                <span className="font-mono">{lot.lotNumber}</span>
-                                <span>{lot.rollCount} {t('rollsLabel')} ({lot.lineType})</span>
-                              </div>
+                        <Label htmlFor="quality">{t('quality')}</Label>
+                        <Select value={selectedQuality} onValueChange={handleQualityChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('selectQuality')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableQualities.map(quality => (
+                              <SelectItem key={quality} value={quality}>
+                                {quality}
+                              </SelectItem>
                             ))}
-                          </div>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="color">{t('color')}</Label>
+                        <Select 
+                          value={selectedColor} 
+                          onValueChange={setSelectedColor}
+                          disabled={!selectedQuality}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('selectColor')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableColors.map(color => (
+                              <SelectItem key={color} value={color}>
+                                <div className="flex items-center">
+                                  <div 
+                                    className="w-4 h-4 rounded mr-2 border"
+                                    style={{ backgroundColor: color.toLowerCase() }}
+                                  ></div>
+                                  {color}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="outline" onClick={() => {
+                          setShowCreateDialog(false);
+                          setSelectedQuality('');
+                          setSelectedColor('');
+                          setAvailableColors([]);
+                        }}>
+                          {t('cancel')}
+                        </Button>
+                        <Button 
+                          onClick={handleProceedToLotSelection}
+                          disabled={!selectedQuality || !selectedColor}
+                        >
+                          {t('selectLotsButton')}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                 ) : (
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>{t('createOrderForm')}</DialogTitle>
+                      <DialogDescription>
+                        {t('enterCustomerDetails')}
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="orderNumber">{t('orderNumberField')}</Label>
+                          <Input
+                            id="orderNumber"
+                            value={orderNumber}
+                            onChange={(e) => setOrderNumber(e.target.value)}
+                            placeholder="ORD-001"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="customerName">{t('customerNameField')}</Label>
+                          <Input
+                            id="customerName"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            placeholder="Customer Inc."
+                          />
                         </div>
                       </div>
-                    )}
 
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                        {t('cancel')}
-                      </Button>
-                      <Button onClick={handleCreateOrder}>
-                        {t('createOrderButton')}
-                      </Button>
+                      {/* Show selected lots summary */}
+                      {selectedLots.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>{t('selectedLotsLabel')}</Label>
+                          <div className="border rounded p-4 bg-muted/50">
+                            <div className="text-sm text-muted-foreground mb-2">
+                              {t('quality')}: {selectedLots[0]?.quality} | {t('color')}: {selectedLots[0]?.color}
+                            </div>
+                            <div className="space-y-1">
+                              {selectedLots.map((lot, index) => (
+                                <div key={index} className="flex justify-between items-center text-sm">
+                                  <span className="font-mono">{lot.lotNumber}</span>
+                                  <span>{lot.rollCount} {t('rollsLabel')} ({lot.lineType})</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                          {t('cancel')}
+                        </Button>
+                        <Button onClick={handleCreateOrder}>
+                          {t('createOrderButton')}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </DialogContent>
-               )}
-            </Dialog>
+                  </DialogContent>
+                )}
+              </Dialog>
+            </>
           )}
         </div>
       </div>
@@ -666,7 +691,13 @@ const Orders = () => {
         onOpenChange={setShowMultiQualityDialog}
         availableQualities={availableQualities}
         onProceed={(selections) => {
-          console.log('Multi-quality selections:', selections);
+          // Navigate to lot selection with multiple quality/color combinations
+          const params = new URLSearchParams();
+          selections.forEach((selection, index) => {
+            params.append(`quality_${index}`, selection.quality);
+            params.append(`color_${index}`, selection.color);
+          });
+          navigate(`/lot-selection?multi=true&${params.toString()}`);
           setShowMultiQualityDialog(false);
         }}
       />
@@ -675,9 +706,70 @@ const Orders = () => {
       <OrderBulkUpload
         open={showBulkUpload}
         onOpenChange={setShowBulkUpload}
-        onUpload={(items) => {
-          console.log('Bulk upload items:', items);
-          setShowBulkUpload(false);
+        onUpload={async (items) => {
+          try {
+            // Group items by customer if they have the same customer
+            const ordersByCustomer = new Map();
+            
+            items.forEach(item => {
+              const customerKey = item.quality + '-' + item.color; // Group by quality-color for now
+              if (!ordersByCustomer.has(customerKey)) {
+                ordersByCustomer.set(customerKey, []);
+              }
+              ordersByCustomer.get(customerKey).push(item);
+            });
+
+            let createdOrders = 0;
+            for (const [key, orderItems] of ordersByCustomer) {
+              // Create order
+              const orderNumber = `BULK-${Date.now()}-${createdOrders + 1}`;
+              const { data: orderData, error: orderError } = await supabase
+                .from('orders')
+                .insert({
+                  order_number: orderNumber,
+                  customer_name: `Bulk Order ${createdOrders + 1}`,
+                  created_by: profile?.user_id,
+                })
+                .select()
+                .single();
+
+              if (orderError) throw orderError;
+
+              // Find and create order lots
+              for (const item of orderItems) {
+                const { data: lots, error: lotError } = await supabase
+                  .from('lots')
+                  .select('id')
+                  .eq('lot_number', item.lot_number)
+                  .eq('status', 'in_stock')
+                  .gte('roll_count', item.roll_count)
+                  .single();
+
+                if (lotError || !lots) {
+                  toast.error(`Lot ${item.lot_number} not found or insufficient stock`);
+                  continue;
+                }
+
+                await supabase
+                  .from('order_lots')
+                  .insert({
+                    order_id: orderData.id,
+                    lot_id: lots.id,
+                    roll_count: item.roll_count,
+                    line_type: item.line_type,
+                    quality: item.quality || '',
+                    color: item.color || '',
+                  });
+              }
+              createdOrders++;
+            }
+
+            toast.success(`Created ${createdOrders} orders from bulk upload`);
+            fetchOrders();
+            setShowBulkUpload(false);
+          } catch (error: any) {
+            toast.error('Bulk upload failed: ' + error.message);
+          }
         }}
       />
 
@@ -685,9 +777,43 @@ const Orders = () => {
       <SampleOrderDialog
         open={showSampleDialog}
         onOpenChange={setShowSampleDialog}
-        onCreateSample={(customerName, selectedLots) => {
-          console.log('Sample order:', customerName, selectedLots);
-          setShowSampleDialog(false);
+        onCreateSample={async (customerName, selectedLots) => {
+          try {
+            const orderNumber = `SAMPLE-${Date.now()}`;
+            
+            // Create sample order
+            const { data: orderData, error: orderError } = await supabase
+              .from('orders')
+              .insert({
+                order_number: orderNumber,
+                customer_name: customerName,
+                created_by: profile?.user_id,
+              })
+              .select()
+              .single();
+
+            if (orderError) throw orderError;
+
+            // Create sample order lots
+            for (const lot of selectedLots) {
+              await supabase
+                .from('order_lots')
+                .insert({
+                  order_id: orderData.id,
+                  lot_id: lot.id,
+                  roll_count: lot.roll_count,
+                  line_type: 'sample',
+                  quality: lot.quality || '',
+                  color: lot.color || '',
+                });
+            }
+
+            toast.success(`Sample order ${orderNumber} created successfully`);
+            fetchOrders();
+            setShowSampleDialog(false);
+          } catch (error: any) {
+            toast.error('Failed to create sample order: ' + error.message);
+          }
         }}
       />
     </div>
