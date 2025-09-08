@@ -16,6 +16,7 @@ interface BulkOrderItem {
   line_type: 'standard' | 'sample';
   quality?: string;
   color?: string;
+  meters?: number;
   error?: string;
 }
 
@@ -33,29 +34,18 @@ export default function OrderBulkUpload({
   const [uploadedItems, setUploadedItems] = useState<BulkOrderItem[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const downloadTemplate = () => {
-    const template = [
-      {
-        lot_number: 'LOT001',
-        roll_count: 5,
-        line_type: 'standard',
-        quality: 'Premium',
-        color: 'Blue'
-      },
-      {
-        lot_number: 'LOT002', 
-        roll_count: 2,
-        line_type: 'sample',
-        quality: 'Standard',
-        color: 'Red'
-      }
-    ];
+const downloadTemplate = () => {
+  const headers = ['quality', 'color', 'lot', 'roll count', 'meters'];
+  const template: Record<string, any>[] = [
+    { quality: 'Premium', color: 'Blue', lot: 'LOT001', 'roll count': 5, meters: 1200 },
+    { quality: 'Standard', color: 'Red', lot: 'LOT002', 'roll count': 2, meters: 450 }
+  ];
 
-    const worksheet = XLSX.utils.json_to_sheet(template);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Order Items');
-    XLSX.writeFile(workbook, 'order_items_template.xlsx');
-  };
+  const worksheet = XLSX.utils.json_to_sheet(template, { header: headers });
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Order Items');
+  XLSX.writeFile(workbook, 'order_items_template.xlsx');
+};
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -69,24 +59,58 @@ export default function OrderBulkUpload({
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-      const items: BulkOrderItem[] = jsonData.map((row, index) => {
-        const item: BulkOrderItem = {
-          lot_number: row.lot_number || '',
-          roll_count: parseInt(row.roll_count) || 0,
-          line_type: row.line_type === 'sample' ? 'sample' : 'standard',
-          quality: row.quality || '',
-          color: row.color || ''
-        };
+const items: BulkOrderItem[] = jsonData.map((row) => {
+  // Normalize keys to lowercase for flexible header matching
+  const normalized: Record<string, any> = {};
+  Object.keys(row).forEach((key) => {
+    normalized[key.toString().trim().toLowerCase()] = (row as any)[key];
+  });
 
-        // Basic validation
-        if (!item.lot_number) {
-          item.error = 'Lot number is required';
-        } else if (item.roll_count <= 0) {
-          item.error = 'Roll count must be greater than 0';
-        }
+  const get = (...keys: string[]) => {
+    for (const k of keys) {
+      if (k in normalized && normalized[k] !== undefined && normalized[k] !== null) {
+        return normalized[k];
+      }
+    }
+    return undefined;
+  };
 
-        return item;
-      });
+  const lotRaw = get('lot', 'lot number', 'lot_number', 'lotnumber', 'lot no', 'lotno', 'lot #', 'lot#');
+  const rollRaw = get('roll count', 'roll_count', 'rolls', 'roll', 'qty', 'quantity');
+  const lineTypeRaw = get('line type', 'line_type', 'type', 'line');
+  const qualityRaw = get('quality');
+  const colorRaw = get('color', 'colour');
+  const metersRaw = get('meters', 'meter', 'm');
+
+  const lot_number = (lotRaw ?? '').toString().trim();
+  const roll_count = parseInt((rollRaw ?? '').toString().trim(), 10) || 0;
+  const metersParsed = metersRaw !== undefined && metersRaw !== ''
+    ? parseFloat((metersRaw ?? '').toString().trim())
+    : undefined;
+
+  const line_type: 'standard' | 'sample' =
+    (lineTypeRaw ?? '').toString().trim().toLowerCase() === 'sample' ? 'sample' : 'standard';
+
+  const item: BulkOrderItem = {
+    lot_number,
+    roll_count,
+    line_type,
+    quality: qualityRaw ? qualityRaw.toString() : '',
+    color: colorRaw ? colorRaw.toString() : '',
+    meters: Number.isFinite(metersParsed as number) ? (metersParsed as number) : undefined,
+  };
+
+  // Basic validation
+  if (!item.lot_number) {
+    item.error = 'Lot number is required';
+  } else if (item.roll_count <= 0) {
+    item.error = 'Roll count must be greater than 0';
+  } else if (item.meters !== undefined && item.meters <= 0) {
+    item.error = 'Meters must be greater than 0';
+  }
+
+  return item;
+});
 
       setUploadedItems(items);
       toast.success(`Parsed ${items.length} items from file`);
@@ -155,37 +179,39 @@ export default function OrderBulkUpload({
 
               <div className="flex-1 overflow-auto border rounded-lg">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Lot Number</TableHead>
-                      <TableHead>Roll Count</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Quality</TableHead>
-                      <TableHead>Color</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
+<TableHeader>
+  <TableRow>
+    <TableHead>Lot Number</TableHead>
+    <TableHead>Roll Count</TableHead>
+    <TableHead>Meters</TableHead>
+    <TableHead>Type</TableHead>
+    <TableHead>Quality</TableHead>
+    <TableHead>Color</TableHead>
+    <TableHead>Status</TableHead>
+  </TableRow>
+</TableHeader>
                   <TableBody>
-                    {uploadedItems.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{item.lot_number}</TableCell>
-                        <TableCell>{item.roll_count}</TableCell>
-                        <TableCell>
-                          <Badge variant={item.line_type === 'sample' ? 'secondary' : 'default'}>
-                            {item.line_type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{item.quality}</TableCell>
-                        <TableCell>{item.color}</TableCell>
-                        <TableCell>
-                          {item.error ? (
-                            <Badge variant="destructive">Error: {item.error}</Badge>
-                          ) : (
-                            <Badge variant="default">Valid</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+{uploadedItems.map((item, index) => (
+  <TableRow key={index}>
+    <TableCell>{item.lot_number}</TableCell>
+    <TableCell>{item.roll_count}</TableCell>
+    <TableCell>{item.meters ?? '-'}</TableCell>
+    <TableCell>
+      <Badge variant={item.line_type === 'sample' ? 'secondary' : 'default'}>
+        {item.line_type}
+      </Badge>
+    </TableCell>
+    <TableCell>{item.quality}</TableCell>
+    <TableCell>{item.color}</TableCell>
+    <TableCell>
+      {item.error ? (
+        <Badge variant="destructive">Error: {item.error}</Badge>
+      ) : (
+        <Badge variant="default">Valid</Badge>
+      )}
+    </TableCell>
+  </TableRow>
+))}
                   </TableBody>
                 </Table>
               </div>
