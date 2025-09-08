@@ -100,10 +100,12 @@ const Admin: React.FC = () => {
 
   const deleteProfile = async (profile: Profile) => {
     try {
-      // Delete from auth.users table (this will cascade to profiles due to foreign key)
-      const { error: authError } = await supabase.auth.admin.deleteUser(profile.user_id);
+      // Use edge function for secure admin deletion
+      const { error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId: profile.user_id }
+      });
       
-      if (authError) throw authError;
+      if (deleteError) throw deleteError;
 
       toast({
         title: t('success') as string,
@@ -425,8 +427,18 @@ const Admin: React.FC = () => {
                   try {
                     setLoading(true);
                     
-                    // Generate a secure temporary password
-                    const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
+                    // Generate a cryptographically secure temporary password
+                    const generateSecurePassword = () => {
+                      const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+                      const array = new Uint8Array(16);
+                      crypto.getRandomValues(array);
+                      let password = '';
+                      for (let i = 0; i < array.length; i++) {
+                        password += charset[array[i] % charset.length];
+                      }
+                      return password;
+                    };
+                    const tempPassword = generateSecurePassword();
                     
                     const { data, error } = await supabase.auth.signUp({
                       email: newProfile.email,

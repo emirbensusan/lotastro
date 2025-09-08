@@ -105,7 +105,10 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
         await QrCodeLib.toCanvas(canvas, generatedQR.qr_code_url, { width: 200 });
         const qrDisplay = document.getElementById('qr-display');
         if (qrDisplay) {
-          qrDisplay.innerHTML = '';
+          // Clear existing content safely
+          while (qrDisplay.firstChild) {
+            qrDisplay.removeChild(qrDisplay.firstChild);
+          }
           qrDisplay.appendChild(canvas);
         }
       };
