@@ -362,26 +362,26 @@ const Orders = () => {
                 <DropdownMenuTrigger asChild>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
-                    New Order
+                    {t('newOrder')}
                     <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setShowCreateDialog(true)}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Standard Order
+                    {t('standardOrder')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowMultiQualityDialog(true)}>
                     <FileText className="mr-2 h-4 w-4" />
-                    Multi-Quality Order
+                    {t('multiQualityOrder')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowBulkUpload(true)}>
                     <Upload className="mr-2 h-4 w-4" />
-                    Bulk Upload Orders
+                    {t('bulkUploadOrders')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowSampleDialog(true)}>
                     <FlaskConical className="mr-2 h-4 w-4" />
-                    Sample Order
+                    {t('sampleOrder')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
