@@ -819,8 +819,8 @@ const Orders = () => {
 
       {/* Bulk Upload Dialog */}
       <OrderBulkUpload
-        open={bulkUploadOpen}
-        onOpenChange={setBulkUploadOpen}
+        open={showBulkUpload}
+        onOpenChange={setShowBulkUpload}
         onUpload={async (items) => {
           try {
             if (!profile?.user_id) {
@@ -871,9 +871,33 @@ const Orders = () => {
               });
 
             toast.success(`Bulk order created and sent to approval queue`);
-            setBulkUploadOpen(false);
-            setOrderToPrint(newOrder);
-            setShowPrintDialog(true);
+            setShowBulkUpload(false);
+            
+            // Fetch complete order data for printing
+            const { data: completeOrder } = await supabase
+              .from('orders')
+              .select(`
+                *,
+                order_lots(
+                  id,
+                  quality,
+                  color,
+                  roll_count,
+                  line_type,
+                  lot:lots(
+                    lot_number,
+                    meters
+                  )
+                )
+              `)
+              .eq('id', newOrder.id)
+              .single();
+
+            if (completeOrder) {
+              setOrderToPrint(completeOrder as Order);
+              setShowPrintDialog(true);
+            }
+            
             fetchOrders();
           } catch (error) {
             console.error('Error creating bulk order:', error);
