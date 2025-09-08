@@ -14,6 +14,7 @@ import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck } from
 import { useAuth } from '@/hooks/useAuth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
@@ -41,6 +42,7 @@ const Admin: React.FC = () => {
   const [userToDelete, setUserToDelete] = useState<Profile | null>(null);
   const { toast } = useToast();
   const { hasRole, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
 
   useEffect(() => {
     fetchProfiles();
@@ -60,8 +62,8 @@ const Admin: React.FC = () => {
     } catch (error) {
       console.error('Error fetching profiles:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to fetch user profiles.',
+        title: t('error') as string,
+        description: t('errorFetchingProfiles') as string,
         variant: 'destructive'
       });
     } finally {
@@ -79,8 +81,8 @@ const Admin: React.FC = () => {
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: 'Profile updated successfully.'
+        title: t('success') as string,
+        description: t('profileUpdatedSuccessfully') as string
       });
       
       fetchProfiles();
@@ -89,8 +91,8 @@ const Admin: React.FC = () => {
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to update profile.',
+        title: t('error') as string,
+        description: t('failedToUpdateProfile') as string,
         variant: 'destructive'
       });
     }
@@ -104,8 +106,8 @@ const Admin: React.FC = () => {
       if (authError) throw authError;
 
       toast({
-        title: 'Success',
-        description: `User ${profile.full_name || profile.email} deleted successfully.`
+        title: t('success') as string,
+        description: (t('userDeletedSuccessfully') as string).replace('{name}', profile.full_name || profile.email)
       });
       
       fetchProfiles();
@@ -114,10 +116,20 @@ const Admin: React.FC = () => {
     } catch (error) {
       console.error('Error deleting profile:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to delete user. You may need admin service role key.',
+        title: t('error') as string,
+        description: t('failedToDeleteUser') as string,
         variant: 'destructive'
       });
+    }
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'admin': return t('roleAdmin');
+      case 'senior_manager': return t('roleSeniorManager');
+      case 'accounting': return t('roleAccounting');
+      case 'warehouse_staff': return t('roleWarehouseStaff');
+      default: return role.replace('_', ' ').toUpperCase();
     }
   };
 
@@ -136,26 +148,26 @@ const Admin: React.FC = () => {
   };
 
   if (authLoading) {
-    return <div className="text-sm text-muted-foreground">Loading…</div>;
+    return <div className="text-sm text-muted-foreground">{t('loading')}</div>;
   }
   if (!hasRole('admin')) {
-    return <div className="text-sm text-muted-foreground">You are not authorized to access this page.</div>;
+    return <div className="text-sm text-muted-foreground">{t('notAuthorizedAccess')}</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <h1 className="text-3xl font-bold">{t('adminPanel')}</h1>
         <Button onClick={() => setDialogOpen(true)} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
-          Add User
+          {t('addUser')}
         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="permissions">Permissions</TabsTrigger>
+          <TabsTrigger value="users">{t('userManagement')}</TabsTrigger>
+          <TabsTrigger value="permissions">{t('permissions')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -163,20 +175,20 @@ const Admin: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('totalUsers')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{profiles.length}</div>
             <p className="text-xs text-muted-foreground">
-              Active system users
+              {t('activeSystemUsers')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admins</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('admins')}</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -184,14 +196,14 @@ const Admin: React.FC = () => {
               {profiles.filter(p => p.role === 'admin').length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Administrator accounts
+              {t('administratorAccounts')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Senior Managers</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('seniorManagers')}</CardTitle>
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -199,14 +211,14 @@ const Admin: React.FC = () => {
               {profiles.filter(p => p.role === 'senior_manager').length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Senior managers
+              {t('seniorManagersDesc')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Accounting</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('accounting')}</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -214,14 +226,14 @@ const Admin: React.FC = () => {
               {profiles.filter(p => p.role === 'accounting').length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Accounting users
+              {t('accountingUsers')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Warehouse Staff</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('warehouseStaff')}</CardTitle>
             <Settings className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -229,7 +241,7 @@ const Admin: React.FC = () => {
               {profiles.filter(p => p.role === 'warehouse_staff').length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Warehouse personnel
+              {t('warehousePersonnel')}
             </p>
           </CardContent>
         </Card>
@@ -238,7 +250,7 @@ const Admin: React.FC = () => {
       {/* User Management */}
       <Card>
         <CardHeader>
-          <CardTitle>User Management</CardTitle>
+          <CardTitle>{t('userManagement')}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -251,23 +263,23 @@ const Admin: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('fullName')}</TableHead>
+                  <TableHead>{t('email')}</TableHead>
+                  <TableHead>{t('role')}</TableHead>
+                  <TableHead>{t('created')}</TableHead>
+                  <TableHead>{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {profiles.map((profile) => (
                   <TableRow key={profile.id}>
                     <TableCell className="font-medium">
-                      {profile.full_name || 'No name set'}
+                      {profile.full_name || t('noNameSet')}
                     </TableCell>
                     <TableCell>{profile.email}</TableCell>
                     <TableCell>
                       <Badge variant={getRoleBadgeVariant(profile.role)}>
-                        {profile.role.replace('_', ' ').toUpperCase()}
+                        {getRoleDisplayName(profile.role)}
                       </Badge>
                     </TableCell>
                     <TableCell>{formatDate(profile.created_at)}</TableCell>
@@ -295,10 +307,9 @@ const Admin: React.FC = () => {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete User</AlertDialogTitle>
+                              <AlertDialogTitle>{t('deleteUser')}</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete user "{userToDelete?.full_name || userToDelete?.email}"? 
-                                This action cannot be undone and will permanently remove all user data.
+                                {(t('deleteConfirmation') as string).replace('{name}', userToDelete?.full_name || userToDelete?.email || '')}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -306,13 +317,13 @@ const Admin: React.FC = () => {
                                 setDeleteDialogOpen(false);
                                 setUserToDelete(null);
                               }}>
-                                Cancel
+                                {t('cancel')}
                               </AlertDialogCancel>
                               <AlertDialogAction 
                                 onClick={() => userToDelete && deleteProfile(userToDelete)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                Delete User
+                                {t('deleteUser')}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -338,12 +349,12 @@ const Admin: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingProfile ? 'Edit User' : 'Add New User'}
+              {editingProfile ? t('editUser') : t('addNewUser')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -359,7 +370,7 @@ const Admin: React.FC = () => {
               />
             </div>
             <div>
-              <Label htmlFor="full_name">Full Name</Label>
+              <Label htmlFor="full_name">{t('fullName')}</Label>
               <Input
                 id="full_name"
                 value={editingProfile ? editingProfile.full_name : newProfile.full_name}
@@ -373,7 +384,7 @@ const Admin: React.FC = () => {
               />
             </div>
             <div>
-              <Label htmlFor="role">Role</Label>
+              <Label htmlFor="role">{t('role')}</Label>
               <Select 
                 value={editingProfile ? editingProfile.role : newProfile.role}
                 onValueChange={(value: UserRole) => {
@@ -388,10 +399,10 @@ const Admin: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="warehouse_staff">Warehouse Staff</SelectItem>
-                  <SelectItem value="accounting">Accounting</SelectItem>
-                  <SelectItem value="senior_manager">Senior Manager</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="warehouse_staff">{t('warehouseStaffRole')}</SelectItem>
+                  <SelectItem value="accounting">{t('accountingRole')}</SelectItem>
+                  <SelectItem value="senior_manager">{t('seniorManagerRole')}</SelectItem>
+                  <SelectItem value="admin">{t('adminRole')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -401,7 +412,7 @@ const Admin: React.FC = () => {
                 setEditingProfile(null);
                 setNewProfile({ email: '', full_name: '', role: 'warehouse_staff' as UserRole });
               }}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button onClick={async () => {
                 if (editingProfile) {
@@ -432,8 +443,8 @@ const Admin: React.FC = () => {
                     if (error) throw error;
 
                     toast({
-                      title: 'User Created Successfully',
-                      description: `User created with temporary password: ${tempPassword}. Please share this with the user securely.`,
+                      title: t('userCreatedSuccessfully') as string,
+                      description: (t('userCreatedTempPassword') as string).replace('{password}', tempPassword),
                     });
 
                     setDialogOpen(false);
@@ -442,8 +453,8 @@ const Admin: React.FC = () => {
                     
                   } catch (error: any) {
                     toast({
-                      title: 'User Creation Failed',
-                      description: error.message || 'Failed to create user. Please try again.',
+                      title: t('userCreationFailed') as string,
+                      description: error.message || (t('failedToCreateUser') as string),
                       variant: 'destructive',
                     });
                   } finally {
@@ -451,7 +462,7 @@ const Admin: React.FC = () => {
                   }
                 }
               }}>
-                {editingProfile ? 'Update' : 'Create'}
+                {editingProfile ? t('update') : t('create')}
               </Button>
             </div>
           </div>
