@@ -53,7 +53,8 @@ export function Autocomplete({
   const handleInputChange = (newValue: string) => {
     setInputValue(newValue)
     onValueChange?.(newValue)
-    setOpen(newValue.length >= minCharsToShow && filteredItems.length > 0)
+    // Show dropdown when we have input that meets minimum chars AND we have items to filter from
+    setOpen(newValue.length >= minCharsToShow && items.length > 0)
   }
 
   const handleSelect = (selectedValue: string) => {
@@ -85,7 +86,7 @@ export function Autocomplete({
             )}
           </div>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-h-72 overflow-hidden p-0 z-50 bg-popover" align="start">
           <Command>
             <CommandList>
               {filteredItems.length === 0 ? (

@@ -128,29 +128,10 @@ export function HierarchicalAutocomplete({
     }
   };
 
-  // Filter functions for autocomplete
-  const filteredQualities = useMemo(() => {
-    if (!quality || quality.length < 3) return [];
-    return qualities.filter(q => 
-      q.toLowerCase().includes(quality.toLowerCase())
-    );
-  }, [qualities, quality]);
-
-  const filteredColors = useMemo(() => {
-    if (!color || color.length < 3) return [];
-    return colors.filter(c => 
-      c.toLowerCase().includes(color.toLowerCase())
-    );
-  }, [colors, color]);
-
-  const filteredLots = useMemo(() => {
-    if (!selectedLot || selectedLot.length < 2) return [];
-    return lots
-      .filter(lot => 
-        lot.lot_number.toLowerCase().includes(selectedLot.toLowerCase())
-      )
-      .map(lot => `${lot.lot_number} (${lot.age_days}d, ${lot.meters}m, ${lot.roll_count}r)`);
-  }, [lots, selectedLot]);
+  // Prepare items for autocomplete (no pre-filtering, let Autocomplete component handle it)
+  const lotItems = useMemo(() => {
+    return lots.map(lot => `${lot.lot_number} (${lot.age_days}d, ${lot.meters}m, ${lot.roll_count}r)`);
+  }, [lots]);
 
   const handleLotSelect = (lotString: string) => {
     const lotNumber = lotString.split(' (')[0];
@@ -169,7 +150,7 @@ export function HierarchicalAutocomplete({
           value={quality}
           onValueChange={onQualityChange}
           placeholder="Enter quality (min 3 chars, e.g., V71)"
-          items={filteredQualities}
+          items={qualities}
           emptyText="No qualities found. Enter at least 3 characters."
           minCharsToShow={3}
         />
@@ -186,7 +167,7 @@ export function HierarchicalAutocomplete({
             value={color}
             onValueChange={onColorChange}
             placeholder={loading ? "Loading colors..." : "Enter color (min 3 chars, e.g., NAV)"}
-            items={filteredColors}
+            items={colors}
             emptyText={loading ? "Loading..." : "No colors found for this quality."}
             minCharsToShow={3}
           />
@@ -210,7 +191,7 @@ export function HierarchicalAutocomplete({
               }
             }}
             placeholder={loading ? "Loading lots..." : "Enter lot number"}
-            items={filteredLots}
+            items={lotItems}
             emptyText={loading ? "Loading..." : "No lots available for this quality/color combination."}
             minCharsToShow={2}
           />
