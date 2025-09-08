@@ -231,7 +231,7 @@ export type Database = {
           fulfilled_at?: string | null
           fulfilled_by?: string | null
           id?: string
-          order_number: string
+          order_number?: string
           updated_at?: string
         }
         Update: {
@@ -332,6 +332,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
