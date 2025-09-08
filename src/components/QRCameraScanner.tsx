@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Camera, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import jsQR from "jsqr";
-import { Camera as CapacitorCamera, CameraResultType } from "@capacitor/camera";
+
 
 interface QRCameraScannerProps {
   open: boolean;
@@ -37,13 +37,7 @@ export default function QRCameraScanner({
   const startCameraScanning = async () => {
     try {
       setError(null);
-      
-      // Check if we're in a Capacitor environment
-      if ((window as any).Capacitor) {
-        await startCapacitorCamera();
-      } else {
-        await startWebCamera();
-      }
+      await startWebCamera();
     } catch (err) {
       console.error('Camera error:', err);
       setError('Failed to access camera. Please check permissions.');
@@ -51,21 +45,6 @@ export default function QRCameraScanner({
     }
   };
 
-  const startCapacitorCamera = async () => {
-    try {
-      const image = await CapacitorCamera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.DataUrl
-      });
-
-      if (image.dataUrl) {
-        await processImageForQR(image.dataUrl);
-      }
-    } catch (err) {
-      throw new Error('Capacitor camera access failed');
-    }
-  };
 
   const startWebCamera = async () => {
     const constraints = {
