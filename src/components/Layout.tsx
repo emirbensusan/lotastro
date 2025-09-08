@@ -32,13 +32,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navigationItems = [
-    { path: '/', label: t('dashboard'), icon: Package, roles: ['warehouse_staff', 'accounting', 'admin'] },
-    { path: '/lot-intake', label: t('lotIntake'), icon: Package, roles: ['warehouse_staff', 'admin'] },
-    { path: '/lot-queue', label: t('lotQueue'), icon: Clock, roles: ['accounting', 'admin'] },
-    { path: '/inventory', label: t('inventory'), icon: ClipboardList, roles: ['warehouse_staff', 'accounting', 'admin'] },
-    { path: '/orders', label: t('orders'), icon: Truck, roles: ['accounting', 'admin'] },
-    { path: '/qr-scan', label: t('qrScan'), icon: QrCode, roles: ['warehouse_staff', 'accounting', 'admin'] },
-    { path: '/reports', label: t('reports'), icon: BarChart3, roles: ['accounting', 'admin'] },
+    { path: '/', label: t('dashboard'), icon: Package, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
+    { path: '/lot-intake', label: t('lotIntake'), icon: Package, roles: ['warehouse_staff', 'senior_manager', 'admin'] },
+    { path: '/lot-queue', label: t('lotQueue'), icon: Clock, roles: ['accounting', 'senior_manager', 'admin'] },
+    { path: '/inventory', label: t('inventory'), icon: ClipboardList, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
+    { path: '/orders', label: t('orders'), icon: Truck, roles: ['accounting', 'senior_manager', 'admin'] },
+    { path: '/order-queue', label: 'Order Queue', icon: Clock, roles: ['accounting', 'senior_manager', 'admin'] },
+    { path: '/qr-scan', label: t('qrScan'), icon: QrCode, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
+    { path: '/reports', label: t('reports'), icon: BarChart3, roles: ['accounting', 'senior_manager', 'admin'] },
     { path: '/suppliers', label: t('suppliers'), icon: Users, roles: ['admin'] },
     { path: '/admin', label: t('admin'), icon: Settings, roles: ['admin'] },
   ];

@@ -816,6 +816,71 @@ const Orders = () => {
           }
         }}
       />
+
+      {/* Bulk Upload Dialog */}
+      <OrderBulkUpload
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        onUpload={async (items) => {
+          try {
+            if (!profile?.user_id) {
+              toast.error('User not authenticated');
+              return;
+            }
+
+            const { data: newOrder, error: orderError } = await supabase
+              .from('orders')
+              .insert([{
+                order_number: `ORD-${Date.now()}`,
+                customer_name: `Bulk Order - ${new Date().toLocaleDateString()}`,
+                created_by: profile.user_id
+              }])
+              .select()
+              .single();
+
+            if (orderError || !newOrder) throw new Error('Failed to create order');
+
+            for (const item of items) {
+              const { data: lotData } = await supabase
+                .from('lots')
+                .select('id')
+                .eq('lot_number', item.lot_number)
+                .eq('status', 'in_stock')
+                .single();
+
+              if (lotData) {
+                await supabase
+                  .from('order_lots')
+                  .insert({
+                    order_id: newOrder.id,
+                    lot_id: lotData.id,
+                    quality: item.quality,
+                    color: item.color,
+                    roll_count: item.roll_count,
+                    line_type: item.line_type
+                  });
+              }
+            }
+
+            await supabase
+              .from('order_queue')
+              .insert({
+                order_id: newOrder.id,
+                submitted_by: profile.user_id,
+                status: 'pending_approval'
+              });
+
+            toast.success(`Bulk order created and sent to approval queue`);
+            setBulkUploadOpen(false);
+            setOrderToPrint(newOrder);
+            setShowPrintDialog(true);
+            fetchOrders();
+          } catch (error) {
+            console.error('Error creating bulk order:', error);
+            toast.error('Failed to create bulk order');
+          }
+        }}
+      />
     </div>
   );
 };

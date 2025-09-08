@@ -20,6 +20,7 @@ import Suppliers from "./pages/Suppliers";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import QRPrint from "./pages/QRPrint";
+import OrderQueue from "./pages/OrderQueue";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,11 @@ const App = () => (
               <Route path="/lot-queue" element={
                 <ProtectedRoute>
                   <LotQueue />
+                </ProtectedRoute>
+              } />
+              <Route path="/order-queue" element={
+                <ProtectedRoute>
+                  <OrderQueue />
                 </ProtectedRoute>
               } />
               <Route path="/qr-scan" element={
