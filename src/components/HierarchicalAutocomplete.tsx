@@ -44,23 +44,23 @@ export function HierarchicalAutocomplete({
 
   // Fetch colors when quality changes
   useEffect(() => {
-    if (quality.length >= 3) {
+    if (quality.length >= 1 && qualities.length > 0 && validateQuality(quality)) {
       fetchColors(quality);
     } else {
       setColors([]);
       onColorChange('');
     }
-  }, [quality]);
+  }, [quality, qualities]);
 
   // Fetch lots when both quality and color are selected
   useEffect(() => {
-    if (quality && color.length >= 3) {
+    if (quality && color.length >= 1 && qualities.length > 0 && colors.length > 0 && validateQuality(quality) && validateColor(color)) {
       fetchLots(quality, color);
     } else {
       setLots([]);
       onLotChange('');
     }
-  }, [quality, color]);
+  }, [quality, color, qualities, colors]);
 
   const fetchQualities = async () => {
     try {
@@ -77,6 +77,15 @@ export function HierarchicalAutocomplete({
     } catch (error) {
       console.error('Error fetching qualities:', error);
     }
+  };
+
+  // Validation functions
+  const validateQuality = (qualityValue: string) => {
+    return qualities.includes(qualityValue);
+  };
+
+  const validateColor = (colorValue: string) => {
+    return colors.includes(colorValue);
   };
 
   const fetchColors = async (selectedQuality: string) => {
@@ -149,13 +158,13 @@ export function HierarchicalAutocomplete({
         <Autocomplete
           value={quality}
           onValueChange={onQualityChange}
-          placeholder="Enter quality (min 3 chars, e.g., V71)"
+          placeholder="Enter quality (e.g., A301, A311, P002)"
           items={qualities}
-          emptyText="No qualities found. Enter at least 3 characters."
-          minCharsToShow={3}
+          emptyText="No qualities found. Try A301, A311, or P002."
+          minCharsToShow={1}
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Start typing quality code (e.g., "V71" for V710, V715)
+          Available: A301, A311, P002, etc.
         </p>
       </div>
 
@@ -166,13 +175,13 @@ export function HierarchicalAutocomplete({
           <Autocomplete
             value={color}
             onValueChange={onColorChange}
-            placeholder={loading ? "Loading colors..." : "Enter color (min 3 chars, e.g., NAV)"}
+            placeholder={loading ? "Loading colors..." : "Enter color (e.g., IVORY, BLACK, GRAY)"}
             items={colors}
             emptyText={loading ? "Loading..." : "No colors found for this quality."}
-            minCharsToShow={3}
+            minCharsToShow={1}
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Start typing color name (e.g., "NAV" for NAVY options)
+            {colors.length > 0 ? `Available: ${colors.slice(0, 3).join(', ')}${colors.length > 3 ? ', ...' : ''}` : 'Select quality first'}
           </p>
         </div>
       )}

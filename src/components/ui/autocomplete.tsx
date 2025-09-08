@@ -44,6 +44,10 @@ export function Autocomplete({
   }, [value])
 
   const filteredItems = React.useMemo(() => {
+    if (inputValue.length === 0) {
+      // Show all items when focusing on empty field
+      return items.slice(0, 10)
+    }
     if (inputValue.length < minCharsToShow) return []
     return items.filter(item =>
       item.toLowerCase().includes(inputValue.toLowerCase())
@@ -53,8 +57,16 @@ export function Autocomplete({
   const handleInputChange = (newValue: string) => {
     setInputValue(newValue)
     onValueChange?.(newValue)
-    // Show dropdown when we have input that meets minimum chars AND we have items to filter from
-    setOpen(newValue.length >= minCharsToShow && items.length > 0)
+    // Show dropdown when we have input OR when focusing on empty field, and we have items
+    const shouldShow = (newValue.length >= minCharsToShow || newValue.length === 0) && items.length > 0
+    setOpen(shouldShow)
+  }
+
+  const handleFocus = () => {
+    // Show all available options when focusing on empty field
+    if (inputValue.length === 0 && items.length > 0) {
+      setOpen(true)
+    }
   }
 
   const handleSelect = (selectedValue: string) => {
@@ -71,10 +83,11 @@ export function Autocomplete({
             <Input
               value={inputValue}
               onChange={(e) => handleInputChange(e.target.value)}
+              onFocus={handleFocus}
               placeholder={placeholder}
               className="pr-8"
             />
-            {inputValue.length >= minCharsToShow && (
+            {(inputValue.length >= minCharsToShow || inputValue.length === 0) && items.length > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
