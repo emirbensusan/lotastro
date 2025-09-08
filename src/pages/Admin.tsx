@@ -403,17 +403,52 @@ const Admin: React.FC = () => {
               }}>
                 Cancel
               </Button>
-              <Button onClick={() => {
+              <Button onClick={async () => {
                 if (editingProfile) {
                   updateProfile(editingProfile.id, {
                     full_name: editingProfile.full_name,
                     role: editingProfile.role
                   });
                 } else {
-                  toast({
-                    title: 'Info',
-                    description: 'User creation requires Supabase Auth setup. Please use Supabase dashboard for now.'
-                  });
+                  // Create new user
+                  try {
+                    setLoading(true);
+                    
+                    // Generate a secure temporary password
+                    const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
+                    
+                    const { data, error } = await supabase.auth.signUp({
+                      email: newProfile.email,
+                      password: tempPassword,
+                      options: {
+                        emailRedirectTo: 'https://depo.lotastro.com/auth',
+                        data: {
+                          full_name: newProfile.full_name,
+                          role: newProfile.role
+                        }
+                      }
+                    });
+
+                    if (error) throw error;
+
+                    toast({
+                      title: 'User Created Successfully',
+                      description: `User created with temporary password: ${tempPassword}. Please share this with the user securely.`,
+                    });
+
+                    setDialogOpen(false);
+                    setNewProfile({ email: '', full_name: '', role: 'warehouse_staff' });
+                    fetchProfiles();
+                    
+                  } catch (error: any) {
+                    toast({
+                      title: 'User Creation Failed',
+                      description: error.message || 'Failed to create user. Please try again.',
+                      variant: 'destructive',
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
                 }
               }}>
                 {editingProfile ? 'Update' : 'Create'}
