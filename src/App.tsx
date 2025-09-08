@@ -19,6 +19,7 @@ import Admin from "./pages/Admin";
 import Suppliers from "./pages/Suppliers";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import QRPrint from "./pages/QRPrint";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/qr/:lotNumber" element={<QRScan />} />
+              <Route path="/print/qr/:lotNumber" element={<QRPrint />} />
               <Route path="/reports" element={
                 <ProtectedRoute>
                   <Reports />

@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { toast } from '@/components/ui/use-toast';
-import { QrCode, Upload, Camera, Package, Calendar, MapPin, Plus } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+import { QrCode, Upload, Camera, Package, Calendar, MapPin, Plus, Printer } from 'lucide-react';
 import QuickQREntry from '@/components/QuickQREntry';
+import QRCameraScanner from '@/components/QRCameraScanner';
+import { toast } from "sonner";
 
 interface LotDetails {
   id: string;
@@ -38,6 +40,7 @@ const QRScan = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showQuickEntry, setShowQuickEntry] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   useEffect(() => {
     fetchAvailableLots();
@@ -88,11 +91,7 @@ const QRScan = () => {
     } catch (error: any) {
       console.error('Error fetching lot details:', error);
       setError(t('failedToFetch') as string);
-      toast({
-        title: t('error') as string,
-        description: t('failedToFetch') as string,
-        variant: "destructive",
-      });
+      toast.error(t('failedToFetch') as string);
     } finally {
       setLoading(false);
     }
@@ -118,11 +117,7 @@ const QRScan = () => {
     } catch (error: any) {
       console.error('Error fetching lot details:', error);
       setError(t('failedToFetch') as string);
-      toast({
-        title: t('error') as string,
-        description: t('failedToFetch') as string,
-        variant: "destructive",
-      });
+      toast.error(t('failedToFetch') as string);
     } finally {
       setLoading(false);
     }
@@ -137,32 +132,26 @@ const QRScan = () => {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleQRCodeDetected = (qrData: string) => {
+    // Extract lot number from QR data (assuming format: domain/qr/lotNumber)
+    const lotMatch = qrData.match(/\/qr\/(.+)$/);
+    if (lotMatch) {
+      const detectedLotNumber = lotMatch[1];
+      fetchLotDetailsByNumber(detectedLotNumber);
+      toast.success(`QR Code detected: ${detectedLotNumber}`);
+    } else {
+      toast.error("Invalid QR code format");
+    }
+  };
 
-    // In a real implementation, you would:
-    // 1. Send the image to a QR code reading service
-    // 2. Extract the LOT number from the QR code
-    // 3. Fetch the lot details
-    
-    toast({
-      title: "QR Image Upload",
-      description: "QR code processing would be implemented here. For now, please use the dropdown to select a LOT.",
-    });
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Open QR scanner dialog for file upload
+    setShowQRScanner(true);
   };
 
   const startCameraScanning = () => {
-    // In a real implementation, you would:
-    // 1. Request camera permissions
-    // 2. Start video stream
-    // 3. Use a library like jsQR to scan QR codes
-    // 4. Extract LOT number and fetch details
-    
-    toast({
-      title: "Camera Scanning",
-      description: "Camera QR scanning would be implemented here. For now, please use the dropdown to select a LOT.",
-    });
+    // Open QR scanner dialog for camera scanning
+    setShowQRScanner(true);
   };
 
   const getLotAge = (entryDate: string) => {
@@ -337,8 +326,18 @@ const QRScan = () => {
               </span>
               {getStatusBadge(lotDetails.status)}
             </CardTitle>
-            <CardDescription>
-              {t('lotNumber')}: <span className="font-mono text-foreground">{lotDetails.lot_number}</span>
+            <CardDescription className="flex items-center justify-between">
+              <span>
+                {t('lotNumber')}: <span className="font-mono text-foreground">{lotDetails.lot_number}</span>
+              </span>
+              <Button
+                onClick={() => window.open(`/print/qr/${lotDetails.lot_number}?size=medium`, '_blank')}
+                variant="outline"
+                size="sm"
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Print QR
+              </Button>
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -411,6 +410,12 @@ const QRScan = () => {
           ))}
         </CardContent>
       </Card>
+      
+      <QRCameraScanner
+        open={showQRScanner}
+        onOpenChange={setShowQRScanner}
+        onQRCodeDetected={handleQRCodeDetected}
+      />
     </div>
   );
 };

@@ -10,9 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/components/ui/use-toast';
-import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2 } from 'lucide-react';
+import { toast } from "sonner";
+import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2, Upload, FlaskConical } from 'lucide-react';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
+import MultiQualityOrderDialog from '@/components/MultiQualityOrderDialog';
+import OrderBulkUpload from '@/components/OrderBulkUpload';
+import SampleOrderDialog from '@/components/SampleOrderDialog';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -56,6 +59,9 @@ const Orders = () => {
   const [lots, setLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showMultiQualityDialog, setShowMultiQualityDialog] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showSampleDialog, setShowSampleDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
@@ -117,11 +123,7 @@ const Orders = () => {
       setOrders(data || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast({
-        title: t('error') as string,
-        description: "Failed to load orders",
-        variant: "destructive",
-      });
+      toast.error("Failed to load orders");
     } finally {
       setLoading(false);
     }
@@ -171,11 +173,7 @@ const Orders = () => {
 
   const handleProceedToLotSelection = () => {
     if (!selectedQuality || !selectedColor) {
-      toast({
-        title: t('validationError') as string,
-        description: "Please select both quality and color",
-        variant: "destructive",
-      });
+      toast.error("Please select both quality and color");
       return;
     }
 
@@ -184,11 +182,7 @@ const Orders = () => {
 
   const handleCreateOrder = async () => {
     if (!orderNumber || !customerName || selectedLots.length === 0) {
-      toast({
-        title: t('validationError') as string,
-        description: t('fillAllFields') as string,
-        variant: "destructive",
-      });
+      toast.error(t('fillAllFields') as string);
       return;
     }
 
@@ -220,10 +214,7 @@ const Orders = () => {
           });
       }
 
-      toast({
-        title: t('orderCreated') as string,
-        description: `${t('orderCreatedSuccessfully')} ${orderNumber}`,
-      });
+      toast.success(`${t('orderCreatedSuccessfully')} ${orderNumber}`);
 
       // Show print dialog for new order
       const newOrder = await supabase
@@ -256,11 +247,7 @@ const Orders = () => {
       setSelectedLots([]);
       fetchOrders();
     } catch (error: any) {
-      toast({
-        title: t('failedToCreateOrder') as string,
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message);
     }
   };
 
@@ -287,18 +274,11 @@ const Orders = () => {
         }
       }
 
-      toast({
-        title: t('orderFulfilled') as string,
-        description: t('orderMarkedFulfilled') as string,
-      });
+      toast.success(t('orderMarkedFulfilled') as string);
 
       fetchOrders();
     } catch (error: any) {
-      toast({
-        title: t('errorFulfillingOrder') as string,
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message);
     }
   };
 
@@ -339,18 +319,11 @@ const Orders = () => {
 
       if (error) throw error;
 
-      toast({
-        title: t('success') as string,
-        description: `Order ${orderNumber} deleted successfully`,
-      });
+      toast.success(`Order ${orderNumber} deleted successfully`);
 
       fetchOrders();
     } catch (error: any) {
-      toast({
-        title: t('error') as string,
-        description: 'Failed to delete order: ' + error.message,
-        variant: "destructive",
-      });
+      toast.error('Failed to delete order: ' + error.message);
     }
   };
 
@@ -685,6 +658,37 @@ const Orders = () => {
         open={showPrintDialog}
         onOpenChange={setShowPrintDialog}
         order={orderToPrint}
+      />
+
+      {/* Multi-Quality Order Dialog */}
+      <MultiQualityOrderDialog
+        open={showMultiQualityDialog}
+        onOpenChange={setShowMultiQualityDialog}
+        availableQualities={availableQualities}
+        onProceed={(selections) => {
+          console.log('Multi-quality selections:', selections);
+          setShowMultiQualityDialog(false);
+        }}
+      />
+
+      {/* Bulk Upload Dialog */}
+      <OrderBulkUpload
+        open={showBulkUpload}
+        onOpenChange={setShowBulkUpload}
+        onUpload={(items) => {
+          console.log('Bulk upload items:', items);
+          setShowBulkUpload(false);
+        }}
+      />
+
+      {/* Sample Order Dialog */}
+      <SampleOrderDialog
+        open={showSampleDialog}
+        onOpenChange={setShowSampleDialog}
+        onCreateSample={(customerName, selectedLots) => {
+          console.log('Sample order:', customerName, selectedLots);
+          setShowSampleDialog(false);
+        }}
       />
     </div>
   );
