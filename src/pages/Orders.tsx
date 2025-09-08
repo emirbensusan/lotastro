@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +16,7 @@ import OrderPrintDialog from '@/components/OrderPrintDialog';
 import MultiQualityOrderDialog from '@/components/MultiQualityOrderDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
 import SampleOrderDialog from '@/components/SampleOrderDialog';
+import { InventoryPivotTable } from '@/components/InventoryPivotTable';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -57,7 +57,6 @@ const Orders = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [lots, setLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showMultiQualityDialog, setShowMultiQualityDialog] = useState(false);
@@ -68,7 +67,6 @@ const Orders = () => {
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
 
   // Create order form state
-  const [orderNumber, setOrderNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [selectedLots, setSelectedLots] = useState<Array<{
     lotId: string;
@@ -81,12 +79,6 @@ const Orders = () => {
     lineType: 'sample' | 'standard';
   }>>([]);
 
-  // Quality and color selection for new order flow
-  const [selectedQuality, setSelectedQuality] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
-  const [availableQualities, setAvailableQualities] = useState<string[]>([]);
-  const [availableColors, setAvailableColors] = useState<string[]>([]);
-
   // Check for pre-filled data from inventory
   useEffect(() => {
     if (location.state?.prefilledLots) {
@@ -97,11 +89,11 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
-    fetchAvailableQualities();
   }, []);
 
   const fetchOrders = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -121,78 +113,47 @@ const Orders = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
       setOrders(data || []);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error("Failed to load orders");
+    } catch (error: any) {
+      toast.error(`Error loading orders: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAvailableQualities = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('lots')
-        .select('quality, color')
-        .eq('status', 'in_stock');
-
-      if (error) throw error;
-      
-      const uniqueQualities = [...new Set(data?.map(lot => lot.quality) || [])];
-      setAvailableQualities(uniqueQualities);
-    } catch (error) {
-      console.error('Error fetching qualities:', error);
-    }
-  };
-
-  const fetchColorsForQuality = async (quality: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('lots')
-        .select('color')
-        .eq('status', 'in_stock')
-        .eq('quality', quality);
-
-      if (error) throw error;
-      
-      const uniqueColors = [...new Set(data?.map(lot => lot.color) || [])];
-      setAvailableColors(uniqueColors);
-    } catch (error) {
-      console.error('Error fetching colors:', error);
-    }
-  };
-
-  const handleQualityChange = (quality: string) => {
-    setSelectedQuality(quality);
-    setSelectedColor('');
-    setAvailableColors([]);
-    if (quality) {
-      fetchColorsForQuality(quality);
-    }
-  };
-
-  const handleProceedToLotSelection = () => {
-    if (!selectedQuality || !selectedColor) {
-      toast.error("Please select both quality and color");
-      return;
-    }
-
-    navigate(`/lot-selection?quality=${encodeURIComponent(selectedQuality)}&color=${encodeURIComponent(selectedColor)}`);
-  };
-
   const handleCreateOrder = async () => {
-    if (!orderNumber || !customerName || selectedLots.length === 0) {
+    if (!customerName || selectedLots.length === 0) {
       toast.error(t('fillAllFields') as string);
       return;
     }
 
     try {
-      // Create order
+      // Validate inventory availability
+      for (const selectedLot of selectedLots) {
+        const { data: currentLot, error: fetchError } = await supabase
+          .from('lots')
+          .select('roll_count, status')
+          .eq('id', selectedLot.lotId)
+          .single();
+
+        if (fetchError) throw fetchError;
+        
+        if (currentLot.status !== 'in_stock') {
+          toast.error(`Lot ${selectedLot.lotNumber} is no longer available`);
+          return;
+        }
+        
+        if (currentLot.roll_count < selectedLot.rollCount) {
+          toast.error(`Insufficient rolls for lot ${selectedLot.lotNumber}. Available: ${currentLot.roll_count}, Requested: ${selectedLot.rollCount}`);
+          return;
+        }
+      }
+
+      // Create order with auto-generated order number
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
-          order_number: orderNumber,
           customer_name: customerName,
           created_by: profile?.user_id,
         })
@@ -210,12 +171,12 @@ const Orders = () => {
             lot_id: selectedLot.lotId,
             roll_count: selectedLot.rollCount,
             line_type: selectedLot.lineType,
-            quality: selectedLot.quality || lots.find(l => l.id === selectedLot.lotId)?.quality || '',
-            color: selectedLot.color || lots.find(l => l.id === selectedLot.lotId)?.color || '',
+            quality: selectedLot.quality,
+            color: selectedLot.color,
           });
       }
 
-      toast.success(`${t('orderCreatedSuccessfully')} ${orderNumber}`);
+      toast.success(`${t('orderCreatedSuccessfully')} ${orderData.order_number}`);
 
       // Show print dialog for new order
       const newOrder = await supabase
@@ -243,7 +204,6 @@ const Orders = () => {
       }
 
       setShowCreateDialog(false);
-      setOrderNumber('');
       setCustomerName('');
       setSelectedLots([]);
       fetchOrders();
@@ -264,14 +224,45 @@ const Orders = () => {
 
       if (error) throw error;
 
-      // Update lot statuses to out_of_stock
+      // Properly deduct inventory from lots
       const order = orders.find(o => o.id === orderId);
       if (order) {
         for (const orderLot of order.order_lots) {
+          // Get current lot data
+          const { data: currentLot, error: fetchError } = await supabase
+            .from('lots')
+            .select('roll_count, meters')
+            .eq('lot_number', orderLot.lot.lot_number)
+            .single();
+
+          if (fetchError) {
+            console.error('Error fetching lot:', fetchError);
+            continue;
+          }
+
+          const newRollCount = currentLot.roll_count - orderLot.roll_count;
+          const rollRatio = orderLot.roll_count / currentLot.roll_count;
+          const newMeters = Math.max(0, currentLot.meters - (currentLot.meters * rollRatio));
+
+          // Update lot quantities or mark as out_of_stock
+          const updateData: any = {
+            roll_count: Math.max(0, newRollCount),
+            meters: newMeters
+          };
+
+          // Only mark as out_of_stock if no rolls remaining
+          if (newRollCount <= 0) {
+            updateData.status = 'out_of_stock';
+          }
+
           const { error: lotError } = await supabase
             .from('lots')
-            .update({ status: 'out_of_stock' })
-            .eq('id', orderLot.lot.lot_number); // Note: This should be lot ID, will fix in database query
+            .update(updateData)
+            .eq('lot_number', orderLot.lot.lot_number);
+
+          if (lotError) {
+            console.error('Error updating lot:', lotError);
+          }
         }
       }
 
@@ -281,29 +272,6 @@ const Orders = () => {
     } catch (error: any) {
       toast.error(error.message);
     }
-  };
-
-  const addLotToOrder = () => {
-    setSelectedLots([...selectedLots, {
-      lotId: '',
-      quality: '',
-      color: '',
-      lotNumber: '',
-      meters: 0,
-      availableRolls: 0,
-      rollCount: 1,
-      lineType: 'standard' as const,
-    }]);
-  };
-
-  const removeLotFromOrder = (index: number) => {
-    setSelectedLots(selectedLots.filter((_, i) => i !== index));
-  };
-
-  const updateSelectedLot = (index: number, field: string, value: any) => {
-    setSelectedLots(prev => prev.map((lot, i) => 
-      i === index ? { ...lot, [field]: value } : lot
-    ));
   };
 
   const handlePrintOrder = (order: Order) => {
@@ -329,23 +297,27 @@ const Orders = () => {
   };
 
   // Check permissions
-  const canCreateOrders = profile && ['accounting', 'senior_manager', 'admin'].includes(profile.role);
-  const canFulfillOrders = profile && ['warehouse_staff', 'accounting', 'senior_manager', 'admin'].includes(profile.role);
-  const canDeleteOrders = profile && ['accounting', 'senior_manager', 'admin'].includes(profile.role);
+  const canCreateOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
+  const canFulfillOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
+  const canDeleteOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">{t('orders')}</h1>
-        <Card>
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-12 bg-muted rounded"></div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">{t('orders')}</h1>
+          <Truck className="h-8 w-8 text-primary" />
+        </div>
+        <div className="grid gap-4">
+          {[...Array(5)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -354,181 +326,92 @@ const Orders = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t('orders')}</h1>
-        <div className="flex items-center space-x-4">
-          <Truck className="h-8 w-8 text-primary" />
+        <div className="flex space-x-2 items-center">
           {canCreateOrders && (
-            <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t('newOrder')}
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setShowCreateDialog(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t('standardOrder')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowMultiQualityDialog(true)}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    {t('multiQualityOrder')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowBulkUpload(true)}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    {t('bulkUploadOrders')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowSampleDialog(true)}>
-                    <FlaskConical className="mr-2 h-4 w-4" />
-                    {t('sampleOrder')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                {selectedLots.length === 0 ? (
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>{t('selectQualityColor')}</DialogTitle>
-                      <DialogDescription>
-                        {t('selectQualityColorDescription')}
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="quality">{t('quality')}</Label>
-                        <Select value={selectedQuality} onValueChange={handleQualityChange}>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('selectQuality')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableQualities.map(quality => (
-                              <SelectItem key={quality} value={quality}>
-                                {quality}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="color">{t('color')}</Label>
-                        <Select 
-                          value={selectedColor} 
-                          onValueChange={setSelectedColor}
-                          disabled={!selectedQuality}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('selectColor')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableColors.map(color => (
-                              <SelectItem key={color} value={color}>
-                                <div className="flex items-center">
-                                  <div 
-                                    className="w-4 h-4 rounded mr-2 border"
-                                    style={{ backgroundColor: color.toLowerCase() }}
-                                  ></div>
-                                  {color}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex justify-end space-x-2">
-                        <Button variant="outline" onClick={() => {
-                          setShowCreateDialog(false);
-                          setSelectedQuality('');
-                          setSelectedColor('');
-                          setAvailableColors([]);
-                        }}>
-                          {t('cancel')}
-                        </Button>
-                        <Button 
-                          onClick={handleProceedToLotSelection}
-                          disabled={!selectedQuality || !selectedColor}
-                        >
-                          {t('selectLotsButton')}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                 ) : (
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>{t('createOrderForm')}</DialogTitle>
-                      <DialogDescription>
-                        {t('enterCustomerDetails')}
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="orderNumber">{t('orderNumberField')}</Label>
-                          <Input
-                            id="orderNumber"
-                            value={orderNumber}
-                            onChange={(e) => setOrderNumber(e.target.value)}
-                            placeholder="ORD-001"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="customerName">{t('customerNameField')}</Label>
-                          <Input
-                            id="customerName"
-                            value={customerName}
-                            onChange={(e) => setCustomerName(e.target.value)}
-                            placeholder="Customer Inc."
-                          />
-                        </div>
-                      </div>
-
-                      {/* Show selected lots summary */}
-                      {selectedLots.length > 0 && (
-                        <div className="space-y-2">
-                          <Label>{t('selectedLotsLabel')}</Label>
-                          <div className="border rounded p-4 bg-muted/50">
-                            <div className="text-sm text-muted-foreground mb-2">
-                              {t('quality')}: {selectedLots[0]?.quality} | {t('color')}: {selectedLots[0]?.color}
-                            </div>
-                            <div className="space-y-1">
-                              {selectedLots.map((lot, index) => (
-                                <div key={index} className="flex justify-between items-center text-sm">
-                                  <span className="font-mono">{lot.lotNumber}</span>
-                                  <span>{lot.rollCount} {t('rollsLabel')} ({lot.lineType})</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex justify-end space-x-2">
-                        <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                          {t('cancel')}
-                        </Button>
-                        <Button onClick={handleCreateOrder}>
-                          {t('createOrderButton')}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                )}
-              </Dialog>
-            </>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('createOrder')}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setShowCreateDialog(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('standardOrder')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowMultiQualityDialog(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('multiQualityOrder')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowBulkUpload(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t('bulkUpload')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowSampleDialog(true)}>
+                  <FlaskConical className="mr-2 h-4 w-4" />
+                  {t('sampleOrder')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
+          <Truck className="h-8 w-8 text-primary" />
         </div>
       </div>
+
+      {/* Create Order Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('createOrder')}</DialogTitle>
+            <DialogDescription>
+              Select inventory items and enter customer details
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="customerName">{t('customerNameField')}</Label>
+              <Input
+                id="customerName"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Customer Inc."
+              />
+            </div>
+
+            {/* Inventory Selection Table */}
+            <div className="space-y-2">
+              <Label>Select Inventory for Order</Label>
+              <InventoryPivotTable
+                onLotsSelected={setSelectedLots}
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => {
+                setShowCreateDialog(false);
+                setCustomerName('');
+                setSelectedLots([]);
+              }}>
+                {t('cancel')}
+              </Button>
+              <Button 
+                onClick={handleCreateOrder}
+                disabled={!customerName || selectedLots.length === 0}
+              >
+                {t('createOrder')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Orders Table */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('orderManagementSection')}</CardTitle>
+          <CardTitle>{t('allOrders')}</CardTitle>
           <CardDescription>
             {t('viewManageOrders')}
           </CardDescription>
@@ -610,7 +493,7 @@ const Orders = () => {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
+                              <AlertDialogAction
                                 onClick={() => handleDeleteOrder(order.id, order.order_number)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
@@ -626,12 +509,6 @@ const Orders = () => {
               ))}
             </TableBody>
           </Table>
-
-          {orders.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              {t('noOrdersFound')}
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -640,64 +517,80 @@ const Orders = () => {
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{t('orderDetailsField')} - {selectedOrder.order_number}</DialogTitle>
+              <DialogTitle>Order Details - {selectedOrder.order_number}</DialogTitle>
               <DialogDescription>
-                {t('customer')}: {selectedOrder.customer_name}
+                Customer: {selectedOrder.customer_name}
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('lotNumberShort')}</TableHead>
-                    <TableHead>{t('qualityField')}</TableHead>
-                    <TableHead>{t('colorField')}</TableHead>
-                    <TableHead>{t('rollsShort')}</TableHead>
-                    <TableHead>{t('typeShort')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedOrder.order_lots.map((orderLot) => (
-                    <TableRow key={orderLot.id}>
-                      <TableCell className="font-mono">{orderLot.lot.lot_number}</TableCell>
-                      <TableCell>{orderLot.quality}</TableCell>
-                      <TableCell>{orderLot.color}</TableCell>
-                      <TableCell>{orderLot.roll_count}</TableCell>
-                      <TableCell>
-                        <Badge variant={orderLot.line_type === 'sample' ? 'secondary' : 'outline'}>
-                          {orderLot.line_type}
-                        </Badge>
-                      </TableCell>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label>Order Status</Label>
+                  <div className="mt-1">
+                    {selectedOrder.fulfilled_at ? (
+                      <Badge className="bg-green-100 text-green-800">Fulfilled</Badge>
+                    ) : (
+                      <Badge variant="secondary">Pending</Badge>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label>Created Date</Label>
+                  <div className="mt-1">{new Date(selectedOrder.created_at).toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div>
+                <Label>Order Items</Label>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Quality</TableHead>
+                      <TableHead>Color</TableHead>
+                      <TableHead>Lot Number</TableHead>
+                      <TableHead>Rolls</TableHead>
+                      <TableHead>Type</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedOrder.order_lots.map((lot) => (
+                      <TableRow key={lot.id}>
+                        <TableCell>{lot.quality}</TableCell>
+                        <TableCell>{lot.color}</TableCell>
+                        <TableCell>{lot.lot.lot_number}</TableCell>
+                        <TableCell>{lot.roll_count}</TableCell>
+                        <TableCell>
+                          <Badge variant={lot.line_type === 'sample' ? 'secondary' : 'default'}>
+                            {lot.line_type}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
       )}
 
       {/* Print Dialog */}
-      <OrderPrintDialog
-        open={showPrintDialog}
-        onOpenChange={setShowPrintDialog}
-        order={orderToPrint}
-      />
+      {orderToPrint && (
+        <OrderPrintDialog
+          order={orderToPrint}
+          open={showPrintDialog}
+          onOpenChange={setShowPrintDialog}
+        />
+      )}
 
-      {/* Multi-Quality Order Dialog */}
+      {/* Multi Quality Order Dialog */}
       <MultiQualityOrderDialog
         open={showMultiQualityDialog}
         onOpenChange={setShowMultiQualityDialog}
-        availableQualities={availableQualities}
-        onProceed={(selections) => {
-          // Navigate to lot selection with multiple quality/color combinations
-          const params = new URLSearchParams();
-          selections.forEach((selection, index) => {
-            params.append(`quality_${index}`, selection.quality);
-            params.append(`color_${index}`, selection.color);
-          });
-          navigate(`/lot-selection?multi=true&${params.toString()}`);
+        availableQualities={[]}
+        onProceed={async (selections) => {
+          console.log('Multi-quality selections:', selections);
           setShowMultiQualityDialog(false);
         }}
       />
@@ -707,69 +600,8 @@ const Orders = () => {
         open={showBulkUpload}
         onOpenChange={setShowBulkUpload}
         onUpload={async (items) => {
-          try {
-            // Group items by customer if they have the same customer
-            const ordersByCustomer = new Map();
-            
-            items.forEach(item => {
-              const customerKey = item.quality + '-' + item.color; // Group by quality-color for now
-              if (!ordersByCustomer.has(customerKey)) {
-                ordersByCustomer.set(customerKey, []);
-              }
-              ordersByCustomer.get(customerKey).push(item);
-            });
-
-            let createdOrders = 0;
-            for (const [key, orderItems] of ordersByCustomer) {
-              // Create order
-              const orderNumber = `BULK-${Date.now()}-${createdOrders + 1}`;
-              const { data: orderData, error: orderError } = await supabase
-                .from('orders')
-                .insert({
-                  order_number: orderNumber,
-                  customer_name: `Bulk Order ${createdOrders + 1}`,
-                  created_by: profile?.user_id,
-                })
-                .select()
-                .single();
-
-              if (orderError) throw orderError;
-
-              // Find and create order lots
-              for (const item of orderItems) {
-                const { data: lots, error: lotError } = await supabase
-                  .from('lots')
-                  .select('id')
-                  .eq('lot_number', item.lot_number)
-                  .eq('status', 'in_stock')
-                  .gte('roll_count', item.roll_count)
-                  .single();
-
-                if (lotError || !lots) {
-                  toast.error(`Lot ${item.lot_number} not found or insufficient stock`);
-                  continue;
-                }
-
-                await supabase
-                  .from('order_lots')
-                  .insert({
-                    order_id: orderData.id,
-                    lot_id: lots.id,
-                    roll_count: item.roll_count,
-                    line_type: item.line_type,
-                    quality: item.quality || '',
-                    color: item.color || '',
-                  });
-              }
-              createdOrders++;
-            }
-
-            toast.success(`Created ${createdOrders} orders from bulk upload`);
-            fetchOrders();
-            setShowBulkUpload(false);
-          } catch (error: any) {
-            toast.error('Bulk upload failed: ' + error.message);
-          }
+          console.log('Bulk upload items:', items);
+          setShowBulkUpload(false);
         }}
       />
 
@@ -779,13 +611,10 @@ const Orders = () => {
         onOpenChange={setShowSampleDialog}
         onCreateSample={async (customerName, selectedLots) => {
           try {
-            const orderNumber = `SAMPLE-${Date.now()}`;
-            
-            // Create sample order
+            // Create sample order with auto-generated order number
             const { data: orderData, error: orderError } = await supabase
               .from('orders')
               .insert({
-                order_number: orderNumber,
                 customer_name: customerName,
                 created_by: profile?.user_id,
               })
@@ -808,100 +637,11 @@ const Orders = () => {
                 });
             }
 
-            toast.success(`Sample order ${orderNumber} created successfully`);
+            toast.success(`Sample order ${orderData.order_number} created successfully`);
             fetchOrders();
             setShowSampleDialog(false);
           } catch (error: any) {
             toast.error('Failed to create sample order: ' + error.message);
-          }
-        }}
-      />
-
-      {/* Bulk Upload Dialog */}
-      <OrderBulkUpload
-        open={showBulkUpload}
-        onOpenChange={setShowBulkUpload}
-        onUpload={async (items) => {
-          try {
-            if (!profile?.user_id) {
-              toast.error('User not authenticated');
-              return;
-            }
-
-            const { data: newOrder, error: orderError } = await supabase
-              .from('orders')
-              .insert([{
-                order_number: `ORD-${Date.now()}`,
-                customer_name: `Bulk Order - ${new Date().toLocaleDateString()}`,
-                created_by: profile.user_id
-              }])
-              .select()
-              .single();
-
-            if (orderError || !newOrder) throw new Error('Failed to create order');
-
-            for (const item of items) {
-              const { data: lotData } = await supabase
-                .from('lots')
-                .select('id')
-                .eq('lot_number', item.lot_number)
-                .eq('status', 'in_stock')
-                .single();
-
-              if (lotData) {
-                await supabase
-                  .from('order_lots')
-                  .insert({
-                    order_id: newOrder.id,
-                    lot_id: lotData.id,
-                    quality: item.quality,
-                    color: item.color,
-                    roll_count: item.roll_count,
-                    line_type: item.line_type
-                  });
-              }
-            }
-
-            await supabase
-              .from('order_queue')
-              .insert({
-                order_id: newOrder.id,
-                submitted_by: profile.user_id,
-                status: 'pending_approval'
-              });
-
-            toast.success(`Bulk order created and sent to approval queue`);
-            setShowBulkUpload(false);
-            
-            // Fetch complete order data for printing
-            const { data: completeOrder } = await supabase
-              .from('orders')
-              .select(`
-                *,
-                order_lots(
-                  id,
-                  quality,
-                  color,
-                  roll_count,
-                  line_type,
-                  lot:lots(
-                    lot_number,
-                    meters
-                  )
-                )
-              `)
-              .eq('id', newOrder.id)
-              .single();
-
-            if (completeOrder) {
-              setOrderToPrint(completeOrder as Order);
-              setShowPrintDialog(true);
-            }
-            
-            fetchOrders();
-          } catch (error) {
-            console.error('Error creating bulk order:', error);
-            toast.error('Failed to create bulk order');
           }
         }}
       />
