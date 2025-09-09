@@ -336,6 +336,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_inventory_pivot_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          color: string
+          lot_count: number
+          quality: string
+          total_meters: number
+          total_rolls: number
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]

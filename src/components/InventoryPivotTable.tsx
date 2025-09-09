@@ -41,56 +41,53 @@ const InventoryPivotTable = () => {
     try {
       setLoading(true);
       
-      // Get aggregated data using a more efficient query without joins
-      const { data: aggregatedData, error } = await supabase
-        .from('lots')
-        .select('quality, color, meters, roll_count')
-        .eq('status', 'in_stock');
+      // Use the database function for better performance and complete data
+      const { data: summaryData, error } = await supabase.rpc('get_inventory_pivot_summary');
 
       if (error) throw error;
 
-      // Group and aggregate data
-      const qualityMap = new Map<string, Map<string, { meters: number; rolls: number; count: number }>>();
+      // Group by quality and aggregate the colors
+      const qualityMap = new Map<string, {
+        colors: { color: string; total_meters: number; total_rolls: number; lot_count: number }[];
+        total_meters: number;
+        total_rolls: number;
+        total_lots: number;
+      }>();
 
-      aggregatedData?.forEach(lot => {
-        if (!qualityMap.has(lot.quality)) {
-          qualityMap.set(lot.quality, new Map());
+      // Process the database results
+      summaryData?.forEach(row => {
+        if (!qualityMap.has(row.quality)) {
+          qualityMap.set(row.quality, {
+            colors: [],
+            total_meters: 0,
+            total_rolls: 0,
+            total_lots: 0
+          });
         }
         
-        const colorMap = qualityMap.get(lot.quality)!;
-        if (!colorMap.has(lot.color)) {
-          colorMap.set(lot.color, { meters: 0, rolls: 0, count: 0 });
-        }
+        const qualityData = qualityMap.get(row.quality)!;
+        qualityData.colors.push({
+          color: row.color,
+          total_meters: Number(row.total_meters),
+          total_rolls: Number(row.total_rolls),
+          lot_count: Number(row.lot_count)
+        });
         
-        const colorData = colorMap.get(lot.color)!;
-        colorData.meters += Number(lot.meters);
-        colorData.rolls += lot.roll_count;
-        colorData.count += 1;
+        qualityData.total_meters += Number(row.total_meters);
+        qualityData.total_rolls += Number(row.total_rolls);
+        qualityData.total_lots += Number(row.lot_count);
       });
 
-      // Convert to pivot data structure
-      const pivot: PivotData[] = Array.from(qualityMap.entries()).map(([quality, colorMap]) => {
-        const colors = Array.from(colorMap.entries()).map(([color, data]) => ({
-          color,
-          total_meters: data.meters,
-          total_rolls: data.rolls,
-          lot_count: data.count,
-        }));
+      // Convert to pivot data structure and sort by total meters
+      const pivot: PivotData[] = Array.from(qualityMap.entries()).map(([quality, data]) => ({
+        quality,
+        colors: data.colors.sort((a, b) => a.color.localeCompare(b.color)),
+        total_meters: data.total_meters,
+        total_rolls: data.total_rolls,
+        total_lots: data.total_lots,
+      })).sort((a, b) => b.total_meters - a.total_meters);
 
-        const total_meters = colors.reduce((sum, color) => sum + color.total_meters, 0);
-        const total_rolls = colors.reduce((sum, color) => sum + color.total_rolls, 0);
-        const total_lots = colors.reduce((sum, color) => sum + color.lot_count, 0);
-
-        return {
-          quality,
-          colors: colors.sort((a, b) => a.color.localeCompare(b.color)),
-          total_meters,
-          total_rolls,
-          total_lots,
-        };
-      });
-
-      setPivotData(pivot.sort((a, b) => b.total_meters - a.total_meters));
+      setPivotData(pivot);
     } catch (error) {
       console.error('Error fetching pivot data:', error);
       toast({
