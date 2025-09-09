@@ -22,6 +22,7 @@ interface Supplier {
 interface LotFormData {
   quality: string;
   color: string;
+  rollCount: string;
   meters: string;
   lotNumber: string;
   entryDate: string;
@@ -41,6 +42,7 @@ const LotIntake = () => {
   const [formData, setFormData] = useState<LotFormData>({
     quality: '',
     color: '',
+    rollCount: '1',
     meters: '',
     lotNumber: '',
     entryDate: new Date().toISOString().split('T')[0],
@@ -96,13 +98,17 @@ const LotIntake = () => {
 
     try {
       // Validate form
-      if (!formData.quality || !formData.color || !formData.meters || !formData.lotNumber || !formData.supplierId || !formData.invoiceNumber || !formData.invoiceDate) {
+      if (!formData.quality || !formData.color || !formData.rollCount || !formData.meters || !formData.lotNumber || !formData.supplierId || !formData.invoiceNumber || !formData.invoiceDate) {
         throw new Error('Please fill in all required fields');
       }
 
       const meters = parseFloat(formData.meters);
+      const rollCount = parseInt(formData.rollCount);
       if (isNaN(meters) || meters <= 0) {
         throw new Error('Please enter a valid number for meters');
+      }
+      if (isNaN(rollCount) || rollCount <= 0) {
+        throw new Error('Please enter a valid number for roll count');
       }
 
       // Generate QR code URL
@@ -114,10 +120,16 @@ const LotIntake = () => {
         .insert({
           quality: formData.quality,
           color: formData.color,
+          roll_count: rollCount,
           meters: meters,
           lot_number: formData.lotNumber,
           entry_date: formData.entryDate,
           supplier_id: formData.supplierId,
+          invoice_number: formData.invoiceNumber,
+          invoice_date: formData.invoiceDate,
+          production_date: formData.productionDate || null,
+          warehouse_location: formData.warehouseLocation || null,
+          notes: formData.notes || null,
           qr_code_url: qrCodeUrl,
           status: 'in_stock',
         })
@@ -142,6 +154,7 @@ const LotIntake = () => {
       setFormData({
         quality: '',
         color: '',
+        rollCount: '1',
         meters: '',
         lotNumber: '',
         entryDate: new Date().toISOString().split('T')[0],
@@ -364,6 +377,19 @@ const LotIntake = () => {
                   value={formData.color}
                   onChange={(e) => handleInputChange('color', e.target.value)}
                   placeholder="e.g., Red, Blue, White"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rollCount">{t('rollCount')} *</Label>
+                <Input
+                  id="rollCount"
+                  type="number"
+                  min="1"
+                  value={formData.rollCount}
+                  onChange={(e) => handleInputChange('rollCount', e.target.value)}
+                  placeholder="e.g., 1, 2, 5"
                   required
                 />
               </div>

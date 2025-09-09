@@ -69,12 +69,15 @@ export type Database = {
           invoice_number: string | null
           lot_number: string
           meters: number
+          notes: string | null
+          production_date: string | null
           qr_code_url: string | null
           quality: string
           roll_count: number
           status: Database["public"]["Enums"]["stock_status"]
           supplier_id: string
           updated_at: string
+          warehouse_location: string | null
         }
         Insert: {
           color: string
@@ -85,12 +88,15 @@ export type Database = {
           invoice_number?: string | null
           lot_number: string
           meters: number
+          notes?: string | null
+          production_date?: string | null
           qr_code_url?: string | null
           quality: string
           roll_count?: number
           status?: Database["public"]["Enums"]["stock_status"]
           supplier_id: string
           updated_at?: string
+          warehouse_location?: string | null
         }
         Update: {
           color?: string
@@ -101,12 +107,15 @@ export type Database = {
           invoice_number?: string | null
           lot_number?: string
           meters?: number
+          notes?: string | null
+          production_date?: string | null
           qr_code_url?: string | null
           quality?: string
           roll_count?: number
           status?: Database["public"]["Enums"]["stock_status"]
           supplier_id?: string
           updated_at?: string
+          warehouse_location?: string | null
         }
         Relationships: [
           {
