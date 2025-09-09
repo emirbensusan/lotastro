@@ -58,13 +58,13 @@ export function Autocomplete({
     setInputValue(newValue)
     onValueChange?.(newValue)
     // Show dropdown when we have input OR when focusing on empty field, and we have items
-    const shouldShow = (newValue.length >= minCharsToShow || newValue.length === 0) && items.length > 0
+    const shouldShow = (newValue.length >= minCharsToShow || (minCharsToShow === 0 && newValue.length === 0)) && items.length > 0
     setOpen(shouldShow)
   }
 
   const handleFocus = () => {
-    // Show all available options when focusing on empty field
-    if (inputValue.length === 0 && items.length > 0) {
+    // Show all available options when focusing on empty field or when minCharsToShow is 0
+    if ((inputValue.length === 0 || minCharsToShow === 0) && items.length > 0) {
       setOpen(true)
     }
   }
@@ -87,7 +87,7 @@ export function Autocomplete({
               placeholder={placeholder}
               className="pr-8"
             />
-            {(inputValue.length >= minCharsToShow || inputValue.length === 0) && items.length > 0 && (
+            {(inputValue.length >= minCharsToShow || (minCharsToShow === 0 && inputValue.length === 0)) && items.length > 0 && (
               <Button
                 variant="ghost"
                 size="sm"

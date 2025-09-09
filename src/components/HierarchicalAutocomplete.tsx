@@ -36,46 +36,56 @@ export function HierarchicalAutocomplete({
   const [colors, setColors] = useState<string[]>([]);
   const [lots, setLots] = useState<LotOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [qualitiesLoading, setQualitiesLoading] = useState(true);
 
   // Fetch available qualities
   useEffect(() => {
     fetchQualities();
   }, []);
 
-  // Fetch colors when quality changes
+  // Fetch colors when quality changes - only after valid quality is selected
   useEffect(() => {
-    if (quality.length >= 1 && qualities.length > 0 && validateQuality(quality)) {
+    if (quality && qualities.length > 0 && validateQuality(quality)) {
       fetchColors(quality);
     } else {
       setColors([]);
-      onColorChange('');
+      if (color) onColorChange(''); // Only clear if there was a color selected
     }
   }, [quality, qualities]);
 
-  // Fetch lots when both quality and color are selected
+  // Fetch lots when both quality and color are selected - only after valid selections
   useEffect(() => {
-    if (quality && color.length >= 1 && qualities.length > 0 && colors.length > 0 && validateQuality(quality) && validateColor(color)) {
+    if (quality && color && qualities.length > 0 && colors.length > 0 && validateQuality(quality) && validateColor(color)) {
       fetchLots(quality, color);
     } else {
       setLots([]);
-      onLotChange('');
+      if (selectedLot) onLotChange(''); // Only clear if there was a lot selected
     }
   }, [quality, color, qualities, colors]);
 
   const fetchQualities = async () => {
+    setQualitiesLoading(true);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('lots')
         .select('quality')
         .eq('status', 'in_stock')
         .order('quality');
       
+      if (error) {
+        console.error('Error fetching qualities:', error);
+        return;
+      }
+      
       if (data) {
-        const uniqueQualities = [...new Set(data.map(item => item.quality))];
+        const uniqueQualities = [...new Set(data.map(item => item.quality))].filter(Boolean);
         setQualities(uniqueQualities);
+        console.log(`Loaded ${uniqueQualities.length} qualities`);
       }
     } catch (error) {
       console.error('Error fetching qualities:', error);
+    } finally {
+      setQualitiesLoading(false);
     }
   };
 
@@ -158,13 +168,13 @@ export function HierarchicalAutocomplete({
         <Autocomplete
           value={quality}
           onValueChange={onQualityChange}
-          placeholder="Enter quality (e.g., A301, A311, P002)"
+          placeholder={qualitiesLoading ? "Loading qualities..." : "Type to search or click dropdown"}
           items={qualities}
-          emptyText="No qualities found. Try A301, A311, or P002."
-          minCharsToShow={1}
+          emptyText={qualitiesLoading ? "Loading qualities..." : "No qualities found."}
+          minCharsToShow={0}
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Available: A301, A311, P002, etc.
+          {qualitiesLoading ? 'Loading...' : `${qualities.length} qualities available. Click dropdown or type to search.`}
         </p>
       </div>
 
@@ -175,10 +185,10 @@ export function HierarchicalAutocomplete({
           <Autocomplete
             value={color}
             onValueChange={onColorChange}
-            placeholder={loading ? "Loading colors..." : "Enter color (e.g., IVORY, BLACK, GRAY)"}
+            placeholder={loading ? "Loading colors..." : "Type to search or click dropdown"}
             items={colors}
             emptyText={loading ? "Loading..." : "No colors found for this quality."}
-            minCharsToShow={1}
+            minCharsToShow={0}
           />
           <p className="text-xs text-muted-foreground mt-1">
             {colors.length > 0 ? `Available: ${colors.slice(0, 3).join(', ')}${colors.length > 3 ? ', ...' : ''}` : 'Select quality first'}
