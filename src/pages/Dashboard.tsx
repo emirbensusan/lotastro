@@ -60,15 +60,22 @@ const Dashboard = () => {
 
       if (ordersError) throw ordersError;
 
-      // Calculate statistics
-      const totalLots = lots?.length || 0;
+      // Calculate statistics - ALL metrics should use in-stock data for consistency
       const inStockLots = lots?.filter(lot => lot.status === 'in_stock').length || 0;
       const outOfStockLots = lots?.filter(lot => lot.status === 'out_of_stock').length || 0;
       const pendingOrders = orders?.length || 0;
 
-      // Calculate totals from aggregated data
+      // Calculate totals from aggregated data (all in-stock)
       const totalRolls = aggregatedData?.reduce((sum, lot) => sum + (lot.roll_count || 0), 0) || 0;
       const totalMeters = aggregatedData?.reduce((sum, lot) => sum + Number(lot.meters || 0), 0) || 0;
+      
+      // Debug: Log the actual numbers
+      console.log('Dashboard Stats:', {
+        inStockLots,
+        totalRolls,
+        totalMeters,
+        aggregatedDataCount: aggregatedData?.length
+      });
 
       // Calculate oldest LOT age
       let oldestLotDays = 0;
@@ -80,7 +87,7 @@ const Dashboard = () => {
       }
 
       setStats({
-        totalLots,
+        totalLots: inStockLots, // Show in-stock lots as total lots for consistency
         totalRolls,
         totalMeters,
         inStockLots,
@@ -99,7 +106,7 @@ const Dashboard = () => {
     {
       title: t('totalLots'),
       value: stats.totalLots.toString(),
-      description: 'Total lots in system',
+      description: 'In-stock lots available',
       icon: Package,
       color: 'text-primary',
     },

@@ -87,6 +87,20 @@ const InventoryPivotTable = () => {
         total_lots: data.total_lots,
       })).sort((a, b) => b.total_meters - a.total_meters);
 
+      // Debug: Log the totals for comparison with Dashboard
+      const totalQualities = pivot.length;
+      const totalLots = pivot.reduce((sum, item) => sum + item.total_lots, 0);
+      const totalMeters = pivot.reduce((sum, item) => sum + item.total_meters, 0);
+      const totalRolls = pivot.reduce((sum, item) => sum + item.total_rolls, 0);
+      
+      console.log('Inventory Page Stats:', {
+        totalQualities,
+        totalLots,
+        totalMeters,
+        totalRolls,
+        pivotDataCount: pivot.length
+      });
+
       setPivotData(pivot);
     } catch (error) {
       console.error('Error fetching pivot data:', error);
