@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 
 interface DashboardStats {
   totalLots: number;
+  totalRolls: number;
+  totalMeters: number;
   inStockLots: number;
   outOfStockLots: number;
   pendingOrders: number;
@@ -20,6 +22,8 @@ const Dashboard = () => {
   const { t } = useLanguage();
   const [stats, setStats] = useState<DashboardStats>({
     totalLots: 0,
+    totalRolls: 0,
+    totalMeters: 0,
     inStockLots: 0,
     outOfStockLots: 0,
     pendingOrders: 0,
@@ -33,7 +37,13 @@ const Dashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      // Fetch LOT statistics
+      // Fetch in-stock lot statistics with aggregation
+      const { data: inStockData, error: inStockError } = await supabase
+        .rpc('get_inventory_stats_summary');
+
+      if (inStockError) throw inStockError;
+
+      // Fetch all lots for counts and aging
       const { data: lots, error: lotsError } = await supabase
         .from('lots')
         .select('status, entry_date');
@@ -54,6 +64,10 @@ const Dashboard = () => {
       const outOfStockLots = lots?.filter(lot => lot.status === 'out_of_stock').length || 0;
       const pendingOrders = orders?.length || 0;
 
+      // Get totals from RPC function or fallback to 0
+      const totalRolls = inStockData?.[0]?.total_rolls || 0;
+      const totalMeters = inStockData?.[0]?.total_meters || 0;
+
       // Calculate oldest LOT age
       let oldestLotDays = 0;
       if (lots && lots.length > 0) {
@@ -65,6 +79,8 @@ const Dashboard = () => {
 
       setStats({
         totalLots,
+        totalRolls: Number(totalRolls),
+        totalMeters: Number(totalMeters),
         inStockLots,
         outOfStockLots,
         pendingOrders,
@@ -81,9 +97,23 @@ const Dashboard = () => {
     {
       title: t('totalLots'),
       value: stats.totalLots.toString(),
-      description: 'Total rolls in system',
+      description: 'Total lots in system',
       icon: Package,
       color: 'text-primary',
+    },
+    {
+      title: 'Total Rolls',
+      value: stats.totalRolls.toLocaleString(),
+      description: 'Total rolls in inventory',
+      icon: Package,
+      color: 'text-purple-600',
+    },
+    {
+      title: 'Total Meters',
+      value: stats.totalMeters.toLocaleString(),
+      description: 'Total meters in inventory',
+      icon: TrendingUp,
+      color: 'text-orange-600',
     },
     {
       title: t('inStock'),
@@ -139,7 +169,7 @@ const Dashboard = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
