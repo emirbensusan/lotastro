@@ -43,6 +43,8 @@ const translations = {
     // Dashboard
     welcomeMessage: 'Welcome to Warehouse LOT Tracking',
     totalLots: 'Total Lots',
+    totalRolls: 'Total Rolls',
+    totalMeters: 'Total Meters',
     totalOrders: 'Total Orders',
     pendingOrders: 'Pending Orders',
     recentActivity: 'Recent Activity',
@@ -60,6 +62,19 @@ const translations = {
     scanQr: 'Scan QR',
     createOrderShort: 'Create Order',
     viewReports: 'View Reports',
+    inStockLotsAvailable: 'In-stock lots available',
+    totalRollsInventory: 'Total rolls in inventory',
+    totalMetersInventory: 'Total meters in inventory',
+    awaitingFulfillment: 'Awaiting fulfillment',
+    manageSuppliers: 'Manage Suppliers',
+    addEditManageSupplier: 'Add, edit, and manage supplier information',
+    deleteLots: 'Delete Lots',
+    removeLotsFromSystem: 'Remove lots from inventory system',
+    reprintQrCodes: 'Reprint QR Codes',
+    regenerateAndPrintQr: 'Regenerate and print QR codes for lots',
+    goToSuppliers: 'Go to Suppliers',
+    goToInventory: 'Go to Inventory',
+    goToLotIntake: 'Go to Lot Intake',
     
     // Inventory
     qualityFilter: 'Filter by Quality',
@@ -247,7 +262,6 @@ const translations = {
     
     // Suppliers
     supplierManagement: 'Supplier Management',
-    manageSuppliers: 'Manage all suppliers in the system',
     
     // Dashboard Quick Actions
     createNewLotEntries: 'Create new LOT entries',
@@ -256,9 +270,6 @@ const translations = {
     createNewOrders: 'Create new orders',
     checkStockLevels: 'Check stock levels',
     generateReportsAction: 'Generate reports',
-    manageSuppliersAction: 'Manage suppliers',
-    deleteLots: 'Delete LOTs',
-    reprintQrCodes: 'Reprint QR codes',
     
     // Additional Orders translations
     newOrderCreate: 'New Order',
@@ -451,8 +462,10 @@ const translations = {
     // Dashboard
     welcomeMessage: 'Depo LOT Takip Sistemine Hoş Geldiniz',
     totalLots: 'Toplam Lot',
+    totalRolls: 'Stoktaki top sayısı',
+    totalMeters: 'Stoktaki toplam metraj sayısı',
     totalOrders: 'Toplam Sipariş',
-    pendingOrders: 'Bekleyen Siparişler',
+    pendingOrders: 'Bekleyen siparişler',
     recentActivity: 'Son Aktiviteler',
     welcomeBack: 'Tekrar hoş geldiniz',
     lotAgingAlert: 'LOT Yaşlanma Uyarısı',
@@ -468,6 +481,19 @@ const translations = {
     scanQr: 'QR Tara',
     createOrderShort: 'Sipariş Oluştur',
     viewReports: 'Raporları Gör',
+    inStockLotsAvailable: 'stoktaki toplam lot sayısı',
+    totalRollsInventory: 'Stoktaki top sayısı',
+    totalMetersInventory: 'Stoktaki toplam metraj sayısı',
+    awaitingFulfillment: 'Bekleyen siparişler',
+    manageSuppliers: 'Tedarikçileri yönet',
+    addEditManageSupplier: 'tedarikçi bilgilerini güncelle',
+    deleteLots: 'lot sil',
+    removeLotsFromSystem: 'sistemden lotları sil',
+    reprintQrCodes: 'Toplar için QR kodları yazdır',
+    regenerateAndPrintQr: 'QR kodlarını yeniden oluştur ve yazdır',
+    goToSuppliers: 'tedarikçilere git',
+    goToInventory: 'stoğa git',
+    goToLotIntake: 'QR yönetim sayfasına git',
     
     // Inventory
     qualityFilter: 'Kaliteye Göre Filtrele',
@@ -508,8 +534,6 @@ const translations = {
     orderPreparationSheet: 'Sipariş Hazırlama Formu',
     orderInformation: 'Sipariş Bilgileri',
     summary: 'Özet',
-    totalRolls: 'Toplam Top',
-    totalMeters: 'Toplam Metre',
     preparedBy: 'Hazırlayan',
 
     // Add missing translations  
@@ -735,7 +759,6 @@ const translations = {
     
     // Suppliers
     supplierManagement: 'Tedarikçi Yönetimi',
-    manageSuppliers: 'Sistemdeki tüm tedarikçileri yönet',
     
     // Dashboard Quick Actions
     createNewLotEntries: 'Yeni LOT girişleri oluştur',
@@ -744,9 +767,6 @@ const translations = {
     createNewOrders: 'Yeni siparişler oluştur', 
     checkStockLevels: 'Stok seviyelerini kontrol et',
     generateReportsAction: 'Raporlar oluştur',
-    manageSuppliersAction: 'Tedarikçileri yönet',
-    deleteLots: 'LOTları sil',
-    reprintQrCodes: 'QR kodlarını yeniden yazdır',
     
     // Additional Orders translations
     newOrderCreate: 'Yeni Sipariş',

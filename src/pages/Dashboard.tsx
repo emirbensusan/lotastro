@@ -81,42 +81,28 @@ const Dashboard = () => {
     {
       title: t('totalLots'),
       value: stats.totalLots.toString(),
-      description: 'In-stock lots available',
+      description: t('inStockLotsAvailable'),
       icon: Package,
       color: 'text-primary',
     },
     {
-      title: 'Total Rolls',
+      title: t('totalRolls'),
       value: stats.totalRolls.toLocaleString(),
-      description: 'Total rolls in inventory',
+      description: t('totalRollsInventory'),
       icon: Package,
       color: 'text-purple-600',
     },
     {
-      title: 'Total Meters',
+      title: t('totalMeters'),
       value: stats.totalMeters.toLocaleString(),
-      description: 'Total meters in inventory',
+      description: t('totalMetersInventory'),
       icon: TrendingUp,
       color: 'text-orange-600',
     },
     {
-      title: t('inStock'),
-      value: stats.inStockLots.toString(),
-      description: 'Available for orders',
-      icon: Package,
-      color: 'text-green-600',
-    },
-    {
-      title: t('outOfStock'),
-      value: stats.outOfStockLots.toString(),
-      description: 'Fulfilled or dispatched',
-      icon: Package,
-      color: 'text-red-600',
-    },
-    {
       title: t('pendingOrders'),
       value: stats.pendingOrders.toString(),
-      description: 'Awaiting fulfillment',
+      description: t('awaitingFulfillment'),
       icon: Truck,
       color: 'text-blue-600',
     },
@@ -153,7 +139,7 @@ const Dashboard = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -175,38 +161,6 @@ const Dashboard = () => {
         })}
       </div>
 
-      {/* Lot Aging Alert */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2 text-yellow-600" />
-            {t('lotAgingAlert')}
-          </CardTitle>
-          <CardDescription>
-            {t('monitorOldInventory')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {stats.oldestLotDays > 0 ? (
-            <div className="space-y-2">
-              <div className="text-2xl font-bold">{stats.oldestLotDays} {t('days')}</div>
-              <p className="text-sm text-muted-foreground">
-                {t('oldestLot')}
-              </p>
-              {stats.oldestLotDays > 90 && (
-                <Badge variant="destructive">
-                  {t('considerReviewing')}
-                </Badge>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {t('noLotsInInventory')}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Quick Actions - 3 Cards per Role */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {profile?.role === 'warehouse_staff' && (
@@ -220,7 +174,7 @@ const Dashboard = () => {
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-3">Create new lot entries with QR codes</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Lot Intake
+                  {t('goToLotIntake')}
                 </Button>
               </CardContent>
             </Card>
@@ -294,7 +248,7 @@ const Dashboard = () => {
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-3">Monitor inventory and stock levels</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Inventory
+                  {t('goToInventory')}
                 </Button>
               </CardContent>
             </Card>
@@ -306,13 +260,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/suppliers'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📦 Manage Suppliers
+                  📦 {t('manageSuppliers')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Add, edit, and manage supplier information</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('addEditManageSupplier')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Suppliers
+                  {t('goToSuppliers')}
                 </Button>
               </CardContent>
             </Card>
@@ -320,13 +274,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/inventory'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📦 Delete Lots
+                  📦 {t('deleteLots')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Remove lots from inventory system</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('removeLotsFromSystem')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Inventory
+                  {t('goToInventory')}
                 </Button>
               </CardContent>
             </Card>
@@ -334,13 +288,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/lot-intake'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📦 Reprint QR Codes
+                  📦 {t('reprintQrCodes')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Regenerate and print QR codes for lots</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('regenerateAndPrintQr')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Lot Intake
+                  {t('goToLotIntake')}
                 </Button>
               </CardContent>
             </Card>
