@@ -114,6 +114,7 @@ const InventoryPivotTable = () => {
         totalMeters,
         totalRolls,
         pivotDataCount: pivot.length,
+        rawData: summaryData,
         dashboardStats: statsData?.[0]
       });
 
@@ -273,6 +274,13 @@ const InventoryPivotTable = () => {
     item.colors.some(color => color.color.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  // Debug filtering
+  console.log('Search term:', searchTerm);
+  console.log('Pivot data length:', pivotData.length);
+  console.log('Filtered data length:', filteredData.length);
+  console.log('Is admin:', hasRole('admin'));
+  console.log('Delete mode:', deleteMode);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -294,8 +302,18 @@ const InventoryPivotTable = () => {
             placeholder={String(t('searchPlaceholder'))}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 pr-10"
           />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+              onClick={() => setSearchTerm('')}
+            >
+              ×
+            </Button>
+          )}
         </div>
         
         {hasRole('admin') && (
