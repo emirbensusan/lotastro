@@ -28,6 +28,7 @@ export const generateExcelTemplate = (): void => {
     'quality',
     'color', 
     'roll_count',
+    'roll_details',
     'meters',
     'lot_number',
     'entry_date',
@@ -36,14 +37,12 @@ export const generateExcelTemplate = (): void => {
     'invoice_date',
     'production_date',
     'warehouse_location',
-    'notes',
-    'roll_details'
+    'notes'
   ];
 
   const sampleData = [
-    'Premium,Red,3,190.5,LOT001,2024-01-15,Supplier A,INV001,2024-01-10,2024-01-05,A1-B2-C3,Sample notes,40;50;100.5',
-    'Standard,Blue,1,75.2,LOT002,2024-01-16,Supplier B,INV002,2024-01-12,,A2-B1-C1,,75.2',
-    'Premium,Green,2,170.0,LOT003,2024-01-17,Supplier C,INV003,2024-01-14,2024-01-08,B1-C2-A3,High quality fabric,70;100'
+    'P755,PEBBLE 465,2,17;14,31,24043920,27.06.2025,JTR,FVZ001,16.06.2025,,,',
+    'P755,OFF WHITE 27,8,101;110;100;73;86;100;95;43,708,25002440,27.06.2025,JTR,FVZ001,16.06.2025,,,'
   ];
 
   const csvContent = [
@@ -60,24 +59,52 @@ export const generateExcelTemplate = (): void => {
   URL.revokeObjectURL(url);
 };
 
+// Helper function to parse flexible date formats
+const parseFlexibleDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  
+  // Try DD.MM.YYYY format first
+  const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (ddmmyyyyMatch) {
+    const [, day, month, year] = ddmmyyyyMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // Try YYYY-MM-DD format
+  const yyyymmddMatch = dateStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/);
+  if (yyyymmddMatch) {
+    return dateStr;
+  }
+  
+  // If other formats, try to parse and convert
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split('T')[0];
+  }
+  
+  throw new Error(`Invalid date format: ${dateStr}. Use DD.MM.YYYY or YYYY-MM-DD`);
+};
+
 export const parseCSVFile = (csvText: string): ImportLotData[] => {
   const lines = csvText.trim().split('\n');
   const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
   
-  const requiredFields = ['quality', 'color', 'roll_count', 'meters', 'lot_number', 'entry_date', 'supplier_name', 'invoice_number', 'invoice_date', 'roll_details'];
+  const requiredFields = ['quality', 'color', 'roll_count', 'roll_details', 'meters', 'lot_number', 'entry_date', 'supplier_name', 'invoice_number', 'invoice_date'];
   const missingFields = requiredFields.filter(field => !headers.includes(field));
   
   if (missingFields.length > 0) {
-    throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    throw new Error(`Missing required columns: ${missingFields.join(', ')}. Expected format: quality, color, roll_count, roll_details, meters, lot_number, entry_date, supplier_name, invoice_number, invoice_date, production_date, warehouse_location, notes`);
   }
 
   const data: ImportLotData[] = [];
   
   for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue; // Skip empty lines
+    
     const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
     
     if (values.length !== headers.length) {
-      throw new Error(`Row ${i + 1}: Invalid number of columns`);
+      throw new Error(`Row ${i + 1}: Expected ${headers.length} columns, got ${values.length}. Check for missing commas or extra data.`);
     }
 
     const row: any = {};
@@ -85,60 +112,81 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
       row[header] = values[index];
     });
 
-    // Validate and convert data types
-    const lotData: ImportLotData = {
-      quality: row.quality,
-      color: row.color,
-      roll_count: parseInt(row.roll_count),
-      meters: parseFloat(row.meters),
-      lot_number: row.lot_number,
-      entry_date: row.entry_date,
-      supplier_name: row.supplier_name,
-      invoice_number: row.invoice_number,
-      invoice_date: row.invoice_date,
-      production_date: row.production_date || undefined,
-      warehouse_location: row.warehouse_location || undefined,
-      notes: row.notes || undefined,
-      roll_details: row.roll_details || undefined
-    };
-
-    // Validate required fields
-    if (!lotData.quality || !lotData.color || !lotData.lot_number || !lotData.entry_date || !lotData.supplier_name || !lotData.invoice_number || !lotData.invoice_date || !lotData.roll_details) {
-      throw new Error(`Row ${i + 1}: Missing required data`);
+    // Validate required fields first
+    if (!row.quality || !row.color || !row.lot_number || !row.entry_date || !row.supplier_name || !row.invoice_number || !row.invoice_date || !row.roll_details) {
+      throw new Error(`Row ${i + 1}: Missing required data. All fields except production_date, warehouse_location, and notes are required.`);
     }
 
-    if (isNaN(lotData.meters) || isNaN(lotData.roll_count)) {
-      throw new Error(`Row ${i + 1}: Invalid numeric values`);
-    }
-
-    // Validate roll_details format and consistency
-    const rollMeters = lotData.roll_details.split(';').map(m => parseFloat(m.trim()));
+    // Parse and validate numeric values
+    const rollCount = parseInt(row.roll_count);
+    const meters = parseFloat(row.meters);
     
-    if (rollMeters.some(m => isNaN(m) || m <= 0)) {
-      throw new Error(`Row ${i + 1}: Invalid roll details format. Use semicolon-separated positive numbers (e.g., "40;50;100")`);
+    if (isNaN(rollCount) || rollCount <= 0) {
+      throw new Error(`Row ${i + 1}: Invalid roll_count "${row.roll_count}". Must be a positive integer.`);
+    }
+    
+    if (isNaN(meters) || meters <= 0) {
+      throw new Error(`Row ${i + 1}: Invalid meters "${row.meters}". Must be a positive number.`);
     }
 
-    if (rollMeters.length !== lotData.roll_count) {
-      throw new Error(`Row ${i + 1}: Roll count (${lotData.roll_count}) doesn't match number of roll details (${rollMeters.length})`);
+    // Validate and parse roll_details
+    const rollMeters = row.roll_details.split(';').map((m: string) => {
+      const parsed = parseFloat(m.trim());
+      if (isNaN(parsed) || parsed <= 0) {
+        throw new Error(`Row ${i + 1}: Invalid roll detail "${m}". All roll details must be positive numbers separated by semicolons.`);
+      }
+      return parsed;
+    });
+
+    if (rollMeters.length !== rollCount) {
+      throw new Error(`Row ${i + 1}: Roll count (${rollCount}) doesn't match number of roll details (${rollMeters.length}). Each roll must have a meter value in roll_details.`);
     }
 
     const rollDetailsSum = rollMeters.reduce((sum, meters) => sum + meters, 0);
-    if (Math.abs(rollDetailsSum - lotData.meters) > 0.01) {
-      throw new Error(`Row ${i + 1}: Sum of roll details (${rollDetailsSum}) doesn't match total meters (${lotData.meters})`);
+    if (Math.abs(rollDetailsSum - meters) > 0.01) {
+      throw new Error(`Row ${i + 1}: Sum of roll details (${rollDetailsSum.toFixed(2)}) doesn't match total meters (${meters}). Please check your calculations.`);
     }
 
-    // Validate date formats
-    if (!Date.parse(lotData.entry_date)) {
-      throw new Error(`Row ${i + 1}: Invalid entry date format`);
+    // Parse and validate dates
+    let entryDate: string;
+    let invoiceDate: string;
+    let productionDate: string | undefined;
+
+    try {
+      entryDate = parseFlexibleDate(row.entry_date);
+    } catch (error: any) {
+      throw new Error(`Row ${i + 1}: Invalid entry_date. ${error.message}`);
     }
 
-    if (!Date.parse(lotData.invoice_date)) {
-      throw new Error(`Row ${i + 1}: Invalid invoice date format`);
+    try {
+      invoiceDate = parseFlexibleDate(row.invoice_date);
+    } catch (error: any) {
+      throw new Error(`Row ${i + 1}: Invalid invoice_date. ${error.message}`);
     }
 
-    if (lotData.production_date && !Date.parse(lotData.production_date)) {
-      throw new Error(`Row ${i + 1}: Invalid production date format`);
+    if (row.production_date) {
+      try {
+        productionDate = parseFlexibleDate(row.production_date);
+      } catch (error: any) {
+        throw new Error(`Row ${i + 1}: Invalid production_date. ${error.message}`);
+      }
     }
+
+    const lotData: ImportLotData = {
+      quality: row.quality,
+      color: row.color,
+      roll_count: rollCount,
+      meters: meters,
+      lot_number: row.lot_number,
+      entry_date: entryDate,
+      supplier_name: row.supplier_name,
+      invoice_number: row.invoice_number,
+      invoice_date: invoiceDate,
+      production_date: productionDate,
+      warehouse_location: row.warehouse_location || undefined,
+      notes: row.notes || undefined,
+      roll_details: row.roll_details
+    };
 
     data.push(lotData);
   }
