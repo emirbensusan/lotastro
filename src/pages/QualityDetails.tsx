@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { ArrowLeft, Package } from 'lucide-react';
+import { usePOCart } from '@/contexts/POCartProvider';
+import { ArrowLeft, Package, ShoppingCart, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ColorData {
@@ -22,8 +24,11 @@ const QualityDetails = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { clearCart } = usePOCart();
   const [colors, setColors] = useState<ColorData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedColors, setSelectedColors] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
   const [qualityTotals, setQualityTotals] = useState({
     total_meters: 0,
     total_rolls: 0,
@@ -99,6 +104,57 @@ const QualityDetails = () => {
     navigate('/inventory');
   };
 
+  const handleColorSelection = (color: string) => {
+    const newSelection = new Set(selectedColors);
+    if (newSelection.has(color)) {
+      newSelection.delete(color);
+    } else {
+      newSelection.add(color);
+    }
+    setSelectedColors(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedColors.size === colors.length) {
+      setSelectedColors(new Set());
+    } else {
+      setSelectedColors(new Set(colors.map(c => c.color)));
+    }
+  };
+
+  const handleStartSelection = () => {
+    setSelectionMode(true);
+    setSelectedColors(new Set());
+  };
+
+  const handleCancelSelection = () => {
+    setSelectionMode(false);
+    setSelectedColors(new Set());
+  };
+
+  const handleProceedToLots = () => {
+    if (selectedColors.size === 0) {
+      toast({
+        title: t('error') as string,
+        description: 'Please select at least one color',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Navigate to lot selection with multiple colors
+    const colorParams = Array.from(selectedColors).join(',');
+    navigate(`/lot-selection?quality=${encodeURIComponent(quality!)}&colors=${encodeURIComponent(colorParams)}`);
+  };
+
+  const handleClearCart = () => {
+    clearCart();
+    toast({
+      title: t('success') as string,
+      description: 'Cart cleared successfully',
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -135,11 +191,66 @@ const QualityDetails = () => {
             {colors.length} {colors.length === 1 ? 'color' : 'colors'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
           </p>
         </div>
-        <Button variant="outline" onClick={navigateBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          {t('backToInventory')}
-        </Button>
+        <div className="flex items-center space-x-2">
+          {!selectionMode && (
+            <>
+              <Button variant="outline" onClick={handleStartSelection}>
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Select Multiple Colors
+              </Button>
+              <Button variant="outline" onClick={navigateBack}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {t('backToInventory')}
+              </Button>
+            </>
+          )}
+          {selectionMode && (
+            <>
+              <Button variant="outline" onClick={handleClearCart}>
+                <X className="mr-2 h-4 w-4" />
+                Clear Cart
+              </Button>
+              <Button variant="outline" onClick={handleCancelSelection}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel Selection
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Selection Summary */}
+      {selectionMode && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Color Selection ({selectedColors.size} selected)</span>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                  {selectedColors.size === colors.length ? 'Deselect All' : 'Select All'}
+                </Button>
+                <Button 
+                  onClick={handleProceedToLots}
+                  disabled={selectedColors.size === 0}
+                >
+                  Proceed to Lots ({selectedColors.size} colors)
+                </Button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          {selectedColors.size > 0 && (
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {Array.from(selectedColors).map(color => (
+                  <Badge key={color} variant="default" className="cursor-pointer" onClick={() => handleColorSelection(color)}>
+                    {color} ×
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -178,6 +289,14 @@ const QualityDetails = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                {selectionMode && (
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={selectedColors.size > 0 && selectedColors.size === colors.length}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
                 <TableHead>{t('color')}</TableHead>
                 <TableHead className="text-right">{t('lots')}</TableHead>
                 <TableHead className="text-right">{t('meters')}</TableHead>
@@ -189,9 +308,20 @@ const QualityDetails = () => {
               {colors.map((colorData) => (
                 <TableRow 
                   key={colorData.color} 
-                  className="hover:bg-muted/50 cursor-pointer"
-                  onClick={() => navigateToLotDetails(colorData.color)}
+                  className={`hover:bg-muted/50 ${selectionMode ? 'cursor-pointer' : ''} ${
+                    selectedColors.has(colorData.color) ? 'bg-blue-50 dark:bg-blue-950' : ''
+                  }`}
+                  onClick={() => selectionMode && handleColorSelection(colorData.color)}
                 >
+                  {selectionMode && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedColors.has(colorData.color)}
+                        onCheckedChange={() => handleColorSelection(colorData.color)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <div 
@@ -211,15 +341,17 @@ const QualityDetails = () => {
                     {colorData.total_rolls.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigateToLotDetails(colorData.color);
-                      }}
-                    >
-                      {t('selectLots')}
-                    </Button>
+                    {!selectionMode && (
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigateToLotDetails(colorData.color);
+                        }}
+                      >
+                        {t('selectLots')}
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
