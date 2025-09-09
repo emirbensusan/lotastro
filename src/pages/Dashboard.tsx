@@ -37,11 +37,13 @@ const Dashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      // Fetch in-stock lot statistics with aggregation
-      const { data: inStockData, error: inStockError } = await supabase
-        .rpc('get_inventory_stats_summary');
+      // Fetch inventory aggregated data directly
+      const { data: aggregatedData, error: aggregatedError } = await supabase
+        .from('lots')
+        .select('roll_count, meters')
+        .eq('status', 'in_stock');
 
-      if (inStockError) throw inStockError;
+      if (aggregatedError) throw aggregatedError;
 
       // Fetch all lots for counts and aging
       const { data: lots, error: lotsError } = await supabase
@@ -64,9 +66,9 @@ const Dashboard = () => {
       const outOfStockLots = lots?.filter(lot => lot.status === 'out_of_stock').length || 0;
       const pendingOrders = orders?.length || 0;
 
-      // Get totals from RPC function or fallback to 0
-      const totalRolls = inStockData?.[0]?.total_rolls || 0;
-      const totalMeters = inStockData?.[0]?.total_meters || 0;
+      // Calculate totals from aggregated data
+      const totalRolls = aggregatedData?.reduce((sum, lot) => sum + (lot.roll_count || 0), 0) || 0;
+      const totalMeters = aggregatedData?.reduce((sum, lot) => sum + Number(lot.meters || 0), 0) || 0;
 
       // Calculate oldest LOT age
       let oldestLotDays = 0;
@@ -79,8 +81,8 @@ const Dashboard = () => {
 
       setStats({
         totalLots,
-        totalRolls: Number(totalRolls),
-        totalMeters: Number(totalMeters),
+        totalRolls,
+        totalMeters,
         inStockLots,
         outOfStockLots,
         pendingOrders,

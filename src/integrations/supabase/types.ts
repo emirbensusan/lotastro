@@ -346,6 +346,14 @@ export type Database = {
           total_rolls: number
         }[]
       }
+      get_inventory_stats_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_lots: number
+          total_meters: number
+          total_rolls: number
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
