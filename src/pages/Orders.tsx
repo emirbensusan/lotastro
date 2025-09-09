@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { toast } from "sonner";
-import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2, Upload, FlaskConical, ChevronDown } from 'lucide-react';
+import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
 import MultiQualityOrderDialog from '@/components/MultiQualityOrderDialog';
@@ -368,7 +368,7 @@ const Orders = () => {
                   {t('multiQualityOrder')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowBulkUpload(true)}>
-                  <Upload className="mr-2 h-4 w-4" />
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
                   {t('bulkUpload')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowSampleDialog(true)}>
@@ -388,7 +388,7 @@ const Orders = () => {
           <DialogHeader>
             <DialogTitle>{t('createOrder')}</DialogTitle>
             <DialogDescription>
-              Select inventory items and enter customer details
+              kalite/renk/lot seçip müşteri detaylarını LOGO ile uyumlu olacak şekilde giriniz
             </DialogDescription>
           </DialogHeader>
           
@@ -423,12 +423,13 @@ const Orders = () => {
             )}
 
             {/* Instructions */}
-            <div className="space-y-2">
-              <Label>Use the inventory page to add lots to your cart, then return here to create orders</Label>
-              <p className="text-sm text-muted-foreground">
-                Navigate to inventory → select quality/color → add lots to cart → return here to create PO
-              </p>
-            </div>
+            {selectedLots.length === 0 && (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Navigate to inventory → select quality/color → add lots to cart → return here to create PO
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => {
@@ -439,8 +440,14 @@ const Orders = () => {
                 {t('cancel')}
               </Button>
               <Button 
-                onClick={handleCreateOrder}
-                disabled={!customerName || selectedLots.length === 0}
+                onClick={() => {
+                  if (selectedLots.length === 0) {
+                    navigate('/inventory');
+                  } else {
+                    handleCreateOrder();
+                  }
+                }}
+                disabled={!customerName}
               >
                 {t('createOrder')}
               </Button>

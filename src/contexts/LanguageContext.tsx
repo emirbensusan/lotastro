@@ -118,7 +118,7 @@ const translations = {
     // Orders
     orderNumber: 'Order Number',
     customerName: 'Customer Name',
-    createOrder: 'Create Order',
+    createOrder: 'Sipariş Oluştur',
     selectLots: 'Select Lots',
     addLot: 'Add LOT',
     createNewOrder: 'Create New Order',
@@ -369,6 +369,7 @@ const translations = {
     tableHeaderAdmin: 'Admin',
 
     // Add missing translations
+    allOrders: 'All Orders',
     poCart: 'PO Cart',
     cart: 'Cart',
     addToCart: 'Add to Cart',
@@ -558,7 +559,8 @@ const translations = {
     summary: 'Özet',
     preparedBy: 'Hazırlayan',
 
-    // Add missing translations  
+    // Add missing translations
+    allOrders: 'Tüm Siparişler',
     poCart: 'PO Sepeti',
     cart: 'Sepet',
     addToCart: 'Sepete Ekle',
@@ -653,7 +655,7 @@ const translations = {
     // Orders
     orderNumber: 'Sipariş Numarası',
     customerName: 'Müşteri Adı',
-    createOrderField: 'Sipariş Oluştur',
+    createOrder: 'Sipariş Oluştur',
     selectLots: 'LOT Seç',
     addLot: 'LOT Ekle',
     createNewOrder: 'Yeni Sipariş Oluştur',
