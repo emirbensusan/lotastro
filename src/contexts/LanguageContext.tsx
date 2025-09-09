@@ -718,7 +718,7 @@ const translations = {
     generateQrDescription: 'Yeni lot için QR kodu oluştur',
     lotQueue: 'Lot Kuyruğu',
     pendingLots: 'Bekleyen Lotlar',
-    lotQueueDescription: 'Muhasebe/yönetici kullanıcıları tarafından tamamlanmayı bekleyen lotlar',
+    lotQueueDescription: 'Depo tarafından oluşturulan lotların bilgisinin tamamlanması ve sisteme girilmesi için aşağıdaki listeyi kontrol ediniz',
     completeLotInfo: 'Lot Bilgilerini Tamamla',
     moveToInventory: 'Envantere Taşı',
     
