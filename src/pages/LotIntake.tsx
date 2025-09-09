@@ -120,7 +120,7 @@ const LotIntake = () => {
         .insert({
           quality: formData.quality,
           color: formData.color,
-          roll_count: rollCount,
+          roll_count: 1, // Always 1 for single entry
           meters: meters,
           lot_number: formData.lotNumber,
           entry_date: formData.entryDate,
@@ -141,6 +141,20 @@ const LotIntake = () => {
           throw new Error('LOT number already exists. Please use a different LOT number.');
         }
         throw error;
+      }
+
+      // Create a single roll entry for this lot
+      const { error: rollError } = await supabase
+        .from('rolls')
+        .insert({
+          lot_id: data.id,
+          meters: meters,
+          position: 1
+        });
+
+      if (rollError) {
+        console.error('Error creating roll entry:', rollError);
+        // Don't fail the entire operation for roll creation error
       }
 
       setCreatedLot(data);
@@ -387,9 +401,9 @@ const LotIntake = () => {
                   id="rollCount"
                   type="number"
                   min="1"
-                  value={formData.rollCount}
-                  onChange={(e) => handleInputChange('rollCount', e.target.value)}
-                  placeholder="e.g., 1, 2, 5"
+                  value="1"
+                  disabled
+                  className="bg-muted"
                   required
                 />
               </div>

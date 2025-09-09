@@ -315,6 +315,41 @@ export type Database = {
         }
         Relationships: []
       }
+      rolls: {
+        Row: {
+          created_at: string
+          id: string
+          lot_id: string
+          meters: number
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lot_id: string
+          meters: number
+          position: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lot_id?: string
+          meters?: number
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rolls_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           created_at: string

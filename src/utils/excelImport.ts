@@ -13,6 +13,7 @@ export interface ImportLotData {
   production_date?: string;
   warehouse_location?: string;
   notes?: string;
+  roll_details?: string; // Semicolon-separated meters per roll (e.g., "40;50;100")
 }
 
 export interface ImportResult {
@@ -35,13 +36,14 @@ export const generateExcelTemplate = (): void => {
     'invoice_date',
     'production_date',
     'warehouse_location',
-    'notes'
+    'notes',
+    'roll_details'
   ];
 
   const sampleData = [
-    'Premium,Red,5,100.5,LOT001,2024-01-15,Supplier A,INV001,2024-01-10,2024-01-05,A1-B2-C3,Sample notes',
-    'Standard,Blue,3,75.2,LOT002,2024-01-16,Supplier B,INV002,2024-01-12,,A2-B1-C1,',
-    'Premium,Green,6,120.0,LOT003,2024-01-17,Supplier C,INV003,2024-01-14,2024-01-08,B1-C2-A3,High quality fabric'
+    'Premium,Red,3,190.5,LOT001,2024-01-15,Supplier A,INV001,2024-01-10,2024-01-05,A1-B2-C3,Sample notes,40;50;100.5',
+    'Standard,Blue,1,75.2,LOT002,2024-01-16,Supplier B,INV002,2024-01-12,,A2-B1-C1,,75.2',
+    'Premium,Green,2,170.0,LOT003,2024-01-17,Supplier C,INV003,2024-01-14,2024-01-08,B1-C2-A3,High quality fabric,70;100'
   ];
 
   const csvContent = [
@@ -62,7 +64,7 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
   const lines = csvText.trim().split('\n');
   const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
   
-  const requiredFields = ['quality', 'color', 'roll_count', 'meters', 'lot_number', 'entry_date', 'supplier_name', 'invoice_number', 'invoice_date'];
+  const requiredFields = ['quality', 'color', 'roll_count', 'meters', 'lot_number', 'entry_date', 'supplier_name', 'invoice_number', 'invoice_date', 'roll_details'];
   const missingFields = requiredFields.filter(field => !headers.includes(field));
   
   if (missingFields.length > 0) {
@@ -96,16 +98,33 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
       invoice_date: row.invoice_date,
       production_date: row.production_date || undefined,
       warehouse_location: row.warehouse_location || undefined,
-      notes: row.notes || undefined
+      notes: row.notes || undefined,
+      roll_details: row.roll_details || undefined
     };
 
     // Validate required fields
-    if (!lotData.quality || !lotData.color || !lotData.lot_number || !lotData.entry_date || !lotData.supplier_name || !lotData.invoice_number || !lotData.invoice_date) {
+    if (!lotData.quality || !lotData.color || !lotData.lot_number || !lotData.entry_date || !lotData.supplier_name || !lotData.invoice_number || !lotData.invoice_date || !lotData.roll_details) {
       throw new Error(`Row ${i + 1}: Missing required data`);
     }
 
     if (isNaN(lotData.meters) || isNaN(lotData.roll_count)) {
       throw new Error(`Row ${i + 1}: Invalid numeric values`);
+    }
+
+    // Validate roll_details format and consistency
+    const rollMeters = lotData.roll_details.split(';').map(m => parseFloat(m.trim()));
+    
+    if (rollMeters.some(m => isNaN(m) || m <= 0)) {
+      throw new Error(`Row ${i + 1}: Invalid roll details format. Use semicolon-separated positive numbers (e.g., "40;50;100")`);
+    }
+
+    if (rollMeters.length !== lotData.roll_count) {
+      throw new Error(`Row ${i + 1}: Roll count (${lotData.roll_count}) doesn't match number of roll details (${rollMeters.length})`);
+    }
+
+    const rollDetailsSum = rollMeters.reduce((sum, meters) => sum + meters, 0);
+    if (Math.abs(rollDetailsSum - lotData.meters) > 0.01) {
+      throw new Error(`Row ${i + 1}: Sum of roll details (${rollDetailsSum}) doesn't match total meters (${lotData.meters})`);
     }
 
     // Validate date formats
@@ -160,7 +179,7 @@ export const importLotsToDatabase = async (lots: ImportLotData[]): Promise<Impor
         }
 
         // Insert LOT
-        const { error: lotError } = await supabase
+        const { data: lotData, error: lotError } = await supabase
           .from('lots')
           .insert({
             quality: lot.quality,
@@ -176,13 +195,34 @@ export const importLotsToDatabase = async (lots: ImportLotData[]): Promise<Impor
             warehouse_location: lot.warehouse_location || null,
             notes: lot.notes || null,
             status: 'in_stock'
-          });
+          })
+          .select('id')
+          .single();
 
         if (lotError) {
           errors.push(`Failed to import LOT "${lot.lot_number}": ${lotError.message}`);
-        } else {
-          imported++;
+          continue;
         }
+
+        // Create individual roll entries
+        if (lot.roll_details) {
+          const rollMeters = lot.roll_details.split(';').map(m => parseFloat(m.trim()));
+          const rollInserts = rollMeters.map((meters, index) => ({
+            lot_id: lotData.id,
+            meters: meters,
+            position: index + 1
+          }));
+
+          const { error: rollsError } = await supabase
+            .from('rolls')
+            .insert(rollInserts);
+
+          if (rollsError) {
+            errors.push(`Failed to create roll entries for LOT "${lot.lot_number}": ${rollsError.message}`);
+          }
+        }
+        
+        imported++;
       } catch (error: any) {
         errors.push(`Error processing LOT "${lot.lot_number}": ${error.message}`);
       }
