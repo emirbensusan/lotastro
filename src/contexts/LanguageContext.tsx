@@ -156,6 +156,9 @@ const translations = {
     confirmDelete: 'Confirm Delete',
     confirmDeleteLot: 'Are you sure you want to delete lot',
     actionCannotBeUndone: 'This action cannot be undone.',
+    deleteMode: 'Delete Mode',
+    deleteSelected: 'Delete Selected',
+    confirmDeleteQualityColor: 'Are you sure you want to delete all lots for quality "{quality}" and color "{color}"?',
     
     // Lot Intake
     lotIntakeNumber: 'Lot Number',
@@ -687,6 +690,9 @@ const translations = {
     confirmDelete: 'Silme İşlemini Onayla',
     confirmDeleteLot: 'Şu lotu silmek istediğinizden emin misiniz:',
     actionCannotBeUndone: 'Bu işlem geri alınamaz.',
+    deleteMode: 'Silme Modu',
+    deleteSelected: 'Seçilenleri Sil',
+    confirmDeleteQualityColor: '"{quality}" kalitesi ve "{color}" rengindeki tüm lotları silmek istediğinizden emin misiniz?',
     
     // Lot Intake
     lotIntakeNumber: 'Lot Numarası',
