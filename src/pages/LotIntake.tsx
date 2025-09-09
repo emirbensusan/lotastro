@@ -573,23 +573,6 @@ const LotIntake = () => {
 
         <TabsContent value="bulk">
           <div className="space-y-6">
-            {/* Column Order Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center text-blue-900">
-                  <Upload className="mr-2 h-5 w-5" />
-                  Required Column Order
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="bg-blue-50">
-                <p className="text-sm text-blue-800 font-mono mb-2">
-                  quality, color, roll_count, roll_details, meters, lot_number, entry_date, supplier_name, invoice_number, invoice_date, production_date, warehouse_location, notes
-                </p>
-                <p className="text-xs text-blue-700">
-                  <strong>Example:</strong> P755,PEBBLE 465,2,17;14,31,24043920,27.06.2025,JTR,FVZ001,16.06.2025,,,
-                </p>
-              </CardContent>
-            </Card>
 
             {/* Bulk Import Instructions */}
             <Card>
