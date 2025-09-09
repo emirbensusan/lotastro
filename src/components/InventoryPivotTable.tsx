@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -14,28 +13,21 @@ import { Search, Package, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
-interface ColorDetail {
+interface InventoryItem {
+  quality: string;
   color: string;
   total_meters: number;
   total_rolls: number;
   lot_count: number;
 }
 
-interface AggregatedQuality {
-  quality: string;
-  colors: ColorDetail[];
-  total_meters: number;
-  total_rolls: number;
-  total_lots: number;
-}
-
 const InventoryPivotTable = () => {
-  const [pivotData, setPivotData] = useState<AggregatedQuality[]>([]);
+  const [pivotData, setPivotData] = useState<InventoryItem[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteMode, setDeleteMode] = useState(false);
-  const [selectedQualities, setSelectedQualities] = useState<Set<string>>(new Set());
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -57,68 +49,20 @@ const InventoryPivotTable = () => {
       if (statsError) throw statsError;
       setDashboardStats(statsData?.[0]);
       
-      // Use the database function for better performance and complete data (remove range limit)
+      // Use the database function for better performance and complete data
       const { data: summaryData, error } = await supabase
         .rpc('get_inventory_pivot_summary');
 
       if (error) throw error;
 
-      // Group by quality and aggregate the colors
-      const qualityMap = new Map<string, {
-        colors: { color: string; total_meters: number; total_rolls: number; lot_count: number }[];
-        total_meters: number;
-        total_rolls: number;
-        total_lots: number;
-      }>();
-
-      // Process the database results
-      summaryData?.forEach(row => {
-        if (!qualityMap.has(row.quality)) {
-          qualityMap.set(row.quality, {
-            colors: [],
-            total_meters: 0,
-            total_rolls: 0,
-            total_lots: 0
-          });
-        }
-        
-        const qualityData = qualityMap.get(row.quality)!;
-        qualityData.colors.push({
-          color: row.color,
-          total_meters: Number(row.total_meters),
-          total_rolls: Number(row.total_rolls),
-          lot_count: Number(row.lot_count)
-        });
-        
-        qualityData.total_meters += Number(row.total_meters);
-        qualityData.total_rolls += Number(row.total_rolls);
-        qualityData.total_lots += Number(row.lot_count);
-      });
-
-      // Convert to aggregated quality structure and sort by total meters
-      const pivot: AggregatedQuality[] = Array.from(qualityMap.entries()).map(([quality, data]) => ({
-        quality,
-        colors: data.colors.sort((a, b) => a.color.localeCompare(b.color)),
-        total_meters: data.total_meters,
-        total_rolls: data.total_rolls,
-        total_lots: data.total_lots,
+      // Convert to flat array and sort by total meters descending
+      const pivot: InventoryItem[] = (summaryData || []).map(row => ({
+        quality: row.quality,
+        color: row.color,
+        total_meters: Number(row.total_meters),
+        total_rolls: Number(row.total_rolls),
+        lot_count: Number(row.lot_count)
       })).sort((a, b) => b.total_meters - a.total_meters);
-
-      // Debug: Log the totals for comparison with Dashboard
-      const totalQualities = pivot.length;
-      const totalLots = pivot.reduce((sum, item) => sum + item.total_lots, 0);
-      const totalMeters = pivot.reduce((sum, item) => sum + item.total_meters, 0);
-      const totalRolls = pivot.reduce((sum, item) => sum + item.total_rolls, 0);
-      
-      console.log('Inventory Page Stats:', {
-        totalQualities,
-        totalLots,
-        totalMeters,
-        totalRolls,
-        pivotDataCount: pivot.length,
-        rawData: summaryData,
-        dashboardStats: statsData?.[0]
-      });
 
       setPivotData(pivot);
     } catch (error) {
@@ -188,13 +132,13 @@ const InventoryPivotTable = () => {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedQualities.size === 0) return;
+    if (selectedItems.size === 0) return;
 
     try {
       let totalDeleted = 0;
       
-      for (const qualityKey of selectedQualities) {
-        const [quality, color] = qualityKey.split('|');
+      for (const itemKey of selectedItems) {
+        const [quality, color] = itemKey.split('|');
         
         // Get all lots for this quality/color combination
         const { data: lots, error: fetchError } = await supabase
@@ -226,7 +170,7 @@ const InventoryPivotTable = () => {
       });
 
       // Clear selections and refresh data
-      setSelectedQualities(new Set());
+      setSelectedItems(new Set());
       setDeleteMode(false);
       fetchPivotData();
     } catch (error: any) {
@@ -239,22 +183,20 @@ const InventoryPivotTable = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedQualities.size === getTotalSelectableItems()) {
-      setSelectedQualities(new Set());
+    if (selectedItems.size === filteredData.length) {
+      setSelectedItems(new Set());
     } else {
       const allKeys = new Set<string>();
-      filteredData.forEach(qualityData => {
-        qualityData.colors.forEach(colorData => {
-          allKeys.add(`${qualityData.quality}|${colorData.color}`);
-        });
+      filteredData.forEach(item => {
+        allKeys.add(`${item.quality}|${item.color}`);
       });
-      setSelectedQualities(allKeys);
+      setSelectedItems(allKeys);
     }
   };
 
-  const handleSelectQualityColor = (quality: string, color: string) => {
+  const handleSelectItem = (quality: string, color: string) => {
     const key = `${quality}|${color}`;
-    const newSelected = new Set(selectedQualities);
+    const newSelected = new Set(selectedItems);
     
     if (newSelected.has(key)) {
       newSelected.delete(key);
@@ -262,18 +204,12 @@ const InventoryPivotTable = () => {
       newSelected.add(key);
     }
     
-    setSelectedQualities(newSelected);
-  };
-
-  const getTotalSelectableItems = () => {
-    return filteredData.reduce((total, qualityData) => 
-      total + qualityData.colors.length, 0
-    );
+    setSelectedItems(newSelected);
   };
 
   const filteredData = pivotData.filter(item =>
     item.quality.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.colors.some(color => color.color.toLowerCase().includes(searchTerm.toLowerCase()))
+    item.color.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -317,25 +253,25 @@ const InventoryPivotTable = () => {
               variant={deleteMode ? "destructive" : "outline"}
               onClick={() => {
                 setDeleteMode(!deleteMode);
-                setSelectedQualities(new Set());
+                setSelectedItems(new Set());
               }}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               {t('deleteMode')}
             </Button>
             
-            {deleteMode && selectedQualities.size > 0 && (
+            {deleteMode && selectedItems.size > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive">
-                    {t('deleteSelected')} ({selectedQualities.size})
+                    {t('deleteSelected')} ({selectedItems.size})
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete {selectedQualities.size} selected quality/color combinations? {t('actionCannotBeUndone')}
+                      Are you sure you want to delete {selectedItems.size} selected quality/color combinations? {t('actionCannotBeUndone')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -405,16 +341,16 @@ const InventoryPivotTable = () => {
                 {deleteMode && hasRole('admin') && (
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={selectedQualities.size > 0 && selectedQualities.size === getTotalSelectableItems()}
+                      checked={selectedItems.size > 0 && selectedItems.size === filteredData.length}
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
                 )}
-                <TableHead className="w-[200px]">{t('quality')}</TableHead>
+                <TableHead>{t('quality')}</TableHead>
                 <TableHead>{t('color')}</TableHead>
-                <TableHead className="text-right">{t('lots')}</TableHead>
                 <TableHead className="text-right">{t('meters')}</TableHead>
                 <TableHead className="text-right">{t('rolls')}</TableHead>
+                <TableHead className="text-right">{t('lots')}</TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
                 {deleteMode && hasRole('admin') && (
                   <TableHead className="text-right">{t('delete')}</TableHead>
@@ -422,55 +358,36 @@ const InventoryPivotTable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.map((qualityData) => (
-                <TableRow key={qualityData.quality} className="border-b-2">
+              {filteredData.map((item) => (
+                <TableRow key={`${item.quality}-${item.color}`}>
                   {deleteMode && hasRole('admin') && (
                     <TableCell>
                       <Checkbox
-                        checked={qualityData.colors.every(color => 
-                          selectedQualities.has(`${qualityData.quality}|${color.color}`)
-                        )}
-                        onCheckedChange={(checked) => {
-                          const newSelected = new Set(selectedQualities);
-                          qualityData.colors.forEach(color => {
-                            const key = `${qualityData.quality}|${color.color}`;
-                            if (checked) {
-                              newSelected.add(key);
-                            } else {
-                              newSelected.delete(key);
-                            }
-                          });
-                          setSelectedQualities(newSelected);
-                        }}
+                        checked={selectedItems.has(`${item.quality}|${item.color}`)}
+                        onCheckedChange={() => handleSelectItem(item.quality, item.color)}
                       />
                     </TableCell>
                   )}
-                  <TableCell>
-                    <span className="text-sm">{qualityData.quality}</span>
+                  <TableCell className="text-sm">
+                    {item.quality}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {qualityData.colors.map(color => (
-                        <Badge key={color.color} variant="secondary" className="text-xs">
-                          {color.color}
-                        </Badge>
-                      ))}
-                    </div>
+                  <TableCell className="text-sm">
+                    {item.color}
                   </TableCell>
                   <TableCell className="text-right text-sm">
-                    {qualityData.total_lots}
+                    {item.total_meters.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right text-sm">
-                    {qualityData.total_meters.toLocaleString()}
+                    {item.total_rolls.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right text-sm">
-                    {qualityData.total_rolls.toLocaleString()}
+                    {item.lot_count}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
                       size="sm"
                       className="bg-black text-white hover:bg-black/90 text-xs"
-                      onClick={() => navigateToQualityDetails(qualityData.quality)}
+                      onClick={() => navigateToQualityDetails(item.quality)}
                     >
                       {t('viewQuality')}
                     </Button>
@@ -487,18 +404,12 @@ const InventoryPivotTable = () => {
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete all colors for quality "{qualityData.quality}"?
+                              Are you sure you want to delete all lots for {item.quality} - {item.color}? {t('actionCannotBeUndone')}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => {
-                                qualityData.colors.forEach(color => 
-                                  handleDeleteQualityColor(qualityData.quality, color.color)
-                                );
-                              }}
-                            >
+                            <AlertDialogAction onClick={() => handleDeleteQualityColor(item.quality, item.color)}>
                               {t('delete')}
                             </AlertDialogAction>
                           </AlertDialogFooter>
@@ -508,14 +419,19 @@ const InventoryPivotTable = () => {
                   )}
                 </TableRow>
               ))}
+
+              {filteredData.length === 0 && (
+                <TableRow>
+                  <TableCell 
+                    colSpan={deleteMode && hasRole('admin') ? 8 : 6} 
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    {searchTerm ? t('noSearchResults') : t('noInventoryData')}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
-          
-          {filteredData.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              {searchTerm ? 'No inventory items found matching your search.' : 'No inventory data available.'}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
