@@ -186,7 +186,7 @@ const LotQueue = () => {
             <div className="text-center text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
               <p>{t('pendingLots')}: 0</p>
-              <p className="text-sm mt-2">All lots have been completed and moved to inventory.</p>
+              <p className="text-sm mt-2">{t('allLotsCompleted')}</p>
             </div>
           </CardContent>
         </Card>

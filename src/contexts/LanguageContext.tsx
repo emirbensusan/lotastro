@@ -190,6 +190,7 @@ const translations = {
     lotQueueDescription: 'Lots pending completion by accounting/admin users',
     completeLotInfo: 'Complete Lot Information',
     moveToInventory: 'Move to Inventory',
+    allLotsCompleted: 'All lots have been completed and moved to inventory.',
     
     // QR Scanner
     qrCodeScanner: 'QR Code Scanner',
@@ -721,6 +722,7 @@ const translations = {
     lotQueueDescription: 'Depo tarafından oluşturulan lotların bilgisinin tamamlanması ve sisteme girilmesi için aşağıdaki listeyi kontrol ediniz',
     completeLotInfo: 'Lot Bilgilerini Tamamla',
     moveToInventory: 'Envantere Taşı',
+    allLotsCompleted: 'Tüm lotların bilgisi tamamlanmış ve stoğa girmiştir, bekleyen lot bulunmamaktadır.',
     
     // QR Scanner
     qrCodeScanner: 'QR Kod Tarayıcısı',
