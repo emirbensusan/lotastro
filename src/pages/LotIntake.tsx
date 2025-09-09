@@ -604,7 +604,7 @@ const LotIntake = () => {
                       className="cursor-pointer"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Only CSV files accepted. Dates: DD.MM.YYYY or YYYY-MM-DD
+                      Sadece CSV dosya tipi kabul edilir, tarih formatı GG.AA.YYYY veya YYYY-AA-GG olmalı, örneğin 11 Eylül 2025 tarihi için 11.09.2025 veya 2025-09-11 olarak tarih girilmelidir
                     </p>
                   </div>
                 </div>
