@@ -21,8 +21,16 @@ interface InventoryItem {
   lot_count: number;
 }
 
+interface AggregatedQuality {
+  quality: string;
+  color_count: number;
+  total_meters: number;
+  total_rolls: number;
+  lot_count: number;
+}
+
 const InventoryPivotTable = () => {
-  const [pivotData, setPivotData] = useState<InventoryItem[]>([]);
+  const [pivotData, setPivotData] = useState<AggregatedQuality[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,14 +63,38 @@ const InventoryPivotTable = () => {
 
       if (error) throw error;
 
-      // Convert to flat array and sort by total meters descending
-      const pivot: InventoryItem[] = (summaryData || []).map(row => ({
+      // Convert to flat array and aggregate by quality
+      const rawData: InventoryItem[] = (summaryData || []).map(row => ({
         quality: row.quality,
         color: row.color,
         total_meters: Number(row.total_meters),
         total_rolls: Number(row.total_rolls),
         lot_count: Number(row.lot_count)
-      })).sort((a, b) => b.total_meters - a.total_meters);
+      }));
+
+      // Aggregate by quality
+      const qualityMap = new Map<string, AggregatedQuality>();
+      
+      rawData.forEach(item => {
+        if (qualityMap.has(item.quality)) {
+          const existing = qualityMap.get(item.quality)!;
+          existing.color_count += 1;
+          existing.total_meters += item.total_meters;
+          existing.total_rolls += item.total_rolls;
+          existing.lot_count += item.lot_count;
+        } else {
+          qualityMap.set(item.quality, {
+            quality: item.quality,
+            color_count: 1,
+            total_meters: item.total_meters,
+            total_rolls: item.total_rolls,
+            lot_count: item.lot_count
+          });
+        }
+      });
+
+      const pivot: AggregatedQuality[] = Array.from(qualityMap.values())
+        .sort((a, b) => b.total_meters - a.total_meters);
 
       setPivotData(pivot);
     } catch (error) {
@@ -85,32 +117,30 @@ const InventoryPivotTable = () => {
     navigate(`/inventory/${encodeURIComponent(quality)}/${encodeURIComponent(color)}`);
   };
 
-  const handleDeleteQualityColor = async (quality: string, color: string) => {
+  const handleDeleteQuality = async (quality: string) => {
     try {
-      // Get all lots for this quality/color combination
+      // Get all lots for this quality
       const { data: lots, error: fetchError } = await supabase
         .from('lots')
         .select('id')
         .eq('quality', quality)
-        .eq('color', color)
         .eq('status', 'in_stock');
 
       if (fetchError) throw fetchError;
 
       if (lots && lots.length > 0) {
-        // Delete all lots for this quality/color combination
+        // Delete all lots for this quality
         const { error: deleteError } = await supabase
           .from('lots')
           .delete()
           .eq('quality', quality)
-          .eq('color', color)
           .eq('status', 'in_stock');
 
         if (deleteError) throw deleteError;
 
         toast({
           title: t('success') as string,
-          description: `${lots.length} lots deleted for ${quality} - ${color}`,
+          description: `${lots.length} lots deleted for ${quality}`,
         });
 
         // Refresh data
@@ -137,26 +167,22 @@ const InventoryPivotTable = () => {
     try {
       let totalDeleted = 0;
       
-      for (const itemKey of selectedItems) {
-        const [quality, color] = itemKey.split('|');
-        
-        // Get all lots for this quality/color combination
+      for (const quality of selectedItems) {
+        // Get all lots for this quality
         const { data: lots, error: fetchError } = await supabase
           .from('lots')
           .select('id')
           .eq('quality', quality)
-          .eq('color', color)
           .eq('status', 'in_stock');
 
         if (fetchError) throw fetchError;
 
         if (lots && lots.length > 0) {
-          // Delete all lots for this quality/color combination
+          // Delete all lots for this quality
           const { error: deleteError } = await supabase
             .from('lots')
             .delete()
             .eq('quality', quality)
-            .eq('color', color)
             .eq('status', 'in_stock');
 
           if (deleteError) throw deleteError;
@@ -188,28 +214,26 @@ const InventoryPivotTable = () => {
     } else {
       const allKeys = new Set<string>();
       filteredData.forEach(item => {
-        allKeys.add(`${item.quality}|${item.color}`);
+        allKeys.add(item.quality);
       });
       setSelectedItems(allKeys);
     }
   };
 
-  const handleSelectItem = (quality: string, color: string) => {
-    const key = `${quality}|${color}`;
+  const handleSelectItem = (quality: string) => {
     const newSelected = new Set(selectedItems);
     
-    if (newSelected.has(key)) {
-      newSelected.delete(key);
+    if (newSelected.has(quality)) {
+      newSelected.delete(quality);
     } else {
-      newSelected.add(key);
+      newSelected.add(quality);
     }
     
     setSelectedItems(newSelected);
   };
 
   const filteredData = pivotData.filter(item =>
-    item.quality.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.color.toLowerCase().includes(searchTerm.toLowerCase())
+    item.quality.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -271,7 +295,7 @@ const InventoryPivotTable = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete {selectedItems.size} selected quality/color combinations? {t('actionCannotBeUndone')}
+                      Are you sure you want to delete {selectedItems.size} selected qualities? {t('actionCannotBeUndone')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -347,7 +371,7 @@ const InventoryPivotTable = () => {
                   </TableHead>
                 )}
                 <TableHead>{t('quality')}</TableHead>
-                <TableHead>{t('color')}</TableHead>
+                <TableHead>{t('colors')}</TableHead>
                 <TableHead className="text-right">{t('meters')}</TableHead>
                 <TableHead className="text-right">{t('rolls')}</TableHead>
                 <TableHead className="text-right">{t('lots')}</TableHead>
@@ -359,12 +383,12 @@ const InventoryPivotTable = () => {
             </TableHeader>
             <TableBody>
               {filteredData.map((item) => (
-                <TableRow key={`${item.quality}-${item.color}`}>
+                <TableRow key={item.quality}>
                   {deleteMode && hasRole('admin') && (
                     <TableCell>
                       <Checkbox
-                        checked={selectedItems.has(`${item.quality}|${item.color}`)}
-                        onCheckedChange={() => handleSelectItem(item.quality, item.color)}
+                        checked={selectedItems.has(item.quality)}
+                        onCheckedChange={() => handleSelectItem(item.quality)}
                       />
                     </TableCell>
                   )}
@@ -372,7 +396,7 @@ const InventoryPivotTable = () => {
                     {item.quality}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {item.color}
+                    {item.color_count} color{item.color_count !== 1 ? 's' : ''}
                   </TableCell>
                   <TableCell className="text-right text-sm">
                     {item.total_meters.toLocaleString()}
@@ -404,12 +428,12 @@ const InventoryPivotTable = () => {
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete all lots for {item.quality} - {item.color}? {t('actionCannotBeUndone')}
+                              Are you sure you want to delete all lots for {item.quality}? {t('actionCannotBeUndone')}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteQualityColor(item.quality, item.color)}>
+                            <AlertDialogAction onClick={() => handleDeleteQuality(item.quality)}>
                               {t('delete')}
                             </AlertDialogAction>
                           </AlertDialogFooter>
