@@ -4,11 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Loader2, Package, QrCode, Printer } from 'lucide-react';
+import { Loader2, Package, QrCode, Printer, Upload, Download, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { generateExcelTemplate, parseCSVFile, importLotsToDatabase, ImportLotData, ImportResult } from '@/utils/excelImport';
 
 interface Supplier {
   id: string;
@@ -48,6 +52,12 @@ const LotIntake = () => {
     notes: '',
   });
   const [createdLot, setCreatedLot] = useState<any>(null);
+  
+  // Bulk import states
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importResults, setImportResults] = useState<ImportResult | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchSuppliers();
@@ -192,6 +202,106 @@ const LotIntake = () => {
     }
   };
 
+  // Bulk import functions
+  const handleDownloadTemplate = () => {
+    generateExcelTemplate();
+      toast({
+        title: t('success') as string,
+        description: t('templateDownloaded') as string,
+      });
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setImportResults(null);
+    }
+  };
+
+  const handleBulkImport = async () => {
+    if (!selectedFile) {
+      toast({
+        title: t('error') as string,
+        description: 'Please select a file to import',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setBulkImporting(true);
+    setImportProgress(0);
+    setImportResults(null);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const csvText = e.target?.result as string;
+          
+          toast({
+            title: t('importStarted') as string,
+            description: t('processingFile') || 'Processing file...',
+          });
+          
+          setImportProgress(25);
+
+          // Parse CSV
+          const lots = parseCSVFile(csvText);
+          setImportProgress(50);
+          
+          toast({
+            title: t('validatingData') as string || 'Validating data...',
+            description: `Found ${lots.length} lots to import`,
+          });
+          
+          setImportProgress(75);
+
+          // Import to database
+          const result = await importLotsToDatabase(lots);
+          setImportProgress(100);
+          
+          setImportResults(result);
+          
+          if (result.success) {
+            toast({
+              title: t('success') as string,
+              description: result.message,
+            });
+          } else {
+            toast({
+              title: t('importError') as string,
+              description: result.message,
+              variant: 'destructive',
+            });
+          }
+          
+        } catch (error: any) {
+          toast({
+            title: t('importError') as string,
+            description: error.message,
+            variant: 'destructive',
+          });
+          setImportResults({
+            success: false,
+            message: error.message,
+          });
+        } finally {
+          setBulkImporting(false);
+        }
+      };
+      
+      reader.readAsText(selectedFile);
+    } catch (error: any) {
+      setBulkImporting(false);
+      toast({
+        title: t('importError') as string,
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Check if user has permission
   if (!profile || (!['warehouse_staff', 'admin'].includes(profile.role))) {
     return (
@@ -212,17 +322,30 @@ const LotIntake = () => {
         <Package className="h-8 w-8 text-primary" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LOT Entry Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('newLotEntry')}</CardTitle>
-            <CardDescription>
-              {t('newLotDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+      <Tabs defaultValue="single" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="single" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            {t('singleLotEntry')}
+          </TabsTrigger>
+          <TabsTrigger value="bulk" className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            {t('bulkLotImport')}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="single">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Single LOT Entry Form */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('newLotEntry')}</CardTitle>
+                <CardDescription>
+                  {t('singleEntryDescription')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="quality">{t('intakeQuality')} *</Label>
                 <Input
@@ -367,45 +490,160 @@ const LotIntake = () => {
                   </>
                 )}
               </Button>
-            </form>
-          </CardContent>
-        </Card>
+                </form>
+              </CardContent>
+            </Card>
 
-        {/* QR Code Preview */}
-        {createdLot && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <QrCode className="mr-2 h-5 w-5" />
-                {t('qrCodeGenerated')}
-              </CardTitle>
-              <CardDescription>
-                LOT {createdLot.lot_number} created successfully
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center">
-                <div id="qr-display" className="mb-4"></div>
-                <div className="space-y-2 text-sm">
-                  <p><strong>{t('quality')}:</strong> {createdLot.quality}</p>
-                  <p><strong>{t('color')}:</strong> {createdLot.color}</p>
-                  <p><strong>{t('meters')}:</strong> {createdLot.meters}</p>
-                  <p><strong>{t('lotNumber')}:</strong> {createdLot.lot_number}</p>
+            {/* QR Code Preview */}
+            {createdLot && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <QrCode className="mr-2 h-5 w-5" />
+                    {t('qrCodeGenerated')}
+                  </CardTitle>
+                  <CardDescription>
+                    LOT {createdLot.lot_number} created successfully
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-center">
+                    <div id="qr-display" className="mb-4"></div>
+                    <div className="space-y-2 text-sm">
+                      <p><strong>{t('quality')}:</strong> {createdLot.quality}</p>
+                      <p><strong>{t('color')}:</strong> {createdLot.color}</p>
+                      <p><strong>{t('meters')}:</strong> {createdLot.meters}</p>
+                      <p><strong>{t('lotNumber')}:</strong> {createdLot.lot_number}</p>
+                    </div>
+                  </div>
+                  
+                  <Button onClick={handlePrintQR} className="w-full">
+                    <Printer className="mr-2 h-4 w-4" />
+                    {t('printQrCode')}
+                  </Button>
+                  
+                  <div className="text-xs text-muted-foreground break-all">
+                    QR URL: {createdLot.qr_code_url}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="bulk">
+          <div className="space-y-6">
+            {/* Bulk Import Instructions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Upload className="mr-2 h-5 w-5" />
+                  {t('bulkLotImport')}
+                </CardTitle>
+                <CardDescription>
+                  {t('bulkImportDescription')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button 
+                    onClick={handleDownloadTemplate} 
+                    variant="outline" 
+                    className="flex-1"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    {t('downloadTemplate')}
+                  </Button>
+                  
+                  <div className="flex-1">
+                    <Input
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleFileSelect}
+                      className="cursor-pointer"
+                    />
+                  </div>
                 </div>
-              </div>
-              
-              <Button onClick={handlePrintQR} className="w-full">
-                <Printer className="mr-2 h-4 w-4" />
-                {t('printQrCode')}
-              </Button>
-              
-              <div className="text-xs text-muted-foreground break-all">
-                QR URL: {createdLot.qr_code_url}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+
+                {selectedFile && (
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm">{selectedFile.name}</span>
+                    </div>
+                    <Button
+                      onClick={handleBulkImport}
+                      disabled={bulkImporting}
+                      size="sm"
+                    >
+                        {bulkImporting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {t('importing') as string}
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            {t('importFile') as string}
+                          </>
+                        )}
+                    </Button>
+                  </div>
+                )}
+
+                {bulkImporting && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>{t('progress') as string}</span>
+                      <span>{importProgress}%</span>
+                    </div>
+                    <Progress value={importProgress} className="w-full" />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Import Results */}
+            {importResults && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    {importResults.success ? (
+                      <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
+                    ) : (
+                      <XCircle className="mr-2 h-5 w-5 text-red-600" />
+                    )}
+                    {t('importResults') as string}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={importResults.success ? 'default' : 'destructive'}>
+                        {importResults.success ? t('success') : t('failed')}
+                      </Badge>
+                      <span className="text-sm">{importResults.message}</span>
+                    </div>
+                    
+                    {importResults.errors && importResults.errors.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">{t('errors') as string}:</h4>
+                        <div className="bg-destructive/10 p-3 rounded-lg max-h-32 overflow-y-auto">
+                          {importResults.errors.map((error, index) => (
+                            <div key={index} className="text-xs text-destructive">
+                              {error}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
