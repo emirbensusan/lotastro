@@ -42,7 +42,9 @@ const InventoryPivotTable = () => {
       setLoading(true);
       
       // Use the database function for better performance and complete data
-      const { data: summaryData, error } = await supabase.rpc('get_inventory_pivot_summary');
+      const { data: summaryData, error } = await supabase
+        .rpc('get_inventory_pivot_summary')
+        .range(0, 200000);
 
       if (error) throw error;
 

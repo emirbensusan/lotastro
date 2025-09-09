@@ -336,6 +336,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          oldest_lot_days: number
+          pending_orders: number
+          total_in_stock_lots: number
+          total_meters: number
+          total_out_of_stock_lots: number
+          total_rolls: number
+        }[]
+      }
       get_inventory_pivot_summary: {
         Args: Record<PropertyKey, never>
         Returns: {

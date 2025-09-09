@@ -37,59 +37,32 @@ const Dashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      // Fetch inventory aggregated data directly with increased limit
-      const { data: aggregatedData, error: aggregatedError } = await supabase
-        .from('lots')
-        .select('roll_count, meters')
-        .eq('status', 'in_stock')
-        .limit(10000);
+      setLoading(true);
 
-      if (aggregatedError) throw aggregatedError;
+      // Use DB-side aggregation to avoid client limits and ensure accuracy
+      const { data, error } = await supabase
+        .rpc('get_dashboard_stats')
+        .single();
 
-      // Fetch all lots for counts and aging with increased limit
-      const { data: lots, error: lotsError } = await supabase
-        .from('lots')
-        .select('status, entry_date')
-        .limit(10000);
+      if (error) throw error;
 
-      if (lotsError) throw lotsError;
+      const inStockLots = Number(data?.total_in_stock_lots || 0);
+      const outOfStockLots = Number(data?.total_out_of_stock_lots || 0);
+      const totalRolls = Number(data?.total_rolls || 0);
+      const totalMeters = Number(data?.total_meters || 0);
+      const oldestLotDays = Number(data?.oldest_lot_days || 0);
+      const pendingOrders = Number(data?.pending_orders || 0);
 
-      // Fetch pending orders
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select('id')
-        .is('fulfilled_at', null);
-
-      if (ordersError) throw ordersError;
-
-      // Calculate statistics - ALL metrics should use in-stock data for consistency
-      const inStockLots = lots?.filter(lot => lot.status === 'in_stock').length || 0;
-      const outOfStockLots = lots?.filter(lot => lot.status === 'out_of_stock').length || 0;
-      const pendingOrders = orders?.length || 0;
-
-      // Calculate totals from aggregated data (all in-stock)
-      const totalRolls = aggregatedData?.reduce((sum, lot) => sum + (lot.roll_count || 0), 0) || 0;
-      const totalMeters = aggregatedData?.reduce((sum, lot) => sum + Number(lot.meters || 0), 0) || 0;
-      
-      // Debug: Log the actual numbers
-      console.log('Dashboard Stats:', {
+      console.info('Dashboard Stats (DB Aggregated):', {
         inStockLots,
         totalRolls,
         totalMeters,
-        aggregatedDataCount: aggregatedData?.length
+        oldestLotDays,
+        pendingOrders,
       });
 
-      // Calculate oldest LOT age
-      let oldestLotDays = 0;
-      if (lots && lots.length > 0) {
-        const oldestDate = Math.min(
-          ...lots.map(lot => new Date(lot.entry_date).getTime())
-        );
-        oldestLotDays = Math.floor((Date.now() - oldestDate) / (1000 * 60 * 60 * 24));
-      }
-
       setStats({
-        totalLots: inStockLots, // Show in-stock lots as total lots for consistency
+        totalLots: inStockLots,
         totalRolls,
         totalMeters,
         inStockLots,
