@@ -10,25 +10,28 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { Search, Package, Trash2 } from 'lucide-react';
+import { Search, Package, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
-interface PivotData {
+interface ColorDetail {
+  color: string;
+  total_meters: number;
+  total_rolls: number;
+  lot_count: number;
+}
+
+interface AggregatedQuality {
   quality: string;
-  colors: {
-    color: string;
-    total_meters: number;
-    total_rolls: number;
-    lot_count: number;
-  }[];
+  colors: ColorDetail[];
   total_meters: number;
   total_rolls: number;
   total_lots: number;
+  isExpanded: boolean;
 }
 
 const InventoryPivotTable = () => {
-  const [pivotData, setPivotData] = useState<PivotData[]>([]);
+  const [pivotData, setPivotData] = useState<AggregatedQuality[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,13 +96,14 @@ const InventoryPivotTable = () => {
         qualityData.total_lots += Number(row.lot_count);
       });
 
-      // Convert to pivot data structure and sort by total meters
-      const pivot: PivotData[] = Array.from(qualityMap.entries()).map(([quality, data]) => ({
+      // Convert to aggregated quality structure and sort by total meters
+      const pivot: AggregatedQuality[] = Array.from(qualityMap.entries()).map(([quality, data]) => ({
         quality,
         colors: data.colors.sort((a, b) => a.color.localeCompare(b.color)),
         total_meters: data.total_meters,
         total_rolls: data.total_rolls,
         total_lots: data.total_lots,
+        isExpanded: false,
       })).sort((a, b) => b.total_meters - a.total_meters);
 
       // Debug: Log the totals for comparison with Dashboard
@@ -129,6 +133,14 @@ const InventoryPivotTable = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleQualityExpansion = (quality: string) => {
+    setPivotData(prev => prev.map(item => 
+      item.quality === quality 
+        ? { ...item, isExpanded: !item.isExpanded }
+        : item
+    ));
   };
 
   const navigateToQualityDetails = (quality: string) => {
@@ -426,96 +438,194 @@ const InventoryPivotTable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.map((qualityData) => 
-                qualityData.colors.map((colorData) => {
-                  const qualityColorKey = `${qualityData.quality}|${colorData.color}`;
-                  return (
-                    <TableRow 
-                      key={qualityColorKey}
-                      className="hover:bg-muted/50 cursor-pointer"
-                      onClick={() => !deleteMode ? navigateToLotDetails(qualityData.quality, colorData.color) : undefined}
-                    >
-                      {deleteMode && hasRole('admin') && (
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedQualities.has(qualityColorKey)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedQualities(new Set([...selectedQualities, qualityColorKey]));
-                              } else {
-                                const newSelected = new Set(selectedQualities);
-                                newSelected.delete(qualityColorKey);
-                                setSelectedQualities(newSelected);
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </TableCell>
-                      )}
+              {filteredData.map((qualityData) => (
+                <React.Fragment key={qualityData.quality}>
+                  {/* Quality Header Row */}
+                  <TableRow 
+                    className="hover:bg-muted/50 cursor-pointer border-b-2"
+                    onClick={() => toggleQualityExpansion(qualityData.quality)}
+                  >
+                    {deleteMode && hasRole('admin') && (
                       <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <span className="font-semibold">{qualityData.quality}</span>
-                          <span className="text-muted-foreground">-</span>
-                          <Badge variant="outline">{colorData.color}</Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {colorData.lot_count}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {colorData.total_meters.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {colorData.total_rolls.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigateToLotDetails(qualityData.quality, colorData.color);
+                        <Checkbox
+                          checked={qualityData.colors.every(color => 
+                            selectedQualities.has(`${qualityData.quality}|${color.color}`)
+                          )}
+                          onCheckedChange={(checked) => {
+                            const newSelected = new Set(selectedQualities);
+                            qualityData.colors.forEach(color => {
+                              const key = `${qualityData.quality}|${color.color}`;
+                              if (checked) {
+                                newSelected.add(key);
+                              } else {
+                                newSelected.delete(key);
+                              }
+                            });
+                            setSelectedQualities(newSelected);
                           }}
-                        >
-                          {t('selectLots')}
-                        </Button>
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </TableCell>
-                      {deleteMode && hasRole('admin') && (
-                        <TableCell className="text-right">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                size="sm" 
-                                variant="ghost"
-                                onClick={(e) => e.stopPropagation()}
+                    )}
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {qualityData.isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        <span className="font-bold text-lg">{qualityData.quality}</span>
+                        <Badge variant="secondary">
+                          {qualityData.colors.length} {qualityData.colors.length === 1 ? 'color' : 'colors'}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-lg">
+                      {qualityData.total_lots}
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-lg">
+                      {qualityData.total_meters.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-lg">
+                      {qualityData.total_rolls.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigateToQualityDetails(qualityData.quality);
+                        }}
+                      >
+                        View Quality
+                      </Button>
+                    </TableCell>
+                    {deleteMode && hasRole('admin') && (
+                      <TableCell className="text-right">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete all colors for quality "{qualityData.quality}"? 
+                                This will delete {qualityData.total_lots} lots. {t('actionCannotBeUndone')}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={async () => {
+                                  try {
+                                    for (const color of qualityData.colors) {
+                                      await handleDeleteQualityColor(qualityData.quality, color.color);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error deleting quality:', error);
+                                  }
+                                }}
                               >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  {(t('confirmDeleteQualityColor') as string)
-                                    .replace('{quality}', qualityData.quality)
-                                    .replace('{color}', colorData.color)} {t('actionCannotBeUndone')}
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => handleDeleteQualityColor(qualityData.quality, colorData.color)}
-                                >
-                                  {t('delete')}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                {t('delete')}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    )}
+                  </TableRow>
+
+                  {/* Color Detail Rows (when expanded) */}
+                  {qualityData.isExpanded && qualityData.colors.map((colorData) => {
+                    const qualityColorKey = `${qualityData.quality}|${colorData.color}`;
+                    return (
+                      <TableRow 
+                        key={qualityColorKey}
+                        className="hover:bg-muted/30 cursor-pointer bg-muted/20"
+                        onClick={() => !deleteMode ? navigateToLotDetails(qualityData.quality, colorData.color) : undefined}
+                      >
+                        {deleteMode && hasRole('admin') && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedQualities.has(qualityColorKey)}
+                              onCheckedChange={(checked) => {
+                                handleSelectQualityColor(qualityData.quality, colorData.color);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          <div className="flex items-center space-x-3 pl-8">
+                            <span className="text-muted-foreground">└</span>
+                            <Badge variant="outline">{colorData.color}</Badge>
+                          </div>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })
-              )}
+                        <TableCell className="text-right font-medium">
+                          {colorData.lot_count}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {colorData.total_meters.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {colorData.total_rolls.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigateToLotDetails(qualityData.quality, colorData.color);
+                            }}
+                          >
+                            {t('selectLots')}
+                          </Button>
+                        </TableCell>
+                        {deleteMode && hasRole('admin') && (
+                          <TableCell className="text-right">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete all lots for {qualityData.quality} - {colorData.color}? 
+                                    This will delete {colorData.lot_count} lots. {t('actionCannotBeUndone')}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeleteQualityColor(qualityData.quality, colorData.color)}
+                                  >
+                                    {t('delete')}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
             </TableBody>
           </Table>
           
