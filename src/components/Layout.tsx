@@ -37,7 +37,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/lot-queue', label: t('lotQueue'), icon: Clock, roles: ['accounting', 'senior_manager', 'admin'] },
     { path: '/inventory', label: t('inventory'), icon: ClipboardList, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
     { path: '/orders', label: t('orders'), icon: Truck, roles: ['accounting', 'senior_manager', 'admin'] },
-    { path: '/order-queue', label: 'Order Queue', icon: Clock, roles: ['accounting', 'senior_manager', 'admin'] },
+    { path: '/order-queue', label: t('orderQueue'), icon: Clock, roles: ['accounting', 'senior_manager', 'admin'] },
     { path: '/qr-scan', label: t('qrScan'), icon: QrCode, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
     { path: '/reports', label: t('reports'), icon: BarChart3, roles: ['accounting', 'senior_manager', 'admin'] },
     { path: '/suppliers', label: t('suppliers'), icon: Users, roles: ['admin'] },
