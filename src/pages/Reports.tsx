@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart3, TrendingUp, Package, Truck, Download } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
@@ -29,6 +31,8 @@ interface ReportData {
   totalLots: number;
   totalOrders: number;
   totalMeters: number;
+  totalRolls: number;
+  totalQualities: number;
   activeSuppliers: number;
   lotsByQuality: { [key: string]: number };
   ordersByStatus: { [key: string]: number };
@@ -41,17 +45,18 @@ const Reports: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [reportType, setReportType] = useState<string>('overview');
+  const [showInStockOnly, setShowInStockOnly] = useState(true);
 
   useEffect(() => {
     fetchReportData();
-  }, [dateRange, reportType]);
+  }, [dateRange, reportType, showInStockOnly]);
 
   const fetchReportData = async () => {
     setLoading(true);
     try {
       if (reportType === 'sales') {
-        // Fetch detailed sales data
-        const { data: salesData } = await supabase
+        // Build query with optional date filtering
+        let ordersQuery = supabase
           .from('orders')
           .select(`
             *,
@@ -66,10 +71,17 @@ const Reports: React.FC = () => {
                 entry_date
               )
             )
-          `)
-          .gte('created_at', dateRange?.from?.toISOString() || '2023-01-01')
-          .lte('created_at', dateRange?.to?.toISOString() || new Date().toISOString())
-          .order('created_at', { ascending: false });
+          `);
+
+        // Only apply date filter if dateRange is provided
+        if (dateRange?.from) {
+          ordersQuery = ordersQuery.gte('created_at', dateRange.from.toISOString());
+        }
+        if (dateRange?.to) {
+          ordersQuery = ordersQuery.lte('created_at', dateRange.to.toISOString());
+        }
+
+        const { data: salesData } = await ordersQuery.order('created_at', { ascending: false });
 
         if (salesData) {
           const processedSalesData = salesData.map(order => ({
@@ -94,6 +106,8 @@ const Reports: React.FC = () => {
             totalLots: 0,
             totalOrders: salesData.length,
             totalMeters: 0,
+            totalRolls: 0,
+            totalQualities: 0,
             activeSuppliers: 0,
             lotsByQuality: {},
             ordersByStatus: {},
@@ -101,25 +115,59 @@ const Reports: React.FC = () => {
           });
         }
       } else {
-        // Fetch regular report data
-        const { data: lots } = await supabase
-          .from('lots')
-          .select('*')
-          .gte('entry_date', dateRange?.from?.toISOString() || '2023-01-01')
-          .lte('entry_date', dateRange?.to?.toISOString() || new Date().toISOString());
+        // Use database functions for better performance and consistency
+        const { data: dashboardStats, error: statsError } = await supabase
+          .rpc('get_dashboard_stats');
+        
+        if (statsError) throw statsError;
 
-        const { data: orders } = await supabase
+        const { data: pivotData, error: pivotError } = await supabase
+          .rpc('get_inventory_pivot_summary');
+        
+        if (pivotError) throw pivotError;
+
+        // Build lots query with optional date and status filtering
+        let lotsQuery = supabase
+          .from('lots')
+          .select('*');
+
+        // Apply status filter
+        if (showInStockOnly) {
+          lotsQuery = lotsQuery.eq('status', 'in_stock');
+        }
+
+        // Only apply date filter if dateRange is provided
+        if (dateRange?.from) {
+          lotsQuery = lotsQuery.gte('entry_date', dateRange.from.toISOString());
+        }
+        if (dateRange?.to) {
+          lotsQuery = lotsQuery.lte('entry_date', dateRange.to.toISOString());
+        }
+
+        const { data: lots } = await lotsQuery;
+
+        // Build orders query with optional date filtering
+        let ordersQuery = supabase
           .from('orders')
-          .select('*')
-          .gte('created_at', dateRange?.from?.toISOString() || '2023-01-01')
-          .lte('created_at', dateRange?.to?.toISOString() || new Date().toISOString());
+          .select('*');
+
+        if (dateRange?.from) {
+          ordersQuery = ordersQuery.gte('created_at', dateRange.from.toISOString());
+        }
+        if (dateRange?.to) {
+          ordersQuery = ordersQuery.lte('created_at', dateRange.to.toISOString());
+        }
+
+        const { data: orders } = await ordersQuery;
 
         const { data: suppliers } = await supabase
           .from('suppliers')
           .select('*');
 
-        if (lots && orders && suppliers) {
-          const totalMeters = lots.reduce((sum, lot) => sum + Number(lot.meters), 0);
+        if (lots && orders && suppliers && dashboardStats?.[0]) {
+          const stats = dashboardStats[0];
+          
+          // Use database stats for main totals, client aggregation for filtered data
           const lotsByQuality: { [key: string]: number } = {};
           lots.forEach(lot => {
             lotsByQuality[lot.quality] = (lotsByQuality[lot.quality] || 0) + 1;
@@ -132,9 +180,12 @@ const Reports: React.FC = () => {
           });
 
           setReportData({
-            totalLots: lots.length,
+            // Use database stats when no date filter is applied, otherwise use filtered data
+            totalLots: dateRange?.from ? lots.length : Number(stats.total_in_stock_lots),
+            totalMeters: dateRange?.from ? lots.reduce((sum, lot) => sum + Number(lot.meters), 0) : Number(stats.total_meters),
+            totalRolls: dateRange?.from ? lots.reduce((sum, lot) => sum + Number(lot.roll_count), 0) : Number(stats.total_rolls),
+            totalQualities: pivotData?.length || 0,
             totalOrders: orders.length,
-            totalMeters,
             activeSuppliers: suppliers.length,
             lotsByQuality,
             ordersByStatus
@@ -151,7 +202,7 @@ const Reports: React.FC = () => {
   const exportReport = () => {
     if (!reportData) return;
     
-    const csvContent = `Report Type: ${reportType}\nDate Range: ${dateRange?.from || 'All'} - ${dateRange?.to || 'All'}\n\nSummary:\nTotal Lots: ${reportData.totalLots}\nTotal Orders: ${reportData.totalOrders}\nTotal Meters: ${reportData.totalMeters}\nActive Suppliers: ${reportData.activeSuppliers}\n\nLots by Quality:\n${Object.entries(reportData.lotsByQuality).map(([quality, count]) => `${quality}: ${count}`).join('\n')}\n\nOrders by Status:\n${Object.entries(reportData.ordersByStatus).map(([status, count]) => `${status}: ${count}`).join('\n')}`;
+    const csvContent = `Report Type: ${reportType}\nDate Range: ${dateRange?.from || 'All'} - ${dateRange?.to || 'All'}\nIn-Stock Only: ${showInStockOnly}\n\nSummary:\nTotal Lots: ${reportData.totalLots}\nTotal Orders: ${reportData.totalOrders}\nTotal Meters: ${reportData.totalMeters}\nTotal Rolls: ${reportData.totalRolls}\nTotal Qualities: ${reportData.totalQualities}\nActive Suppliers: ${reportData.activeSuppliers}\n\nLots by Quality:\n${Object.entries(reportData.lotsByQuality).map(([quality, count]) => `${quality}: ${count}`).join('\n')}\n\nOrders by Status:\n${Object.entries(reportData.ordersByStatus).map(([status, count]) => `${status}: ${count}`).join('\n')}`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -196,7 +247,7 @@ const Reports: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4 items-center">
+      <div className="flex gap-4 items-center flex-wrap">
         <Select value={reportType} onValueChange={setReportType}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Select report type" />
@@ -210,6 +261,16 @@ const Reports: React.FC = () => {
           </SelectContent>
         </Select>
         <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+        {reportType !== 'sales' && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="in-stock-only"
+              checked={showInStockOnly}
+              onCheckedChange={setShowInStockOnly}
+            />
+            <Label htmlFor="in-stock-only">In-stock only</Label>
+          </div>
+        )}
       </div>
 
       {reportData && (
@@ -320,8 +381,37 @@ const Reports: React.FC = () => {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Suppliers</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Rolls</CardTitle>
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{reportData.totalRolls.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Rolls in inventory
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Additional Summary Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Qualities</CardTitle>
                     <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{reportData.totalQualities}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Unique qualities
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Suppliers</CardTitle>
+                    <Truck className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{reportData.activeSuppliers}</div>

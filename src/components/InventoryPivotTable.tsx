@@ -26,6 +26,7 @@ interface PivotData {
 
 const InventoryPivotTable = () => {
   const [pivotData, setPivotData] = useState<PivotData[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -41,10 +42,16 @@ const InventoryPivotTable = () => {
     try {
       setLoading(true);
       
-      // Use the database function for better performance and complete data
+      // Fetch dashboard stats for consistent summary cards
+      const { data: statsData, error: statsError } = await supabase
+        .rpc('get_dashboard_stats');
+      
+      if (statsError) throw statsError;
+      setDashboardStats(statsData?.[0]);
+      
+      // Use the database function for better performance and complete data (remove range limit)
       const { data: summaryData, error } = await supabase
-        .rpc('get_inventory_pivot_summary')
-        .range(0, 200000);
+        .rpc('get_inventory_pivot_summary');
 
       if (error) throw error;
 
@@ -100,7 +107,8 @@ const InventoryPivotTable = () => {
         totalLots,
         totalMeters,
         totalRolls,
-        pivotDataCount: pivot.length
+        pivotDataCount: pivot.length,
+        dashboardStats: statsData?.[0]
       });
 
       setPivotData(pivot);
@@ -155,7 +163,7 @@ const InventoryPivotTable = () => {
         </div>
       </div>
 
-      {/* Summary Stats - Use pivotData to show total database stats regardless of search */}
+      {/* Summary Stats - Use dashboard stats for consistency */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -171,7 +179,7 @@ const InventoryPivotTable = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {pivotData.reduce((sum, item) => sum + item.total_lots, 0)}
+              {dashboardStats?.total_in_stock_lots || 0}
             </div>
           </CardContent>
         </Card>
@@ -181,7 +189,7 @@ const InventoryPivotTable = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {pivotData.reduce((sum, item) => sum + item.total_meters, 0).toLocaleString()}
+              {Number(dashboardStats?.total_meters || 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -191,7 +199,7 @@ const InventoryPivotTable = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {pivotData.reduce((sum, item) => sum + item.total_rolls, 0).toLocaleString()}
+              {Number(dashboardStats?.total_rolls || 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
