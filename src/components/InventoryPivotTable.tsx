@@ -41,16 +41,10 @@ const InventoryPivotTable = () => {
     try {
       setLoading(true);
       
-      // Fetch aggregated data for the pivot table
-      const { data: lotsData, error } = await supabase
+      // Get aggregated data using a more efficient query without joins
+      const { data: aggregatedData, error } = await supabase
         .from('lots')
-        .select(`
-          quality,
-          color,
-          meters,
-          roll_count,
-          suppliers(name)
-        `)
+        .select('quality, color, meters, roll_count')
         .eq('status', 'in_stock');
 
       if (error) throw error;
@@ -58,7 +52,7 @@ const InventoryPivotTable = () => {
       // Group and aggregate data
       const qualityMap = new Map<string, Map<string, { meters: number; rolls: number; count: number }>>();
 
-      lotsData.forEach(lot => {
+      aggregatedData?.forEach(lot => {
         if (!qualityMap.has(lot.quality)) {
           qualityMap.set(lot.quality, new Map());
         }
