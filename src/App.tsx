@@ -21,6 +21,9 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import QRPrint from "./pages/QRPrint";
 import OrderQueue from "./pages/OrderQueue";
+import LotDetails from "./pages/LotDetails";
+import { POCartProvider } from "./contexts/POCartProvider";
+import FloatingPOCart from "./components/FloatingPOCart";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +54,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <POCartProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -67,6 +71,11 @@ const App = () => (
               <Route path="/inventory" element={
                 <ProtectedRoute>
                   <Inventory />
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory/:quality/:color" element={
+                <ProtectedRoute>
+                  <LotDetails />
                 </ProtectedRoute>
               } />
               <Route path="/orders" element={
@@ -114,6 +123,8 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <FloatingPOCart />
+            </POCartProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

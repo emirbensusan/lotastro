@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import InventoryExcel from './InventoryExcel';
+import InventoryPivotTable from '@/components/InventoryPivotTable';
 import { Package } from 'lucide-react';
 
 const Inventory = () => {
@@ -13,7 +13,7 @@ const Inventory = () => {
         <Package className="h-8 w-8 text-primary" />
       </div>
 
-      <InventoryExcel mode="view" />
+      <InventoryPivotTable />
     </div>
   );
 };

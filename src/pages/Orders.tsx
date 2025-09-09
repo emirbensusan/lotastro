@@ -16,7 +16,7 @@ import OrderPrintDialog from '@/components/OrderPrintDialog';
 import MultiQualityOrderDialog from '@/components/MultiQualityOrderDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
 import SampleOrderDialog from '@/components/SampleOrderDialog';
-import { InventoryPivotTable } from '@/components/InventoryPivotTable';
+import InventoryPivotTable from '@/components/InventoryPivotTable';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -383,10 +383,10 @@ const Orders = () => {
 
             {/* Inventory Selection Table */}
             <div className="space-y-2">
-              <Label>Select Inventory for Order</Label>
-              <InventoryPivotTable
-                onLotsSelected={setSelectedLots}
-              />
+              <Label>Use the inventory page to add lots to your cart, then return here to create orders</Label>
+              <p className="text-sm text-muted-foreground">
+                Navigate to inventory → select quality/color → add lots to cart → return here to create PO
+              </p>
             </div>
 
             <div className="flex justify-end space-x-2">
