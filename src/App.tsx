@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import QRPrint from "./pages/QRPrint";
 import OrderQueue from "./pages/OrderQueue";
 import LotDetails from "./pages/LotDetails";
+import QualityDetails from "./pages/QualityDetails";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 
@@ -71,6 +72,11 @@ const App = () => (
               <Route path="/inventory" element={
                 <ProtectedRoute>
                   <Inventory />
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory/:quality" element={
+                <ProtectedRoute>
+                  <QualityDetails />
                 </ProtectedRoute>
               } />
               <Route path="/inventory/:quality/:color" element={

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePOCart } from '@/contexts/POCartProvider';
 import { toast } from "sonner";
 import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2, Upload, FlaskConical, ChevronDown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -53,6 +54,7 @@ interface Lot {
 
 const Orders = () => {
   const { profile } = useAuth();
+  const { clearCart } = usePOCart();
   const { t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
@@ -79,11 +81,25 @@ const Orders = () => {
     lineType: 'sample' | 'standard';
   }>>([]);
 
-  // Check for pre-filled data from inventory
+  // Check for pre-filled data from cart
   useEffect(() => {
-    if (location.state?.prefilledLots) {
-      setSelectedLots(location.state.prefilledLots);
+    if (location.state?.selectedLots && location.state?.fromCart) {
+      // Convert cart data to order format
+      const convertedLots = location.state.selectedLots.map((cartItem: any) => ({
+        lotId: cartItem.id,
+        quality: cartItem.quality,
+        color: cartItem.color,
+        lotNumber: cartItem.lot_number,
+        meters: cartItem.meters,
+        availableRolls: cartItem.roll_count,
+        rollCount: cartItem.selectedRolls,
+        lineType: 'standard' as const
+      }));
+      
+      setSelectedLots(convertedLots);
       setShowCreateDialog(true);
+      // Clear the location state to avoid re-triggering
+      window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
@@ -206,6 +222,12 @@ const Orders = () => {
       setShowCreateDialog(false);
       setCustomerName('');
       setSelectedLots([]);
+      
+      // Clear cart if order was created from cart
+      if (location.state?.fromCart) {
+        clearCart();
+      }
+      
       fetchOrders();
     } catch (error: any) {
       toast.error(error.message);
@@ -381,7 +403,26 @@ const Orders = () => {
               />
             </div>
 
-            {/* Inventory Selection Table */}
+            {/* Show selected lots from cart */}
+            {selectedLots.length > 0 && (
+              <div className="space-y-2">
+                <Label>{t('selectedLots')} ({selectedLots.length})</Label>
+                <div className="max-h-40 overflow-y-auto space-y-2">
+                  {selectedLots.map((lot) => (
+                    <div key={lot.lotId} className="flex items-center justify-between p-2 border rounded">
+                      <div className="flex-1">
+                        <span className="font-mono text-sm">{lot.lotNumber}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {lot.quality} - {lot.color} - {lot.rollCount} {t('rolls')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Instructions */}
             <div className="space-y-2">
               <Label>Use the inventory page to add lots to your cart, then return here to create orders</Label>
               <p className="text-sm text-muted-foreground">

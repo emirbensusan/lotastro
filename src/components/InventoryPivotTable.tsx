@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { Search, ChevronDown, ChevronRight, Package } from 'lucide-react';
+import { Search, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface PivotData {
@@ -28,7 +28,7 @@ const InventoryPivotTable = () => {
   const [pivotData, setPivotData] = useState<PivotData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedQualities, setExpandedQualities] = useState<Set<string>>(new Set());
+  
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -96,7 +96,7 @@ const InventoryPivotTable = () => {
         };
       });
 
-      setPivotData(pivot.sort((a, b) => a.quality.localeCompare(b.quality)));
+      setPivotData(pivot.sort((a, b) => b.total_meters - a.total_meters));
     } catch (error) {
       console.error('Error fetching pivot data:', error);
       toast({
@@ -109,14 +109,8 @@ const InventoryPivotTable = () => {
     }
   };
 
-  const toggleQuality = (quality: string) => {
-    const newExpanded = new Set(expandedQualities);
-    if (newExpanded.has(quality)) {
-      newExpanded.delete(quality);
-    } else {
-      newExpanded.add(quality);
-    }
-    setExpandedQualities(newExpanded);
+  const navigateToQualityDetails = (quality: string) => {
+    navigate(`/inventory/${encodeURIComponent(quality)}`);
   };
 
   const navigateToLotDetails = (quality: string, color: string) => {
@@ -214,82 +208,40 @@ const InventoryPivotTable = () => {
             </TableHeader>
             <TableBody>
               {filteredData.map((qualityData) => (
-                <React.Fragment key={qualityData.quality}>
-                  {/* Quality Row */}
-                  <TableRow className="hover:bg-muted/50">
-                    <TableCell>
-                      <Collapsible
-                        open={expandedQualities.has(qualityData.quality)}
-                        onOpenChange={() => toggleQuality(qualityData.quality)}
-                      >
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" className="p-0 h-auto font-semibold text-left justify-start">
-                            {expandedQualities.has(qualityData.quality) ? (
-                              <ChevronDown className="h-4 w-4 mr-2" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 mr-2" />
-                            )}
-                            {qualityData.quality}
-                            <Badge variant="secondary" className="ml-2">
-                              {qualityData.colors.length} {qualityData.colors.length === 1 ? 'color' : 'colors'}
-                            </Badge>
-                          </Button>
-                        </CollapsibleTrigger>
-                      </Collapsible>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {qualityData.total_lots}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {qualityData.total_meters.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {qualityData.total_rolls.toLocaleString()}
-                    </TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-
-                  {/* Color Rows */}
-                  <Collapsible
-                    open={expandedQualities.has(qualityData.quality)}
-                    onOpenChange={() => toggleQuality(qualityData.quality)}
-                  >
-                    <CollapsibleContent asChild>
-                      <>
-                        {qualityData.colors.map((colorData) => (
-                          <TableRow key={`${qualityData.quality}-${colorData.color}`} className="hover:bg-muted/25">
-                            <TableCell className="pl-8">
-                              <div className="flex items-center space-x-3">
-                                <div 
-                                  className="w-4 h-4 rounded border border-muted-foreground/20"
-                                  style={{ backgroundColor: colorData.color.toLowerCase() === 'white' ? '#f8f9fa' : colorData.color.toLowerCase() }}
-                                />
-                                <span>{colorData.color}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {colorData.lot_count}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {colorData.total_meters.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {colorData.total_rolls.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                onClick={() => navigateToLotDetails(qualityData.quality, colorData.color)}
-                              >
-                                {t('selectLots')}
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </React.Fragment>
+                <TableRow 
+                  key={qualityData.quality} 
+                  className="hover:bg-muted/50 cursor-pointer"
+                  onClick={() => navigateToQualityDetails(qualityData.quality)}
+                >
+                  <TableCell>
+                    <div className="flex items-center space-x-3">
+                      <span className="font-semibold">{qualityData.quality}</span>
+                      <Badge variant="secondary" className="ml-2">
+                        {qualityData.colors.length} {qualityData.colors.length === 1 ? 'color' : 'colors'}
+                      </Badge>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {qualityData.total_lots}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {qualityData.total_meters.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {qualityData.total_rolls.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigateToQualityDetails(qualityData.quality);
+                      }}
+                    >
+                      {t('selectLots')}
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
             </TableBody>
           </Table>
