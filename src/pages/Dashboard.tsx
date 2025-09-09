@@ -37,18 +37,20 @@ const Dashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      // Fetch inventory aggregated data directly
+      // Fetch inventory aggregated data directly with increased limit
       const { data: aggregatedData, error: aggregatedError } = await supabase
         .from('lots')
         .select('roll_count, meters')
-        .eq('status', 'in_stock');
+        .eq('status', 'in_stock')
+        .limit(10000);
 
       if (aggregatedError) throw aggregatedError;
 
-      // Fetch all lots for counts and aging
+      // Fetch all lots for counts and aging with increased limit
       const { data: lots, error: lotsError } = await supabase
         .from('lots')
-        .select('status, entry_date');
+        .select('status, entry_date')
+        .limit(10000);
 
       if (lotsError) throw lotsError;
 

@@ -153,14 +153,14 @@ const InventoryPivotTable = () => {
         </div>
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary Stats - Use pivotData to show total database stats regardless of search */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">{t('allQualities')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filteredData.length}</div>
+            <div className="text-2xl font-bold">{pivotData.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -169,7 +169,7 @@ const InventoryPivotTable = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredData.reduce((sum, item) => sum + item.total_lots, 0)}
+              {pivotData.reduce((sum, item) => sum + item.total_lots, 0)}
             </div>
           </CardContent>
         </Card>
@@ -179,7 +179,7 @@ const InventoryPivotTable = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredData.reduce((sum, item) => sum + item.total_meters, 0).toLocaleString()}
+              {pivotData.reduce((sum, item) => sum + item.total_meters, 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -189,7 +189,7 @@ const InventoryPivotTable = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredData.reduce((sum, item) => sum + item.total_rolls, 0).toLocaleString()}
+              {pivotData.reduce((sum, item) => sum + item.total_rolls, 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
