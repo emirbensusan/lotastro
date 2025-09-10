@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2, Package, QrCode, Printer, Upload, Download, FileText, CheckCircle, XCircle } from 'lucide-react';
-import { generateExcelTemplate, parseCSVFile, importLotsToDatabase, ImportLotData, ImportResult } from '@/utils/excelImport';
+import { generateExcelTemplate, parseCSVFile, importLotsToDatabase, generateErrorReport, ImportLotData, ImportResult, ParseError } from '@/utils/excelImport';
 
 interface Supplier {
   id: string;
@@ -274,18 +274,19 @@ const LotIntake = () => {
           setImportProgress(25);
 
           // Parse CSV
-          const lots = parseCSVFile(csvText);
+          const parseResult = parseCSVFile(csvText);
           setImportProgress(50);
           
+          const totalRows = parseResult.lots.length + parseResult.errors.length;
           toast({
             title: t('validatingData') as string || 'Validating data...',
-            description: `Found ${lots.length} lots to import`,
+            description: `Found ${parseResult.lots.length} valid lots, ${parseResult.errors.length} errors (${totalRows} total rows)`,
           });
           
           setImportProgress(75);
 
-          // Import to database
-          const result = await importLotsToDatabase(lots);
+          // Import to database (only valid lots)
+          const result = await importLotsToDatabase(parseResult.lots, parseResult.errors);
           setImportProgress(100);
           
           setImportResults(result);
@@ -672,18 +673,63 @@ const LotIntake = () => {
                       <span className="text-sm">{importResults.message}</span>
                     </div>
                     
-                    {importResults.errors && importResults.errors.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">{t('errors') as string}:</h4>
-                        <div className="bg-destructive/10 p-3 rounded-lg max-h-32 overflow-y-auto">
-                          {importResults.errors.map((error, index) => (
-                            <div key={index} className="text-xs text-destructive">
-                              {error}
-                            </div>
-                          ))}
+                    {(importResults.parsingErrors && importResults.parsingErrors.length > 0) || 
+                     (importResults.databaseErrors && importResults.databaseErrors.length > 0) ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-destructive">
+                            {(importResults.parsingErrors?.length || 0) + (importResults.databaseErrors?.length || 0)} errors found
+                          </Badge>
+                          <Button
+                            onClick={() => generateErrorReport(
+                              importResults.parsingErrors || [], 
+                              importResults.databaseErrors
+                            )}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Error Report
+                          </Button>
                         </div>
+                        
+                        {importResults.parsingErrors && importResults.parsingErrors.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-medium">Parsing Errors ({importResults.parsingErrors.length}):</h4>
+                            <div className="bg-destructive/10 p-3 rounded-lg max-h-32 overflow-y-auto">
+                              {importResults.parsingErrors.slice(0, 5).map((error, index) => (
+                                <div key={index} className="text-xs text-destructive">
+                                  Row {error.rowNumber}: {error.message}
+                                </div>
+                              ))}
+                              {importResults.parsingErrors.length > 5 && (
+                                <div className="text-xs text-muted-foreground">
+                                  ... and {importResults.parsingErrors.length - 5} more parsing errors
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {importResults.databaseErrors && importResults.databaseErrors.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-medium">Database Errors ({importResults.databaseErrors.length}):</h4>
+                            <div className="bg-destructive/10 p-3 rounded-lg max-h-32 overflow-y-auto">
+                              {importResults.databaseErrors.slice(0, 3).map((error, index) => (
+                                <div key={index} className="text-xs text-destructive">
+                                  {error}
+                                </div>
+                              ))}
+                              {importResults.databaseErrors.length > 3 && (
+                                <div className="text-xs text-muted-foreground">
+                                  ... and {importResults.databaseErrors.length - 3} more database errors
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>

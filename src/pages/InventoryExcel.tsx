@@ -319,7 +319,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
     if (!file) return;
 
     // Import the utility functions
-    const { parseCSVFile, importLotsToDatabase } = await import('@/utils/excelImport');
+    const { parseCSVFile, importLotsToDatabase, generateErrorReport } = await import('@/utils/excelImport');
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -332,16 +332,27 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
         });
 
         // Parse CSV
-        const lots = parseCSVFile(csv);
+        const parseResult = parseCSVFile(csv);
         
         // Import to database
-        const result = await importLotsToDatabase(lots);
+        const result = await importLotsToDatabase(parseResult.lots, parseResult.errors);
         
         if (result.success) {
           toast({
             title: t('success') as string,
             description: result.message
           });
+          
+          // Show additional details if there were errors
+          if ((result.parsingErrors && result.parsingErrors.length > 0) || 
+              (result.databaseErrors && result.databaseErrors.length > 0)) {
+            const totalErrors = (result.parsingErrors?.length || 0) + (result.databaseErrors?.length || 0);
+            toast({
+              title: 'Import completed with errors',
+              description: `${totalErrors} errors found. Check console for details.`,
+              variant: 'destructive'
+            });
+          }
           
           // Refresh data
           fetchLots();

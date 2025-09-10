@@ -16,11 +16,22 @@ export interface ImportLotData {
   roll_details?: string; // Semicolon-separated meters per roll (e.g., "40;50;100")
 }
 
+export interface ParseError {
+  rowNumber: number;
+  message: string;
+}
+
+export interface ParseResult {
+  lots: ImportLotData[];
+  errors: ParseError[];
+}
+
 export interface ImportResult {
   success: boolean;
   message: string;
   imported?: number;
-  errors?: string[];
+  parsingErrors?: ParseError[];
+  databaseErrors?: string[];
 }
 
 export const generateExcelTemplate = (): void => {
@@ -85,7 +96,35 @@ const parseFlexibleDate = (dateStr: string): string => {
   throw new Error(`Invalid date format: ${dateStr}. Use DD.MM.YYYY or YYYY-MM-DD`);
 };
 
-export const parseCSVFile = (csvText: string): ImportLotData[] => {
+// Function to generate error report CSV
+export const generateErrorReport = (parsingErrors: ParseError[], databaseErrors?: string[]): void => {
+  const headers = ['Row Number', 'Error Type', 'Error Message'];
+  const rows: string[] = [];
+  
+  // Add parsing errors with row numbers
+  parsingErrors.forEach(error => {
+    rows.push(`${error.rowNumber},Parsing,"${error.message.replace(/"/g, '""')}"`);
+  });
+  
+  // Add database errors (no specific row numbers)
+  if (databaseErrors) {
+    databaseErrors.forEach(error => {
+      rows.push(`N/A,Database,"${error.replace(/"/g, '""')}"`);
+    });
+  }
+  
+  const csvContent = [headers.join(','), ...rows].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `import_errors_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+export const parseCSVFile = (csvText: string): ParseResult => {
   // Normalize newlines and trim BOM
   let text = csvText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   if (text.charCodeAt(0) === 0xfeff) {
@@ -241,6 +280,7 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
   }
 
   const data: ImportLotData[] = [];
+  const errors: ParseError[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
@@ -276,27 +316,57 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
       if (!row[k] || String(row[k]).trim() === '') requiredMissing.push(k);
     });
     if (requiredMissing.length > 0) {
-      throw new Error(`Row ${rowNumber}: Missing required data: ${requiredMissing.join(', ')}`);
+      errors.push({ 
+        rowNumber, 
+        message: `Missing required data: ${requiredMissing.join(', ')}` 
+      });
+      continue;
     }
 
     // Parse numbers
     const rollCount = parseInt(String(row.roll_count).replace(/[^0-9-]/g, ''));
     const meters = parseFloat(String(row.meters).replace(',', '.'));
     if (!Number.isFinite(rollCount) || rollCount <= 0) {
-      throw new Error(`Row ${rowNumber}: Invalid roll_count "${row.roll_count}". Must be a positive integer.`);
+      errors.push({ 
+        rowNumber, 
+        message: `Invalid roll_count "${row.roll_count}". Must be a positive integer.` 
+      });
+      continue;
     }
     if (!Number.isFinite(meters) || meters <= 0) {
-      throw new Error(`Row ${rowNumber}: Invalid meters "${row.meters}". Must be a positive number.`);
+      errors.push({ 
+        rowNumber, 
+        message: `Invalid meters "${row.meters}". Must be a positive number.` 
+      });
+      continue;
     }
 
     // Parse dates
     let entryDate: string;
     let invoiceDate: string;
     let productionDate: string | undefined;
-    try { entryDate = parseFlexibleDate(String(row.entry_date)); } catch (e: any) { throw new Error(`Row ${rowNumber}: Invalid entry_date. ${e.message}`); }
-    try { invoiceDate = parseFlexibleDate(String(row.invoice_date)); } catch (e: any) { throw new Error(`Row ${rowNumber}: Invalid invoice_date. ${e.message}`); }
+    
+    try { 
+      entryDate = parseFlexibleDate(String(row.entry_date)); 
+    } catch (e: any) { 
+      errors.push({ rowNumber, message: `Invalid entry_date. ${e.message}` });
+      continue;
+    }
+    
+    try { 
+      invoiceDate = parseFlexibleDate(String(row.invoice_date)); 
+    } catch (e: any) { 
+      errors.push({ rowNumber, message: `Invalid invoice_date. ${e.message}` });
+      continue;
+    }
+    
     if (row.production_date) {
-      try { productionDate = parseFlexibleDate(String(row.production_date)); } catch (e: any) { throw new Error(`Row ${rowNumber}: Invalid production_date. ${e.message}`); }
+      try { 
+        productionDate = parseFlexibleDate(String(row.production_date)); 
+      } catch (e: any) { 
+        errors.push({ rowNumber, message: `Invalid production_date. ${e.message}` });
+        continue;
+      }
     }
 
     // Handle roll_details (optional). If missing, distribute evenly.
@@ -318,12 +388,20 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
       if (singleNumberRegex.test(rd)) {
         const perRoll = parseFloat(rd.replace(',', '.'));
         if (!Number.isFinite(perRoll) || perRoll <= 0) {
-          throw new Error(`Row ${rowNumber}: Invalid roll_details value "${rollDetailsStr}". Must be a positive number.`);
+          errors.push({ 
+            rowNumber, 
+            message: `Invalid roll_details value "${rollDetailsStr}". Must be a positive number.` 
+          });
+          continue;
         }
         const rollMeters = Array.from({ length: rollCount }, () => Math.round(perRoll * 100) / 100);
         const sum = rollMeters.reduce((s, v) => s + v, 0);
         if (Math.abs(sum - meters) > 0.5) {
-          throw new Error(`Row ${rowNumber}: Per-roll value × roll_count (${(perRoll * rollCount).toFixed(2)}) doesn't match meters (${meters}). Adjust value or meters (±0.5).`);
+          errors.push({ 
+            rowNumber, 
+            message: `Per-roll value × roll_count (${(perRoll * rollCount).toFixed(2)}) doesn't match meters (${meters}). Adjust value or meters (±0.5).` 
+          });
+          continue;
         }
         rollDetailsStr = rollMeters.join(';');
       } else {
@@ -331,20 +409,32 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
         const parts = rd.split(/[;|]/).map(s => s.trim()).filter(Boolean);
         const parsed = parts.map(m => parseFloat(m.replace(',', '.')));
         if (parsed.length === 0 || parsed.some(v => !Number.isFinite(v) || v <= 0)) {
-          throw new Error(`Row ${rowNumber}: Invalid roll_details values. Use positive numbers separated by ';' or '|' (decimal commas like 104,5 are allowed).`);
+          errors.push({ 
+            rowNumber, 
+            message: `Invalid roll_details values. Use positive numbers separated by ';' or '|' (decimal commas like 104,5 are allowed).` 
+          });
+          continue;
         }
         let rollMeters: number[];
         if (parsed.length === 1 && rollCount > 1) {
           const perRoll = Math.round(parsed[0] * 100) / 100;
           rollMeters = Array.from({ length: rollCount }, () => perRoll);
         } else if (parsed.length !== rollCount) {
-          throw new Error(`Row ${rowNumber}: Roll count (${rollCount}) doesn't match number of roll details (${parsed.length}). Provide a single per-roll number (e.g., "104,5") or separate values with ';' or '|'.`);
+          errors.push({ 
+            rowNumber, 
+            message: `Roll count (${rollCount}) doesn't match number of roll details (${parsed.length}). Provide a single per-roll number (e.g., "104,5") or separate values with ';' or '|'.` 
+          });
+          continue;
         } else {
           rollMeters = parsed;
         }
         const sum = rollMeters.reduce((s, v) => s + v, 0);
         if (Math.abs(sum - meters) > 0.5) {
-          throw new Error(`Row ${rowNumber}: Sum of roll details (${sum.toFixed(2)}) doesn't match total meters (${meters}). If using decimal commas, separate multiple rolls with ';' or '|'.`);
+          errors.push({ 
+            rowNumber, 
+            message: `Sum of roll details (${sum.toFixed(2)}) doesn't match total meters (${meters}). If using decimal commas, separate multiple rolls with ';' or '|'.` 
+          });
+          continue;
         }
         rollDetailsStr = rollMeters.map(v => Math.round(v * 100) / 100).join(';');
       }
@@ -369,12 +459,12 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
     data.push(lotData);
   }
 
-  return data;
+  return { lots: data, errors };
 };
 
-export const importLotsToDatabase = async (lots: ImportLotData[]): Promise<ImportResult> => {
+export const importLotsToDatabase = async (lots: ImportLotData[], parsingErrors?: ParseError[]): Promise<ImportResult> => {
   try {
-    const errors: string[] = [];
+    const databaseErrors: string[] = [];
     let imported = 0;
 
     for (const lot of lots) {
@@ -395,12 +485,12 @@ export const importLotsToDatabase = async (lots: ImportLotData[]): Promise<Impor
             .single();
 
           if (createError) {
-            errors.push(`Failed to create supplier "${lot.supplier_name}": ${createError.message}`);
+            databaseErrors.push(`Failed to create supplier "${lot.supplier_name}": ${createError.message}`);
             continue;
           }
           supplier = newSupplier;
         } else if (supplierError) {
-          errors.push(`Supplier lookup error for "${lot.supplier_name}": ${supplierError.message}`);
+          databaseErrors.push(`Supplier lookup error for "${lot.supplier_name}": ${supplierError.message}`);
           continue;
         }
 
@@ -426,7 +516,7 @@ export const importLotsToDatabase = async (lots: ImportLotData[]): Promise<Impor
           .single();
 
         if (lotError) {
-          errors.push(`Failed to import LOT "${lot.lot_number}": ${lotError.message}`);
+          databaseErrors.push(`Failed to import LOT "${lot.lot_number}": ${lotError.message}`);
           continue;
         }
 
@@ -444,21 +534,22 @@ export const importLotsToDatabase = async (lots: ImportLotData[]): Promise<Impor
             .insert(rollInserts);
 
           if (rollsError) {
-            errors.push(`Failed to create roll entries for LOT "${lot.lot_number}": ${rollsError.message}`);
+            databaseErrors.push(`Failed to create roll entries for LOT "${lot.lot_number}": ${rollsError.message}`);
           }
         }
         
         imported++;
       } catch (error: any) {
-        errors.push(`Error processing LOT "${lot.lot_number}": ${error.message}`);
+        databaseErrors.push(`Error processing LOT "${lot.lot_number}": ${error.message}`);
       }
     }
 
     return {
       success: imported > 0,
-      message: `Successfully imported ${imported} of ${lots.length} lots`,
+      message: `Successfully imported ${imported} of ${lots.length} lots${parsingErrors?.length ? ` (${parsingErrors.length} parsing errors)` : ''}`,
       imported,
-      errors: errors.length > 0 ? errors : undefined
+      parsingErrors: parsingErrors?.length ? parsingErrors : undefined,
+      databaseErrors: databaseErrors.length > 0 ? databaseErrors : undefined
     };
 
   } catch (error: any) {
