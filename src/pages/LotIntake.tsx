@@ -285,12 +285,42 @@ const LotIntake = () => {
           
           setImportProgress(75);
 
+          // Check if there are any parsing errors - if so, stop processing
+          if (parseResult.errors.length > 0) {
+            console.log(`Validation failed: ${parseResult.errors.length} errors found`);
+            setImportProgress(100); // Validation complete
+            
+            // Create import result with only parsing errors (no database import)
+            const result = {
+              success: false,
+              message: `Validation failed: ${parseResult.errors.length} errors found in the uploaded file. Please fix the errors and upload again.`,
+              processedCount: 0,
+              totalCount: parseResult.lots.length,
+              parsingErrors: parseResult.errors,
+              databaseErrors: []
+            };
+            
+            setImportResults(result);
+            
+            toast({
+              title: t('validationFailed') as string || 'Validation Failed',
+              description: `${parseResult.errors.length} errors found. Download the error report to see details.`,
+              variant: 'destructive',
+              duration: 0, // Keep visible
+            });
+            
+            return; // Stop processing here
+          }
+
+          // Only proceed to database import if there are NO parsing errors
+          console.log(`Validation passed: Processing ${parseResult.lots.length} lots`);
+          
           // Import to database (only valid lots) with progress tracking
           const result = await importLotsToDatabase(
             parseResult.lots, 
             parseResult.errors,
             (current, total, currentLot) => {
-              const dbProgress = 75 + Math.floor((current / total) * 20); // 75-95%
+              const dbProgress = 75 + Math.floor((current / total) * 25); // 75-100%
               setImportProgress(dbProgress);
               console.log(`Database progress: ${current}/${total} (${dbProgress}%) - Processing: ${currentLot}`);
             }
