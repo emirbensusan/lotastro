@@ -86,106 +86,260 @@ const parseFlexibleDate = (dateStr: string): string => {
 };
 
 export const parseCSVFile = (csvText: string): ImportLotData[] => {
-  const lines = csvText.trim().split('\n');
-  const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
-  
-  const requiredFields = ['quality', 'color', 'roll_count', 'roll_details', 'meters', 'lot_number', 'entry_date', 'supplier_name', 'invoice_number', 'invoice_date'];
-  const missingFields = requiredFields.filter(field => !headers.includes(field));
-  
-  if (missingFields.length > 0) {
-    throw new Error(`Missing required columns: ${missingFields.join(', ')}. Expected format: quality, color, roll_count, roll_details, meters, lot_number, entry_date, supplier_name, invoice_number, invoice_date, production_date, warehouse_location, notes`);
+  // Normalize newlines and trim BOM
+  let text = csvText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  if (text.charCodeAt(0) === 0xfeff) {
+    text = text.slice(1);
+  }
+
+  // Utility: remove quotes around a value
+  const unquote = (s: string) => s.replace(/^\s*\"|\"\s*$/g, '').trim();
+
+  // Detect delimiter (comma vs semicolon) based on header line
+  const firstLine = text.split('\n').find(l => l.trim().length > 0) || '';
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const semicolonCount = (firstLine.match(/;/g) || []).length;
+  const delimiter = semicolonCount > commaCount ? ';' : ',';
+
+  // Split a CSV line respecting quotes
+  const splitCSVLine = (line: string, delim: string): string[] => {
+    const out: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          cur += '"';
+          i++; // skip escaped quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === delim && !inQuotes) {
+        out.push(cur);
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out.map(v => unquote(v.trim()))
+  };
+
+  // Header normalization
+  const removeDiacritics = (str: string) => str.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  const canonicalize = (h: string) => removeDiacritics(h.toLowerCase().trim())
+    .replace(/^\uFEFF/, '')
+    .replace(/["'`]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  const synonymMap: Record<string, string> = {
+    // quality
+    kalite: 'quality',
+    quality: 'quality',
+
+    // color
+    renk: 'color',
+    color: 'color',
+
+    // roll_count (do not map generic "rulo" to avoid ambiguity)
+    rulo_sayisi: 'roll_count',
+    rulosayisi: 'roll_count',
+    rulo_sayisi1: 'roll_count',
+    rulo_sayisi_1: 'roll_count',
+    rulo_sayisi_2: 'roll_count',
+    rulo_sayisi_3: 'roll_count',
+    rulo_sayisi_adet: 'roll_count',
+    rulo_sayisi_adedi: 'roll_count',
+    rollcount: 'roll_count',
+    roll_count: 'roll_count',
+    adet: 'roll_count',
+
+    // roll_details
+    rulo_detaylari: 'roll_details',
+    rulo_detay: 'roll_details',
+    rolldetails: 'roll_details',
+    roll_details: 'roll_details',
+
+    // meters
+    metre: 'meters',
+    metraj: 'meters',
+    metre_m: 'meters',
+    toplam_metre: 'meters',
+    toplammetre: 'meters',
+    meters: 'meters',
+
+    // lot number
+    lot: 'lot_number',
+    lot_no: 'lot_number',
+    lotno: 'lot_number',
+    lot_numarasi: 'lot_number',
+    lotnumber: 'lot_number',
+    lot_number: 'lot_number',
+
+    // dates
+    giris_tarihi: 'entry_date',
+    giristarihi: 'entry_date',
+    entry_date: 'entry_date',
+
+    fatura_no: 'invoice_number',
+    fatura_numarasi: 'invoice_number',
+    invoice_number: 'invoice_number',
+    invoice_no: 'invoice_number',
+
+    fatura_tarihi: 'invoice_date',
+    faturatarihi: 'invoice_date',
+    invoice_date: 'invoice_date',
+
+    uretim_tarihi: 'production_date',
+    production_date: 'production_date',
+
+    // warehouse
+    ambar: 'warehouse_location',
+    depo: 'warehouse_location',
+    warehouse_location: 'warehouse_location',
+    warehouse: 'warehouse_location',
+
+    // notes
+    not: 'notes',
+    aciklama: 'notes',
+    notes: 'notes',
+  };
+  const lines = text.split('\n').filter(l => l.length > 0);
+  if (lines.length === 0) throw new Error('Empty file');
+
+  const rawHeaderCells = splitCSVLine(lines[0], delimiter);
+  const originalHeaders = rawHeaderCells.map(h => h.trim());
+  const normalized = rawHeaderCells.map(h => canonicalize(h));
+
+  // Map normalized headers to expected keys via synonyms
+  const expectedKeys = ['quality','color','roll_count','roll_details','meters','lot_number','entry_date','supplier_name','invoice_number','invoice_date','production_date','warehouse_location','notes'];
+  const headerKeyByIndex: (string | null)[] = normalized.map(n => {
+    if (n in synonymMap) return synonymMap[n];
+    // allow exact expected names too
+    if (expectedKeys.includes(n)) return n;
+    // Also map common variants
+    if (n === 'supplier' || n === 'tedarikci') return 'supplier_name';
+    if (n === 'fatura') return 'invoice_number';
+    if (n === 'faturatarihi') return 'invoice_date';
+    if (n === 'giristarihi') return 'entry_date';
+    if (n === 'lotnumarasi' || n === 'lotnumarasi_') return 'lot_number';
+    return null;
+  });
+
+  const indexOfKey: Record<string, number> = {};
+  headerKeyByIndex.forEach((key, idx) => {
+    if (key && !(key in indexOfKey)) indexOfKey[key] = idx;
+  });
+
+  const requiredKeys = ['quality','color','roll_count','meters','lot_number','entry_date','supplier_name','invoice_number','invoice_date'];
+  const missing = requiredKeys.filter(k => !(k in indexOfKey));
+  if (missing.length > 0) {
+    throw new Error(`Missing required columns: ${missing.join(', ')}. Detected headers: ${originalHeaders.join(' | ')}. Delimiter detected: "${delimiter}". You can download the template to see the expected columns.`);
   }
 
   const data: ImportLotData[] = [];
-  
+
   for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue; // Skip empty lines
-    
-    const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-    
-    if (values.length !== headers.length) {
-      throw new Error(`Row ${i + 1}: Expected ${headers.length} columns, got ${values.length}. Check for missing commas or extra data.`);
-    }
+    const line = lines[i];
+    if (!line || !line.trim()) continue;
 
-    const row: any = {};
-    headers.forEach((header, index) => {
-      row[header] = values[index];
+    const values = splitCSVLine(line, delimiter);
+
+    const getVal = (key: string) => {
+      const idx = indexOfKey[key];
+      return typeof idx === 'number' ? values[idx] ?? '' : '';
+    };
+
+    const row: any = {
+      quality: getVal('quality'),
+      color: getVal('color'),
+      roll_count: getVal('roll_count'),
+      meters: getVal('meters'),
+      lot_number: getVal('lot_number'),
+      entry_date: getVal('entry_date'),
+      supplier_name: getVal('supplier_name'),
+      invoice_number: getVal('invoice_number'),
+      invoice_date: getVal('invoice_date'),
+      production_date: getVal('production_date'),
+      warehouse_location: getVal('warehouse_location'),
+      notes: getVal('notes'),
+      roll_details: getVal('roll_details'),
+    };
+
+    // Validate required fields
+    const rowNumber = i + 1; // human-friendly
+    const requiredMissing: string[] = [];
+    ['quality','color','lot_number','entry_date','supplier_name','invoice_number','invoice_date','roll_count','meters'].forEach(k => {
+      if (!row[k] || String(row[k]).trim() === '') requiredMissing.push(k);
     });
-
-    // Validate required fields first
-    if (!row.quality || !row.color || !row.lot_number || !row.entry_date || !row.supplier_name || !row.invoice_number || !row.invoice_date || !row.roll_details) {
-      throw new Error(`Row ${i + 1}: Missing required data. All fields except production_date, warehouse_location, and notes are required.`);
+    if (requiredMissing.length > 0) {
+      throw new Error(`Row ${rowNumber}: Missing required data: ${requiredMissing.join(', ')}`);
     }
 
-    // Parse and validate numeric values
-    const rollCount = parseInt(row.roll_count);
-    const meters = parseFloat(row.meters);
-    
-    if (isNaN(rollCount) || rollCount <= 0) {
-      throw new Error(`Row ${i + 1}: Invalid roll_count "${row.roll_count}". Must be a positive integer.`);
+    // Parse numbers
+    const rollCount = parseInt(String(row.roll_count).replace(/[^0-9-]/g, ''));
+    const meters = parseFloat(String(row.meters).replace(',', '.'));
+    if (!Number.isFinite(rollCount) || rollCount <= 0) {
+      throw new Error(`Row ${rowNumber}: Invalid roll_count "${row.roll_count}". Must be a positive integer.`);
     }
-    
-    if (isNaN(meters) || meters <= 0) {
-      throw new Error(`Row ${i + 1}: Invalid meters "${row.meters}". Must be a positive number.`);
+    if (!Number.isFinite(meters) || meters <= 0) {
+      throw new Error(`Row ${rowNumber}: Invalid meters "${row.meters}". Must be a positive number.`);
     }
 
-    // Validate and parse roll_details
-    const rollMeters = row.roll_details.split(';').map((m: string) => {
-      const parsed = parseFloat(m.trim());
-      if (isNaN(parsed) || parsed <= 0) {
-        throw new Error(`Row ${i + 1}: Invalid roll detail "${m}". All roll details must be positive numbers separated by semicolons.`);
-      }
-      return parsed;
-    });
-
-    if (rollMeters.length !== rollCount) {
-      throw new Error(`Row ${i + 1}: Roll count (${rollCount}) doesn't match number of roll details (${rollMeters.length}). Each roll must have a meter value in roll_details.`);
-    }
-
-    const rollDetailsSum = rollMeters.reduce((sum, meters) => sum + meters, 0);
-    if (Math.abs(rollDetailsSum - meters) > 0.01) {
-      throw new Error(`Row ${i + 1}: Sum of roll details (${rollDetailsSum.toFixed(2)}) doesn't match total meters (${meters}). Please check your calculations.`);
-    }
-
-    // Parse and validate dates
+    // Parse dates
     let entryDate: string;
     let invoiceDate: string;
     let productionDate: string | undefined;
-
-    try {
-      entryDate = parseFlexibleDate(row.entry_date);
-    } catch (error: any) {
-      throw new Error(`Row ${i + 1}: Invalid entry_date. ${error.message}`);
-    }
-
-    try {
-      invoiceDate = parseFlexibleDate(row.invoice_date);
-    } catch (error: any) {
-      throw new Error(`Row ${i + 1}: Invalid invoice_date. ${error.message}`);
-    }
-
+    try { entryDate = parseFlexibleDate(String(row.entry_date)); } catch (e: any) { throw new Error(`Row ${rowNumber}: Invalid entry_date. ${e.message}`); }
+    try { invoiceDate = parseFlexibleDate(String(row.invoice_date)); } catch (e: any) { throw new Error(`Row ${rowNumber}: Invalid invoice_date. ${e.message}`); }
     if (row.production_date) {
-      try {
-        productionDate = parseFlexibleDate(row.production_date);
-      } catch (error: any) {
-        throw new Error(`Row ${i + 1}: Invalid production_date. ${error.message}`);
+      try { productionDate = parseFlexibleDate(String(row.production_date)); } catch (e: any) { throw new Error(`Row ${rowNumber}: Invalid production_date. ${e.message}`); }
+    }
+
+    // Handle roll_details (optional). If missing, distribute evenly.
+    let rollDetailsStr = String(row.roll_details || '').trim();
+    if (!rollDetailsStr) {
+      const each = Math.round((meters / rollCount) * 100) / 100;
+      const details: number[] = Array.from({ length: rollCount }, () => each);
+      // Fix rounding on last item to match total exactly to 2 decimals
+      const sumExceptLast = details.slice(0, -1).reduce((s, v) => s + v, 0);
+      const last = Math.round(((meters - sumExceptLast) + Number.EPSILON) * 100) / 100;
+      details[details.length - 1] = last;
+      rollDetailsStr = details.join(';');
+    } else {
+      const parts = rollDetailsStr.split(/[;,|]/).map(s => s.trim()).filter(Boolean);
+      const rollMeters = parts.map(m => parseFloat(m.replace(',', '.')));
+      if (rollMeters.some(v => !Number.isFinite(v) || v <= 0)) {
+        throw new Error(`Row ${rowNumber}: Invalid roll_details values. Use positive numbers separated by ';' or ','.`);
       }
+      if (rollMeters.length !== rollCount) {
+        throw new Error(`Row ${rowNumber}: Roll count (${rollCount}) doesn't match number of roll details (${rollMeters.length}).`);
+      }
+      const sum = rollMeters.reduce((s, v) => s + v, 0);
+      if (Math.abs(sum - meters) > 0.5) {
+        throw new Error(`Row ${rowNumber}: Sum of roll details (${sum.toFixed(2)}) doesn't match total meters (${meters}).`);
+      }
+      // Normalize to semicolon-separated
+      rollDetailsStr = rollMeters.map(v => Math.round(v * 100) / 100).join(';');
     }
 
     const lotData: ImportLotData = {
-      quality: row.quality,
-      color: row.color,
+      quality: String(row.quality),
+      color: String(row.color),
       roll_count: rollCount,
-      meters: meters,
-      lot_number: row.lot_number,
+      meters,
+      lot_number: String(row.lot_number),
       entry_date: entryDate,
-      supplier_name: row.supplier_name,
-      invoice_number: row.invoice_number,
+      supplier_name: String(row.supplier_name),
+      invoice_number: String(row.invoice_number),
       invoice_date: invoiceDate,
       production_date: productionDate,
-      warehouse_location: row.warehouse_location || undefined,
-      notes: row.notes || undefined,
-      roll_details: row.roll_details
+      warehouse_location: row.warehouse_location ? String(row.warehouse_location) : undefined,
+      notes: row.notes ? String(row.notes) : undefined,
+      roll_details: rollDetailsStr,
     };
 
     data.push(lotData);
