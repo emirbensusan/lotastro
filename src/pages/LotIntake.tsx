@@ -285,30 +285,55 @@ const LotIntake = () => {
           
           setImportProgress(75);
 
-          // Import to database (only valid lots)
-          const result = await importLotsToDatabase(parseResult.lots, parseResult.errors);
+          // Import to database (only valid lots) with progress tracking
+          const result = await importLotsToDatabase(
+            parseResult.lots, 
+            parseResult.errors,
+            (current, total, currentLot) => {
+              const dbProgress = 75 + Math.floor((current / total) * 20); // 75-95%
+              setImportProgress(dbProgress);
+              console.log(`Database progress: ${current}/${total} (${dbProgress}%) - Processing: ${currentLot}`);
+            }
+          );
           setImportProgress(100);
           
           setImportResults(result);
           
           if (result.success) {
+            // Success toast that doesn't auto-dismiss
             toast({
               title: t('success') as string,
               description: result.message,
+              duration: 0, // Don't auto-dismiss
             });
           } else {
+            // Error toast that stays visible
             toast({
               title: t('importError') as string,
               description: result.message,
               variant: 'destructive',
+              duration: 0, // Don't auto-dismiss
+            });
+          }
+
+          // Always show error summary if there are errors
+          const totalErrors = (result.parsingErrors?.length || 0) + (result.databaseErrors?.length || 0);
+          if (totalErrors > 0) {
+            toast({
+              title: `Import completed with ${totalErrors} errors`,
+              description: `${result.parsingErrors?.length || 0} parsing errors, ${result.databaseErrors?.length || 0} database errors. Click "Download Error Report" below for details.`,
+              variant: 'destructive',
+              duration: 0, // Keep visible
             });
           }
           
         } catch (error: any) {
+          console.error('Import error:', error);
           toast({
             title: t('importError') as string,
             description: error.message,
             variant: 'destructive',
+            duration: 0, // Keep error visible
           });
           setImportResults({
             success: false,
@@ -321,11 +346,13 @@ const LotIntake = () => {
       
       reader.readAsText(selectedFile);
     } catch (error: any) {
+      console.error('File reading error:', error);
       setBulkImporting(false);
       toast({
         title: t('importError') as string,
         description: error.message,
         variant: 'destructive',
+        duration: 0, // Keep error visible
       });
     }
   };

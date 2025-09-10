@@ -462,87 +462,137 @@ export const parseCSVFile = (csvText: string): ParseResult => {
   return { lots: data, errors };
 };
 
-export const importLotsToDatabase = async (lots: ImportLotData[], parsingErrors?: ParseError[]): Promise<ImportResult> => {
+// Helper function to create timeout for database operations
+const withTimeout = async <T>(promise: Promise<T>, ms: number, operation: string): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`Operation "${operation}" timed out after ${ms}ms`));
+    }, ms);
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timeoutId));
+  });
+};
+
+export const importLotsToDatabase = async (
+  lots: ImportLotData[], 
+  parsingErrors?: ParseError[],
+  progressCallback?: (current: number, total: number, currentLot?: string) => void
+): Promise<ImportResult> => {
   try {
+    console.log(`🚀 Starting database import for ${lots.length} lots`);
+    const startTime = Date.now();
     const databaseErrors: string[] = [];
     let imported = 0;
+    const BATCH_SIZE = 10; // Process in batches to prevent memory issues
+    const TIMEOUT_MS = 30000; // 30 second timeout per operation
 
-    for (const lot of lots) {
-      try {
-        // Find or create supplier
-        let { data: supplier, error: supplierError } = await supabase
-          .from('suppliers')
-          .select('id')
-          .eq('name', lot.supplier_name)
-          .single();
+    // Process lots in batches
+    for (let batchStart = 0; batchStart < lots.length; batchStart += BATCH_SIZE) {
+      const batch = lots.slice(batchStart, Math.min(batchStart + BATCH_SIZE, lots.length));
+      console.log(`📦 Processing batch ${Math.floor(batchStart / BATCH_SIZE) + 1}/${Math.ceil(lots.length / BATCH_SIZE)}`);
 
-        if (supplierError && supplierError.code === 'PGRST116') {
-          // Supplier doesn't exist, create it
-          const { data: newSupplier, error: createError } = await supabase
+      for (const lot of batch) {
+        const lotStartTime = Date.now();
+        console.log(`🔄 Processing LOT: ${lot.lot_number} (${imported + 1}/${lots.length})`);
+        
+        // Update progress
+        progressCallback?.(imported + 1, lots.length, lot.lot_number);
+
+        try {
+          // Find or create supplier
+          console.log(`  👤 Finding/creating supplier: ${lot.supplier_name}`);
+          let { data: supplier, error: supplierError } = await supabase
             .from('suppliers')
-            .insert({ name: lot.supplier_name })
+            .select('id')
+            .eq('name', lot.supplier_name)
+            .single();
+
+          if (supplierError && supplierError.code === 'PGRST116') {
+            // Supplier doesn't exist, create it
+            console.log(`  ➕ Creating new supplier: ${lot.supplier_name}`);
+            const { data: newSupplier, error: createError } = await supabase
+              .from('suppliers')
+              .insert({ name: lot.supplier_name })
+              .select('id')
+              .single();
+
+            if (createError) {
+              databaseErrors.push(`Failed to create supplier "${lot.supplier_name}": ${createError.message}`);
+              continue;
+            }
+            supplier = newSupplier;
+          } else if (supplierError) {
+            databaseErrors.push(`Supplier lookup error for "${lot.supplier_name}": ${supplierError.message}`);
+            continue;
+          }
+
+          // Insert LOT into database
+          console.log(`  📦 Inserting LOT: ${lot.lot_number}`);
+          const { data: lotData, error: lotError } = await supabase
+            .from('lots')
+            .insert({
+              quality: lot.quality,
+              color: lot.color,
+              roll_count: lot.roll_count,
+              meters: lot.meters,
+              lot_number: lot.lot_number,
+              entry_date: lot.entry_date,
+              supplier_id: supplier!.id,
+              invoice_number: lot.invoice_number,
+              invoice_date: lot.invoice_date,
+              production_date: lot.production_date || null,
+              warehouse_location: lot.warehouse_location || null,
+              notes: lot.notes || null,
+              status: 'in_stock'
+            })
             .select('id')
             .single();
 
-          if (createError) {
-            databaseErrors.push(`Failed to create supplier "${lot.supplier_name}": ${createError.message}`);
+          if (lotError) {
+            databaseErrors.push(`Failed to import LOT "${lot.lot_number}": ${lotError.message}`);
             continue;
           }
-          supplier = newSupplier;
-        } else if (supplierError) {
-          databaseErrors.push(`Supplier lookup error for "${lot.supplier_name}": ${supplierError.message}`);
-          continue;
-        }
 
-        // Insert LOT
-        const { data: lotData, error: lotError } = await supabase
-          .from('lots')
-          .insert({
-            quality: lot.quality,
-            color: lot.color,
-            roll_count: lot.roll_count,
-            meters: lot.meters,
-            lot_number: lot.lot_number,
-            entry_date: lot.entry_date,
-            supplier_id: supplier!.id,
-            invoice_number: lot.invoice_number,
-            invoice_date: lot.invoice_date,
-            production_date: lot.production_date || null,
-            warehouse_location: lot.warehouse_location || null,
-            notes: lot.notes || null,
-            status: 'in_stock'
-          })
-          .select('id')
-          .single();
+          // Create individual roll entries
+          if (lot.roll_details) {
+            console.log(`  🎯 Creating ${lot.roll_count} roll entries for LOT: ${lot.lot_number}`);
+            const rollMeters = lot.roll_details.split(';').map(m => parseFloat(m.trim()));
+            const rollInserts = rollMeters.map((meters, index) => ({
+              lot_id: lotData.id,
+              meters: meters,
+              position: index + 1
+            }));
 
-        if (lotError) {
-          databaseErrors.push(`Failed to import LOT "${lot.lot_number}": ${lotError.message}`);
-          continue;
-        }
+            const { error: rollsError } = await supabase
+              .from('rolls')
+              .insert(rollInserts);
 
-        // Create individual roll entries
-        if (lot.roll_details) {
-          const rollMeters = lot.roll_details.split(';').map(m => parseFloat(m.trim()));
-          const rollInserts = rollMeters.map((meters, index) => ({
-            lot_id: lotData.id,
-            meters: meters,
-            position: index + 1
-          }));
-
-          const { error: rollsError } = await supabase
-            .from('rolls')
-            .insert(rollInserts);
-
-          if (rollsError) {
-            databaseErrors.push(`Failed to create roll entries for LOT "${lot.lot_number}": ${rollsError.message}`);
+            if (rollsError) {
+              databaseErrors.push(`Failed to create roll entries for LOT "${lot.lot_number}": ${rollsError.message}`);
+            }
           }
+          
+          const lotDuration = Date.now() - lotStartTime;
+          console.log(`  ✅ Successfully processed LOT: ${lot.lot_number} in ${lotDuration}ms`);
+          imported++;
+        } catch (error: any) {
+          const lotDuration = Date.now() - lotStartTime;
+          console.error(`  ❌ Failed to process LOT "${lot.lot_number}" after ${lotDuration}ms:`, error);
+          databaseErrors.push(`Error processing LOT "${lot.lot_number}": ${error.message}`);
         }
-        
-        imported++;
-      } catch (error: any) {
-        databaseErrors.push(`Error processing LOT "${lot.lot_number}": ${error.message}`);
+      }
+      
+      // Small delay between batches to prevent overwhelming the database
+      if (batchStart + BATCH_SIZE < lots.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
+
+    const totalDuration = Date.now() - startTime;
+    console.log(`🏁 Import completed: ${imported}/${lots.length} lots imported in ${totalDuration}ms`);
 
     return {
       success: imported > 0,
