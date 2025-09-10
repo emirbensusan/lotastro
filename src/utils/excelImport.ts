@@ -310,10 +310,16 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
       details[details.length - 1] = last;
       rollDetailsStr = details.join(';');
     } else {
-      const parts = rollDetailsStr.split(/[;,|]/).map(s => s.trim()).filter(Boolean);
+      // Determine how to split roll details based on detected CSV delimiter.
+      // If CSV delimiter is ',', avoid splitting by ',' to preserve decimal commas (e.g., "104,5").
+      const rollSplitRegex = delimiter === ',' ? /[;|]/ : /[;,|]/;
+      const parts = rollDetailsStr.split(rollSplitRegex).map(s => s.trim()).filter(Boolean);
       const parsed = parts.map(m => parseFloat(m.replace(',', '.')));
       if (parsed.some(v => !Number.isFinite(v) || v <= 0)) {
-        throw new Error(`Row ${rowNumber}: Invalid roll_details values. Use positive numbers separated by ';' or ','.`);
+        const sepHint = delimiter === ','
+          ? "Use positive numbers separated by ';' or '|' (decimal commas like 104,5 are allowed)."
+          : "Use positive numbers separated by ',', ';', or '|' (decimal commas like 104,5 are allowed).";
+        throw new Error(`Row ${rowNumber}: Invalid roll_details values. ${sepHint}`);
       }
       let rollMeters: number[];
       if (parsed.length === 1 && rollCount > 1) {
@@ -321,13 +327,16 @@ export const parseCSVFile = (csvText: string): ImportLotData[] => {
         const perRoll = Math.round(parsed[0] * 100) / 100;
         rollMeters = Array.from({ length: rollCount }, () => perRoll);
       } else if (parsed.length !== rollCount) {
-        throw new Error(`Row ${rowNumber}: Roll count (${rollCount}) doesn't match number of roll details (${parsed.length}). If you meant a per-roll value, provide a single number (e.g., "104.5") which will be multiplied by roll_count.`);
+        throw new Error(`Row ${rowNumber}: Roll count (${rollCount}) doesn't match number of roll details (${parsed.length}). If you meant a per-roll value, provide a single number (e.g., "104.5" or "104,5") which will be multiplied by roll_count.`);
       } else {
         rollMeters = parsed;
       }
       const sum = rollMeters.reduce((s, v) => s + v, 0);
       if (Math.abs(sum - meters) > 0.5) {
-        throw new Error(`Row ${rowNumber}: Sum of roll details (${sum.toFixed(2)}) doesn't match total meters (${meters}). If you intended a per-roll value, ensure it times roll_count ≈ meters (±0.5).`);
+        const sepUsage = delimiter === ','
+          ? "If you're using decimal commas, separate multiple rolls with ';' or '|'."
+          : "You may separate rolls with ',', ';', or '|'.";
+        throw new Error(`Row ${rowNumber}: Sum of roll details (${sum.toFixed(2)}) doesn't match total meters (${meters}). If you intended a per-roll value, ensure it times roll_count ≈ meters (±0.5). ${sepUsage}`);
       }
       // Normalize to semicolon-separated
       rollDetailsStr = rollMeters.map(v => Math.round(v * 100) / 100).join(';');
