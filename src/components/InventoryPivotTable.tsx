@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { ProgressDialog } from '@/components/ui/progress-dialog';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -36,6 +37,15 @@ const InventoryPivotTable = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  
+  // Progress dialog state
+  const [progressDialog, setProgressDialog] = useState({
+    isOpen: false,
+    title: '',
+    progress: 0,
+    statusText: '',
+    isComplete: false
+  });
   
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -119,6 +129,15 @@ const InventoryPivotTable = () => {
 
   const handleDeleteQuality = async (quality: string) => {
     try {
+      // Show progress dialog
+      setProgressDialog({
+        isOpen: true,
+        title: `Deleting Quality: ${quality}`,
+        progress: 0,
+        statusText: 'Fetching lots to delete...',
+        isComplete: false
+      });
+
       // Get all lots for this quality
       const { data: lots, error: fetchError } = await supabase
         .from('lots')
@@ -129,6 +148,12 @@ const InventoryPivotTable = () => {
       if (fetchError) throw fetchError;
 
       if (lots && lots.length > 0) {
+        setProgressDialog(prev => ({
+          ...prev,
+          progress: 30,
+          statusText: `Deleting ${lots.length} lots...`
+        }));
+
         // Delete all lots for this quality
         const { error: deleteError } = await supabase
           .from('lots')
@@ -138,26 +163,36 @@ const InventoryPivotTable = () => {
 
         if (deleteError) throw deleteError;
 
-        toast({
-          title: t('success') as string,
-          description: `${lots.length} lots deleted for ${quality}`,
-        });
+        setProgressDialog(prev => ({
+          ...prev,
+          progress: 80,
+          statusText: 'Refreshing data...'
+        }));
 
         // Refresh data
-        fetchPivotData();
+        await fetchPivotData();
+
+        setProgressDialog(prev => ({
+          ...prev,
+          progress: 100,
+          statusText: `${lots.length} lots deleted successfully`,
+          isComplete: true
+        }));
       } else {
-        toast({
-          title: t('error') as string,
-          description: 'No lots found to delete',
-          variant: 'destructive',
-        });
+        setProgressDialog(prev => ({
+          ...prev,
+          progress: 100,
+          statusText: 'No lots found to delete',
+          isComplete: true
+        }));
       }
     } catch (error: any) {
-      toast({
-        title: t('error') as string,
-        description: error.message,
-        variant: 'destructive',
-      });
+      setProgressDialog(prev => ({
+        ...prev,
+        progress: 100,
+        statusText: `Error: ${error.message}`,
+        isComplete: true
+      }));
     }
   };
 
@@ -165,9 +200,28 @@ const InventoryPivotTable = () => {
     if (selectedItems.size === 0) return;
 
     try {
+      const selectedArray = Array.from(selectedItems);
       let totalDeleted = 0;
+      let current = 0;
+
+      // Show progress dialog
+      setProgressDialog({
+        isOpen: true,
+        title: `Deleting ${selectedArray.length} Selected Items`,
+        progress: 0,
+        statusText: 'Starting bulk deletion...',
+        isComplete: false
+      });
       
-      for (const quality of selectedItems) {
+      for (const quality of selectedArray) {
+        current++;
+        
+        setProgressDialog(prev => ({
+          ...prev,
+          progress: Math.floor((current / selectedArray.length) * 70),
+          statusText: `Processing item ${current} of ${selectedArray.length}: ${quality}`
+        }));
+
         // Get all lots for this quality
         const { data: lots, error: fetchError } = await supabase
           .from('lots')
@@ -190,21 +244,30 @@ const InventoryPivotTable = () => {
         }
       }
 
-      toast({
-        title: t('success') as string,
-        description: `${totalDeleted} lots deleted successfully`,
-      });
+      setProgressDialog(prev => ({
+        ...prev,
+        progress: 85,
+        statusText: 'Refreshing data...'
+      }));
 
       // Clear selections and refresh data
       setSelectedItems(new Set());
       setDeleteMode(false);
-      fetchPivotData();
+      await fetchPivotData();
+
+      setProgressDialog(prev => ({
+        ...prev,
+        progress: 100,
+        statusText: `${totalDeleted} lots deleted successfully`,
+        isComplete: true
+      }));
     } catch (error: any) {
-      toast({
-        title: t('error') as string,
-        description: error.message,
-        variant: 'destructive',
-      });
+      setProgressDialog(prev => ({
+        ...prev,
+        progress: 100,
+        statusText: `Error: ${error.message}`,
+        isComplete: true
+      }));
     }
   };
 
@@ -458,6 +521,16 @@ const InventoryPivotTable = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Progress Dialog */}
+      <ProgressDialog
+        isOpen={progressDialog.isOpen}
+        title={progressDialog.title}
+        progress={progressDialog.progress}
+        statusText={progressDialog.statusText}
+        isComplete={progressDialog.isComplete}
+        onComplete={() => setProgressDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

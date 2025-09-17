@@ -26,6 +26,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ProgressDialog } from '@/components/ui/progress-dialog';
 interface Lot {
   id: string;
   lot_number: string;
@@ -139,6 +140,15 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
   const [editOpen, setEditOpen] = useState(false);
   const [editLot, setEditLot] = useState<Lot | null>(null);
   const [pendingLot, setPendingLot] = useState<Partial<Lot> | null>(null);
+
+  // Progress dialog state
+  const [progressDialog, setProgressDialog] = useState({
+    isOpen: false,
+    title: '',
+    progress: 0,
+    statusText: '',
+    isComplete: false
+  });
 
   // Group lots by quality -> color -> lots
   const groupedData = React.useMemo(() => {
@@ -377,6 +387,21 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
 
   const handleDeleteLot = async (lotId: string, lotNumber: string) => {
     try {
+      // Show progress dialog
+      setProgressDialog({
+        isOpen: true,
+        title: `Deleting Lot: ${lotNumber}`,
+        progress: 0,
+        statusText: 'Deleting lot...',
+        isComplete: false
+      });
+
+      setProgressDialog(prev => ({
+        ...prev,
+        progress: 30,
+        statusText: 'Processing deletion...'
+      }));
+
       const { error } = await supabase
         .from('lots')
         .delete()
@@ -384,22 +409,31 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
 
       if (error) throw error;
 
-      toast({
-        title: t('success') as string,
-        description: `${t('lotNumber')}: ${lotNumber} ${t('deletedSuccessfully')}`
-      });
+      setProgressDialog(prev => ({
+        ...prev,
+        progress: 70,
+        statusText: 'Updating inventory...'
+      }));
 
       // Remove from selected items if it was selected
       setSelectedItems(prev => prev.filter(id => id !== lotId));
       
       // Refresh data
-      fetchLots();
+      await fetchLots();
+
+      setProgressDialog(prev => ({
+        ...prev,
+        progress: 100,
+        statusText: `Lot ${lotNumber} deleted successfully`,
+        isComplete: true
+      }));
     } catch (error: any) {
-      toast({
-        title: t('error') as string,
-        description: error.message,
-        variant: 'destructive'
-      });
+      setProgressDialog(prev => ({
+        ...prev,
+        progress: 100,
+        statusText: `Error: ${error.message}`,
+        isComplete: true
+      }));
     }
   };
 
@@ -837,6 +871,16 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
           onLotSelect={onLotSelect}
         />
       )}
+
+      {/* Progress Dialog */}
+      <ProgressDialog
+        isOpen={progressDialog.isOpen}
+        title={progressDialog.title}
+        progress={progressDialog.progress}
+        statusText={progressDialog.statusText}
+        isComplete={progressDialog.isComplete}
+        onComplete={() => setProgressDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };
