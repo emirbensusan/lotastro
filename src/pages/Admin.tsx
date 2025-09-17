@@ -14,6 +14,7 @@ import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck } from
 import { useAuth } from '@/hooks/useAuth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
+import { ApprovalQueue } from '@/components/ApprovalQueue';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
@@ -167,9 +168,10 @@ const Admin: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="users">{t('userManagement')}</TabsTrigger>
           <TabsTrigger value="permissions">{t('permissions')}</TabsTrigger>
+          <TabsTrigger value="approvals">Approvals</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -343,6 +345,10 @@ const Admin: React.FC = () => {
 
         <TabsContent value="permissions" className="space-y-6">
           <InteractivePermissionsTab />
+        </TabsContent>
+
+        <TabsContent value="approvals" className="space-y-6">
+          <ApprovalQueue />
         </TabsContent>
       </Tabs>
 

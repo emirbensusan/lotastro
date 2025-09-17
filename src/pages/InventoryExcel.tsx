@@ -27,6 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ProgressDialog } from '@/components/ui/progress-dialog';
+import { InlineEditableField } from '@/components/InlineEditableField';
 interface Lot {
   id: string;
   lot_number: string;
@@ -40,6 +41,7 @@ interface Lot {
   suppliers?: { name: string };
   invoice_number?: string;
   invoice_date?: string;
+  warehouse_location?: string;
 }
 
 interface InventoryExcelProps {
@@ -442,51 +444,140 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
   };
 
   const handleOpenEdit = (lot: Lot) => {
-    setEditLot(lot);
-    setPendingLot({
-      lot_number: lot.lot_number,
-      quality: lot.quality,
-      color: lot.color,
-      meters: lot.meters,
-      roll_count: lot.roll_count,
-      status: lot.status,
-      invoice_number: lot.invoice_number || '',
-      invoice_date: lot.invoice_date || '',
-      entry_date: lot.entry_date,
-    });
-    setEditOpen(true);
+    if (hasRole('senior_manager') || hasRole('admin')) {
+      // Direct edit for senior managers and admins
+      setEditLot(lot);
+      setPendingLot({
+        lot_number: lot.lot_number,
+        quality: lot.quality,
+        color: lot.color,
+        meters: lot.meters,
+        roll_count: lot.roll_count,
+        status: lot.status,
+        invoice_number: lot.invoice_number || '',
+        invoice_date: lot.invoice_date || '',
+        entry_date: lot.entry_date,
+      });
+      setEditOpen(true);
+    } else if (hasRole('accounting')) {
+      // Submit to approval queue for accounting users
+      handleSubmitToApprovalQueue(lot);
+    }
+  };
+
+  const handleSubmitToApprovalQueue = async (lot: Lot) => {
+    try {
+      // Create entry in lot_queue for approval
+      const { error } = await supabase
+        .from('lot_queue')
+        .insert({
+          lot_number: lot.lot_number,
+          quality: lot.quality,
+          color: lot.color,
+          meters: lot.meters,
+          warehouse_location: lot.warehouse_location || 'Main Warehouse',
+          status: 'pending_completion',
+          created_by: profile?.user_id
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Submitted for Approval',
+        description: `Changes to lot ${lot.lot_number} have been submitted for senior manager approval.`
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleSaveEdit = async () => {
     if (!editLot || !pendingLot) return;
-    try {
-      const updateData: any = {
-        lot_number: pendingLot.lot_number,
-        quality: pendingLot.quality,
-        color: pendingLot.color,
-        meters: Number(pendingLot.meters),
-        roll_count: Number(pendingLot.roll_count),
-        status: pendingLot.status,
-        invoice_number: (pendingLot.invoice_number as string) || null,
-        invoice_date: pendingLot.invoice_date ? (pendingLot.invoice_date as string) : null,
-        entry_date: pendingLot.entry_date,
-      };
-      Object.keys(updateData).forEach((k) => (updateData as any)[k] === undefined && delete (updateData as any)[k]);
+    
+    // Check if user has direct edit permissions
+    if (hasRole('senior_manager') || hasRole('admin')) {
+      // Direct edit
+      try {
+        const updateData: any = {
+          lot_number: pendingLot.lot_number,
+          quality: pendingLot.quality,
+          color: pendingLot.color,
+          meters: Number(pendingLot.meters),
+          roll_count: Number(pendingLot.roll_count),
+          status: pendingLot.status,
+          invoice_number: (pendingLot.invoice_number as string) || null,
+          invoice_date: pendingLot.invoice_date ? (pendingLot.invoice_date as string) : null,
+          entry_date: pendingLot.entry_date,
+        };
+        Object.keys(updateData).forEach((k) => (updateData as any)[k] === undefined && delete (updateData as any)[k]);
 
-      const { error } = await supabase.from('lots').update(updateData).eq('id', editLot.id);
-      if (error) throw error;
+        const { error } = await supabase.from('lots').update(updateData).eq('id', editLot.id);
+        if (error) throw error;
 
-      toast({ title: t('success') as string, description: (t('updatedSuccessfully') as string) || 'Changes saved.' });
+        toast({ title: t('success') as string, description: (t('updatedSuccessfully') as string) || 'Changes saved.' });
+        setEditOpen(false);
+        setEditLot(null);
+        setPendingLot(null);
+        fetchLots();
+      } catch (error: any) {
+        toast({
+          title: t('error') as string,
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
+    } else {
+      // Submit to approval queue for accounting users
+      toast({
+        title: 'Submitted for Approval',
+        description: 'Changes have been submitted for senior manager approval.'
+      });
       setEditOpen(false);
       setEditLot(null);
       setPendingLot(null);
-      fetchLots();
-    } catch (error: any) {
-      toast({
-        title: t('error') as string,
-        description: error.message,
-        variant: 'destructive',
-      });
+    }
+  };
+
+  const handleInlineEdit = async (lotId: string, field: string, newValue: string | number) => {
+    // Check if user has direct edit permissions
+    if (hasRole('senior_manager') || hasRole('admin')) {
+      // Direct edit
+      try {
+        const updateData = { [field]: newValue };
+        const { error } = await supabase
+          .from('lots')
+          .update(updateData)
+          .eq('id', lotId);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Updated',
+          description: `Successfully updated ${field}.`
+        });
+
+        fetchLots();
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive'
+        });
+        throw error;
+      }
+    } else if (hasRole('accounting')) {
+      // Submit to approval queue
+      const lot = lots.find(l => l.id === lotId);
+      if (lot) {
+        await handleSubmitToApprovalQueue({
+          ...lot,
+          [field]: newValue
+        });
+      }
     }
   };
 

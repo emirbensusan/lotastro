@@ -18,6 +18,7 @@ import MultiQualityOrderDialog from '@/components/MultiQualityOrderDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
 import SampleOrderDialog from '@/components/SampleOrderDialog';
 import InventoryPivotTable from '@/components/InventoryPivotTable';
+import { InlineEditableField } from '@/components/InlineEditableField';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -318,6 +319,22 @@ const Orders = () => {
     }
   };
 
+  const handleUpdateOrder = async (orderId: string, updates: Record<string, any>) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update(updates)
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast.success('Order updated successfully');
+      fetchOrders();
+    } catch (error: any) {
+      toast.error('Failed to update order: ' + error.message);
+    }
+  };
+
   // Check permissions
   const canCreateOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
   const canFulfillOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
@@ -479,8 +496,20 @@ const Orders = () => {
             <TableBody>
               {orders.map((order) => (
                 <TableRow key={order.id}>
-                  <TableCell className="font-mono">{order.order_number}</TableCell>
-                  <TableCell>{order.customer_name}</TableCell>
+                  <TableCell className="font-mono">
+                    <InlineEditableField
+                      value={order.order_number}
+                      onSave={(newValue) => handleUpdateOrder(order.id, { order_number: newValue.toString() })}
+                      disabled={!canCreateOrders}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <InlineEditableField
+                      value={order.customer_name}
+                      onSave={(newValue) => handleUpdateOrder(order.id, { customer_name: newValue.toString() })}
+                      disabled={!canCreateOrders}
+                    />
+                  </TableCell>
                   <TableCell>{order.order_lots.length}</TableCell>
                   <TableCell>
                     {order.fulfilled_at ? (
