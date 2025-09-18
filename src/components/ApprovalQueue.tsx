@@ -78,11 +78,11 @@ export const ApprovalQueue: React.FC = () => {
       setOrderQueue(orderData || []);
     } catch (error) {
       console.error('Error fetching queues:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch approval queues.',
-        variant: 'destructive'
-      });
+        toast({
+          title: t('error') as string,
+          description: 'Failed to fetch approval queues.',
+          variant: 'destructive'
+        });
     } finally {
       setLoading(false);
     }
@@ -115,14 +115,14 @@ export const ApprovalQueue: React.FC = () => {
       if (deleteError) throw deleteError;
 
       toast({
-        title: 'Approved',
-        description: `Lot ${lotItem.lot_number} has been approved and added to inventory.`
+        title: t('approved') as string,
+        description: `${t('lotNumber')} ${lotItem.lot_number} ${t('lotApprovedToast')}`
       });
 
       fetchQueues();
     } catch (error: any) {
       toast({
-        title: 'Error',
+        title: t('error') as string,
         description: error.message,
         variant: 'destructive'
       });
@@ -141,8 +141,8 @@ export const ApprovalQueue: React.FC = () => {
       if (error) throw error;
 
       toast({
-        title: 'Rejected',
-        description: `Lot ${lotItem.lot_number} has been rejected.`
+        title: t('rejected') as string,
+        description: `${t('lotNumber')} ${lotItem.lot_number} ${t('lotRejectedToast')}`
       });
 
       setShowRejectDialog(false);
@@ -150,7 +150,7 @@ export const ApprovalQueue: React.FC = () => {
       fetchQueues();
     } catch (error: any) {
       toast({
-        title: 'Error',
+        title: t('error') as string,
         description: error.message,
         variant: 'destructive'
       });
@@ -171,14 +171,14 @@ export const ApprovalQueue: React.FC = () => {
       if (error) throw error;
 
       toast({
-        title: 'Approved',
-        description: 'Order has been approved.'
+        title: t('approved') as string,
+        description: t('orderApprovedToast') as string
       });
 
       fetchQueues();
     } catch (error: any) {
       toast({
-        title: 'Error',
+        title: t('error') as string,
         description: error.message,
         variant: 'destructive'
       });
@@ -200,8 +200,8 @@ export const ApprovalQueue: React.FC = () => {
       if (error) throw error;
 
       toast({
-        title: 'Rejected',
-        description: 'Order has been rejected.'
+        title: t('rejected') as string,
+        description: t('orderRejectedToast') as string
       });
 
       setShowRejectDialog(false);
@@ -209,7 +209,7 @@ export const ApprovalQueue: React.FC = () => {
       fetchQueues();
     } catch (error: any) {
       toast({
-        title: 'Error',
+        title: t('error') as string,
         description: error.message,
         variant: 'destructive'
       });
@@ -223,7 +223,7 @@ export const ApprovalQueue: React.FC = () => {
   if (!hasRole('senior_manager') && !hasRole('admin')) {
     return (
       <div className="text-center text-muted-foreground">
-        You don't have permission to view approval queues.
+        {t('approvalPermissionDenied')}
       </div>
     );
   }
@@ -231,11 +231,11 @@ export const ApprovalQueue: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Approval Queues</h2>
+        <h2 className="text-2xl font-bold">{t('approvalQueues')}</h2>
         <div className="flex items-center gap-4">
           <Badge variant="secondary" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            {lotQueue.length + orderQueue.length} Pending
+            {lotQueue.length + orderQueue.length} {t('pendingCount')}
           </Badge>
         </div>
       </div>
@@ -243,7 +243,7 @@ export const ApprovalQueue: React.FC = () => {
       <Tabs defaultValue="inventory">
         <TabsList>
           <TabsTrigger value="inventory" className="flex items-center gap-2">
-            Inventory Changes
+            {t('inventoryChanges')}
             {lotQueue.length > 0 && (
               <Badge variant="destructive" className="ml-1">
                 {lotQueue.length}
@@ -251,7 +251,7 @@ export const ApprovalQueue: React.FC = () => {
             )}
           </TabsTrigger>
           <TabsTrigger value="orders" className="flex items-center gap-2">
-            Order Changes
+            {t('orderChanges')}
             {orderQueue.length > 0 && (
               <Badge variant="destructive" className="ml-1">
                 {orderQueue.length}
@@ -263,7 +263,7 @@ export const ApprovalQueue: React.FC = () => {
         <TabsContent value="inventory">
           <Card>
             <CardHeader>
-              <CardTitle>Pending Inventory Changes</CardTitle>
+              <CardTitle>{t('pendingInventoryChanges')}</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -274,19 +274,19 @@ export const ApprovalQueue: React.FC = () => {
                 </div>
               ) : lotQueue.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
-                  No pending inventory changes
+                  {t('noPendingInventoryChanges')}
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Lot Number</TableHead>
-                      <TableHead>Quality</TableHead>
-                      <TableHead>Color</TableHead>
-                      <TableHead>Meters</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead>{t('lotNumber')}</TableHead>
+                      <TableHead>{t('quality')}</TableHead>
+                      <TableHead>{t('color')}</TableHead>
+                      <TableHead>{t('meters')}</TableHead>
+                      <TableHead>{t('location')}</TableHead>
+                      <TableHead>{t('submitted')}</TableHead>
+                      <TableHead>{t('actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -306,7 +306,7 @@ export const ApprovalQueue: React.FC = () => {
                               onClick={() => handleApproveLot(item)}
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
+                              {t('approve')}
                             </Button>
                             <Button
                               size="sm"
@@ -317,7 +317,7 @@ export const ApprovalQueue: React.FC = () => {
                               }}
                             >
                               <XCircle className="h-4 w-4 mr-1" />
-                              Reject
+                              {t('reject')}
                             </Button>
                           </div>
                         </TableCell>
@@ -333,7 +333,7 @@ export const ApprovalQueue: React.FC = () => {
         <TabsContent value="orders">
           <Card>
             <CardHeader>
-              <CardTitle>Pending Order Changes</CardTitle>
+              <CardTitle>{t('pendingOrderChanges')}</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -344,17 +344,17 @@ export const ApprovalQueue: React.FC = () => {
                 </div>
               ) : orderQueue.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
-                  No pending order changes
+                  {t('noPendingOrderChanges')}
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead>Submitted By</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead>{t('orderId')}</TableHead>
+                      <TableHead>{t('status')}</TableHead>
+                      <TableHead>{t('submitted')}</TableHead>
+                      <TableHead>{t('submittedBy')}</TableHead>
+                      <TableHead>{t('actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -374,7 +374,7 @@ export const ApprovalQueue: React.FC = () => {
                               onClick={() => handleApproveOrder(item)}
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
+                              {t('approve')}
                             </Button>
                             <Button
                               size="sm"
@@ -385,7 +385,7 @@ export const ApprovalQueue: React.FC = () => {
                               }}
                             >
                               <XCircle className="h-4 w-4 mr-1" />
-                              Reject
+                              {t('reject')}
                             </Button>
                           </div>
                         </TableCell>
@@ -403,21 +403,21 @@ export const ApprovalQueue: React.FC = () => {
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Item</DialogTitle>
+            <DialogTitle>{t('rejectItem')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Rejection Reason</label>
+              <label className="text-sm font-medium">{t('rejectionReason')}</label>
               <Textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Please provide a reason for rejection..."
+                placeholder={t('rejectionReasonPlaceholder') as string}
                 className="mt-2"
               />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button
                 variant="destructive"
@@ -432,7 +432,7 @@ export const ApprovalQueue: React.FC = () => {
                 }}
                 disabled={!rejectionReason.trim()}
               >
-                Reject
+                {t('reject')}
               </Button>
             </div>
           </div>
