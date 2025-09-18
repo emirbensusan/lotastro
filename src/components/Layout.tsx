@@ -17,7 +17,8 @@ import {
   Users,
   Truck,
   Clock,
-  Menu
+  Menu,
+  CheckCircle
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -40,6 +41,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/order-queue', label: t('orderQueue'), icon: Clock, roles: ['accounting', 'senior_manager', 'admin'] },
     { path: '/qr-scan', label: t('qrScan'), icon: QrCode, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
     { path: '/reports', label: t('reports'), icon: BarChart3, roles: ['accounting', 'senior_manager', 'admin'] },
+    { path: '/approvals', label: t('approvals'), icon: CheckCircle, roles: ['senior_manager', 'admin'] },
     { path: '/suppliers', label: t('suppliers'), icon: Users, roles: ['admin'] },
     { path: '/admin', label: t('admin'), icon: Settings, roles: ['admin'] },
   ];

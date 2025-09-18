@@ -16,6 +16,7 @@ import LotQueue from "./pages/LotQueue";
 import QRScan from "./pages/QRScan";
 import Reports from "./pages/Reports";
 import Admin from "./pages/Admin";
+import Approvals from "./pages/Approvals";
 import Suppliers from "./pages/Suppliers";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -124,6 +125,11 @@ const App = () => (
               <Route path="/admin" element={
                 <ProtectedRoute>
                   <Admin />
+                </ProtectedRoute>
+              } />
+              <Route path="/approvals" element={
+                <ProtectedRoute>
+                  <Approvals />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
