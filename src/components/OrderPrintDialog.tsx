@@ -140,13 +140,12 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                   <thead>
                     <tr className="border-b print:border-black">
                       <th className="text-left p-2 print:border print:border-black">#</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('lotNumber')}</th>
                       <th className="text-left p-2 print:border print:border-black">{t('quality')}</th>
                       <th className="text-left p-2 print:border print:border-black">{t('color')}</th>
                       <th className="text-left p-2 print:border print:border-black">{t('lotNumber')}</th>
                       <th className="text-left p-2 print:border print:border-black">{t('rollCount')}</th>
-                      <th className="text-left p-2 print:border print:border-black">Roll Meters</th>
                       <th className="text-left p-2 print:border print:border-black">{t('lineType')}</th>
+                      <th className="text-left p-2 print:border print:border-black">{t('rollMeters')}</th>
                       <th className="text-left p-2 print:border print:border-black">{t('prepared')}</th>
                     </tr>
                   </thead>
@@ -166,7 +165,6 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                         </td>
                         <td className="p-2 print:border print:border-black font-medium">{lot.lot.lot_number}</td>
                         <td className="p-2 print:border print:border-black">{lot.roll_count}</td>
-                        <td className="p-2 print:border print:border-black">{lot.selected_roll_meters || 'N/A'}</td>
                         <td className="p-2 print:border print:border-black">
                           <Badge 
                             variant={lot.line_type === 'sample' ? "outline" : "default"}
@@ -174,6 +172,12 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                           >
                             {lot.line_type === 'sample' ? t('sample') : t('standard')}
                           </Badge>
+                        </td>
+                        <td className="p-2 print:border print:border-black">
+                          {lot.line_type === 'sample' 
+                            ? (lot.selected_roll_meters || '0') + 'm'
+                            : (lot.lot.meters * lot.roll_count).toLocaleString() + 'm'
+                          }
                         </td>
                         <td className="p-2 print:border print:border-black text-center">☐</td>
                       </tr>
