@@ -98,47 +98,47 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
             <table className="w-full border-collapse border border-gray-300 print:border-black">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">#</th>
-                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('quality')}</th>
-                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('color')}</th>
-                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('lotNumber')}</th>
-                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('rollCount')}</th>
-                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('lineType')}</th>
-                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('rollMeters')}</th>
-                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('prepared')}</th>
+                  <th className="border border-gray-300 print:border-0 p-2 text-left print:text-xs">#</th>
+                  <th className="border border-gray-300 print:border-0 p-2 text-left print:text-xs">{t('quality')}</th>
+                  <th className="border border-gray-300 print:border-0 p-2 text-left print:text-xs">{t('color')}</th>
+                  <th className="border border-gray-300 print:border-0 p-2 text-left print:text-xs">{t('lotNumber')}</th>
+                  <th className="border border-gray-300 print:border-0 p-2 text-left print:text-xs">{t('rollCount')}</th>
+                  <th className="border border-gray-300 print:border-0 p-2 text-left print:text-xs">{t('lineType')}</th>
+                  <th className="border border-gray-300 print:border-0 p-2 text-left print:text-xs">{t('rollMeters')}</th>
+                  <th className="border border-gray-300 print:border-0 p-2 text-left print:text-xs">{t('prepared')}</th>
                 </tr>
               </thead>
               <tbody>
                 {order.order_lots.map((lot, index) => (
                   <tr key={lot.id} className="print:h-8">
-                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{index + 1}</td>
-                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{lot.quality}</td>
-                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{lot.color}</td>
-                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{lot.lot.lot_number}</td>
-                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{lot.roll_count}</td>
-                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">
+                    <td className="border border-gray-300 print:border-0 p-2 print:text-xs print:text-black">{index + 1}</td>
+                    <td className="border border-gray-300 print:border-0 p-2 print:text-xs print:text-black">{lot.quality}</td>
+                    <td className="border border-gray-300 print:border-0 p-2 print:text-xs print:text-black">{lot.color}</td>
+                    <td className="border border-gray-300 print:border-0 p-2 print:text-xs print:text-black">{lot.lot.lot_number}</td>
+                    <td className="border border-gray-300 print:border-0 p-2 print:text-xs print:text-black">{lot.roll_count}</td>
+                    <td className="border border-gray-300 print:border-0 p-2 print:text-xs print:text-black">
                       {lot.line_type === 'sample' ? t('sample') : t('standard')}
                     </td>
-                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">
+                    <td className="border border-gray-300 print:border-0 p-2 print:text-xs print:text-black">
                       {lot.line_type === 'sample' 
                         ? (lot.selected_roll_meters || '0') + 'm'
                         : (lot.lot.meters * lot.roll_count).toLocaleString() + 'm'
                       }
                     </td>
-                    <td className="border border-gray-300 print:border-black p-2 text-center text-lg">☐</td>
+                    <td className="border border-gray-300 print:border-0 p-2 text-center text-lg">☐</td>
                   </tr>
                 ))}
                 {/* Empty rows for print spacing */}
                 {Array.from({ length: Math.max(0, 15 - order.order_lots.length) }).map((_, index) => (
                   <tr key={`empty-${index}`} className="hidden print:table-row print:h-8">
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
+                    <td className="print:border-0 p-1"></td>
+                    <td className="print:border-0 p-1"></td>
+                    <td className="print:border-0 p-1"></td>
+                    <td className="print:border-0 p-1"></td>
+                    <td className="print:border-0 p-1"></td>
+                    <td className="print:border-0 p-1"></td>
+                    <td className="print:border-0 p-1"></td>
+                    <td className="print:border-0 p-1"></td>
                   </tr>
                 ))}
               </tbody>
