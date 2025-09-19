@@ -552,7 +552,7 @@ const InventoryPivotTable = () => {
                     </TableCell>
                   )}
                   <TableCell className="text-sm">
-                    {getEffectiveRole() === 'warehouse_staff' ? (
+                    {getEffectiveRole() !== 'warehouse_staff' ? (
                       <InlineEditableField
                         value={item.quality}
                         onSave={(newValue) => handleQualityUpdate(item.quality, String(newValue))}

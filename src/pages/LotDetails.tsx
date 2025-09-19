@@ -391,7 +391,7 @@ const LotDetails = () => {
                 filteredLots.map((lot) => (
                   <TableRow key={lot.id}>
                     <TableCell className="font-medium">
-                      {getEffectiveRole() === 'warehouse_staff' ? (
+                      {getEffectiveRole() !== 'warehouse_staff' ? (
                         <InlineEditableField
                           value={lot.lot_number}
                           onSave={(newValue) => handleLotNumberUpdate(lot.id, lot.lot_number, String(newValue))}
@@ -404,7 +404,7 @@ const LotDetails = () => {
                     <TableCell className="text-right">{lot.meters.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{lot.roll_count}</TableCell>
                      <TableCell className="text-sm">
-                       {getEffectiveRole() === 'warehouse_staff' ? (
+                       {getEffectiveRole() !== 'warehouse_staff' ? (
                          <InlineEditableField
                            value={lot.roll_breakdown || '-'}
                            onSave={(newValue) => handleRollBreakdownUpdate(lot.id, String(newValue))}

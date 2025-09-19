@@ -420,7 +420,7 @@ const QualityDetails = () => {
                         className="w-4 h-4 rounded border border-muted-foreground/20"
                         style={{ backgroundColor: colorData.color.toLowerCase() === 'white' ? '#f8f9fa' : colorData.color.toLowerCase() }}
                       />
-                      {getEffectiveRole() === 'warehouse_staff' ? (
+                      {getEffectiveRole() !== 'warehouse_staff' ? (
                         <InlineEditableField
                           value={colorData.color}
                           onSave={(newValue) => handleColorUpdate(colorData.color, String(newValue))}
