@@ -9,10 +9,11 @@ import { ProgressDialog } from '@/components/ui/progress-dialog';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Package, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import SampleRollSelectionDialog from '@/components/SampleRollSelectionDialog';
 
 interface InventoryItem {
   quality: string;
@@ -31,12 +32,33 @@ interface AggregatedQuality {
 }
 
 const InventoryPivotTable = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  const { t } = useLanguage();
+  const { hasRole } = useAuth();
+  
+  // Check if we're in sample mode
+  const searchParams = new URLSearchParams(location.search);
+  const isSampleMode = searchParams.get('mode') === 'sample';
+  
   const [pivotData, setPivotData] = useState<AggregatedQuality[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  
+  // Sample selection dialog state
+  const [sampleDialogOpen, setSampleDialogOpen] = useState(false);
+  const [selectedLotForSample, setSelectedLotForSample] = useState<{
+    id: string;
+    lot_number: string;
+    quality: string;
+    color: string;
+    supplier_name: string;
+    entry_date: string;
+  } | null>(null);
   
   // Progress dialog state
   const [progressDialog, setProgressDialog] = useState({
@@ -46,11 +68,6 @@ const InventoryPivotTable = () => {
     statusText: '',
     isComplete: false
   });
-  
-  const { t } = useLanguage();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { hasRole } = useAuth();
 
   useEffect(() => {
     fetchPivotData();
@@ -120,7 +137,12 @@ const InventoryPivotTable = () => {
   };
 
   const navigateToQualityDetails = (quality: string) => {
-    navigate(`/inventory/${encodeURIComponent(quality)}`);
+    if (isSampleMode) {
+      // In sample mode, navigate to quality selection but keep sample mode
+      navigate(`/inventory/${encodeURIComponent(quality)}?mode=sample`);
+    } else {
+      navigate(`/inventory/${encodeURIComponent(quality)}`);
+    }
   };
 
   const navigateToLotDetails = (quality: string, color: string) => {
@@ -471,13 +493,13 @@ const InventoryPivotTable = () => {
                     {item.lot_count}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      className="bg-black text-white hover:bg-black/90 text-xs"
-                      onClick={() => navigateToQualityDetails(item.quality)}
-                    >
-                      {t('viewQuality')}
-                    </Button>
+                  <Button
+                    size="sm"
+                    className={`text-xs ${isSampleMode ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-black text-white hover:bg-black/90'}`}
+                    onClick={() => navigateToQualityDetails(item.quality)}
+                  >
+                    {isSampleMode ? t('selectForSample') : t('viewQuality')}
+                  </Button>
                   </TableCell>
                   {deleteMode && hasRole('admin') && (
                     <TableCell className="text-right">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useToast } from '@/hooks/use-toast';
 import { RollSelectionDialog } from '@/components/RollSelectionDialog';
+import SampleRollSelectionDialog from '@/components/SampleRollSelectionDialog';
 import { ArrowLeft, Plus, Package, Calendar } from 'lucide-react';
 
 interface LotDetail {
@@ -30,6 +31,7 @@ interface LotDetail {
 
 const LotDetails = () => {
   const { quality, color } = useParams<{ quality: string; color: string }>();
+  const location = useLocation();
   const [lots, setLots] = useState<LotDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLot, setSelectedLot] = useState<LotDetail | null>(null);
@@ -38,6 +40,10 @@ const LotDetails = () => {
   const navigate = useNavigate();
   const { addToCart } = usePOCart();
   const { toast } = useToast();
+  
+  // Check if we're in sample mode
+  const searchParams = new URLSearchParams(location.search);
+  const isSampleMode = searchParams.get('mode') === 'sample';
 
   useEffect(() => {
     if (quality && color) {
@@ -171,7 +177,7 @@ const LotDetails = () => {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate('/inventory')} className="cursor-pointer">
+            <BreadcrumbLink onClick={() => navigate(isSampleMode ? '/inventory?mode=sample' : '/inventory')} className="cursor-pointer">
               {t('inventory')}
             </BreadcrumbLink>
           </BreadcrumbItem>
@@ -185,7 +191,7 @@ const LotDetails = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => navigate('/inventory')}>
+          <Button variant="outline" onClick={() => navigate(isSampleMode ? '/inventory?mode=sample' : '/inventory')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t('backToInventory')}
           </Button>
@@ -268,7 +274,7 @@ const LotDetails = () => {
       </Card>
 
       {/* Roll Selection Dialog */}
-      {selectedLot && (
+      {selectedLot && !isSampleMode && (
         <RollSelectionDialog
           isOpen={isRollDialogOpen}
           onClose={() => {
@@ -286,6 +292,23 @@ const LotDetails = () => {
           invoiceNumber={selectedLot.invoice_number}
           invoiceDate={selectedLot.invoice_date}
           ageDays={selectedLot.age_days}
+        />
+      )}
+      
+      {/* Sample Roll Selection Dialog */}
+      {selectedLot && isSampleMode && (
+        <SampleRollSelectionDialog
+          open={isRollDialogOpen}
+          onOpenChange={(open) => {
+            setIsRollDialogOpen(open);
+            if (!open) setSelectedLot(null);
+          }}
+          lotId={selectedLot.id}
+          lotNumber={selectedLot.lot_number}
+          quality={selectedLot.quality}
+          color={selectedLot.color}
+          supplierName={selectedLot.suppliers?.name || 'Unknown'}
+          entryDate={selectedLot.entry_date}
         />
       )}
     </div>

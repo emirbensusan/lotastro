@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import OrderPrintDialog from '@/components/OrderPrintDialog';
 import MultiQualityOrderDialog from '@/components/MultiQualityOrderDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
-import SampleOrderDialog from '@/components/SampleOrderDialog';
+
 import InventoryPivotTable from '@/components/InventoryPivotTable';
 import { InlineEditableField } from '@/components/InlineEditableField';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -64,7 +64,7 @@ const Orders = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showMultiQualityDialog, setShowMultiQualityDialog] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
-  const [showSampleDialog, setShowSampleDialog] = useState(false);
+  
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
@@ -396,7 +396,7 @@ const Orders = () => {
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
                   {t('bulkUpload')}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowSampleDialog(true)}>
+                <DropdownMenuItem onClick={() => navigate('/inventory?mode=sample')}>
                   <FlaskConical className="mr-2 h-4 w-4" />
                   {t('sampleOrder')}
                 </DropdownMenuItem>
@@ -690,11 +690,6 @@ const Orders = () => {
         }}
       />
 
-      {/* Sample Order Dialog */}
-      <SampleOrderDialog
-        open={showSampleDialog}
-        onOpenChange={setShowSampleDialog}
-      />
     </div>
   );
 };

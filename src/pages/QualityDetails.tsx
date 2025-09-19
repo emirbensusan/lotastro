@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,9 +22,15 @@ interface ColorData {
 const QualityDetails = () => {
   const { quality } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
   const { toast } = useToast();
   const { clearCart } = usePOCart();
+  
+  // Check if we're in sample mode
+  const searchParams = new URLSearchParams(location.search);
+  const isSampleMode = searchParams.get('mode') === 'sample';
+  
   const [colors, setColors] = useState<ColorData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedColors, setSelectedColors] = useState<Set<string>>(new Set());
@@ -97,11 +103,19 @@ const QualityDetails = () => {
   };
 
   const navigateToLotDetails = (color: string) => {
-    navigate(`/inventory/${encodeURIComponent(quality!)}/${encodeURIComponent(color)}`);
+    if (isSampleMode) {
+      navigate(`/inventory/${encodeURIComponent(quality!)}/${encodeURIComponent(color)}?mode=sample`);
+    } else {
+      navigate(`/inventory/${encodeURIComponent(quality!)}/${encodeURIComponent(color)}`);
+    }
   };
 
   const navigateBack = () => {
-    navigate('/inventory');
+    if (isSampleMode) {
+      navigate('/inventory?mode=sample');
+    } else {
+      navigate('/inventory');
+    }
   };
 
   const handleColorSelection = (color: string) => {
@@ -342,15 +356,16 @@ const QualityDetails = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     {!selectionMode && (
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigateToLotDetails(colorData.color);
-                        }}
-                      >
-                        {t('selectLots')}
-                      </Button>
+                        <Button
+                          size="sm"
+                          className={isSampleMode ? 'bg-orange-600 text-white hover:bg-orange-700' : ''}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigateToLotDetails(colorData.color);
+                          }}
+                        >
+                          {isSampleMode ? t('selectForSample') : t('selectLots')}
+                        </Button>
                     )}
                   </TableCell>
                 </TableRow>
