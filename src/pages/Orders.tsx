@@ -91,7 +91,7 @@ const Orders = () => {
         quality: cartItem.quality,
         color: cartItem.color,
         lotNumber: cartItem.lot_number,
-        meters: cartItem.meters,
+        meters: cartItem.selectedRollsData.reduce((total: number, roll: any) => total + roll.meters, 0),
         availableRolls: cartItem.roll_count,
         rollCount: cartItem.selectedRollIds?.length || 0,
         lineType: 'standard' as const

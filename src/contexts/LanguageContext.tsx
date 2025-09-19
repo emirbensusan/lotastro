@@ -884,7 +884,7 @@ const translations = {
     orderMarkedFulfilled: 'Sipariş karşılandı olarak işaretlendi',
     errorFulfillingOrder: 'Sipariş Karşılama Hatası',
     orderDate: 'Sipariş Tarihi',
-    lineType: 'Hat Tipi',
+    lineType: 'Sipariş Tipi',
     metersPerRoll: 'Top Başına Metre',
     
     // Permissions
