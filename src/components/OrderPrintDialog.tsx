@@ -63,9 +63,9 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
   const totalRolls = order.order_lots.reduce((sum, lot) => sum + lot.roll_count, 0);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:shadow-none print:border-none print:max-h-none">
-        <div className="print:hidden">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto print:hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               {t('orderSummary')}
@@ -77,9 +77,8 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
               </div>
             </DialogTitle>
           </DialogHeader>
-        </div>
 
-        <div className="print:p-0 space-y-6 print:space-y-2">
+          <div className="space-y-6">
           {/* Header */}
           <div className="text-center border-b pb-4 print:border-black print:pb-2">
             <h1 className="text-2xl font-bold print:text-black print:text-lg">{t('warehouseOrderSummary')}</h1>
@@ -124,10 +123,10 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
           </div>
 
           {/* Lots Table - Large section for warehouse personnel */}
-          <Card className="print:shadow-none print:border-black print:min-h-0">
-            <CardContent className="print:p-0">
+          <Card>
+            <CardContent>
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse print:border-black text-lg print:text-xs">
+                <table className="w-full border-collapse text-lg">
                   <thead>
                      <tr className="border-b print:border-black bg-gray-100 print:bg-gray-100">
                        <th className="text-left p-2 print:border print:border-black font-bold text-xl print:text-xs print:p-1">#</th>
@@ -196,9 +195,118 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
               </div>
             </div>
           </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print Layout - Full screen print version */}
+      <div className="hidden print:block print:fixed print:inset-0 print:z-50 print:bg-white print:text-black">
+        <div className="print-container">
+          {/* Header - 15% of page */}
+          <div className="print-header">
+            <h1 className="text-center text-lg font-bold border-b border-black pb-2 mb-4">
+              {t('warehouseOrderSummary')}
+            </h1>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="font-semibold text-sm">{t('orderNumber')}:</span>
+                  <span className="text-sm">{order ? generateMaskedOrderId(order.order_number) : ''}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-sm">{t('customer')}:</span>
+                  <span className="text-sm">{order.customer_name}</span>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="font-semibold text-sm">{t('orderDate')}:</span>
+                  <span className="text-sm">{formatDate(order.created_at)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-sm">{t('status')}:</span>
+                  <span className="text-sm border border-black px-2 py-0.5">
+                    {order.fulfilled_at ? t('fulfilled') : t('pending')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quality Table - 60% of page */}
+          <div className="print-table-section">
+            <table className="w-full border-collapse border border-black">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-black p-2 text-xs font-bold text-left">#</th>
+                  <th className="border border-black p-2 text-xs font-bold text-left">Kalite</th>
+                  <th className="border border-black p-2 text-xs font-bold text-left">Renk</th>
+                  <th className="border border-black p-2 text-xs font-bold text-left">Lot Numarası</th>
+                  <th className="border border-black p-2 text-xs font-bold text-left">{t('rollCount')}</th>
+                  <th className="border border-black p-2 text-xs font-bold text-left">{t('lineType')}</th>
+                  <th className="border border-black p-2 text-xs font-bold text-left">{t('rollMeters')}</th>
+                  <th className="border border-black p-2 text-xs font-bold text-left">{t('prepared')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.order_lots.map((lot, index) => (
+                  <tr key={lot.id}>
+                    <td className="border border-black p-2 text-xs font-medium">{index + 1}</td>
+                    <td className="border border-black p-2 text-xs font-medium">{lot.quality}</td>
+                    <td className="border border-black p-2 text-xs font-medium">{lot.color}</td>
+                    <td className="border border-black p-2 text-xs font-medium">{lot.lot.lot_number}</td>
+                    <td className="border border-black p-2 text-xs font-medium">{lot.roll_count}</td>
+                    <td className="border border-black p-2 text-xs">
+                      <span className="border border-black px-1 text-xs">
+                        {lot.line_type === 'sample' ? t('sample') : t('standard')}
+                      </span>
+                    </td>
+                    <td className="border border-black p-2 text-xs font-medium">
+                      {lot.line_type === 'sample' 
+                        ? (lot.selected_roll_meters || '0') + 'm'
+                        : (lot.lot.meters * lot.roll_count).toLocaleString() + 'm'
+                      }
+                    </td>
+                    <td className="border border-black p-2 text-center text-lg">☐</td>
+                  </tr>
+                ))}
+                {/* Add empty rows to fill space */}
+                {Array.from({ length: Math.max(0, 8 - order.order_lots.length) }).map((_, index) => (
+                  <tr key={`empty-${index}`} className="h-8">
+                    <td className="border border-black p-2"></td>
+                    <td className="border border-black p-2"></td>
+                    <td className="border border-black p-2"></td>
+                    <td className="border border-black p-2"></td>
+                    <td className="border border-black p-2"></td>
+                    <td className="border border-black p-2"></td>
+                    <td className="border border-black p-2"></td>
+                    <td className="border border-black p-2 text-center text-lg">☐</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer - 25% of page */}
+          <div className="print-footer">
+            <div className="grid grid-cols-2 gap-6 mt-4">
+              <div>
+                <h3 className="font-medium mb-2 text-sm">{t('notes')}:</h3>
+                <div className="border border-black p-2 h-16"></div>
+              </div>
+              <div>
+                <h3 className="font-medium mb-2 text-sm">{t('signatures')}:</h3>
+                <div className="space-y-2">
+                  <div className="text-sm">{t('preparedBy')}: ______________________</div>
+                  <div className="text-sm">{t('checkedBy')}: ______________________</div>
+                  <div className="text-sm">{t('date')}: ______________________</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </>
   );
 };
 

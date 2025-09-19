@@ -104,15 +104,59 @@ All colors MUST be HSL.
   }
 }
 
-/* A4 Print Styles */
+/* Print styles for A4 format */
 @media print {
   @page {
     size: A4;
-    margin: 0.5in;
+    margin: 0.75in 0.5in;
   }
   
   body {
     -webkit-print-color-adjust: exact;
     color-adjust: exact;
+  }
+
+  /* Print container layout */
+  .print-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .print-header {
+    flex: 0 0 15%;
+    padding-bottom: 0.5rem;
+  }
+
+  .print-table-section {
+    flex: 0 0 60%;
+    overflow: hidden;
+  }
+
+  .print-table-section table {
+    height: 100%;
+  }
+
+  .print-table-section td {
+    height: 1.5rem;
+    vertical-align: top;
+  }
+
+  .print-footer {
+    flex: 0 0 25%;
+    margin-top: auto;
+  }
+
+  /* Ensure no page breaks */
+  .print-container {
+    page-break-inside: avoid;
+  }
+
+  /* Hide scrollbars and other unwanted elements */
+  * {
+    -webkit-appearance: none;
+    box-shadow: none !important;
   }
 }
