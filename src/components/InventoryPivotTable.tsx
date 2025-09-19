@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ProgressDialog } from '@/components/ui/progress-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -45,6 +46,7 @@ const InventoryPivotTable = () => {
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [qualityFilter, setQualityFilter] = useState('');
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   
@@ -316,9 +318,14 @@ const InventoryPivotTable = () => {
     setSelectedItems(newSelected);
   };
 
-  const filteredData = pivotData.filter(item =>
-    item.quality.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = pivotData.filter(item => {
+    const matchesSearch = item.quality.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesQuality = !qualityFilter || item.quality === qualityFilter;
+    return matchesSearch && matchesQuality;
+  });
+
+  // Get unique qualities for the filter dropdown
+  const uniqueQualities = [...new Set(pivotData.map(item => item.quality))].sort();
 
   if (loading) {
     return (
@@ -454,7 +461,24 @@ const InventoryPivotTable = () => {
                     />
                   </TableHead>
                 )}
-                <TableHead>{t('quality')}</TableHead>
+                <TableHead>
+                  <div className="flex flex-col space-y-2">
+                    <span>{t('quality')}</span>
+                    <Select value={qualityFilter} onValueChange={setQualityFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="All qualities" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All qualities</SelectItem>
+                        {uniqueQualities.map((quality) => (
+                          <SelectItem key={quality} value={quality}>
+                            {quality}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TableHead>
                 <TableHead>{t('colors')}</TableHead>
                 <TableHead className="text-right">{t('meters')}</TableHead>
                 <TableHead className="text-right">{t('rolls')}</TableHead>
