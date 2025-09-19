@@ -16,6 +16,7 @@ import { Search, Package, Trash2, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
+import { InlineEditableField } from '@/components/InlineEditableField';
 
 interface InventoryItem {
   quality: string;
@@ -300,6 +301,35 @@ const InventoryPivotTable = () => {
     }
   };
 
+  const handleQualityUpdate = async (oldQuality: string, newQuality: string) => {
+    if (oldQuality === newQuality) return;
+
+    try {
+      // Update all lots with this quality
+      const { error } = await supabase
+        .from('lots')
+        .update({ quality: newQuality })
+        .eq('quality', oldQuality)
+        .eq('status', 'in_stock');
+
+      if (error) throw error;
+
+      // Refresh the data
+      await fetchPivotData();
+      
+      toast({
+        title: 'Quality Updated',
+        description: `Updated quality from "${oldQuality}" to "${newQuality}"`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: `Failed to update quality: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleSelectAll = () => {
     if (selectedItems.size === filteredData.length) {
       setSelectedItems(new Set());
@@ -522,7 +552,15 @@ const InventoryPivotTable = () => {
                     </TableCell>
                   )}
                   <TableCell className="text-sm">
-                    {item.quality}
+                    {getEffectiveRole() === 'warehouse_staff' ? (
+                      <InlineEditableField
+                        value={item.quality}
+                        onSave={(newValue) => handleQualityUpdate(item.quality, String(newValue))}
+                        placeholder="Enter quality"
+                      />
+                    ) : (
+                      item.quality
+                    )}
                   </TableCell>
                   <TableCell className="text-sm">
                     {item.color_count} color{item.color_count !== 1 ? 's' : ''}
