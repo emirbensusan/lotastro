@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ViewAsRoleProvider } from "@/contexts/ViewAsRoleContext";
 import Layout from "@/components/Layout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -56,7 +57,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <POCartProvider>
+            <ViewAsRoleProvider>
+              <POCartProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -136,7 +138,8 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <FloatingPOCart />
-            </POCartProvider>
+              </POCartProvider>
+            </ViewAsRoleProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

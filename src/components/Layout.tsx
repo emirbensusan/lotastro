@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
+import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import GlobalSearch from '@/components/GlobalSearch';
 import { 
   Package, 
@@ -31,12 +33,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const { getItemCount, setIsCartOpen } = usePOCart();
+  const { viewAsRole, setViewAsRole, isViewingAsOtherRole } = useViewAsRole();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Get effective role (viewAsRole if viewing as another role, otherwise actual role)
+  const effectiveRole = viewAsRole || profile?.role;
+  
   // Check if user can create orders (has cart permission)
-  const canCreateOrders = profile?.role && ['accounting', 'senior_manager', 'admin'].includes(profile.role);
+  const canCreateOrders = effectiveRole && ['accounting', 'senior_manager', 'admin'].includes(effectiveRole);
   const cartItemCount = getItemCount();
 
   const navigationItems = [
@@ -54,15 +60,35 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   const filteredNavigation = navigationItems.filter(item => 
-    item.roles.includes(profile?.role || '')
+    item.roles.includes(effectiveRole || '')
   );
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-destructive text-destructive-foreground';
-      case 'accounting': return 'bg-primary text-primary-foreground';
-      case 'warehouse_staff': return 'bg-secondary text-secondary-foreground';
-      default: return 'bg-muted text-muted-foreground';
+  const getRoleBadgeColor = (role: string, isViewingAs = false) => {
+    const baseColors = {
+      'admin': 'bg-destructive text-destructive-foreground',
+      'accounting': 'bg-primary text-primary-foreground', 
+      'senior_manager': 'bg-yellow-500 text-yellow-50',
+      'warehouse_staff': 'bg-secondary text-secondary-foreground',
+    };
+    
+    const color = baseColors[role as keyof typeof baseColors] || 'bg-muted text-muted-foreground';
+    
+    // Add visual indicator when viewing as another role
+    return isViewingAs ? `${color} ring-2 ring-orange-400` : color;
+  };
+
+  const roleOptions = [
+    { value: 'warehouse_staff', label: 'Warehouse Staff' },
+    { value: 'accounting', label: 'Accounting' },
+    { value: 'senior_manager', label: 'Senior Manager' },
+    { value: 'admin', label: 'Admin' }
+  ];
+
+  const handleRoleChange = (role: string) => {
+    if (role === 'reset') {
+      setViewAsRole(null);
+    } else {
+      setViewAsRole(role as any);
     }
   };
 
@@ -122,9 +148,61 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
             
             {profile && (
-              <Badge className={getRoleBadgeColor(profile.role)}>
-                {profile.role.replace('_', ' ').toUpperCase()}
-              </Badge>
+              <>
+                {profile.role === 'admin' ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="p-0 h-auto">
+                        <Badge className={getRoleBadgeColor(effectiveRole!, isViewingAsOtherRole)}>
+                          {isViewingAsOtherRole && (
+                            <span className="text-xs mr-1">👁️</span>
+                          )}
+                          {(effectiveRole || '').replace('_', ' ').toUpperCase()}
+                        </Badge>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56" align="start">
+                      <div className="space-y-3">
+                        <div className="font-medium text-sm">View as Role</div>
+                        <div className="space-y-2">
+                          {roleOptions.map((option) => (
+                            <Button
+                              key={option.value}
+                              variant={effectiveRole === option.value ? "secondary" : "ghost"}
+                              size="sm"
+                              className="w-full justify-start"
+                              onClick={() => handleRoleChange(option.value)}
+                            >
+                              {option.label}
+                              {effectiveRole === option.value && !isViewingAsOtherRole && (
+                                <span className="ml-auto text-xs">(Current)</span>
+                              )}
+                            </Button>
+                          ))}
+                          {isViewingAsOtherRole && (
+                            <>
+                              <div className="border-t pt-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                  onClick={() => handleRoleChange('reset')}
+                                >
+                                  Return to Admin View
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Badge className={getRoleBadgeColor(profile.role)}>
+                    {profile.role.replace('_', ' ').toUpperCase()}
+                  </Badge>
+                )}
+              </>
             )}
           </div>
 
