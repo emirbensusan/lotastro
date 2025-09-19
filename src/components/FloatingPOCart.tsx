@@ -137,6 +137,11 @@ const FloatingPOCart = () => {
                               <Badge variant="outline">
                                 {item.quality} - {item.color}
                               </Badge>
+                              {item.lineType === 'sample' && (
+                                <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                                  Sample
+                                </Badge>
+                              )}
                             </div>
                             
                             <div className="text-sm text-muted-foreground space-y-1">
@@ -156,39 +161,50 @@ const FloatingPOCart = () => {
                                 )}
                               </div>
                               <div>
-                                {item.selectedRollsData.reduce((total, roll) => total + roll.meters, 0).toLocaleString()} {t('meters')} 
-                                ({item.selectedRollIds.length} {t('rolls')})
+                                {item.lineType === 'sample' ? (
+                                  <>Sample: {item.selectedRollsData.reduce((total, roll) => total + roll.meters, 0).toLocaleString()} {t('meters')} 
+                                  ({item.selectedRollIds.length} {t('rolls')})</>
+                                ) : (
+                                  <>{item.selectedRollsData.reduce((total, roll) => total + roll.meters, 0).toLocaleString()} {t('meters')} 
+                                  ({item.selectedRollIds.length} {t('rolls')})</>
+                                )}
                               </div>
                             </div>
 
-                            {/* Quantity Controls */}
+                            {/* Quantity Controls - Disabled for samples */}
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => adjustQuantity(item.id, -1)}
-                                  disabled={item.selectedRollIds.length <= 1}
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  max={item.roll_count}
-                                  value={item.selectedRollIds.length}
-                                  onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
-                                  className="w-16 text-center"
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => adjustQuantity(item.id, 1)}
-                                  disabled={item.selectedRollIds.length >= item.roll_count}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
+                              {item.lineType !== 'sample' ? (
+                                <div className="flex items-center space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => adjustQuantity(item.id, -1)}
+                                    disabled={item.selectedRollIds.length <= 1}
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    max={item.roll_count}
+                                    value={item.selectedRollIds.length}
+                                    onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                                    className="w-16 text-center"
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => adjustQuantity(item.id, 1)}
+                                    disabled={item.selectedRollIds.length >= item.roll_count}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="text-sm text-muted-foreground">
+                                  Custom sample meters
+                                </div>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"

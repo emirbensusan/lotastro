@@ -14,6 +14,8 @@ interface CartLot {
   invoice_number?: string;
   invoice_date?: string;
   age_days?: number;
+  lineType?: 'standard' | 'sample';
+  selectedRollMeters?: string[];
 }
 
 interface POCartContextType {

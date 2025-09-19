@@ -96,8 +96,10 @@ const Orders = () => {
         meters: cartItem.selectedRollsData.reduce((total: number, roll: any) => total + roll.meters, 0),
         availableRolls: cartItem.roll_count,
         rollCount: cartItem.selectedRollIds?.length || 0,
-        lineType: 'standard' as const,
-        rollMeters: cartItem.selectedRollsData?.map((roll: any) => roll.meters.toString()).join('-') || '',
+        lineType: cartItem.lineType || 'standard' as const,
+        rollMeters: cartItem.lineType === 'sample' && cartItem.selectedRollMeters 
+          ? cartItem.selectedRollMeters.join(',') 
+          : cartItem.selectedRollsData?.map((roll: any) => roll.meters.toString()).join(',') || '',
         rollIds: cartItem.selectedRollIds?.join(',') || '',
       }));
       
@@ -692,41 +694,6 @@ const Orders = () => {
       <SampleOrderDialog
         open={showSampleDialog}
         onOpenChange={setShowSampleDialog}
-        onCreateSample={async (customerName, selectedLots) => {
-          try {
-            // Create sample order with auto-generated order number
-            const { data: orderData, error: orderError } = await supabase
-              .from('orders')
-              .insert({
-                customer_name: customerName,
-                created_by: profile?.user_id,
-              })
-              .select()
-              .single();
-
-            if (orderError) throw orderError;
-
-            // Create sample order lots
-            for (const lot of selectedLots) {
-              await supabase
-                .from('order_lots')
-                .insert({
-                  order_id: orderData.id,
-                  lot_id: lot.id,
-                  roll_count: lot.roll_count,
-                  line_type: 'sample',
-                  quality: lot.quality || '',
-                  color: lot.color || '',
-                });
-            }
-
-            toast.success(`Sample order ${orderData.order_number} created successfully`);
-            fetchOrders();
-            setShowSampleDialog(false);
-          } catch (error: any) {
-            toast.error('Failed to create sample order: ' + error.message);
-          }
-        }}
       />
     </div>
   );
