@@ -103,3 +103,16 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* A4 Print Styles */
+@media print {
+  @page {
+    size: A4;
+    margin: 0.5in;
+  }
+  
+  body {
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+}
