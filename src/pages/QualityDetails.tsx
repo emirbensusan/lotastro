@@ -6,10 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
-import { ArrowLeft, Package, ShoppingCart, X } from 'lucide-react';
+import { ArrowLeft, Package, ShoppingCart, X, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ColorData {
@@ -35,6 +37,7 @@ const QualityDetails = () => {
   const [loading, setLoading] = useState(true);
   const [selectedColors, setSelectedColors] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
+  const [colorFilter, setColorFilter] = useState('');
   const [qualityTotals, setQualityTotals] = useState({
     total_meters: 0,
     total_rolls: 0,
@@ -169,6 +172,11 @@ const QualityDetails = () => {
     });
   };
 
+  // Filter colors based on search
+  const filteredColors = colors.filter(colorData => {
+    return !colorFilter || colorData.color.toLowerCase().includes(colorFilter.toLowerCase());
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -202,7 +210,7 @@ const QualityDetails = () => {
         <div>
           <h1 className="text-3xl font-bold">{quality}</h1>
           <p className="text-muted-foreground">
-            {colors.length} {colors.length === 1 ? 'color' : 'colors'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
+            {colorFilter ? `${filteredColors.length} of ${colors.length}` : colors.length} {colors.length === 1 ? 'color' : 'colors'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -311,7 +319,39 @@ const QualityDetails = () => {
                     />
                   </TableHead>
                 )}
-                <TableHead>{t('color')}</TableHead>
+                <TableHead>
+                  <div className="flex items-center space-x-2">
+                    <span>{t('color')}</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                          <Filter className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80" align="start">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Filter by color</p>
+                          <Textarea
+                            placeholder="Type to filter colors..."
+                            value={colorFilter}
+                            onChange={(e) => setColorFilter(e.target.value)}
+                            className="min-h-[60px]"
+                          />
+                          {colorFilter && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setColorFilter('')}
+                              className="w-full"
+                            >
+                              Clear filter
+                            </Button>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </TableHead>
                 <TableHead className="text-right">{t('lots')}</TableHead>
                 <TableHead className="text-right">{t('meters')}</TableHead>
                 <TableHead className="text-right">{t('rolls')}</TableHead>
@@ -319,7 +359,7 @@ const QualityDetails = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {colors.map((colorData) => (
+              {filteredColors.map((colorData) => (
                 <TableRow 
                   key={colorData.color} 
                   className={`hover:bg-muted/50 ${selectionMode ? 'cursor-pointer' : ''} ${
@@ -373,6 +413,11 @@ const QualityDetails = () => {
             </TableBody>
           </Table>
           
+          {filteredColors.length === 0 && colors.length > 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              No colors match the current filter
+            </div>
+          )}
           {colors.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               No colors available for this quality
