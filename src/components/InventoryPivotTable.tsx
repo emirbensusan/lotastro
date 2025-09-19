@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ProgressDialog } from '@/components/ui/progress-dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Package, Trash2 } from 'lucide-react';
+import { Search, Package, Trash2, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -46,7 +47,7 @@ const InventoryPivotTable = () => {
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [qualityFilter, setQualityFilter] = useState('all');
+  const [qualityFilter, setQualityFilter] = useState('');
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   
@@ -320,7 +321,7 @@ const InventoryPivotTable = () => {
 
   const filteredData = pivotData.filter(item => {
     const matchesSearch = item.quality.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesQuality = qualityFilter === "all" || item.quality === qualityFilter;
+    const matchesQuality = !qualityFilter || item.quality.toLowerCase().includes(qualityFilter.toLowerCase());
     return matchesSearch && matchesQuality;
   });
 
@@ -462,21 +463,36 @@ const InventoryPivotTable = () => {
                   </TableHead>
                 )}
                 <TableHead>
-                  <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2">
                     <span>{t('quality')}</span>
-                    <Select value={qualityFilter} onValueChange={setQualityFilter}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="All qualities" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All qualities</SelectItem>
-                        {uniqueQualities.map((quality) => (
-                          <SelectItem key={quality} value={quality}>
-                            {quality}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                          <Filter className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80" align="start">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Filter by quality</p>
+                          <Textarea
+                            placeholder="Type to filter qualities..."
+                            value={qualityFilter}
+                            onChange={(e) => setQualityFilter(e.target.value)}
+                            className="min-h-[60px]"
+                          />
+                          {qualityFilter && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setQualityFilter('')}
+                              className="w-full"
+                            >
+                              Clear filter
+                            </Button>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </TableHead>
                 <TableHead>{t('colors')}</TableHead>
