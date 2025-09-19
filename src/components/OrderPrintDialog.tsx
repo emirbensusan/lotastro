@@ -118,10 +118,6 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                   <span>{totalRolls}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-medium">{t('totalMeters')}:</span>
-                  <span>{totalMeters.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
                   <span className="font-medium">{t('preparedBy')}:</span>
                   <span>________________</span>
                 </div>
