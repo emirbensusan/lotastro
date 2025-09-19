@@ -125,9 +125,6 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
 
           {/* Lots Table - Large section for warehouse personnel */}
           <Card className="print:shadow-none print:border-black" style={{ minHeight: '50vh' }}>
-            <CardHeader>
-              <CardTitle className="text-3xl font-bold">Lot Detayları</CardTitle>
-            </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse print:border-black text-lg">
