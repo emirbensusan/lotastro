@@ -137,6 +137,8 @@ export type Database = {
           order_id: string
           quality: string
           roll_count: number
+          selected_roll_ids: string | null
+          selected_roll_meters: string | null
         }
         Insert: {
           color: string
@@ -147,6 +149,8 @@ export type Database = {
           order_id: string
           quality: string
           roll_count: number
+          selected_roll_ids?: string | null
+          selected_roll_meters?: string | null
         }
         Update: {
           color?: string
@@ -157,6 +161,8 @@ export type Database = {
           order_id?: string
           quality?: string
           roll_count?: number
+          selected_roll_ids?: string | null
+          selected_roll_meters?: string | null
         }
         Relationships: [
           {

@@ -21,6 +21,8 @@ interface Order {
     color: string;
     roll_count: number;
     line_type: 'sample' | 'standard';
+    selected_roll_meters?: string;
+    selected_roll_ids?: string;
     lot: {
       lot_number: string;
       meters: number;
@@ -141,9 +143,9 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                       <th className="text-left p-2 print:border print:border-black">{t('lotNumber')}</th>
                       <th className="text-left p-2 print:border print:border-black">{t('quality')}</th>
                       <th className="text-left p-2 print:border print:border-black">{t('color')}</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('metersPerRoll')}</th>
+                      <th className="text-left p-2 print:border print:border-black">{t('lotNumber')}</th>
                       <th className="text-left p-2 print:border print:border-black">{t('rollCount')}</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('totalMeters')}</th>
+                      <th className="text-left p-2 print:border print:border-black">Roll Meters</th>
                       <th className="text-left p-2 print:border print:border-black">{t('lineType')}</th>
                       <th className="text-left p-2 print:border print:border-black">{t('prepared')}</th>
                     </tr>
@@ -152,7 +154,6 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                     {order.order_lots.map((lot, index) => (
                       <tr key={lot.id} className="border-b print:border-black">
                         <td className="p-2 print:border print:border-black">{index + 1}</td>
-                        <td className="p-2 print:border print:border-black font-medium">{lot.lot.lot_number}</td>
                         <td className="p-2 print:border print:border-black">{lot.quality}</td>
                         <td className="p-2 print:border print:border-black">
                           <div className="flex items-center">
@@ -163,9 +164,9 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                             {lot.color}
                           </div>
                         </td>
-                        <td className="p-2 print:border print:border-black">{lot.lot.meters.toLocaleString()}</td>
+                        <td className="p-2 print:border print:border-black font-medium">{lot.lot.lot_number}</td>
                         <td className="p-2 print:border print:border-black">{lot.roll_count}</td>
-                        <td className="p-2 print:border print:border-black">{(lot.lot.meters * lot.roll_count).toLocaleString()}</td>
+                        <td className="p-2 print:border print:border-black">{lot.selected_roll_meters || 'N/A'}</td>
                         <td className="p-2 print:border print:border-black">
                           <Badge 
                             variant={lot.line_type === 'sample' ? "outline" : "default"}

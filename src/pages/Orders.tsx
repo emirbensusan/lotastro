@@ -80,6 +80,8 @@ const Orders = () => {
     availableRolls: number;
     rollCount: number;
     lineType: 'sample' | 'standard';
+    rollMeters?: string;
+    rollIds?: string;
   }>>([]);
 
   // Check for pre-filled data from cart
@@ -94,7 +96,9 @@ const Orders = () => {
         meters: cartItem.selectedRollsData.reduce((total: number, roll: any) => total + roll.meters, 0),
         availableRolls: cartItem.roll_count,
         rollCount: cartItem.selectedRollIds?.length || 0,
-        lineType: 'standard' as const
+        lineType: 'standard' as const,
+        rollMeters: cartItem.selectedRollsData?.map((roll: any) => roll.meters.toString()).join('-') || '',
+        rollIds: cartItem.selectedRollIds?.join(',') || '',
       }));
       
       setSelectedLots(convertedLots);
@@ -190,6 +194,8 @@ const Orders = () => {
             line_type: selectedLot.lineType,
             quality: selectedLot.quality,
             color: selectedLot.color,
+            selected_roll_meters: selectedLot.rollMeters || '',
+            selected_roll_ids: selectedLot.rollIds || '',
           });
       }
 
