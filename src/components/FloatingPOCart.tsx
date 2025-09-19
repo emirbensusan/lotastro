@@ -44,7 +44,7 @@ const FloatingPOCart = () => {
       color: item.color,
       meters: item.meters,
       roll_count: item.roll_count,
-      selectedRolls: item.selectedRolls,
+      selectedRollIds: item.selectedRollIds,
     }));
 
     navigate('/orders', { 
@@ -64,7 +64,7 @@ const FloatingPOCart = () => {
   const adjustQuantity = (lotId: string, change: number) => {
     const item = cartItems.find(i => i.id === lotId);
     if (item) {
-      const newQuantity = item.selectedRolls + change;
+      const newQuantity = item.selectedRollIds.length + change;
       updateQuantity(lotId, newQuantity);
     }
   };
@@ -156,8 +156,8 @@ const FloatingPOCart = () => {
                                 )}
                               </div>
                               <div>
-                                {((item.meters / item.roll_count) * item.selectedRolls).toLocaleString()} {t('meters')} 
-                                ({item.selectedRolls} {t('rolls')})
+                                {((item.meters / item.roll_count) * item.selectedRollIds.length).toLocaleString()} {t('meters')} 
+                                ({item.selectedRollIds.length} {t('rolls')})
                               </div>
                             </div>
 
@@ -168,7 +168,7 @@ const FloatingPOCart = () => {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => adjustQuantity(item.id, -1)}
-                                  disabled={item.selectedRolls <= 1}
+                                  disabled={item.selectedRollIds.length <= 1}
                                 >
                                   <Minus className="h-3 w-3" />
                                 </Button>
@@ -176,7 +176,7 @@ const FloatingPOCart = () => {
                                   type="number"
                                   min={1}
                                   max={item.roll_count}
-                                  value={item.selectedRolls}
+                                  value={item.selectedRollIds.length}
                                   onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
                                   className="w-16 text-center"
                                 />
@@ -184,7 +184,7 @@ const FloatingPOCart = () => {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => adjustQuantity(item.id, 1)}
-                                  disabled={item.selectedRolls >= item.roll_count}
+                                  disabled={item.selectedRollIds.length >= item.roll_count}
                                 >
                                   <Plus className="h-3 w-3" />
                                 </Button>

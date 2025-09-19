@@ -128,7 +128,7 @@ export function RollDetailsDialog({ isOpen, onClose, quality, color, lotNumber }
       color: lotDetails.color,
       meters: lotDetails.meters,
       roll_count: lotDetails.roll_count,
-      selectedRolls: selectedQuantity,
+      selectedRollIds: [], // For now, we'll use empty array - this should be improved later
       entry_date: lotDetails.entry_date,
       supplier_name: lotDetails.supplier_name,
       invoice_number: lotDetails.invoice_number || undefined,

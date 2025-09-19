@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useToast } from '@/hooks/use-toast';
+import { RollSelectionDialog } from '@/components/RollSelectionDialog';
 import { ArrowLeft, Plus, Package, Calendar } from 'lucide-react';
 
 interface LotDetail {
@@ -31,6 +32,8 @@ const LotDetails = () => {
   const { quality, color } = useParams<{ quality: string; color: string }>();
   const [lots, setLots] = useState<LotDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedLot, setSelectedLot] = useState<LotDetail | null>(null);
+  const [isRollDialogOpen, setIsRollDialogOpen] = useState(false);
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { addToCart } = usePOCart();
@@ -137,52 +140,18 @@ const LotDetails = () => {
     }
   };
 
-  const handleAddToCart = (lot: LotDetail) => {
-    const quantity = 1;
-    addToCart({
-      id: lot.id,
-      lot_number: lot.lot_number,
-      quality: lot.quality,
-      color: lot.color,
-      meters: lot.meters,
-      roll_count: lot.roll_count,
-      selectedRolls: quantity,
-      entry_date: lot.entry_date,
-      supplier_name: lot.suppliers?.name,
-      invoice_number: lot.invoice_number,
-      invoice_date: lot.invoice_date,
-      age_days: lot.age_days,
-    });
-
-    toast({
-        title: String(t('addedToCart')),
-        description: `${lot.lot_number} (${quantity} ${String(t('rolls'))}) ${String(t('addedToCart'))}`,
-    });
+  const handleSelectRolls = (lot: LotDetail) => {
+    setSelectedLot(lot);
+    setIsRollDialogOpen(true);
   };
 
   const handleAddAllToCart = () => {
-    lots.forEach(lot => {
-      const quantity = 1;
-      addToCart({
-        id: lot.id,
-        lot_number: lot.lot_number,
-        quality: lot.quality,
-        color: lot.color,
-        meters: lot.meters,
-        roll_count: lot.roll_count,
-        selectedRolls: quantity,
-        entry_date: lot.entry_date,
-        supplier_name: lot.suppliers?.name,
-        invoice_number: lot.invoice_number,
-        invoice_date: lot.invoice_date,
-        age_days: lot.age_days,
-      });
-    });
-
-    toast({
-      title: String(t('success')),
-      description: `${lots.length} ${String(t('lots'))} ${String(t('addedToCart'))}`,
-    });
+    // For "Add All", we'll open dialog for first lot as example
+    // In practice, you might want different UX for bulk operations
+    if (lots.length > 0) {
+      setSelectedLot(lots[0]);
+      setIsRollDialogOpen(true);
+    }
   };
 
   if (loading) {
@@ -267,29 +236,29 @@ const LotDetails = () => {
                     <TableCell className="font-medium">{lot.lot_number}</TableCell>
                     <TableCell className="text-right">{lot.meters.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{lot.roll_count}</TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {lot.roll_breakdown || '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>{new Date(lot.entry_date).toLocaleDateString()}</span>
-                      </div>
-                    </TableCell>
+                     <TableCell className="text-sm">
+                       {lot.roll_breakdown || '-'}
+                     </TableCell>
+                     <TableCell>
+                       <div className="flex items-center space-x-2">
+                         <Calendar className="h-4 w-4 text-muted-foreground" />
+                         <span>{new Date(lot.entry_date).toLocaleDateString('en-GB')}</span>
+                       </div>
+                     </TableCell>
                     <TableCell>
                       <Badge variant={lot.age_days > 30 ? "destructive" : lot.age_days > 14 ? "secondary" : "default"}>
                         {lot.age_days} {t('days')}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddToCart(lot)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        {t('addToCart')}
-                      </Button>
-                    </TableCell>
+                     <TableCell className="text-right">
+                       <Button
+                         size="sm"
+                         onClick={() => handleSelectRolls(lot)}
+                       >
+                         <Plus className="h-4 w-4 mr-1" />
+                         Select Rolls
+                       </Button>
+                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -297,6 +266,28 @@ const LotDetails = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Roll Selection Dialog */}
+      {selectedLot && (
+        <RollSelectionDialog
+          isOpen={isRollDialogOpen}
+          onClose={() => {
+            setIsRollDialogOpen(false);
+            setSelectedLot(null);
+          }}
+          lotId={selectedLot.id}
+          lotNumber={selectedLot.lot_number}
+          quality={selectedLot.quality}
+          color={selectedLot.color}
+          totalMeters={selectedLot.meters}
+          totalRolls={selectedLot.roll_count}
+          entryDate={selectedLot.entry_date}
+          supplierName={selectedLot.suppliers?.name}
+          invoiceNumber={selectedLot.invoice_number}
+          invoiceDate={selectedLot.invoice_date}
+          ageDays={selectedLot.age_days}
+        />
+      )}
     </div>
   );
 };

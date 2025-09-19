@@ -7,7 +7,7 @@ interface CartLot {
   color: string;
   meters: number;
   roll_count: number;
-  selectedRolls: number;
+  selectedRollIds: string[];
   entry_date: string;
   supplier_name?: string;
   invoice_number?: string;
@@ -50,10 +50,11 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
     setCartItems(prev => {
       const existingItem = prev.find(item => item.id === lot.id);
       if (existingItem) {
-        // Update quantity if item already exists
+        // Merge selected roll IDs if item already exists
+        const newSelectedRollIds = [...new Set([...existingItem.selectedRollIds, ...lot.selectedRollIds])];
         return prev.map(item =>
           item.id === lot.id
-            ? { ...item, selectedRolls: Math.min(item.selectedRolls + lot.selectedRolls, item.roll_count) }
+            ? { ...item, selectedRollIds: newSelectedRollIds }
             : item
         );
       }
@@ -67,12 +68,13 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
   };
 
   const updateQuantity = (lotId: string, quantity: number) => {
+    // For backward compatibility, this method now limits selected roll IDs
     setCartItems(prev =>
       prev.map(item =>
         item.id === lotId
-          ? { ...item, selectedRolls: Math.max(0, Math.min(quantity, item.roll_count)) }
+          ? { ...item, selectedRollIds: item.selectedRollIds.slice(0, Math.max(0, Math.min(quantity, item.roll_count))) }
           : item
-      ).filter(item => item.selectedRolls > 0)
+      ).filter(item => item.selectedRollIds.length > 0)
     );
   };
 
@@ -83,13 +85,14 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
 
   const getTotalMeters = () => {
     return cartItems.reduce((total, item) => {
+      // For now, estimate meters based on selected roll count
       const metersPerRoll = item.meters / item.roll_count;
-      return total + (metersPerRoll * item.selectedRolls);
+      return total + (metersPerRoll * item.selectedRollIds.length);
     }, 0);
   };
 
   const getTotalRolls = () => {
-    return cartItems.reduce((total, item) => total + item.selectedRolls, 0);
+    return cartItems.reduce((total, item) => total + item.selectedRollIds.length, 0);
   };
 
   const getItemCount = () => {
