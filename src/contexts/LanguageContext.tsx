@@ -418,6 +418,9 @@ const translations = {
     stockEntryDate: "Stock Entry Date",
     totalRollsInLot: "Total Rolls in Lot",
     selectRolls: "Select Rolls",
+    selectedMeters: "Selected Meters",
+    selectAll: "Select All",
+    addSelectedToCart: "Add Selected to Cart",
     
     // Authentication
     signIn: 'Sign In',
@@ -644,9 +647,12 @@ const translations = {
     rollDetails: "Top Detayları",
     rollPosition: "Pozisyon", 
     rollMeters: "Top Metre",
-    stockEntryDate: "Stok Giriş Tarihi",
+    stockEntryDate: "Stok Giriş Tarihi", 
     totalRollsInLot: "Lottaki Toplam Top Sayısı",
     selectRolls: "top seç",
+    selectedMeters: "Seçilen Metre Toplamı", 
+    selectAll: "Tümü Seç",
+    addSelectedToCart: "Seçilenleri Siparişe Ekle",
     
     // Authentication
     signIn: 'Giriş Yap',

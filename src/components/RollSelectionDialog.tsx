@@ -160,19 +160,19 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
             <div className="bg-muted/50 p-4 rounded-lg">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Total Rolls:</span>
+                  <span className="text-muted-foreground">{t('totalRolls')}:</span>
                   <span className="ml-2 font-medium">{rolls.length}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Selected:</span>
+                  <span className="text-muted-foreground">{t('selected')}:</span>
                   <span className="ml-2 font-medium">{selectedRollIds.length}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Selected Meters:</span>
+                  <span className="text-muted-foreground">{t('selectedMeters')}:</span>
                   <span className="ml-2 font-medium">{getSelectedMeters().toLocaleString()}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Total Meters:</span>
+                  <span className="text-muted-foreground">{t('totalMeters')}:</span>
                   <span className="ml-2 font-medium">{totalMeters.toLocaleString()}</span>
                 </div>
               </div>
@@ -187,23 +187,24 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
                   onCheckedChange={handleSelectAll}
                 />
                 <label htmlFor="select-all" className="text-sm font-medium">
-                  Select All ({rolls.length} rolls)
+                  {t('selectAll')} ({rolls.length} {t('rollsLabel')})
                 </label>
               </div>
               <Badge variant="outline">
-                {selectedRollIds.length} / {rolls.length} selected
+                {selectedRollIds.length} / {rolls.length} {t('selectedCount')}
               </Badge>
             </div>
 
             {/* Rolls Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {rolls.map((roll) => (
-                <div key={roll.id} className="flex flex-col items-center space-y-2 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div 
+                  key={roll.id} 
+                  className="flex flex-col items-center space-y-2 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => handleRollSelection(roll.id, !selectedRollIds.includes(roll.id))}
+                >
                   <Checkbox
                     checked={selectedRollIds.includes(roll.id)}
-                    onCheckedChange={(checked) => 
-                      handleRollSelection(roll.id, checked as boolean)
-                    }
                   />
                   <span className="text-sm font-medium">{roll.meters.toLocaleString()} mt</span>
                 </div>
@@ -213,13 +214,13 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
             {/* Action Buttons */}
             <div className="flex justify-end space-x-2 pt-4">
               <Button variant="outline" onClick={onClose}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button 
                 onClick={handleAddSelectedToCart}
                 disabled={selectedRollIds.length === 0}
               >
-                Add Selected to Cart ({selectedRollIds.length} rolls)
+                {t('addSelectedToCart')} ({selectedRollIds.length} {t('rollsLabel')})
               </Button>
             </div>
           </div>
