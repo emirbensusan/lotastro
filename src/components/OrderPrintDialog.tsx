@@ -39,6 +39,16 @@ interface OrderPrintDialogProps {
 const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) => {
   const { t } = useLanguage();
 
+  // Generate masked order ID for security
+  const generateMaskedOrderId = (originalId: string) => {
+    const hash = originalId.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    const randomSuffix = Math.abs(hash % 10000).toString().padStart(4, '0');
+    return `ORD-${randomSuffix}`;
+  };
+
   if (!order) return null;
 
   const handlePrint = () => {
@@ -85,7 +95,7 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="font-semibold text-xl">{t('orderNumber')}:</span>
-                  <span className="text-xl">{order.order_number}</span>
+                  <span className="text-xl">{order ? generateMaskedOrderId(order.order_number) : ''}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-semibold text-xl">{t('customer')}:</span>
@@ -113,57 +123,57 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
             </Card>
           </div>
 
-          {/* Lots Table */}
-          <Card className="print:shadow-none print:border-black">
+          {/* Lots Table - Large section for warehouse personnel */}
+          <Card className="print:shadow-none print:border-black" style={{ minHeight: '50vh' }}>
             <CardHeader>
-              <CardTitle>{t('lotDetails')}</CardTitle>
+              <CardTitle className="text-3xl font-bold">Lot Detayları</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse print:border-black">
+                <table className="w-full border-collapse print:border-black text-lg">
                   <thead>
-                    <tr className="border-b print:border-black">
-                      <th className="text-left p-2 print:border print:border-black">#</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('quality')}</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('color')}</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('lotNumber')}</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('rollCount')}</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('lineType')}</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('rollMeters')}</th>
-                      <th className="text-left p-2 print:border print:border-black">{t('prepared')}</th>
+                    <tr className="border-b print:border-black bg-gray-100 print:bg-gray-100">
+                      <th className="text-left p-4 print:border print:border-black font-bold text-xl">#</th>
+                      <th className="text-left p-4 print:border print:border-black font-bold text-xl">Kalite</th>
+                      <th className="text-left p-4 print:border print:border-black font-bold text-xl">Renk</th>
+                      <th className="text-left p-4 print:border print:border-black font-bold text-xl">Lot Numarası</th>
+                      <th className="text-left p-4 print:border print:border-black font-bold text-xl">{t('rollCount')}</th>
+                      <th className="text-left p-4 print:border print:border-black font-bold text-xl">{t('lineType')}</th>
+                      <th className="text-left p-4 print:border print:border-black font-bold text-xl">{t('rollMeters')}</th>
+                      <th className="text-left p-4 print:border print:border-black font-bold text-xl">{t('prepared')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {order.order_lots.map((lot, index) => (
                       <tr key={lot.id} className="border-b print:border-black">
-                        <td className="p-2 print:border print:border-black">{index + 1}</td>
-                        <td className="p-2 print:border print:border-black">{lot.quality}</td>
-                        <td className="p-2 print:border print:border-black">
+                        <td className="p-4 print:border print:border-black text-lg font-semibold">{index + 1}</td>
+                        <td className="p-4 print:border print:border-black text-lg font-semibold">{lot.quality}</td>
+                        <td className="p-4 print:border print:border-black text-lg">
                           <div className="flex items-center">
                             <div 
-                              className="w-4 h-4 rounded mr-2 border print:border-black"
+                              className="w-6 h-6 rounded mr-3 border print:border-black"
                               style={{ backgroundColor: lot.color.toLowerCase() }}
                             ></div>
-                            {lot.color}
+                            <span className="font-semibold">{lot.color}</span>
                           </div>
                         </td>
-                        <td className="p-2 print:border print:border-black font-medium">{lot.lot.lot_number}</td>
-                        <td className="p-2 print:border print:border-black">{lot.roll_count}</td>
-                        <td className="p-2 print:border print:border-black">
+                        <td className="p-4 print:border print:border-black font-semibold text-lg">{lot.lot.lot_number}</td>
+                        <td className="p-4 print:border print:border-black text-lg font-semibold">{lot.roll_count}</td>
+                        <td className="p-4 print:border print:border-black">
                           <Badge 
                             variant={lot.line_type === 'sample' ? "outline" : "default"}
-                            className="print:border print:border-black print:bg-white print:text-black"
+                            className="print:border print:border-black print:bg-white print:text-black text-base px-3 py-1"
                           >
                             {lot.line_type === 'sample' ? t('sample') : t('standard')}
                           </Badge>
                         </td>
-                        <td className="p-2 print:border print:border-black">
+                        <td className="p-4 print:border print:border-black text-lg font-semibold">
                           {lot.line_type === 'sample' 
                             ? (lot.selected_roll_meters || '0') + 'm'
                             : (lot.lot.meters * lot.roll_count).toLocaleString() + 'm'
                           }
                         </td>
-                        <td className="p-2 print:border print:border-black text-center">☐</td>
+                        <td className="p-4 print:border print:border-black text-center text-2xl">☐</td>
                       </tr>
                     ))}
                   </tbody>
