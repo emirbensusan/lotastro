@@ -46,7 +46,7 @@ const InventoryPivotTable = () => {
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [qualityFilter, setQualityFilter] = useState('');
+  const [qualityFilter, setQualityFilter] = useState('all');
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   
@@ -320,7 +320,7 @@ const InventoryPivotTable = () => {
 
   const filteredData = pivotData.filter(item => {
     const matchesSearch = item.quality.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesQuality = !qualityFilter || item.quality === qualityFilter;
+    const matchesQuality = qualityFilter === "all" || item.quality === qualityFilter;
     return matchesSearch && matchesQuality;
   });
 
@@ -469,7 +469,7 @@ const InventoryPivotTable = () => {
                         <SelectValue placeholder="All qualities" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All qualities</SelectItem>
+                        <SelectItem value="all">All qualities</SelectItem>
                         {uniqueQualities.map((quality) => (
                           <SelectItem key={quality} value={quality}>
                             {quality}
