@@ -24,6 +24,8 @@ interface LotDetail {
   invoice_date?: string;
   suppliers?: { name: string };
   age_days: number;
+  rolls?: { meters: number; position: number }[];
+  roll_breakdown?: string;
 }
 
 const LotDetails = () => {
@@ -41,6 +43,51 @@ const LotDetails = () => {
       fetchLotDetails();
     }
   }, [quality, color]);
+
+  const formatRollBreakdown = (rolls: { meters: number; position: number }[]): string => {
+    if (!rolls || rolls.length === 0) return '';
+    
+    // Sort rolls by position
+    const sortedRolls = rolls.sort((a, b) => a.position - b.position);
+    
+    // Group consecutive rolls with the same meter value
+    const groupedRolls: string[] = [];
+    const meterCounts: { [key: number]: number } = {};
+    const individualMeters: number[] = [];
+    
+    // Count occurrences of each meter value
+    sortedRolls.forEach(roll => {
+      meterCounts[roll.meters] = (meterCounts[roll.meters] || 0) + 1;
+    });
+    
+    // Create the breakdown string
+    const groups: string[] = [];
+    const processedMeters = new Set<number>();
+    
+    sortedRolls.forEach(roll => {
+      if (!processedMeters.has(roll.meters)) {
+        const count = meterCounts[roll.meters];
+        if (count > 1) {
+          groups.push(`${count}x${roll.meters}`);
+        } else {
+          individualMeters.push(roll.meters);
+        }
+        processedMeters.add(roll.meters);
+      }
+    });
+    
+    // Combine grouped and individual meters
+    let breakdown = '';
+    if (groups.length > 0) {
+      breakdown += `(${groups.join(')')}-(')}`;
+    }
+    if (individualMeters.length > 0) {
+      if (breakdown) breakdown += '-';
+      breakdown += individualMeters.join('-');
+    }
+    
+    return breakdown;
+  };
 
   const fetchLotDetails = async () => {
     if (!quality || !color) return;
@@ -60,7 +107,8 @@ const LotDetails = () => {
           entry_date,
           invoice_number,
           invoice_date,
-          suppliers(name)
+          suppliers(name),
+          rolls(meters, position)
         `)
         .eq('quality', decodeURIComponent(quality))
         .eq('color', decodeURIComponent(color))
@@ -69,10 +117,11 @@ const LotDetails = () => {
 
       if (error) throw error;
 
-      // Calculate age for each lot
+      // Calculate age and roll breakdown for each lot
       const lotsWithAge = data.map(lot => ({
         ...lot,
-        age_days: Math.floor((new Date().getTime() - new Date(lot.entry_date).getTime()) / (1000 * 3600 * 24))
+        age_days: Math.floor((new Date().getTime() - new Date(lot.entry_date).getTime()) / (1000 * 3600 * 24)),
+        roll_breakdown: formatRollBreakdown(lot.rolls || [])
       }));
 
       setLots(lotsWithAge);
@@ -225,6 +274,7 @@ const LotDetails = () => {
                   <TableHead>{t('lotNumber')}</TableHead>
                   <TableHead className="text-right">{t('meters')}</TableHead>
                   <TableHead className="text-right">{t('rolls')}</TableHead>
+                  <TableHead>{t('rollMeters')}</TableHead>
                   <TableHead className="text-center">{t('quantity')}</TableHead>
                   <TableHead>{t('supplier')}</TableHead>
                   <TableHead>{t('entryDate')}</TableHead>
@@ -238,6 +288,9 @@ const LotDetails = () => {
                     <TableCell className="font-medium">{lot.lot_number}</TableCell>
                     <TableCell className="text-right">{lot.meters.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{lot.roll_count}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {lot.roll_breakdown || '-'}
+                    </TableCell>
                     <TableCell className="text-center">
                       <Input
                         type="number"
