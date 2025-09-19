@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
@@ -10,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, Package, Calendar, Building2 } from 'lucide-react';
+import { ArrowLeft, Plus, Package, Calendar } from 'lucide-react';
 
 interface LotDetail {
   id: string;
@@ -32,7 +31,6 @@ const LotDetails = () => {
   const { quality, color } = useParams<{ quality: string; color: string }>();
   const [lots, setLots] = useState<LotDetail[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedQuantities, setSelectedQuantities] = useState<{ [lotId: string]: number }>({});
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { addToCart } = usePOCart();
@@ -50,43 +48,44 @@ const LotDetails = () => {
     // Sort rolls by position
     const sortedRolls = rolls.sort((a, b) => a.position - b.position);
     
-    // Group consecutive rolls with the same meter value
-    const groupedRolls: string[] = [];
-    const meterCounts: { [key: number]: number } = {};
-    const individualMeters: number[] = [];
-    
     // Count occurrences of each meter value
+    const meterCounts: { [key: number]: number } = {};
     sortedRolls.forEach(roll => {
       meterCounts[roll.meters] = (meterCounts[roll.meters] || 0) + 1;
     });
     
-    // Create the breakdown string
-    const groups: string[] = [];
+    // Separate grouped and individual meters while maintaining order
+    const parts: string[] = [];
     const processedMeters = new Set<number>();
     
+    // First pass: collect grouped meters (count > 1)
+    const groupedParts: string[] = [];
     sortedRolls.forEach(roll => {
-      if (!processedMeters.has(roll.meters)) {
-        const count = meterCounts[roll.meters];
-        if (count > 1) {
-          groups.push(`${count}x${roll.meters}`);
-        } else {
-          individualMeters.push(roll.meters);
-        }
+      if (!processedMeters.has(roll.meters) && meterCounts[roll.meters] > 1) {
+        groupedParts.push(`${meterCounts[roll.meters]}x${roll.meters}`);
         processedMeters.add(roll.meters);
       }
     });
     
-    // Combine grouped and individual meters
-    let breakdown = '';
-    if (groups.length > 0) {
-      breakdown += `(${groups.join(')')}-(')}`;
-    }
-    if (individualMeters.length > 0) {
-      if (breakdown) breakdown += '-';
-      breakdown += individualMeters.join('-');
+    // Add grouped parts
+    if (groupedParts.length > 0) {
+      parts.push(`(${groupedParts.join(')-(')}`);
     }
     
-    return breakdown;
+    // Second pass: collect individual meters (count = 1) in order
+    const individualMeters: number[] = [];
+    sortedRolls.forEach(roll => {
+      if (meterCounts[roll.meters] === 1) {
+        individualMeters.push(roll.meters);
+      }
+    });
+    
+    // Add individual meters
+    if (individualMeters.length > 0) {
+      parts.push(individualMeters.join('-'));
+    }
+    
+    return parts.join('-');
   };
 
   const fetchLotDetails = async () => {
@@ -126,13 +125,6 @@ const LotDetails = () => {
 
       setLots(lotsWithAge);
 
-      // Initialize selected quantities
-      const initialQuantities: { [lotId: string]: number } = {};
-      lotsWithAge.forEach(lot => {
-        initialQuantities[lot.id] = 1;
-      });
-      setSelectedQuantities(initialQuantities);
-
     } catch (error) {
       console.error('Error fetching lot details:', error);
       toast({
@@ -145,19 +137,8 @@ const LotDetails = () => {
     }
   };
 
-  const handleQuantityChange = (lotId: string, quantity: number) => {
-    const lot = lots.find(l => l.id === lotId);
-    if (lot) {
-      const validQuantity = Math.max(1, Math.min(quantity, lot.roll_count));
-      setSelectedQuantities(prev => ({
-        ...prev,
-        [lotId]: validQuantity
-      }));
-    }
-  };
-
   const handleAddToCart = (lot: LotDetail) => {
-    const quantity = selectedQuantities[lot.id] || 1;
+    const quantity = 1;
     addToCart({
       id: lot.id,
       lot_number: lot.lot_number,
@@ -181,7 +162,7 @@ const LotDetails = () => {
 
   const handleAddAllToCart = () => {
     lots.forEach(lot => {
-      const quantity = selectedQuantities[lot.id] || 1;
+      const quantity = 1;
       addToCart({
         id: lot.id,
         lot_number: lot.lot_number,
@@ -275,8 +256,6 @@ const LotDetails = () => {
                   <TableHead className="text-right">{t('meters')}</TableHead>
                   <TableHead className="text-right">{t('rolls')}</TableHead>
                   <TableHead>{t('rollMeters')}</TableHead>
-                  <TableHead className="text-center">{t('quantity')}</TableHead>
-                  <TableHead>{t('supplier')}</TableHead>
                   <TableHead>{t('entryDate')}</TableHead>
                   <TableHead>{t('age')}</TableHead>
                   <TableHead className="text-right">{t('actionAdd')}</TableHead>
@@ -290,22 +269,6 @@ const LotDetails = () => {
                     <TableCell className="text-right">{lot.roll_count}</TableCell>
                     <TableCell className="font-mono text-sm">
                       {lot.roll_breakdown || '-'}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Input
-                        type="number"
-                        min={1}
-                        max={lot.roll_count}
-                        value={selectedQuantities[lot.id] || 1}
-                        onChange={(e) => handleQuantityChange(lot.id, parseInt(e.target.value) || 1)}
-                        className="w-20 text-center"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <span>{lot.suppliers?.name || t('unknown')}</span>
-                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
