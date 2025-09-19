@@ -96,7 +96,7 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
 
             <Card className="print:shadow-none print:border-black">
               <CardHeader className="pb-3">
-                <CardTitle className="text-xl">{t('orderStatus')}</CardTitle>
+                <CardTitle className="text-xl">Sipariş Durumu</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
