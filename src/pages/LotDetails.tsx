@@ -9,6 +9,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
+import { InlineEditableField } from '@/components/InlineEditableField';
 import { RollSelectionDialog } from '@/components/RollSelectionDialog';
 import { ArrowLeft, Plus, Package, Calendar, Filter } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -44,6 +47,11 @@ const LotDetails = () => {
   const navigate = useNavigate();
   const { addToCart } = usePOCart();
   const { toast } = useToast();
+  const { profile } = useAuth();
+  const { viewAsRole } = useViewAsRole();
+  
+  // Get the effective role (viewAsRole takes precedence)
+  const getEffectiveRole = () => viewAsRole || profile?.role;
   
   // Check if we're in sample mode
   const searchParams = new URLSearchParams(location.search);
@@ -172,6 +180,44 @@ const LotDetails = () => {
     
     return matchesLotNumber && matchesEntryDate && matchesAge;
   });
+
+  const handleLotNumberUpdate = async (lotId: string, oldLotNumber: string, newLotNumber: string) => {
+    if (oldLotNumber === newLotNumber) return;
+
+    try {
+      const { error } = await supabase
+        .from('lots')
+        .update({ lot_number: newLotNumber })
+        .eq('id', lotId);
+
+      if (error) throw error;
+
+      // Refresh the data
+      await fetchLotDetails();
+      
+      toast({
+        title: 'Lot Number Updated',
+        description: `Updated lot number from "${oldLotNumber}" to "${newLotNumber}"`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: `Failed to update lot number: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRollBreakdownUpdate = async (lotId: string, newBreakdown: string) => {
+    // Note: Roll breakdown is a calculated field, so we'd need to update individual rolls
+    // For now, this is a placeholder - in a real implementation, you'd need to parse
+    // the breakdown and update the individual roll records
+    toast({
+      title: 'Info',
+      description: 'Roll breakdown editing requires individual roll updates',
+      variant: 'default',
+    });
+  };
 
   if (loading) {
     return (
@@ -344,11 +390,29 @@ const LotDetails = () => {
               ) : (
                 filteredLots.map((lot) => (
                   <TableRow key={lot.id}>
-                    <TableCell className="font-medium">{lot.lot_number}</TableCell>
+                    <TableCell className="font-medium">
+                      {getEffectiveRole() === 'warehouse_staff' ? (
+                        <InlineEditableField
+                          value={lot.lot_number}
+                          onSave={(newValue) => handleLotNumberUpdate(lot.id, lot.lot_number, String(newValue))}
+                          placeholder="Enter lot number"
+                        />
+                      ) : (
+                        lot.lot_number
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">{lot.meters.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{lot.roll_count}</TableCell>
                      <TableCell className="text-sm">
-                       {lot.roll_breakdown || '-'}
+                       {getEffectiveRole() === 'warehouse_staff' ? (
+                         <InlineEditableField
+                           value={lot.roll_breakdown || '-'}
+                           onSave={(newValue) => handleRollBreakdownUpdate(lot.id, String(newValue))}
+                           placeholder="Enter roll breakdown"
+                         />
+                       ) : (
+                         lot.roll_breakdown || '-'
+                       )}
                      </TableCell>
                      <TableCell>
                        <div className="flex items-center space-x-2">

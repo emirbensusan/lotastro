@@ -13,6 +13,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { ArrowLeft, Package, ShoppingCart, X, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
+import { InlineEditableField } from '@/components/InlineEditableField';
 
 interface ColorData {
   color: string;
@@ -28,6 +31,11 @@ const QualityDetails = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const { clearCart } = usePOCart();
+  const { profile } = useAuth();
+  const { viewAsRole } = useViewAsRole();
+  
+  // Get the effective role (viewAsRole takes precedence)
+  const getEffectiveRole = () => viewAsRole || profile?.role;
   
   // Check if we're in sample mode
   const searchParams = new URLSearchParams(location.search);
@@ -170,6 +178,36 @@ const QualityDetails = () => {
       title: t('success') as string,
       description: 'Cart cleared successfully',
     });
+  };
+
+  const handleColorUpdate = async (oldColor: string, newColor: string) => {
+    if (oldColor === newColor) return;
+
+    try {
+      // Update all lots with this color for the current quality
+      const { error } = await supabase
+        .from('lots')
+        .update({ color: newColor })
+        .eq('quality', quality)
+        .eq('color', oldColor)
+        .eq('status', 'in_stock');
+
+      if (error) throw error;
+
+      // Refresh the data
+      await fetchColorData();
+      
+      toast({
+        title: 'Color Updated',
+        description: `Updated color from "${oldColor}" to "${newColor}"`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: `Failed to update color: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
   };
 
   // Filter colors based on search
@@ -382,7 +420,15 @@ const QualityDetails = () => {
                         className="w-4 h-4 rounded border border-muted-foreground/20"
                         style={{ backgroundColor: colorData.color.toLowerCase() === 'white' ? '#f8f9fa' : colorData.color.toLowerCase() }}
                       />
-                      <span className="font-medium">{colorData.color}</span>
+                      {getEffectiveRole() === 'warehouse_staff' ? (
+                        <InlineEditableField
+                          value={colorData.color}
+                          onSave={(newValue) => handleColorUpdate(colorData.color, String(newValue))}
+                          placeholder="Enter color"
+                        />
+                      ) : (
+                        <span className="font-medium">{colorData.color}</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
