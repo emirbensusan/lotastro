@@ -199,11 +199,11 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
         </DialogContent>
       </Dialog>
 
-      {/* Print Layout - Full screen print version */}
-      <div className="hidden print:block print:fixed print:inset-0 print:z-50 print:bg-white print:text-black">
-        <div className="print-container">
-          {/* Header - 15% of page */}
-          <div className="print-header">
+      {/* Print Layout - Clean print version */}
+      <div className="hidden print:block print:w-full print:h-full print:bg-white print:text-black print:p-0 print:m-0">
+        <div className="print-page">
+          {/* Header */}
+          <div className="print-section-header">
             <h1 className="text-center text-lg font-bold border-b border-black pb-2 mb-4">
               {t('warehouseOrderSummary')}
             </h1>
@@ -233,8 +233,8 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
             </div>
           </div>
 
-          {/* Quality Table - 60% of page */}
-          <div className="print-table-section">
+          {/* Quality Table - 50% of page */}
+          <div className="print-section-table">
             <table className="w-full border-collapse border border-black">
               <thead>
                 <tr className="bg-gray-100">
@@ -270,8 +270,8 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                     <td className="border border-black p-2 text-center text-lg">☐</td>
                   </tr>
                 ))}
-                {/* Add empty rows to fill space */}
-                {Array.from({ length: Math.max(0, 8 - order.order_lots.length) }).map((_, index) => (
+                {/* Add empty rows for spacing without checkboxes */}
+                {Array.from({ length: Math.max(0, 12 - order.order_lots.length) }).map((_, index) => (
                   <tr key={`empty-${index}`} className="h-8">
                     <td className="border border-black p-2"></td>
                     <td className="border border-black p-2"></td>
@@ -280,15 +280,15 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                     <td className="border border-black p-2"></td>
                     <td className="border border-black p-2"></td>
                     <td className="border border-black p-2"></td>
-                    <td className="border border-black p-2 text-center text-lg">☐</td>
+                    <td className="border border-black p-2"></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* Footer - 25% of page */}
-          <div className="print-footer">
+          {/* Footer */}
+          <div className="print-section-footer">
             <div className="grid grid-cols-2 gap-6 mt-4">
               <div>
                 <h3 className="font-medium mb-2 text-sm">{t('notes')}:</h3>
