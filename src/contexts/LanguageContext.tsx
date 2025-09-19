@@ -461,6 +461,14 @@ const translations = {
     errors: "Errors",
     failed: "Failed",
     
+    // Sample Order Translations
+    sampleRollSelection: 'Sample Roll Selection',
+    sampleMeters: 'Sample Meters:',
+    sampleModeInstructions: 'Select one roll and specify the sample meters needed.',
+    sampleMetersLabel: 'Sample Meters (max {max}m):',
+    enterSampleMeters: 'Enter sample meters',
+    addSampleButton: 'Add Sample ({meters}m)',
+    
     // Approvals
     approvals: 'Approvals for changes',
     accessDenied: 'Access Denied',
@@ -957,6 +965,14 @@ const translations = {
     tableHeaderAccounting: 'Muhasebe',
     tableHeaderSeniorManager: 'Üst Yönetici',
     tableHeaderAdmin: 'Yönetici',
+    
+    // Numune Sipariş Çevirileri
+    sampleRollSelection: 'Numune Top Seçimi',
+    sampleMeters: 'Numune Metrajı:',
+    sampleModeInstructions: 'Numune kesilecek topu seçin ve kaç metre gerektiğini belirtin',
+    sampleMetersLabel: 'Numune metrajı giriniz (maks {max}m)',
+    enterSampleMeters: 'Numune metrajı giriniz',
+    addSampleButton: 'Numuneyi Siparişe ekle ({meters}m)',
     
     // Approvals
     approvals: 'Sipariş ve Stok değişiklik talepleri',

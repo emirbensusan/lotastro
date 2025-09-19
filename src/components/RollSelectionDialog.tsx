@@ -193,7 +193,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {sampleMode ? 'Sample Roll Selection' : t('selectRolls')} - {lotNumber} ({quality} - {color})
+            {sampleMode ? String(t('sampleRollSelection')) : String(t('selectRolls'))} - {lotNumber} ({quality} - {color})
           </DialogTitle>
         </DialogHeader>
 
@@ -218,7 +218,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
                   <span className="ml-2 font-medium">{selectedRollIds.length}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">{sampleMode ? 'Sample Meters:' : t('selectedMeters')}:</span>
+                  <span className="text-muted-foreground">{sampleMode ? String(t('sampleMeters')) : String(t('selectedMeters'))}:</span>
                   <span className="ml-2 font-medium">{getSelectedMeters().toLocaleString()}</span>
                 </div>
                 <div>
@@ -251,7 +251,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
             {sampleMode && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
-                  Select one roll and specify the sample meters needed.
+                  {String(t('sampleModeInstructions'))}
                 </p>
               </div>
             )}
@@ -276,7 +276,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
             {sampleMode && selectedRollIds.length > 0 && (
               <div className="mt-4 p-4 border rounded-lg bg-muted/50">
                 <label className="block text-sm font-medium mb-2">
-                  Sample Meters (max {rolls.find(r => r.id === selectedRollIds[0])?.meters || 0}m):
+                  {String(t('sampleMetersLabel')).replace('{max}', String(rolls.find(r => r.id === selectedRollIds[0])?.meters || 0))}
                 </label>
                 <Input
                   type="number"
@@ -285,7 +285,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
                   step="0.1"
                   value={sampleMeters || ''}
                   onChange={(e) => setSampleMeters(parseFloat(e.target.value) || 0)}
-                  placeholder="Enter sample meters"
+                  placeholder={String(t('enterSampleMeters'))}
                 />
               </div>
             )}
@@ -300,8 +300,8 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
                 disabled={selectedRollIds.length === 0 || (sampleMode && sampleMeters <= 0)}
               >
                 {sampleMode 
-                  ? `Add Sample (${sampleMeters}m)` 
-                  : `${t('addSelectedToCart')} (${selectedRollIds.length} ${t('rollsLabel')})`}
+                  ? String(t('addSampleButton')).replace('{meters}', String(sampleMeters)) 
+                  : `${String(t('addSelectedToCart'))} (${selectedRollIds.length} ${String(t('rollsLabel'))})`}
               </Button>
             </div>
           </div>
