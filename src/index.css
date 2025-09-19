@@ -104,11 +104,11 @@ All colors MUST be HSL.
   }
 }
 
-/* Print styles for OrderPrintDialog */
+/* Simple print styles for A4 format */
 @media print {
   @page {
-    margin: 0.5in;
     size: A4;
+    margin: 0.5in;
   }
   
   * {
@@ -117,56 +117,8 @@ All colors MUST be HSL.
   }
   
   body {
-    -webkit-print-color-adjust: exact;
-    color-adjust: exact;
-    background: white !important;
-  }
-  
-  .print-page {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
     background: white !important;
     color: black !important;
-    padding: 0;
-    margin: 0;
     font-size: 12px;
-    line-height: 1.2;
-  }
-  
-  .print-section-header {
-    flex: 0 0 15%;
-    padding-bottom: 0.5rem;
-  }
-  
-  .print-section-table {
-    flex: 1 1 50%;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .print-section-table table {
-    height: 100%;
-  }
-  
-  .print-section-table td {
-    height: 1.5rem;
-    vertical-align: top;
-  }
-  
-  .print-section-footer {
-    flex: 0 0 35%;
-    margin-top: auto;
-  }
-  
-  /* Ensure no page breaks */
-  .print-page {
-    page-break-inside: avoid;
-  }
-  
-  /* Hide scrollbars and other unwanted elements */
-  * {
-    -webkit-appearance: none;
-    box-shadow: none !important;
   }
 }

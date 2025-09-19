@@ -1,10 +1,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { Printer, Download } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Order {
@@ -39,7 +36,6 @@ interface OrderPrintDialogProps {
 const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) => {
   const { t } = useLanguage();
 
-  // Generate masked order ID for security
   const generateMaskedOrderId = (originalId: string) => {
     const hash = originalId.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
@@ -59,228 +55,90 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
     return new Date(dateString).toLocaleDateString('tr-TR');
   };
 
-  const totalMeters = order.order_lots.reduce((sum, lot) => sum + lot.lot.meters * lot.roll_count, 0);
-  const totalRolls = order.order_lots.reduce((sum, lot) => sum + lot.roll_count, 0);
-
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto print:hidden">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              {t('orderSummary')}
-              <div className="flex gap-2">
-                <Button onClick={handlePrint} size="sm">
-                  <Printer className="h-4 w-4 mr-2" />
-                  {t('print')}
-                </Button>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:max-h-none print:overflow-visible print:shadow-none print:border-none print:p-6">
+        <DialogHeader className="print:hidden">
+          <DialogTitle className="flex items-center justify-between">
+            {t('orderSummary')}
+            <Button onClick={handlePrint} size="sm">
+              <Printer className="h-4 w-4 mr-2" />
+              {t('print')}
+            </Button>
+          </DialogTitle>
+        </DialogHeader>
 
-          <div className="space-y-6">
-          {/* Header */}
-          <div className="text-center border-b pb-4 print:border-black print:pb-2">
-            <h1 className="text-2xl font-bold print:text-black print:text-lg">{t('warehouseOrderSummary')}</h1>
-            <p className="text-muted-foreground print:text-black print:text-sm">{t('orderPreparationSheet')}</p>
-          </div>
-
-          {/* Order Info */}
-          <div className="grid grid-cols-2 gap-6 print:text-black print:gap-3">
-            <Card className="print:shadow-none print:border-black">
-              <CardHeader className="pb-4 print:pb-2">
-                <CardTitle className="text-2xl print:text-base">{t('orderInformation')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 print:space-y-2">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-xl print:text-sm">{t('orderNumber')}:</span>
-                  <span className="text-xl print:text-sm">{order ? generateMaskedOrderId(order.order_number) : ''}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-xl print:text-sm">{t('customer')}:</span>
-                  <span className="text-xl print:text-sm">{order.customer_name}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="print:shadow-none print:border-black">
-              <CardHeader className="pb-3 print:pb-2">
-                <CardTitle className="text-xl print:text-base">Sipariş Durumu</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 print:space-y-2">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-lg print:text-sm">{t('orderDate')}:</span>
-                  <span className="text-lg print:text-sm">{formatDate(order.created_at)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-lg print:text-sm">{t('status')}:</span>
-                  <Badge variant={order.fulfilled_at ? "default" : "secondary"} className="print:border print:border-black print:bg-white print:text-black text-base px-3 py-1 print:text-xs print:px-2 print:py-0">
-                    {order.fulfilled_at ? t('fulfilled') : t('pending')}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Lots Table - Large section for warehouse personnel */}
-          <Card>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-lg">
-                  <thead>
-                     <tr className="border-b print:border-black bg-gray-100 print:bg-gray-100">
-                       <th className="text-left p-2 print:border print:border-black font-bold text-xl print:text-xs print:p-1">#</th>
-                       <th className="text-left p-2 print:border print:border-black font-bold text-xl print:text-xs print:p-1">Kalite</th>
-                       <th className="text-left p-2 print:border print:border-black font-bold text-xl print:text-xs print:p-1">Renk</th>
-                       <th className="text-left p-2 print:border print:border-black font-bold text-xl print:text-xs print:p-1">Lot Numarası</th>
-                       <th className="text-left p-2 print:border print:border-black font-bold text-xl print:text-xs print:p-1">{t('rollCount')}</th>
-                       <th className="text-left p-2 print:border print:border-black font-bold text-xl print:text-xs print:p-1">{t('lineType')}</th>
-                       <th className="text-left p-2 print:border print:border-black font-bold text-xl print:text-xs print:p-1">{t('rollMeters')}</th>
-                       <th className="text-left p-2 print:border print:border-black font-bold text-xl print:text-xs print:p-1">{t('prepared')}</th>
-                     </tr>
-                  </thead>
-                  <tbody>
-                    {order.order_lots.map((lot, index) => (
-                      <tr key={lot.id} className="border-b print:border-black">
-                         <td className="p-2 print:border print:border-black text-lg font-semibold print:text-xs print:p-1">{index + 1}</td>
-                         <td className="p-2 print:border print:border-black text-lg font-semibold print:text-xs print:p-1">{lot.quality}</td>
-                        <td className="p-2 print:border print:border-black text-lg whitespace-nowrap print:text-xs print:p-1">
-                          <span className="font-semibold">{lot.color}</span>
-                        </td>
-                         <td className="p-2 print:border print:border-black font-semibold text-lg print:text-xs print:p-1">{lot.lot.lot_number}</td>
-                         <td className="p-2 print:border print:border-black text-lg font-semibold print:text-xs print:p-1">{lot.roll_count}</td>
-                         <td className="p-2 print:border print:border-black print:p-1">
-                           <Badge 
-                             variant={lot.line_type === 'sample' ? "outline" : "default"}
-                             className="print:border print:border-black print:bg-white print:text-black text-base px-3 py-1 print:text-xs print:px-1 print:py-0"
-                           >
-                             {lot.line_type === 'sample' ? t('sample') : t('standard')}
-                           </Badge>
-                         </td>
-                         <td className="p-2 print:border print:border-black text-lg font-semibold print:text-xs print:p-1">
-                           {lot.line_type === 'sample' 
-                             ? (lot.selected_roll_meters || '0') + 'm'
-                             : (lot.lot.meters * lot.roll_count).toLocaleString() + 'm'
-                           }
-                         </td>
-                         <td className="p-2 print:border print:border-black text-center text-2xl print:text-lg print:p-1">☐</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Footer */}
-          <div className="border-t pt-4 space-y-4 print:border-black print:pt-2 print:space-y-2">
-            <div className="grid grid-cols-2 gap-6 print:gap-3">
-              <div>
-                <h3 className="font-medium mb-2 print:text-black print:text-sm print:mb-1">{t('notes')}:</h3>
-                <div className="border rounded p-3 h-20 print:border-black print:h-12 print:p-2"></div>
-              </div>
-              <div>
-                <h3 className="font-medium mb-2 print:text-black print:text-sm print:mb-1">{t('signatures')}:</h3>
-                <div className="space-y-3 print:space-y-1">
-                  <div>
-                    <span className="print:text-black print:text-sm">{t('preparedBy')}: ______________________</span>
-                  </div>
-                  <div>
-                    <span className="print:text-black print:text-sm">{t('checkedBy')}: ______________________</span>
-                  </div>
-                  <div>
-                    <span className="print:text-black print:text-sm">{t('date')}: ______________________</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Print Layout - Clean print version */}
-      <div className="hidden print:block print:w-full print:h-full print:bg-white print:text-black print:p-0 print:m-0">
-        <div className="print-page">
-          {/* Header */}
-          <div className="print-section-header">
+        <div className="space-y-6 print:space-y-4">
+          {/* Print Header */}
+          <div className="hidden print:block">
             <h1 className="text-center text-lg font-bold border-b border-black pb-2 mb-4">
               {t('warehouseOrderSummary')}
             </h1>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="font-semibold text-sm">{t('orderNumber')}:</span>
-                  <span className="text-sm">{order ? generateMaskedOrderId(order.order_number) : ''}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-sm">{t('customer')}:</span>
-                  <span className="text-sm">{order.customer_name}</span>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="font-semibold text-sm">{t('orderDate')}:</span>
-                  <span className="text-sm">{formatDate(order.created_at)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-semibold text-sm">{t('status')}:</span>
-                  <span className="text-sm border border-black px-2 py-0.5">
-                    {order.fulfilled_at ? t('fulfilled') : t('pending')}
-                  </span>
-                </div>
-              </div>
+          </div>
+
+          {/* Header for screen */}
+          <div className="text-center border-b pb-4 print:hidden">
+            <h1 className="text-2xl font-bold">{t('warehouseOrderSummary')}</h1>
+          </div>
+
+          {/* Order Info */}
+          <div className="grid grid-cols-2 gap-6 print:gap-4 print:mb-4 print:text-sm">
+            <div className="print:text-black">
+              <p><strong>{t('orderNumber')}:</strong> {generateMaskedOrderId(order.order_number)}</p>
+              <p><strong>{t('customer')}:</strong> {order.customer_name}</p>
+            </div>
+            <div className="print:text-black">
+              <p><strong>{t('orderDate')}:</strong> {formatDate(order.created_at)}</p>
+              <p><strong>{t('status')}:</strong> {order.fulfilled_at ? t('fulfilled') : t('pending')}</p>
             </div>
           </div>
 
-          {/* Quality Table - 50% of page */}
-          <div className="print-section-table">
-            <table className="w-full border-collapse border border-black">
+          {/* Quality Table */}
+          <div className="overflow-x-auto print:min-h-[60vh]">
+            <table className="w-full border-collapse border border-gray-300 print:border-black">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-black p-2 text-xs font-bold text-left">#</th>
-                  <th className="border border-black p-2 text-xs font-bold text-left">Kalite</th>
-                  <th className="border border-black p-2 text-xs font-bold text-left">Renk</th>
-                  <th className="border border-black p-2 text-xs font-bold text-left">Lot Numarası</th>
-                  <th className="border border-black p-2 text-xs font-bold text-left">{t('rollCount')}</th>
-                  <th className="border border-black p-2 text-xs font-bold text-left">{t('lineType')}</th>
-                  <th className="border border-black p-2 text-xs font-bold text-left">{t('rollMeters')}</th>
-                  <th className="border border-black p-2 text-xs font-bold text-left">{t('prepared')}</th>
+                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">#</th>
+                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('quality')}</th>
+                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('color')}</th>
+                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('lotNumber')}</th>
+                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('rollCount')}</th>
+                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('lineType')}</th>
+                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('rollMeters')}</th>
+                  <th className="border border-gray-300 print:border-black p-2 text-left print:text-xs">{t('prepared')}</th>
                 </tr>
               </thead>
               <tbody>
                 {order.order_lots.map((lot, index) => (
-                  <tr key={lot.id}>
-                    <td className="border border-black p-2 text-xs font-medium">{index + 1}</td>
-                    <td className="border border-black p-2 text-xs font-medium">{lot.quality}</td>
-                    <td className="border border-black p-2 text-xs font-medium">{lot.color}</td>
-                    <td className="border border-black p-2 text-xs font-medium">{lot.lot.lot_number}</td>
-                    <td className="border border-black p-2 text-xs font-medium">{lot.roll_count}</td>
-                    <td className="border border-black p-2 text-xs">
-                      <span className="border border-black px-1 text-xs">
-                        {lot.line_type === 'sample' ? t('sample') : t('standard')}
-                      </span>
+                  <tr key={lot.id} className="print:h-8">
+                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{index + 1}</td>
+                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{lot.quality}</td>
+                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{lot.color}</td>
+                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{lot.lot.lot_number}</td>
+                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">{lot.roll_count}</td>
+                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">
+                      {lot.line_type === 'sample' ? t('sample') : t('standard')}
                     </td>
-                    <td className="border border-black p-2 text-xs font-medium">
+                    <td className="border border-gray-300 print:border-black p-2 print:text-xs print:text-black">
                       {lot.line_type === 'sample' 
                         ? (lot.selected_roll_meters || '0') + 'm'
                         : (lot.lot.meters * lot.roll_count).toLocaleString() + 'm'
                       }
                     </td>
-                    <td className="border border-black p-2 text-center text-lg">☐</td>
+                    <td className="border border-gray-300 print:border-black p-2 text-center text-lg">☐</td>
                   </tr>
                 ))}
-                {/* Add empty rows for spacing without checkboxes */}
-                {Array.from({ length: Math.max(0, 12 - order.order_lots.length) }).map((_, index) => (
-                  <tr key={`empty-${index}`} className="h-8">
-                    <td className="border border-black p-2"></td>
-                    <td className="border border-black p-2"></td>
-                    <td className="border border-black p-2"></td>
-                    <td className="border border-black p-2"></td>
-                    <td className="border border-black p-2"></td>
-                    <td className="border border-black p-2"></td>
-                    <td className="border border-black p-2"></td>
-                    <td className="border border-black p-2"></td>
+                {/* Empty rows for print spacing */}
+                {Array.from({ length: Math.max(0, 15 - order.order_lots.length) }).map((_, index) => (
+                  <tr key={`empty-${index}`} className="hidden print:table-row print:h-8">
+                    <td className="border border-black p-1"></td>
+                    <td className="border border-black p-1"></td>
+                    <td className="border border-black p-1"></td>
+                    <td className="border border-black p-1"></td>
+                    <td className="border border-black p-1"></td>
+                    <td className="border border-black p-1"></td>
+                    <td className="border border-black p-1"></td>
+                    <td className="border border-black p-1"></td>
                   </tr>
                 ))}
               </tbody>
@@ -288,25 +146,23 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
           </div>
 
           {/* Footer */}
-          <div className="print-section-footer">
-            <div className="grid grid-cols-2 gap-6 mt-4">
-              <div>
-                <h3 className="font-medium mb-2 text-sm">{t('notes')}:</h3>
-                <div className="border border-black p-2 h-16"></div>
-              </div>
-              <div>
-                <h3 className="font-medium mb-2 text-sm">{t('signatures')}:</h3>
-                <div className="space-y-2">
-                  <div className="text-sm">{t('preparedBy')}: ______________________</div>
-                  <div className="text-sm">{t('checkedBy')}: ______________________</div>
-                  <div className="text-sm">{t('date')}: ______________________</div>
-                </div>
+          <div className="grid grid-cols-2 gap-6 print:gap-4">
+            <div>
+              <h3 className="font-medium mb-2 print:text-sm print:text-black">{t('notes')}:</h3>
+              <div className="border border-gray-300 print:border-black h-20 print:h-12 p-2 print:bg-white"></div>
+            </div>
+            <div>
+              <h3 className="font-medium mb-2 print:text-sm print:text-black">{t('signatures')}:</h3>
+              <div className="space-y-2 print:text-sm print:text-black">
+                <div>{t('preparedBy')}: ______________________</div>
+                <div>{t('checkedBy')}: ______________________</div>
+                <div>{t('date')}: ______________________</div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 };
 
