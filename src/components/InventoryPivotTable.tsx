@@ -15,6 +15,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Package, Trash2, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 
 interface InventoryItem {
   quality: string;
@@ -37,7 +38,11 @@ const InventoryPivotTable = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { hasRole } = useAuth();
+  const { hasRole, profile } = useAuth();
+  const { viewAsRole } = useViewAsRole();
+  
+  // Get the effective role (viewAsRole takes precedence)
+  const getEffectiveRole = () => viewAsRole || profile?.role;
   
   // Check if we're in sample mode
   const searchParams = new URLSearchParams(location.search);
@@ -363,7 +368,7 @@ const InventoryPivotTable = () => {
           )}
         </div>
         
-        {hasRole('admin') && (
+        {getEffectiveRole() === 'admin' && (
           <div className="flex items-center space-x-2">
             <Button
               variant={deleteMode ? "destructive" : "outline"}
@@ -454,7 +459,7 @@ const InventoryPivotTable = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                {deleteMode && hasRole('admin') && (
+                {deleteMode && getEffectiveRole() === 'admin' && (
                   <TableHead className="w-[50px]">
                     <Checkbox
                       checked={selectedItems.size > 0 && selectedItems.size === filteredData.length}
@@ -500,7 +505,7 @@ const InventoryPivotTable = () => {
                 <TableHead className="text-right">{t('rolls')}</TableHead>
                 <TableHead className="text-right">{t('lots')}</TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
-                {deleteMode && hasRole('admin') && (
+                {deleteMode && getEffectiveRole() === 'admin' && (
                   <TableHead className="text-right">{t('delete')}</TableHead>
                 )}
               </TableRow>
@@ -508,7 +513,7 @@ const InventoryPivotTable = () => {
             <TableBody>
               {filteredData.map((item) => (
                 <TableRow key={item.quality}>
-                  {deleteMode && hasRole('admin') && (
+                  {deleteMode && getEffectiveRole() === 'admin' && (
                     <TableCell>
                       <Checkbox
                         checked={selectedItems.has(item.quality)}
@@ -540,7 +545,7 @@ const InventoryPivotTable = () => {
                     {isSampleMode ? t('selectForSample') : t('viewQuality')}
                   </Button>
                   </TableCell>
-                  {deleteMode && hasRole('admin') && (
+                  {deleteMode && getEffectiveRole() === 'admin' && (
                     <TableCell className="text-right">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -571,7 +576,7 @@ const InventoryPivotTable = () => {
               {filteredData.length === 0 && (
                 <TableRow>
                   <TableCell 
-                    colSpan={deleteMode && hasRole('admin') ? 8 : 6} 
+                    colSpan={deleteMode && getEffectiveRole() === 'admin' ? 8 : 6} 
                     className="text-center py-8 text-muted-foreground"
                   >
                     {searchTerm ? t('noSearchResults') : t('noInventoryData')}
