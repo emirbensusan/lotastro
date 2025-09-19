@@ -13,7 +13,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Package, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import SampleRollSelectionDialog from '@/components/SampleRollSelectionDialog';
 
 interface InventoryItem {
   quality: string;

@@ -10,7 +10,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useToast } from '@/hooks/use-toast';
 import { RollSelectionDialog } from '@/components/RollSelectionDialog';
-import SampleRollSelectionDialog from '@/components/SampleRollSelectionDialog';
 import { ArrowLeft, Plus, Package, Calendar } from 'lucide-react';
 
 interface LotDetail {
@@ -274,7 +273,7 @@ const LotDetails = () => {
       </Card>
 
       {/* Roll Selection Dialog */}
-      {selectedLot && !isSampleMode && (
+      {selectedLot && (
         <RollSelectionDialog
           isOpen={isRollDialogOpen}
           onClose={() => {
@@ -292,23 +291,7 @@ const LotDetails = () => {
           invoiceNumber={selectedLot.invoice_number}
           invoiceDate={selectedLot.invoice_date}
           ageDays={selectedLot.age_days}
-        />
-      )}
-      
-      {/* Sample Roll Selection Dialog */}
-      {selectedLot && isSampleMode && (
-        <SampleRollSelectionDialog
-          open={isRollDialogOpen}
-          onOpenChange={(open) => {
-            setIsRollDialogOpen(open);
-            if (!open) setSelectedLot(null);
-          }}
-          lotId={selectedLot.id}
-          lotNumber={selectedLot.lot_number}
-          quality={selectedLot.quality}
-          color={selectedLot.color}
-          supplierName={selectedLot.suppliers?.name || 'Unknown'}
-          entryDate={selectedLot.entry_date}
+          sampleMode={isSampleMode}
         />
       )}
     </div>

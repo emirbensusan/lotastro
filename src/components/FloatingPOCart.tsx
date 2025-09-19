@@ -36,20 +36,10 @@ const FloatingPOCart = () => {
   const navigate = useNavigate();
 
   const handleCreatePO = () => {
-    // Navigate to orders page with cart data
-    const lotsForOrder = cartItems.map(item => ({
-      id: item.id,
-      lot_number: item.lot_number,
-      quality: item.quality,
-      color: item.color,
-      meters: item.meters,
-      roll_count: item.roll_count,
-      selectedRollIds: item.selectedRollIds,
-    }));
-
+    // Navigate to orders page with cart data - pass complete cart items
     navigate('/orders', { 
       state: { 
-        selectedLots: lotsForOrder,
+        selectedLots: cartItems,
         fromCart: true 
       } 
     });
