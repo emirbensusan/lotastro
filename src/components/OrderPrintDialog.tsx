@@ -148,7 +148,7 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                       <tr key={lot.id} className="border-b print:border-black">
                         <td className="p-4 print:border print:border-black text-lg font-semibold">{index + 1}</td>
                         <td className="p-4 print:border print:border-black text-lg font-semibold">{lot.quality}</td>
-                        <td className="p-4 print:border print:border-black text-lg">
+                        <td className="p-4 print:border print:border-black text-lg whitespace-nowrap overflow-hidden text-ellipsis max-w-32">
                           <span className="font-semibold">{lot.color}</span>
                         </td>
                         <td className="p-4 print:border print:border-black font-semibold text-lg">{lot.lot.lot_number}</td>
