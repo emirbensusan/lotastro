@@ -411,6 +411,12 @@ const translations = {
     enterCustomerDetails: "Enter customer details to complete the order",
     selectedLotsLabel: "Selected Lots",
     rollsLabel: "rolls",
+    seeRolls: "See Rolls",
+    rollDetails: "Roll Details", 
+    rollPosition: "Position",
+    rollMeters: "Roll Meters",
+    stockEntryDate: "Stock Entry Date",
+    totalRollsInLot: "Total Rolls in Lot",
     
     // Authentication
     signIn: 'Sign In',
@@ -633,6 +639,12 @@ const translations = {
     enterCustomerDetails: "Siparişi tamamlamak için müşteri bilgilerini girin",
     selectedLotsLabel: "Seçili Lotlar",
     rollsLabel: "toplar",
+    seeRolls: "Topları Gör",
+    rollDetails: "Top Detayları",
+    rollPosition: "Pozisyon", 
+    rollMeters: "Top Metre",
+    stockEntryDate: "Stok Giriş Tarihi",
+    totalRollsInLot: "Lottaki Toplam Top Sayısı",
     
     // Authentication
     signIn: 'Giriş Yap',

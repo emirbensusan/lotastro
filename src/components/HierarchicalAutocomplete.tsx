@@ -3,7 +3,10 @@ import { Autocomplete } from '@/components/ui/autocomplete';
 import { supabase } from '@/integrations/supabase/client';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Package } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, Package, Eye } from 'lucide-react';
+import { RollDetailsDialog } from '@/components/RollDetailsDialog';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface LotOption {
   lot_number: string;
@@ -37,6 +40,8 @@ export function HierarchicalAutocomplete({
   const [lots, setLots] = useState<LotOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [qualitiesLoading, setQualitiesLoading] = useState(true);
+  const [rollDetailsOpen, setRollDetailsOpen] = useState(false);
+  const { t } = useLanguage();
 
   // Fetch available qualities
   useEffect(() => {
@@ -221,22 +226,42 @@ export function HierarchicalAutocomplete({
                 <span className="font-medium">{selectedLotData.lot_number}</span>
                 <Badge variant="outline">
                   <Calendar className="w-3 h-3 mr-1" />
-                  {selectedLotData.age_days} days old
+                  {selectedLotData.age_days} {t('days')}
                 </Badge>
                 <Badge variant="secondary">
                   {selectedLotData.meters}m
                 </Badge>
                 <Badge variant="secondary">
-                  {selectedLotData.roll_count} rolls
+                  {selectedLotData.roll_count} {t('rollsLabel')}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Entry Date: {new Date(selectedLotData.entry_date).toLocaleDateString()}
-              </p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-muted-foreground">
+                  {t('entryDate')}: {new Date(selectedLotData.entry_date).toLocaleDateString()}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRollDetailsOpen(true)}
+                  className="flex items-center gap-1"
+                >
+                  <Eye className="w-3 h-3" />
+                  {t('seeRolls')}
+                </Button>
+              </div>
             </div>
           )}
         </div>
       )}
+
+      {/* Roll Details Dialog */}
+      <RollDetailsDialog
+        isOpen={rollDetailsOpen}
+        onClose={() => setRollDetailsOpen(false)}
+        quality={quality}
+        color={color}
+        lotNumber={selectedLot}
+      />
     </div>
   );
 }
