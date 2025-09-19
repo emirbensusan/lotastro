@@ -79,47 +79,35 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
           {/* Order Info */}
           <div className="grid grid-cols-2 gap-6 print:text-black">
             <Card className="print:shadow-none print:border-black">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">{t('orderInformation')}</CardTitle>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-2xl">{t('orderInformation')}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="font-medium">{t('orderNumber')}:</span>
-                  <span>{order.order_number}</span>
+                  <span className="font-semibold text-xl">{t('orderNumber')}:</span>
+                  <span className="text-xl">{order.order_number}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-medium">{t('customer')}:</span>
-                  <span>{order.customer_name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">{t('orderDate')}:</span>
-                  <span>{formatDate(order.created_at)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">{t('status')}:</span>
-                  <Badge variant={order.fulfilled_at ? "default" : "secondary"} className="print:border print:border-black print:bg-white print:text-black">
-                    {order.fulfilled_at ? t('fulfilled') : t('pending')}
-                  </Badge>
+                  <span className="font-semibold text-xl">{t('customer')}:</span>
+                  <span className="text-xl">{order.customer_name}</span>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="print:shadow-none print:border-black">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">{t('summary')}</CardTitle>
+                <CardTitle className="text-xl">{t('orderStatus')}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="font-medium">{t('totalLots')}:</span>
-                  <span>{order.order_lots.length}</span>
+                  <span className="font-semibold text-lg">{t('orderDate')}:</span>
+                  <span className="text-lg">{formatDate(order.created_at)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">{t('totalRolls')}:</span>
-                  <span>{totalRolls}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">{t('preparedBy')}:</span>
-                  <span>________________</span>
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-lg">{t('status')}:</span>
+                  <Badge variant={order.fulfilled_at ? "default" : "secondary"} className="print:border print:border-black print:bg-white print:text-black text-base px-3 py-1">
+                    {order.fulfilled_at ? t('fulfilled') : t('pending')}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
