@@ -469,7 +469,7 @@ const InventoryPivotTable = () => {
                 )}
                 <TableHead>
                   <div className="flex items-center space-x-2">
-                    <span>{t('quality')}</span>
+                    <span>Kalite</span>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -500,10 +500,10 @@ const InventoryPivotTable = () => {
                     </Popover>
                   </div>
                 </TableHead>
-                <TableHead>{t('colors')}</TableHead>
-                <TableHead className="text-right">{t('meters')}</TableHead>
+                <TableHead>Renk Sayısı</TableHead>
+                <TableHead className="text-right">Toplam Stoktaki Metraj</TableHead>
                 <TableHead className="text-right">{t('rolls')}</TableHead>
-                <TableHead className="text-right">{t('lots')}</TableHead>
+                <TableHead className="text-right">Farklı Lot Sayısı</TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
                 {deleteMode && getEffectiveRole() === 'admin' && (
                   <TableHead className="text-right">{t('delete')}</TableHead>
