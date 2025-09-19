@@ -93,7 +93,7 @@ const Orders = () => {
         lotNumber: cartItem.lot_number,
         meters: cartItem.meters,
         availableRolls: cartItem.roll_count,
-        rollCount: cartItem.selectedRolls,
+        rollCount: cartItem.selectedRollIds?.length || 0,
         lineType: 'standard' as const
       }));
       
