@@ -143,7 +143,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Select Rolls - {lotNumber} ({quality} - {color})
+            {t('selectRolls')} - {lotNumber} ({quality} - {color})
           </DialogTitle>
         </DialogHeader>
 
@@ -195,32 +195,20 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
               </Badge>
             </div>
 
-            {/* Rolls Table */}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">Select</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead className="text-right">Meters</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rolls.map((roll) => (
-                  <TableRow key={roll.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedRollIds.includes(roll.id)}
-                        onCheckedChange={(checked) => 
-                          handleRollSelection(roll.id, checked as boolean)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">Roll {roll.position}</TableCell>
-                    <TableCell className="text-right">{roll.meters.toLocaleString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {/* Rolls Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {rolls.map((roll) => (
+                <div key={roll.id} className="flex flex-col items-center space-y-2 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    checked={selectedRollIds.includes(roll.id)}
+                    onCheckedChange={(checked) => 
+                      handleRollSelection(roll.id, checked as boolean)
+                    }
+                  />
+                  <span className="text-sm font-medium">{roll.meters.toLocaleString()} mt</span>
+                </div>
+              ))}
+            </div>
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-2 pt-4">

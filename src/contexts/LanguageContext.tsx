@@ -417,6 +417,7 @@ const translations = {
     rollMeters: "Roll Meters",
     stockEntryDate: "Stock Entry Date",
     totalRollsInLot: "Total Rolls in Lot",
+    selectRolls: "Select Rolls",
     
     // Authentication
     signIn: 'Sign In',
@@ -645,6 +646,7 @@ const translations = {
     rollMeters: "Top Metre",
     stockEntryDate: "Stok Giriş Tarihi",
     totalRollsInLot: "Lottaki Toplam Top Sayısı",
+    selectRolls: "top seç",
     
     // Authentication
     signIn: 'Giriş Yap',

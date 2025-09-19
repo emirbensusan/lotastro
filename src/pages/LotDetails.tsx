@@ -251,13 +251,13 @@ const LotDetails = () => {
                       </Badge>
                     </TableCell>
                      <TableCell className="text-right">
-                       <Button
-                         size="sm"
-                         onClick={() => handleSelectRolls(lot)}
-                       >
-                         <Plus className="h-4 w-4 mr-1" />
-                         Select Rolls
-                       </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSelectRolls(lot)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          {t('selectRolls')}
+                        </Button>
                      </TableCell>
                   </TableRow>
                 ))}
