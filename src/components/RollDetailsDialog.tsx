@@ -121,6 +121,14 @@ export function RollDetailsDialog({ isOpen, onClose, quality, color, lotNumber }
   const handleAddToCart = () => {
     if (!lotDetails) return;
 
+    // For RollDetailsDialog, we'll select the first N rolls based on selectedQuantity
+    const selectedRolls = rolls.slice(0, selectedQuantity);
+    const selectedRollsData = selectedRolls.map(roll => ({ 
+      id: roll.id, 
+      meters: roll.meters, 
+      position: roll.position 
+    }));
+
     const cartItem = {
       id: lotDetails.id,
       lot_number: lotDetails.lot_number,
@@ -128,7 +136,8 @@ export function RollDetailsDialog({ isOpen, onClose, quality, color, lotNumber }
       color: lotDetails.color,
       meters: lotDetails.meters,
       roll_count: lotDetails.roll_count,
-      selectedRollIds: [], // For now, we'll use empty array - this should be improved later
+      selectedRollIds: selectedRolls.map(roll => roll.id),
+      selectedRollsData,
       entry_date: lotDetails.entry_date,
       supplier_name: lotDetails.supplier_name,
       invoice_number: lotDetails.invoice_number || undefined,

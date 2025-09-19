@@ -8,6 +8,7 @@ interface CartLot {
   meters: number;
   roll_count: number;
   selectedRollIds: string[];
+  selectedRollsData: { id: string; meters: number; position: number }[];
   entry_date: string;
   supplier_name?: string;
   invoice_number?: string;
@@ -50,11 +51,17 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
     setCartItems(prev => {
       const existingItem = prev.find(item => item.id === lot.id);
       if (existingItem) {
-        // Merge selected roll IDs if item already exists
+        // Merge selected roll IDs and data if item already exists
         const newSelectedRollIds = [...new Set([...existingItem.selectedRollIds, ...lot.selectedRollIds])];
+        const newSelectedRollsData = [
+          ...existingItem.selectedRollsData,
+          ...lot.selectedRollsData.filter(rollData => 
+            !existingItem.selectedRollsData.some(existing => existing.id === rollData.id)
+          )
+        ];
         return prev.map(item =>
           item.id === lot.id
-            ? { ...item, selectedRollIds: newSelectedRollIds }
+            ? { ...item, selectedRollIds: newSelectedRollIds, selectedRollsData: newSelectedRollsData }
             : item
         );
       }
@@ -68,13 +75,16 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
   };
 
   const updateQuantity = (lotId: string, quantity: number) => {
-    // For backward compatibility, this method now limits selected roll IDs
+    // Limit selected rolls and their data to the specified quantity
     setCartItems(prev =>
-      prev.map(item =>
-        item.id === lotId
-          ? { ...item, selectedRollIds: item.selectedRollIds.slice(0, Math.max(0, Math.min(quantity, item.roll_count))) }
-          : item
-      ).filter(item => item.selectedRollIds.length > 0)
+      prev.map(item => {
+        if (item.id === lotId) {
+          const limitedRollIds = item.selectedRollIds.slice(0, Math.max(0, Math.min(quantity, item.selectedRollsData.length)));
+          const limitedRollsData = item.selectedRollsData.slice(0, Math.max(0, Math.min(quantity, item.selectedRollsData.length)));
+          return { ...item, selectedRollIds: limitedRollIds, selectedRollsData: limitedRollsData };
+        }
+        return item;
+      }).filter(item => item.selectedRollIds.length > 0)
     );
   };
 
@@ -85,9 +95,9 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
 
   const getTotalMeters = () => {
     return cartItems.reduce((total, item) => {
-      // For now, estimate meters based on selected roll count
-      const metersPerRoll = item.meters / item.roll_count;
-      return total + (metersPerRoll * item.selectedRollIds.length);
+      // Use actual roll meter data instead of estimates
+      const selectedRollsMeters = item.selectedRollsData.reduce((rollTotal, rollData) => rollTotal + rollData.meters, 0);
+      return total + selectedRollsMeters;
     }, 0);
   };
 

@@ -156,7 +156,7 @@ const FloatingPOCart = () => {
                                 )}
                               </div>
                               <div>
-                                {((item.meters / item.roll_count) * item.selectedRollIds.length).toLocaleString()} {t('meters')} 
+                                {item.selectedRollsData.reduce((total, roll) => total + roll.meters, 0).toLocaleString()} {t('meters')} 
                                 ({item.selectedRollIds.length} {t('rolls')})
                               </div>
                             </div>

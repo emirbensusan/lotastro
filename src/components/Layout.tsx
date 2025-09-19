@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePOCart } from '@/contexts/POCartProvider';
 import GlobalSearch from '@/components/GlobalSearch';
 import { 
   Package, 
@@ -18,7 +19,8 @@ import {
   Truck,
   Clock,
   Menu,
-  CheckCircle
+  CheckCircle,
+  ShoppingCart
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -28,9 +30,14 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const { getItemCount, setIsCartOpen } = usePOCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Check if user can create orders (has cart permission)
+  const canCreateOrders = profile?.role && ['accounting', 'senior_manager', 'admin'].includes(profile.role);
+  const cartItemCount = getItemCount();
 
   const navigationItems = [
     { path: '/', label: t('dashboard'), icon: Package, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
@@ -133,6 +140,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <SelectItem value="tr">🇹🇷</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Cart Icon - Only visible to users who can create orders */}
+            {canCreateOrders && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsCartOpen(true)}
+                className="relative"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {cartItemCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                  >
+                    {cartItemCount}
+                  </Badge>
+                )}
+              </Button>
+            )}
             
             <span className="text-sm text-muted-foreground hidden md:block">
               {profile?.full_name || profile?.email}

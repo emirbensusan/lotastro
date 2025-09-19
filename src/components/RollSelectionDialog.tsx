@@ -114,6 +114,11 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
       return;
     }
 
+    // Get actual roll data for selected rolls
+    const selectedRollsData = rolls
+      .filter(roll => selectedRollIds.includes(roll.id))
+      .map(roll => ({ id: roll.id, meters: roll.meters, position: roll.position }));
+
     addToCart({
       id: lotId,
       lot_number: lotNumber,
@@ -122,6 +127,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
       meters: totalMeters,
       roll_count: totalRolls,
       selectedRollIds,
+      selectedRollsData,
       entry_date: entryDate,
       supplier_name: supplierName,
       invoice_number: invoiceNumber,
