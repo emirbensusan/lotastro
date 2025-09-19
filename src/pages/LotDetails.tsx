@@ -235,112 +235,114 @@ const LotDetails = () => {
           <CardTitle>{t('availableLots')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredLots.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {t('noLotsAvailable')}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    {t('lotNumber')}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="p-1 hover:bg-muted rounded">
+                          <Filter className={`h-3 w-3 ${lotNumberFilter ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64" align="start">
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">Filter by lot number</div>
+                          <Textarea
+                            value={lotNumberFilter}
+                            onChange={(e) => setLotNumberFilter(e.target.value)}
+                            placeholder="Enter lot number..."
+                            className="min-h-[60px]"
+                          />
+                          {lotNumberFilter && (
+                            <div className="flex justify-end">
+                              <Button variant="ghost" size="sm" onClick={() => setLotNumberFilter('')}>
+                                Clear
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">{t('meters')}</TableHead>
+                <TableHead className="text-right">{t('rolls')}</TableHead>
+                <TableHead>{t('rollMeters')}</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    {t('entryDate')}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="p-1 hover:bg-muted rounded">
+                          <Filter className={`h-3 w-3 ${entryDateFilter ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64" align="start">
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">Filter by entry date</div>
+                          <Textarea
+                            value={entryDateFilter}
+                            onChange={(e) => setEntryDateFilter(e.target.value)}
+                            placeholder="Enter date (DD/MM/YYYY)..."
+                            className="min-h-[60px]"
+                          />
+                          {entryDateFilter && (
+                            <div className="flex justify-end">
+                              <Button variant="ghost" size="sm" onClick={() => setEntryDateFilter('')}>
+                                Clear
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    {t('age')}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="p-1 hover:bg-muted rounded">
+                          <Filter className={`h-3 w-3 ${ageFilter ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64" align="start">
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">Filter by age (days)</div>
+                          <Textarea
+                            value={ageFilter}
+                            onChange={(e) => setAgeFilter(e.target.value)}
+                            placeholder="Enter age in days..."
+                            className="min-h-[60px]"
+                          />
+                          {ageFilter && (
+                            <div className="flex justify-end">
+                              <Button variant="ghost" size="sm" onClick={() => setAgeFilter('')}>
+                                Clear
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">{t('actionAdd')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLots.length === 0 ? (
                 <TableRow>
-                  <TableHead>
-                    <div className="flex items-center gap-2">
-                      {t('lotNumber')}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="p-1 hover:bg-muted rounded">
-                            <Filter className={`h-3 w-3 ${lotNumberFilter ? 'text-primary' : 'text-muted-foreground'}`} />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64" align="start">
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium">Filter by lot number</div>
-                            <Textarea
-                              value={lotNumberFilter}
-                              onChange={(e) => setLotNumberFilter(e.target.value)}
-                              placeholder="Enter lot number..."
-                              className="min-h-[60px]"
-                            />
-                            {lotNumberFilter && (
-                              <div className="flex justify-end">
-                                <Button variant="ghost" size="sm" onClick={() => setLotNumberFilter('')}>
-                                  Clear
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-right">{t('meters')}</TableHead>
-                  <TableHead className="text-right">{t('rolls')}</TableHead>
-                  <TableHead>{t('rollMeters')}</TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-2">
-                      {t('entryDate')}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="p-1 hover:bg-muted rounded">
-                            <Filter className={`h-3 w-3 ${entryDateFilter ? 'text-primary' : 'text-muted-foreground'}`} />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64" align="start">
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium">Filter by entry date</div>
-                            <Textarea
-                              value={entryDateFilter}
-                              onChange={(e) => setEntryDateFilter(e.target.value)}
-                              placeholder="Enter date (DD/MM/YYYY)..."
-                              className="min-h-[60px]"
-                            />
-                            {entryDateFilter && (
-                              <div className="flex justify-end">
-                                <Button variant="ghost" size="sm" onClick={() => setEntryDateFilter('')}>
-                                  Clear
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-2">
-                      {t('age')}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="p-1 hover:bg-muted rounded">
-                            <Filter className={`h-3 w-3 ${ageFilter ? 'text-primary' : 'text-muted-foreground'}`} />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64" align="start">
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium">Filter by age (days)</div>
-                            <Textarea
-                              value={ageFilter}
-                              onChange={(e) => setAgeFilter(e.target.value)}
-                              placeholder="Enter age in days..."
-                              className="min-h-[60px]"
-                            />
-                            {ageFilter && (
-                              <div className="flex justify-end">
-                                <Button variant="ghost" size="sm" onClick={() => setAgeFilter('')}>
-                                  Clear
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-right">{t('actionAdd')}</TableHead>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    {t('noLotsAvailable')}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLots.map((lot) => (
+              ) : (
+                filteredLots.map((lot) => (
                   <TableRow key={lot.id}>
                     <TableCell className="font-medium">{lot.lot_number}</TableCell>
                     <TableCell className="text-right">{lot.meters.toLocaleString()}</TableCell>
@@ -369,10 +371,10 @@ const LotDetails = () => {
                         </Button>
                      </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
