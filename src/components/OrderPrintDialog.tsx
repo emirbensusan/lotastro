@@ -149,13 +149,7 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                         <td className="p-4 print:border print:border-black text-lg font-semibold">{index + 1}</td>
                         <td className="p-4 print:border print:border-black text-lg font-semibold">{lot.quality}</td>
                         <td className="p-4 print:border print:border-black text-lg">
-                          <div className="flex items-center">
-                            <div 
-                              className="w-6 h-6 rounded mr-3 border print:border-black"
-                              style={{ backgroundColor: lot.color.toLowerCase() }}
-                            ></div>
-                            <span className="font-semibold">{lot.color}</span>
-                          </div>
+                          <span className="font-semibold">{lot.color}</span>
                         </td>
                         <td className="p-4 print:border print:border-black font-semibold text-lg">{lot.lot.lot_number}</td>
                         <td className="p-4 print:border print:border-black text-lg font-semibold">{lot.roll_count}</td>
