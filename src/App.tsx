@@ -23,7 +23,7 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import QRPrint from "./pages/QRPrint";
 import OrderQueue from "./pages/OrderQueue";
-import LotDetails from "./pages/LotDetails";
+import BulkSelection from "./pages/BulkSelection";
 import QualityDetails from "./pages/QualityDetails";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
@@ -82,9 +82,9 @@ const App = () => (
                   <QualityDetails />
                 </ProtectedRoute>
               } />
-              <Route path="/inventory/:quality/:color" element={
+              <Route path="/bulk-selection" element={
                 <ProtectedRoute>
-                  <LotDetails />
+                  <BulkSelection />
                 </ProtectedRoute>
               } />
               <Route path="/orders" element={

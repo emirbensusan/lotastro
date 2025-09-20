@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Package, Trash2, Filter } from 'lucide-react';
+import { Search, Package, Trash2, Filter, ShoppingCart, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
@@ -58,6 +58,8 @@ const InventoryPivotTable = () => {
   const [qualityFilter, setQualityFilter] = useState('');
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
+  const [selectedQualitiesForBulk, setSelectedQualitiesForBulk] = useState<Set<string>>(new Set());
   
   // Sample selection dialog state
   const [sampleDialogOpen, setSampleDialogOpen] = useState(false);
@@ -371,27 +373,74 @@ const InventoryPivotTable = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedItems.size === filteredData.length) {
-      setSelectedItems(new Set());
-    } else {
-      const allKeys = new Set<string>();
-      filteredData.forEach(item => {
-        allKeys.add(item.normalized_quality);
-      });
-      setSelectedItems(allKeys);
+    if (deleteMode) {
+      if (selectedItems.size === filteredData.length) {
+        setSelectedItems(new Set());
+      } else {
+        const allKeys = new Set<string>();
+        filteredData.forEach(item => {
+          allKeys.add(item.normalized_quality);
+        });
+        setSelectedItems(allKeys);
+      }
+    } else if (bulkSelectionMode) {
+      if (selectedQualitiesForBulk.size === filteredData.length) {
+        setSelectedQualitiesForBulk(new Set());
+      } else {
+        const allKeys = new Set<string>();
+        filteredData.forEach(item => {
+          allKeys.add(item.normalized_quality);
+        });
+        setSelectedQualitiesForBulk(allKeys);
+      }
     }
   };
 
   const handleSelectItem = (normalizedQuality: string) => {
-    const newSelected = new Set(selectedItems);
-    
-    if (newSelected.has(normalizedQuality)) {
-      newSelected.delete(normalizedQuality);
-    } else {
-      newSelected.add(normalizedQuality);
+    if (deleteMode) {
+      const newSelected = new Set(selectedItems);
+      
+      if (newSelected.has(normalizedQuality)) {
+        newSelected.delete(normalizedQuality);
+      } else {
+        newSelected.add(normalizedQuality);
+      }
+      
+      setSelectedItems(newSelected);
+    } else if (bulkSelectionMode) {
+      const newSelected = new Set(selectedQualitiesForBulk);
+      
+      if (newSelected.has(normalizedQuality)) {
+        newSelected.delete(normalizedQuality);
+      } else {
+        newSelected.add(normalizedQuality);
+      }
+      
+      setSelectedQualitiesForBulk(newSelected);
+    }
+  };
+
+  const handleProceedToBulkColorSelection = () => {
+    if (selectedQualitiesForBulk.size === 0) {
+      toast({
+        title: String(t('error')),
+        description: "Please select at least one quality",
+        variant: "destructive",
+      });
+      return;
     }
     
-    setSelectedItems(newSelected);
+    const selectedQualityNames = Array.from(selectedQualitiesForBulk);
+    navigate(`/bulk-selection?qualities=${encodeURIComponent(selectedQualityNames.join(','))}`);
+  };
+
+  const toggleBulkSelectionMode = () => {
+    setBulkSelectionMode(!bulkSelectionMode);
+    setSelectedQualitiesForBulk(new Set());
+    if (deleteMode) {
+      setDeleteMode(false);
+      setSelectedItems(new Set());
+    }
   };
 
   const filteredData = pivotData.filter(item => {
@@ -438,44 +487,82 @@ const InventoryPivotTable = () => {
           )}
         </div>
         
-        {getEffectiveRole() === 'admin' && (
-          <div className="flex items-center space-x-2">
-            <Button
-              variant={deleteMode ? "destructive" : "outline"}
-              onClick={() => {
-                setDeleteMode(!deleteMode);
-                setSelectedItems(new Set());
-              }}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {t('deleteMode')}
-            </Button>
-            
-            {deleteMode && selectedItems.size > 0 && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive">
-                    {t('deleteSelected')} ({selectedItems.size})
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete {selectedItems.size} selected qualities? {t('actionCannotBeUndone')}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleBulkDelete}>
-                      {t('delete')}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
-        )}
+        {/* Controls - Order matters: bulk selection for all users, delete mode only for admins */}
+        <div className="flex items-center space-x-2">
+          {!deleteMode && !bulkSelectionMode && (
+            <>
+              <Button variant="default" onClick={toggleBulkSelectionMode}>
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Select Qualities in Bulk
+              </Button>
+              {getEffectiveRole() === 'admin' && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteMode(!deleteMode);
+                    setSelectedItems(new Set());
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {String(t('deleteMode'))}
+                </Button>
+              )}
+            </>
+          )}
+          
+          {bulkSelectionMode && (
+            <>
+              <Button 
+                variant="default" 
+                onClick={handleProceedToBulkColorSelection} 
+                disabled={selectedQualitiesForBulk.size === 0}
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Proceed to Color Selection ({selectedQualitiesForBulk.size})
+              </Button>
+              <Button variant="outline" onClick={toggleBulkSelectionMode}>
+                Cancel Selection
+              </Button>
+            </>
+          )}
+          
+          {getEffectiveRole() === 'admin' && deleteMode && (
+            <>
+              {selectedItems.size > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      {String(t('deleteSelected'))} ({selectedItems.size})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{String(t('confirmDelete'))}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete {selectedItems.size} selected qualities? {String(t('actionCannotBeUndone'))}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{String(t('cancel'))}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleBulkDelete}>
+                        {String(t('delete'))}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              <Button 
+                variant="outline" 
+                onClick={() => { 
+                  setDeleteMode(false); 
+                  setSelectedItems(new Set()); 
+                }}
+              >
+                Cancel Delete
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Summary Stats - Use dashboard stats for consistency */}
@@ -529,10 +616,11 @@ const InventoryPivotTable = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                {deleteMode && getEffectiveRole() === 'admin' && (
+                {(deleteMode || bulkSelectionMode) && (
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={selectedItems.size > 0 && selectedItems.size === filteredData.length}
+                      checked={(deleteMode ? selectedItems.size : selectedQualitiesForBulk.size) > 0 && 
+                               (deleteMode ? selectedItems.size : selectedQualitiesForBulk.size) === filteredData.length}
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
@@ -583,10 +671,18 @@ const InventoryPivotTable = () => {
             <TableBody>
               {filteredData.map((item) => (
                 <TableRow key={item.normalized_quality}>
-                  {deleteMode && getEffectiveRole() === 'admin' && (
+                  {(deleteMode && getEffectiveRole() === 'admin') && (
                     <TableCell>
                       <Checkbox
                         checked={selectedItems.has(item.normalized_quality)}
+                        onCheckedChange={() => handleSelectItem(item.normalized_quality)}
+                      />
+                    </TableCell>
+                  )}
+                  {bulkSelectionMode && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedQualitiesForBulk.has(item.normalized_quality)}
                         onCheckedChange={() => handleSelectItem(item.normalized_quality)}
                       />
                     </TableCell>
