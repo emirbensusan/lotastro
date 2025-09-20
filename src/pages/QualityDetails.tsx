@@ -18,11 +18,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { InlineEditableField } from '@/components/InlineEditableField';
 
-interface ColorData {
+interface QualityColorData {
+  originalQuality: string;
   color: string;
-  total_meters: number;
-  total_rolls: number;
-  lot_count: number;
+  totalMeters: number;
+  totalRolls: number;
+  lotCount: number;
 }
 
 interface QualityVariant {
@@ -47,7 +48,7 @@ const QualityDetails = () => {
   const searchParams = new URLSearchParams(location.search);
   const isSampleMode = searchParams.get('mode') === 'sample';
   
-  const [colors, setColors] = useState<ColorData[]>([]);
+  const [qualityColors, setQualityColors] = useState<QualityColorData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedColors, setSelectedColors] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
@@ -113,36 +114,48 @@ const QualityDetails = () => {
   };
 
   const processLotData = (lots: Array<{quality: string, color: string, meters: number, roll_count: number}>) => {
-    // Group by color
-    const colorMap = new Map<string, { meters: number; rolls: number; count: number }>();
+    // Group by original quality + color combination
+    const qualityColorMap = new Map<string, { meters: number; rolls: number; count: number }>();
 
     lots.forEach(lot => {
-      if (!colorMap.has(lot.color)) {
-        colorMap.set(lot.color, { meters: 0, rolls: 0, count: 0 });
+      const key = `${lot.quality}|${lot.color}`;
+      if (!qualityColorMap.has(key)) {
+        qualityColorMap.set(key, { meters: 0, rolls: 0, count: 0 });
       }
       
-      const colorData = colorMap.get(lot.color)!;
-      colorData.meters += Number(lot.meters);
-      colorData.rolls += lot.roll_count;
-      colorData.count += 1;
+      const data = qualityColorMap.get(key)!;
+      data.meters += Number(lot.meters);
+      data.rolls += lot.roll_count;
+      data.count += 1;
     });
 
-    // Convert to array and sort by meters (descending)
-    const colorsArray = Array.from(colorMap.entries()).map(([color, data]) => ({
-      color,
-      total_meters: data.meters,
-      total_rolls: data.rolls,
-      lot_count: data.count,
-    })).sort((a, b) => b.total_meters - a.total_meters);
+    // Convert to array and sort by original quality, then by meters (descending)
+    const qualityColorsArray = Array.from(qualityColorMap.entries()).map(([key, data]) => {
+      const [originalQuality, color] = key.split('|');
+      return {
+        originalQuality,
+        color,
+        totalMeters: data.meters,
+        totalRolls: data.rolls,
+        lotCount: data.count,
+      };
+    }).sort((a, b) => {
+      // First sort by original quality
+      if (a.originalQuality !== b.originalQuality) {
+        return a.originalQuality.localeCompare(b.originalQuality);
+      }
+      // Then by meters (descending)
+      return b.totalMeters - a.totalMeters;
+    });
 
     // Calculate totals
     const totals = {
-      total_meters: colorsArray.reduce((sum, color) => sum + color.total_meters, 0),
-      total_rolls: colorsArray.reduce((sum, color) => sum + color.total_rolls, 0),
-      total_lots: colorsArray.reduce((sum, color) => sum + color.lot_count, 0),
+      total_meters: qualityColorsArray.reduce((sum, item) => sum + item.totalMeters, 0),
+      total_rolls: qualityColorsArray.reduce((sum, item) => sum + item.totalRolls, 0),
+      total_lots: qualityColorsArray.reduce((sum, item) => sum + item.lotCount, 0),
     };
 
-    setColors(colorsArray);
+    setQualityColors(qualityColorsArray);
     setQualityTotals(totals);
   };
 
@@ -173,10 +186,10 @@ const QualityDetails = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedColors.size === colors.length) {
+    if (selectedColors.size === filteredColors.length) {
       setSelectedColors(new Set());
     } else {
-      setSelectedColors(new Set(colors.map(c => c.color)));
+      setSelectedColors(new Set(filteredColors.map(c => `${c.originalQuality}|${c.color}`)));
     }
   };
 
@@ -289,13 +302,11 @@ const QualityDetails = () => {
     }
   };
 
-  // Filter colors based on search (searches both color names and original quality codes)
-  const filteredColors = colors.filter(colorData => {
-    const colorMatch = colorData.color.toLowerCase().includes(searchTerm.toLowerCase());
-    const qualityMatch = qualityVariants.some(variant => 
-      variant.original_quality.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    const filterMatch = !colorFilter || colorData.color.toLowerCase().includes(colorFilter.toLowerCase());
+  // Filter entries based on search (searches both color names and original quality codes)
+  const filteredColors = qualityColors.filter(item => {
+    const colorMatch = item.color.toLowerCase().includes(searchTerm.toLowerCase());
+    const qualityMatch = item.originalQuality.toLowerCase().includes(searchTerm.toLowerCase());
+    const filterMatch = !colorFilter || item.color.toLowerCase().includes(colorFilter.toLowerCase());
     
     return (searchTerm === '' || colorMatch || qualityMatch) && filterMatch;
   });
@@ -325,11 +336,6 @@ const QualityDetails = () => {
           <BreadcrumbItem>
             <BreadcrumbPage>
               {normalizedQuality}
-              {qualityVariants.length > 1 && (
-                <span className="text-sm text-muted-foreground ml-2">
-                  (includes {qualityVariants.map(v => v.original_quality).join(', ')})
-                </span>
-              )}
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
@@ -339,20 +345,8 @@ const QualityDetails = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">{normalizedQuality}</h1>
-          {qualityVariants.length > 0 && (
-            <div className="mt-2 mb-1">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Original Quality Codes:</p>
-              <div className="flex flex-wrap gap-2">
-                {qualityVariants.map((variant, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {variant.original_quality} ({variant.count} lots)
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
           <p className="text-muted-foreground">
-            {searchTerm || colorFilter ? `${filteredColors.length} of ${colors.length}` : colors.length} {colors.length === 1 ? 'color' : 'colors'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
+            {searchTerm || colorFilter ? `${filteredColors.length} of ${qualityColors.length}` : qualityColors.length} {qualityColors.length === 1 ? 'entry' : 'entries'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -391,7 +385,7 @@ const QualityDetails = () => {
               <span>Color Selection ({selectedColors.size} selected)</span>
               <div className="flex space-x-2">
                 <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                  {selectedColors.size === colors.length ? 'Deselect All' : 'Select All'}
+                  {selectedColors.size === qualityColors.length ? 'Deselect All' : 'Select All'}
                 </Button>
                 <Button 
                   onClick={handleProceedToLots}
@@ -468,10 +462,10 @@ const QualityDetails = () => {
               <TableRow>
                 {selectionMode && (
                   <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={selectedColors.size > 0 && selectedColors.size === colors.length}
-                      onCheckedChange={handleSelectAll}
-                    />
+                <Checkbox
+                  checked={selectedColors.size > 0 && selectedColors.size === filteredColors.length}
+                  onCheckedChange={handleSelectAll}
+                />
                   </TableHead>
                 )}
                 <TableHead>
@@ -538,48 +532,49 @@ const QualityDetails = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredColors.map((colorData) => (
+                filteredColors.map((item) => (
                 <TableRow 
-                  key={colorData.color} 
+                  key={`${item.originalQuality}|${item.color}`} 
                   className={`hover:bg-muted/50 ${selectionMode ? 'cursor-pointer' : ''} ${
-                    selectedColors.has(colorData.color) ? 'bg-blue-50 dark:bg-blue-950' : ''
+                    selectedColors.has(`${item.originalQuality}|${item.color}`) ? 'bg-blue-50 dark:bg-blue-950' : ''
                   }`}
-                  onClick={() => selectionMode && handleColorSelection(colorData.color)}
+                  onClick={() => selectionMode && handleColorSelection(`${item.originalQuality}|${item.color}`)}
                 >
                   {selectionMode && (
                     <TableCell>
                       <Checkbox
-                        checked={selectedColors.has(colorData.color)}
-                        onCheckedChange={() => handleColorSelection(colorData.color)}
+                        checked={selectedColors.has(`${item.originalQuality}|${item.color}`)}
+                        onCheckedChange={() => handleColorSelection(`${item.originalQuality}|${item.color}`)}
                         onClick={(e) => e.stopPropagation()}
                       />
                     </TableCell>
                   )}
+                  <TableCell className="font-medium">{item.originalQuality}</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <div 
                         className="w-4 h-4 rounded border border-muted-foreground/20"
-                        style={{ backgroundColor: colorData.color.toLowerCase() === 'white' ? '#f8f9fa' : colorData.color.toLowerCase() }}
+                        style={{ backgroundColor: item.color.toLowerCase() === 'white' ? '#f8f9fa' : item.color.toLowerCase() }}
                       />
                       {getEffectiveRole() !== 'warehouse_staff' ? (
                         <InlineEditableField
-                          value={colorData.color}
-                          onSave={(newValue) => handleColorUpdate(colorData.color, String(newValue))}
+                          value={item.color}
+                          onSave={(newValue) => handleColorUpdate(item.color, String(newValue))}
                           placeholder="Enter color"
                         />
                       ) : (
-                        <span className="font-medium">{colorData.color}</span>
+                        <span className="font-medium">{item.color}</span>
                       )}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    {colorData.lot_count}
+                    {item.lotCount}
                   </TableCell>
                   <TableCell className="text-right">
-                    {colorData.total_meters.toLocaleString()}
+                    {item.totalMeters.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    {colorData.total_rolls.toLocaleString()}
+                    {item.totalRolls.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
                     {!selectionMode && (
@@ -588,7 +583,7 @@ const QualityDetails = () => {
                           className={isSampleMode ? 'bg-orange-600 text-white hover:bg-orange-700' : ''}
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigateToLotDetails(colorData.color);
+                            navigateToLotDetails(item.color);
                           }}
                         >
                           {isSampleMode ? t('selectForSample') : t('selectLots')}
