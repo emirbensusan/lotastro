@@ -52,18 +52,32 @@ const LotSelection = () => {
   
   // Parse colors that may be in format "quality|color" or just "color"
   const parseColorEntry = (colorEntry: string) => {
+    console.log('Parsing color entry:', colorEntry);
     if (colorEntry.includes('|')) {
-      const [entryQuality, entryColor] = colorEntry.split('|');
+      const [entryQuality, entryColor] = colorEntry.split('|').map(s => decodeURIComponent(s.trim()));
+      console.log('Parsed quality|color:', { entryQuality, entryColor });
       return { quality: entryQuality, color: entryColor };
     }
-    return { quality, color: colorEntry };
+    const parsed = { quality, color: decodeURIComponent(colorEntry.trim()) };
+    console.log('Parsed as color only:', parsed);
+    return parsed;
   };
   
-  const colorArray = colors ? colors.split(',').map(parseColorEntry) : [parseColorEntry(color)];
+  const colorArray = colors ? colors.split(',').map(parseColorEntry).filter(entry => entry.quality && entry.color) : 
+                     (color && quality) ? [{ quality, color }] : [];
   
-  // Validate that all colors have the same quality (for bulk selection)
-  const currentQuality = colorArray[0]?.quality || quality;
-  const hasConsistentQuality = colorArray.every(entry => entry.quality === currentQuality);
+  console.log('Final colorArray:', colorArray);
+  
+  // For bulk selection, use the quality of the first color entry
+  // For single color selection, use the quality parameter
+  const currentQuality = colorArray.length > 0 ? colorArray[0].quality : quality;
+  
+  // For bulk selection, allow mixed qualities but warn user
+  // For single color selection, quality must be consistent
+  const hasConsistentQuality = colorArray.length <= 1 || 
+    colorArray.every(entry => entry.quality === currentQuality);
+  
+  console.log('Quality validation:', { currentQuality, hasConsistentQuality, colorCount: colorArray.length });
   
   const [lots, setLots] = useState<Lot[]>([]);
   const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
@@ -79,12 +93,22 @@ const LotSelection = () => {
   const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
+    console.log('LotSelection useEffect - Debug info:', {
+      currentQuality,
+      colorArray,
+      colors: searchParams.get('colors'),
+      hasConsistentQuality,
+      colorArrayLength: colorArray.length
+    });
+
     if (!currentQuality || colorArray.length === 0) {
+      console.log('Redirecting to inventory - missing quality or colors');
       navigate('/inventory');
       return;
     }
     
     if (!hasConsistentQuality) {
+      console.log('Redirecting to inventory - inconsistent quality');
       toast({
         title: "Quality Mismatch",
         description: "All selected colors must have the same quality",
@@ -94,6 +118,7 @@ const LotSelection = () => {
       return;
     }
     
+    console.log('All validations passed, fetching lots and suppliers');
     fetchLots();
     fetchSuppliers();
   }, [currentQuality, currentColorIndex]);

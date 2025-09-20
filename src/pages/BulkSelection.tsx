@@ -145,9 +145,13 @@ const BulkSelection = () => {
     }
 
     // Navigate to lot selection with selected colors
+    // Use | as separator to match LotSelection parsing logic
     const colorParams = selectedColors.map(item => 
-      `${encodeURIComponent(item.quality)}:${encodeURIComponent(item.color)}`
+      `${encodeURIComponent(item.quality)}|${encodeURIComponent(item.color)}`
     ).join(',');
+    
+    console.log('Navigating to lot selection with colors:', colorParams);
+    console.log('Selected colors:', selectedColors);
     
     navigate(`/lot-selection?colors=${colorParams}`);
   };
