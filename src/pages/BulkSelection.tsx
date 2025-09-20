@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Package, Search, ShoppingCart, ArrowRight } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeft, Package, Search, Filter } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Textarea } from '@/components/ui/textarea';
 
 interface QualityColorData {
   quality: string;
@@ -27,19 +28,18 @@ interface SelectedColor {
 }
 
 const BulkSelection = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { t } = useLanguage();
+  const navigate = useNavigate();
   const { toast } = useToast();
   
-  const qualitiesParam = searchParams.get('qualities') || '';
-  const selectedQualities = qualitiesParam.split(',').filter(Boolean);
-  
-  const [qualityColorData, setQualityColorData] = useState<QualityColorData[]>([]);
+  const [allColorData, setAllColorData] = useState<QualityColorData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedColors, setSelectedColors] = useState<Set<string>>(new Set());
+  const [selectedColors, setSelectedColors] = useState<SelectedColor[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentQualityIndex, setCurrentQualityIndex] = useState(0);
+  const [qualityFilter, setQualityFilter] = useState('');
+
+  const qualitiesParam = searchParams.get('qualities');
+  const selectedQualities = qualitiesParam ? qualitiesParam.split(',') : [];
 
   useEffect(() => {
     if (selectedQualities.length === 0) {
@@ -86,13 +86,13 @@ const BulkSelection = () => {
         allData.push(...Object.values(colorGroups));
       }
 
-      setQualityColorData(allData);
+      setAllColorData(allData);
     } catch (error) {
       console.error('Error fetching quality color data:', error);
       toast({
-        title: t('error') as string,
-        description: "Failed to load quality data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load color data',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -100,88 +100,107 @@ const BulkSelection = () => {
   };
 
   const toggleColorSelection = (quality: string, color: string) => {
-    const key = `${quality}|${color}`;
-    const newSelected = new Set(selectedColors);
+    const item = allColorData.find(d => d.quality === quality && d.color === color);
+    const normalizedQuality = item?.normalized_quality || quality;
     
-    if (newSelected.has(key)) {
-      newSelected.delete(key);
-    } else {
-      newSelected.add(key);
-    }
-    
-    setSelectedColors(newSelected);
-  };
-
-  const handleSelectAllForQuality = (quality: string) => {
-    const qualityColors = filteredData.filter(item => item.quality === quality);
-    const allQualityKeysSelected = qualityColors.every(item => 
-      selectedColors.has(`${item.quality}|${item.color}`)
+    const isSelected = selectedColors.some(
+      selected => selected.quality === quality && selected.color === color
     );
 
-    const newSelected = new Set(selectedColors);
-    
-    if (allQualityKeysSelected) {
-      // Deselect all for this quality
-      qualityColors.forEach(item => {
-        newSelected.delete(`${item.quality}|${item.color}`);
-      });
+    if (isSelected) {
+      setSelectedColors(selectedColors.filter(
+        selected => !(selected.quality === quality && selected.color === color)
+      ));
     } else {
-      // Select all for this quality
-      qualityColors.forEach(item => {
-        newSelected.add(`${item.quality}|${item.color}`);
-      });
+      setSelectedColors([...selectedColors, { 
+        quality, 
+        color, 
+        normalized_quality: normalizedQuality 
+      }]);
     }
-    
-    setSelectedColors(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedColors.length === filteredData.length) {
+      // Deselect all
+      setSelectedColors([]);
+    } else {
+      // Select all filtered items
+      setSelectedColors(filteredData.map(item => ({
+        quality: item.quality,
+        color: item.color,
+        normalized_quality: item.normalized_quality
+      })));
+    }
   };
 
   const handleProceedToLotSelection = () => {
-    if (selectedColors.size === 0) {
+    if (selectedColors.length === 0) {
       toast({
-        title: t('error') as string,
-        description: "Please select at least one color",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Please select at least one color',
+        variant: 'destructive',
       });
       return;
     }
 
-    const colorArray = Array.from(selectedColors);
-    navigate(`/lot-selection?colors=${encodeURIComponent(colorArray.join(','))}`);
+    // Navigate to lot selection with selected colors
+    const colorParams = selectedColors.map(item => 
+      `${encodeURIComponent(item.quality)}:${encodeURIComponent(item.color)}`
+    ).join(',');
+    
+    navigate(`/lot-selection?colors=${colorParams}`);
   };
 
-  const filteredData = qualityColorData.filter(item =>
-    item.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.quality.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Group by quality for better organization
-  const groupedData = filteredData.reduce((groups, item) => {
-    if (!groups[item.quality]) {
-      groups[item.quality] = [];
+  // Filter and sort data for display
+  const filteredData = allColorData.filter(item => {
+    const matchesSearch = item.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.quality.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesQuality = !qualityFilter || 
+                          item.quality.toLowerCase().includes(qualityFilter.toLowerCase()) ||
+                          item.normalized_quality.toLowerCase().includes(qualityFilter.toLowerCase());
+    return matchesSearch && matchesQuality;
+  }).sort((a, b) => {
+    // Sort by quality first, then by color
+    if (a.quality !== b.quality) {
+      return a.quality.localeCompare(b.quality);
     }
-    groups[item.quality].push(item);
-    return groups;
-  }, {} as Record<string, QualityColorData[]>);
+    return a.color.localeCompare(b.color);
+  });
+
+  // Calculate summary statistics
+  const totalQualities = new Set(allColorData.map(item => item.normalized_quality)).size;
+  const totalColors = allColorData.length;
+  const selectedColorsCount = selectedColors.length;
+  const totalAvailableStock = allColorData.reduce((sum, item) => sum + item.total_meters, 0);
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={() => navigate('/inventory')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToInventory')}
-          </Button>
-          <h1 className="text-3xl font-bold">{t('bulkColorSelection')}</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <h1 className="text-3xl font-bold">Bulk Color Selection</h1>
+          </div>
+          <Package className="h-8 w-8 text-primary" />
         </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-12 bg-muted rounded"></div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -191,155 +210,188 @@ const BulkSelection = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={() => navigate('/inventory')}>
+          <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToInventory')}
+            Back
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{t('bulkColorSelection')}</h1>
-            <p className="text-muted-foreground">
-              {t('selectedQualities')}: {selectedQualities.length} | {t('selectedColors')}: {selectedColors.size}
-            </p>
-          </div>
+          <h1 className="text-3xl font-bold">Bulk Color Selection</h1>
         </div>
-        <div className="flex items-center space-x-4">
-          <Package className="h-8 w-8 text-primary" />
-          <Badge variant="secondary">
-            {selectedColors.size} {t('colorsSelected')}
-          </Badge>
-        </div>
+        <Package className="h-8 w-8 text-primary" />
       </div>
 
-      {/* Selected Qualities Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('selectedQualities')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {selectedQualities.map((quality, index) => (
-              <Badge key={quality} variant="outline" className="text-sm">
-                {quality}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Search className="h-5 w-5 mr-2" />
-            {t('searchColors')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Label>{t('searchByColorOrQuality')}</Label>
-            <Input
-              placeholder={t('searchColors') as string}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Color Selection by Quality */}
-      <div className="space-y-4">
-        {Object.entries(groupedData).map(([quality, colors]) => {
-          const qualitySelectedCount = colors.filter(item => 
-            selectedColors.has(`${item.quality}|${item.color}`)
-          ).length;
-          
-          return (
-            <Card key={quality}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{quality}</CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="secondary">
-                      {qualitySelectedCount} / {colors.length} {t('selected')}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSelectAllForQuality(quality)}
-                    >
-                      {qualitySelectedCount === colors.length ? t('deselectAll') : t('selectAll')}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">{t('select')}</TableHead>
-                      <TableHead>{t('color')}</TableHead>
-                      <TableHead>{t('lots')}</TableHead>
-                      <TableHead>{t('rolls')}</TableHead>
-                      <TableHead>{t('meters')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {colors.map((item) => {
-                      const isSelected = selectedColors.has(`${item.quality}|${item.color}`);
-                      
-                      return (
-                        <TableRow 
-                          key={`${item.quality}-${item.color}`}
-                          className={`cursor-pointer hover:bg-muted/50 ${isSelected ? 'bg-primary/5' : ''}`}
-                        >
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleColorSelection(item.quality, item.color)}
-                              className="rounded"
-                            />
-                          </TableCell>
-                          <TableCell 
-                            className="font-medium cursor-pointer"
-                            onClick={() => toggleColorSelection(item.quality, item.color)}
-                          >
-                            {item.color}
-                          </TableCell>
-                          <TableCell>{item.lot_count}</TableCell>
-                          <TableCell>{item.total_rolls}</TableCell>
-                          <TableCell>{item.total_meters.toFixed(2)} m</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Action Buttons */}
-      {selectedColors.size > 0 && (
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                {selectedColors.size} {t('colorsSelected')} across {Object.keys(groupedData).length} {t('qualities')}
-              </div>
-              <div className="flex space-x-2">
-                <Button variant="outline" onClick={() => setSelectedColors(new Set())}>
-                  {t('clearSelection')}
-                </Button>
-                <Button onClick={handleProceedToLotSelection}>
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  {t('proceedToLotSelection')}
-                </Button>
-              </div>
-            </div>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold">{totalQualities}</div>
+            <p className="text-muted-foreground">Qualities</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold">{totalColors}</div>
+            <p className="text-muted-foreground">Available Colors</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-primary">{selectedColorsCount}</div>
+            <p className="text-muted-foreground">Colors Selected</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold">{Math.round(totalAvailableStock).toLocaleString()}</div>
+            <p className="text-muted-foreground">Total Meters</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Filter Controls */}
+      <div className="flex items-center justify-between space-x-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search colors or qualities..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-10"
+          />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+              onClick={() => setSearchTerm('')}
+            >
+              ×
+            </Button>
+          )}
+        </div>
+        
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline">
+              <Filter className="h-4 w-4 mr-2" />
+              Quality Filter
+              {qualityFilter && <span className="ml-1 text-xs bg-primary text-primary-foreground rounded px-1">1</span>}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Filter by Quality</label>
+              <Textarea
+                placeholder="Enter quality to filter (e.g., P200, A800)..."
+                value={qualityFilter}
+                onChange={(e) => setQualityFilter(e.target.value)}
+                className="min-h-[60px]"
+              />
+              {qualityFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setQualityFilter('')}
+                  className="w-full"
+                >
+                  Clear Filter
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Color Selection Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Color Selection</CardTitle>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-muted-foreground">
+                {filteredData.length} colors available
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+              >
+                {selectedColors.length === filteredData.length ? 'Deselect All' : 'Select All'}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedColors.length === filteredData.length && filteredData.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead>Quality</TableHead>
+                  <TableHead>Color</TableHead>
+                  <TableHead className="text-right">Lots</TableHead>
+                  <TableHead className="text-right">Rolls</TableHead>
+                  <TableHead className="text-right">Meters</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredData.map((item) => {
+                  const isSelected = selectedColors.some(
+                    selected => selected.quality === item.quality && selected.color === item.color
+                  );
+
+                  return (
+                    <TableRow 
+                      key={`${item.quality}-${item.color}`}
+                      className={isSelected ? "bg-muted/50" : ""}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleColorSelection(item.quality, item.color)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{item.quality}</TableCell>
+                      <TableCell>{item.color}</TableCell>
+                      <TableCell className="text-right">{item.lot_count}</TableCell>
+                      <TableCell className="text-right">{item.total_rolls}</TableCell>
+                      <TableCell className="text-right">{Math.round(item.total_meters).toLocaleString()}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {filteredData.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              No colors found matching your search criteria.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Sticky Footer */}
+      {selectedColors.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="font-medium">
+                {selectedColors.length} colors selected across {new Set(selectedColors.map(c => c.normalized_quality)).size} qualities
+              </span>
+              <Button variant="outline" onClick={() => setSelectedColors([])}>
+                Clear Selection
+              </Button>
+            </div>
+            <Button onClick={handleProceedToLotSelection}>
+              Proceed to Lot Selection
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
