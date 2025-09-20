@@ -85,9 +85,9 @@ serve(async (req) => {
     }
 
     // Validate password requirements
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return new Response(
-        JSON.stringify({ error: 'Password must be at least 6 characters long' }),
+        JSON.stringify({ error: 'Password must be at least 8 characters long' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -103,8 +103,30 @@ serve(async (req) => {
 
     if (error) {
       console.error('Error updating password:', error)
+      
+      // Handle specific error types
+      if (error.message && error.message.includes('weak')) {
+        return new Response(
+          JSON.stringify({ error: 'Password is too weak or commonly used. Please choose a stronger password with at least 8 characters, including numbers and special characters.' }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+      
+      if (error.message && error.message.includes('pwned')) {
+        return new Response(
+          JSON.stringify({ error: 'This password has been found in data breaches and is not secure. Please choose a different password.' }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to update password' }),
+        JSON.stringify({ error: `Failed to update password: ${error.message}` }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

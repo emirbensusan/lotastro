@@ -139,24 +139,44 @@ const Admin: React.FC = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       toast({
         title: t('error') as string,
-        description: t('passwordTooShort') as string,
+        description: 'Password must be at least 8 characters long',
         variant: 'destructive'
       });
       return;
     }
 
     try {
-      const { error } = await supabase.functions.invoke('admin-change-password', {
+      const { data, error } = await supabase.functions.invoke('admin-change-password', {
         body: { 
           userId: profile.user_id,
           newPassword: newPassword
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        let errorMessage = t('failedToChangePassword') as string;
+        
+        // Handle specific error messages from the edge function
+        if (error.message) {
+          if (error.message.includes('weak') || error.message.includes('commonly used')) {
+            errorMessage = t('passwordTooWeak') as string;
+          } else if (error.message.includes('pwned') || error.message.includes('data breaches')) {
+            errorMessage = t('passwordCompromised') as string;
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        toast({
+          title: t('error') as string,
+          description: errorMessage,
+          variant: 'destructive'
+        });
+        return;
+      }
 
       toast({
         title: t('success') as string,
@@ -167,11 +187,11 @@ const Admin: React.FC = () => {
       setUserToChangePassword(null);
       setNewPassword('');
       setConfirmPassword('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error changing password:', error);
       toast({
         title: t('error') as string,
-        description: t('failedToChangePassword') as string,
+        description: error?.message || t('failedToChangePassword') as string,
         variant: 'destructive'
       });
     }
@@ -559,7 +579,7 @@ const Admin: React.FC = () => {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password (min 6 characters)"
+                  placeholder="Enter new password (min 8 characters)"
                 />
               </div>
               <div>
