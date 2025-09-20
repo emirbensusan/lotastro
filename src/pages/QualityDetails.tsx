@@ -24,8 +24,13 @@ interface ColorData {
   lot_count: number;
 }
 
+interface QualityVariant {
+  original_quality: string;
+  count: number;
+}
+
 const QualityDetails = () => {
-  const { quality } = useParams();
+  const { quality: normalizedQuality } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
@@ -46,6 +51,7 @@ const QualityDetails = () => {
   const [selectedColors, setSelectedColors] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [colorFilter, setColorFilter] = useState('');
+  const [qualityVariants, setQualityVariants] = useState<QualityVariant[]>([]);
   const [qualityTotals, setQualityTotals] = useState({
     total_meters: 0,
     total_rolls: 0,
@@ -53,27 +59,56 @@ const QualityDetails = () => {
   });
 
   useEffect(() => {
-    if (quality) {
+    if (normalizedQuality) {
       fetchColorData();
     }
-  }, [quality]);
+  }, [normalizedQuality]);
 
   const fetchColorData = async () => {
     try {
       setLoading(true);
       
-      const { data: lotsData, error } = await supabase
+      // Get all lots from the database
+      const { data: allLots, error } = await supabase
         .from('lots')
-        .select('color, meters, roll_count')
-        .eq('quality', quality)
+        .select('quality, color, meters, roll_count')
         .eq('status', 'in_stock');
 
       if (error) throw error;
 
+      // Filter lots that normalize to our target quality
+      const matchingLots: Array<{quality: string, color: string, meters: number, roll_count: number}> = [];
+      const qualityVariantMap = new Map<string, number>();
+
+      for (const lot of allLots) {
+        const { data: normalized, error: normalizeError } = await supabase
+          .rpc('normalize_quality', { quality_input: lot.quality });
+
+        if (normalizeError) {
+          console.error('Error normalizing quality:', normalizeError);
+          continue;
+        }
+
+        if (normalized === normalizedQuality) {
+          matchingLots.push(lot);
+          
+          // Track quality variants
+          const count = qualityVariantMap.get(lot.quality) || 0;
+          qualityVariantMap.set(lot.quality, count + 1);
+        }
+      }
+
+      // Convert quality variants to array
+      const variants = Array.from(qualityVariantMap.entries()).map(([quality, count]) => ({
+        original_quality: quality,
+        count
+      }));
+      setQualityVariants(variants);
+
       // Group by color
       const colorMap = new Map<string, { meters: number; rolls: number; count: number }>();
 
-      lotsData.forEach(lot => {
+      matchingLots.forEach(lot => {
         if (!colorMap.has(lot.color)) {
           colorMap.set(lot.color, { meters: 0, rolls: 0, count: 0 });
         }
@@ -115,9 +150,9 @@ const QualityDetails = () => {
 
   const navigateToLotDetails = (color: string) => {
     if (isSampleMode) {
-      navigate(`/inventory/${encodeURIComponent(quality!)}/${encodeURIComponent(color)}?mode=sample`);
+      navigate(`/inventory/${encodeURIComponent(normalizedQuality!)}/${encodeURIComponent(color)}?mode=sample`);
     } else {
-      navigate(`/inventory/${encodeURIComponent(quality!)}/${encodeURIComponent(color)}`);
+      navigate(`/inventory/${encodeURIComponent(normalizedQuality!)}/${encodeURIComponent(color)}`);
     }
   };
 
@@ -169,7 +204,7 @@ const QualityDetails = () => {
 
     // Navigate to lot selection with multiple colors
     const colorParams = Array.from(selectedColors).join(',');
-    navigate(`/lot-selection?quality=${encodeURIComponent(quality!)}&colors=${encodeURIComponent(colorParams)}`);
+    navigate(`/lot-selection?quality=${encodeURIComponent(normalizedQuality!)}&colors=${encodeURIComponent(colorParams)}`);
   };
 
   const handleClearCart = () => {
@@ -188,22 +223,44 @@ const QualityDetails = () => {
       
       // Senior managers and admins can apply changes directly
       if (effectiveRole === 'senior_manager' || effectiveRole === 'admin') {
-        // Update all lots with this color for the current quality
-        const { error } = await supabase
+        // Get all lots that normalize to this quality and have this color
+        const { data: allLots, error: fetchError } = await supabase
           .from('lots')
-          .update({ color: newColor })
-          .eq('quality', quality)
+          .select('id, quality, color')
           .eq('color', oldColor)
           .eq('status', 'in_stock');
 
-        if (error) throw error;
+        if (fetchError) throw fetchError;
+
+        // Filter lots that normalize to our target quality
+        const lotsToUpdate: string[] = [];
+        
+        for (const lot of allLots) {
+          const { data: normalized, error: normalizeError } = await supabase
+            .rpc('normalize_quality', { quality_input: lot.quality });
+
+          if (normalizeError) continue;
+
+          if (normalized === normalizedQuality) {
+            lotsToUpdate.push(lot.id);
+          }
+        }
+
+        if (lotsToUpdate.length > 0) {
+          const { error } = await supabase
+            .from('lots')
+            .update({ color: newColor })
+            .in('id', lotsToUpdate);
+
+          if (error) throw error;
+        }
 
         // Refresh the data
         await fetchColorData();
         
         toast({
           title: 'Color Updated',
-          description: `Updated color from "${oldColor}" to "${newColor}"`,
+          description: `Updated color from "${oldColor}" to "${newColor}" for ${lotsToUpdate.length} lots`,
         });
       } else {
         // Other users submit to approval queue
@@ -262,7 +319,14 @@ const QualityDetails = () => {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{quality}</BreadcrumbPage>
+            <BreadcrumbPage>
+              {normalizedQuality}
+              {qualityVariants.length > 1 && (
+                <span className="text-sm text-muted-foreground ml-2">
+                  (includes {qualityVariants.map(v => v.original_quality).join(', ')})
+                </span>
+              )}
+            </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -270,7 +334,12 @@ const QualityDetails = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{quality}</h1>
+          <h1 className="text-3xl font-bold">{normalizedQuality}</h1>
+          {qualityVariants.length > 1 && (
+            <p className="text-sm text-muted-foreground mb-1">
+              Includes variants: {qualityVariants.map(v => `${v.original_quality} (${v.count} lots)`).join(', ')}
+            </p>
+          )}
           <p className="text-muted-foreground">
             {colorFilter ? `${filteredColors.length} of ${colors.length}` : colors.length} {colors.length === 1 ? 'color' : 'colors'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
           </p>

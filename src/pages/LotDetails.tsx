@@ -33,8 +33,13 @@ interface LotDetail {
   roll_breakdown?: string;
 }
 
+interface QualityVariant {
+  original_quality: string;
+  count: number;
+}
+
 const LotDetails = () => {
-  const { quality, color } = useParams<{ quality: string; color: string }>();
+  const { quality: normalizedQuality, color } = useParams<{ quality: string; color: string }>();
   const location = useLocation();
   const [lots, setLots] = useState<LotDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +48,7 @@ const LotDetails = () => {
   const [lotNumberFilter, setLotNumberFilter] = useState('');
   const [entryDateFilter, setEntryDateFilter] = useState('');
   const [ageFilter, setAgeFilter] = useState('');
+  const [qualityVariants, setQualityVariants] = useState<QualityVariant[]>([]);
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { addToCart } = usePOCart();
@@ -58,10 +64,10 @@ const LotDetails = () => {
   const isSampleMode = searchParams.get('mode') === 'sample';
 
   useEffect(() => {
-    if (quality && color) {
+    if (normalizedQuality && color) {
       fetchLotDetails();
     }
-  }, [quality, color]);
+  }, [normalizedQuality, color]);
 
   const formatRollBreakdown = (rolls: { meters: number; position: number }[]): string => {
     if (!rolls || rolls.length === 0) return '';
@@ -110,12 +116,13 @@ const LotDetails = () => {
   };
 
   const fetchLotDetails = async () => {
-    if (!quality || !color) return;
+    if (!normalizedQuality || !color) return;
 
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // Get all lots from the database
+      const { data: allLots, error } = await supabase
         .from('lots')
         .select(`
           id,
@@ -130,21 +137,49 @@ const LotDetails = () => {
           suppliers(name),
           rolls(meters, position)
         `)
-        .eq('quality', decodeURIComponent(quality))
         .eq('color', decodeURIComponent(color))
         .eq('status', 'in_stock')
         .order('entry_date', { ascending: false });
 
       if (error) throw error;
 
-      // Calculate age and roll breakdown for each lot
-      const lotsWithAge = data.map(lot => ({
-        ...lot,
-        age_days: Math.floor((new Date().getTime() - new Date(lot.entry_date).getTime()) / (1000 * 3600 * 24)),
-        roll_breakdown: formatRollBreakdown(lot.rolls || [])
-      }));
+      // Filter lots that normalize to our target quality and have the specified color
+      const matchingLots: LotDetail[] = [];
+      const qualityVariantMap = new Map<string, number>();
 
-      setLots(lotsWithAge);
+      for (const lot of allLots) {
+        const { data: normalized, error: normalizeError } = await supabase
+          .rpc('normalize_quality', { quality_input: lot.quality });
+
+        if (normalizeError) {
+          console.error('Error normalizing quality:', normalizeError);
+          continue;
+        }
+
+        if (normalized === decodeURIComponent(normalizedQuality)) {
+          // Calculate age and roll breakdown for this lot
+          const lotWithProcessedData = {
+            ...lot,
+            age_days: Math.floor((new Date().getTime() - new Date(lot.entry_date).getTime()) / (1000 * 3600 * 24)),
+            roll_breakdown: formatRollBreakdown(lot.rolls || [])
+          };
+          
+          matchingLots.push(lotWithProcessedData);
+          
+          // Track quality variants
+          const count = qualityVariantMap.get(lot.quality) || 0;
+          qualityVariantMap.set(lot.quality, count + 1);
+        }
+      }
+
+      // Convert quality variants to array
+      const variants = Array.from(qualityVariantMap.entries()).map(([quality, count]) => ({
+        original_quality: quality,
+        count
+      }));
+      setQualityVariants(variants);
+
+      setLots(matchingLots);
 
     } catch (error) {
       console.error('Error fetching lot details:', error);
@@ -302,7 +337,14 @@ const LotDetails = () => {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{decodeURIComponent(quality || '')} - {decodeURIComponent(color || '')}</BreadcrumbPage>
+            <BreadcrumbPage>
+              {decodeURIComponent(normalizedQuality || '')} - {decodeURIComponent(color || '')}
+              {qualityVariants.length > 1 && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Includes: {qualityVariants.map(v => v.original_quality).join(', ')}
+                </div>
+              )}
+            </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -316,8 +358,13 @@ const LotDetails = () => {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">
-              {decodeURIComponent(quality || '')} - {decodeURIComponent(color || '')}
+              {decodeURIComponent(normalizedQuality || '')} - {decodeURIComponent(color || '')}
             </h1>
+            {qualityVariants.length > 1 && (
+              <p className="text-sm text-muted-foreground mb-1">
+                Showing lots from: {qualityVariants.map(v => `${v.original_quality} (${v.count} lots)`).join(', ')}
+              </p>
+            )}
             <p className="text-muted-foreground">
               {lotNumberFilter || entryDateFilter || ageFilter ? 
                 `${filteredLots.length} of ${lots.length} ${t('availableLots')}` : 
@@ -374,6 +421,7 @@ const LotDetails = () => {
                     </Popover>
                   </div>
                 </TableHead>
+                <TableHead>{t('quality')}</TableHead>
                 <TableHead className="text-right">{t('meters')}</TableHead>
                 <TableHead className="text-right">{t('rolls')}</TableHead>
                 <TableHead>{t('rollMeters')}</TableHead>
@@ -443,7 +491,7 @@ const LotDetails = () => {
             <TableBody>
               {filteredLots.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     {t('noLotsAvailable')}
                   </TableCell>
                 </TableRow>
@@ -460,6 +508,9 @@ const LotDetails = () => {
                       ) : (
                         lot.lot_number
                       )}
+                    </TableCell>
+                    <TableCell className="text-sm font-mono">
+                      {lot.quality}
                     </TableCell>
                     <TableCell className="text-right">{lot.meters.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{lot.roll_count}</TableCell>

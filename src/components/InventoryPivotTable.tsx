@@ -20,6 +20,7 @@ import { InlineEditableField } from '@/components/InlineEditableField';
 
 interface InventoryItem {
   quality: string;
+  normalized_quality: string;
   color: string;
   total_meters: number;
   total_rolls: number;
@@ -28,6 +29,7 @@ interface InventoryItem {
 
 interface AggregatedQuality {
   quality: string;
+  normalized_quality: string;
   color_count: number;
   total_meters: number;
   total_rolls: number;
@@ -101,25 +103,27 @@ const InventoryPivotTable = () => {
       // Convert to flat array and aggregate by quality
       const rawData: InventoryItem[] = (summaryData || []).map(row => ({
         quality: row.quality,
+        normalized_quality: row.normalized_quality,
         color: row.color,
         total_meters: Number(row.total_meters),
         total_rolls: Number(row.total_rolls),
         lot_count: Number(row.lot_count)
       }));
 
-      // Aggregate by quality
+      // Aggregate by normalized quality
       const qualityMap = new Map<string, AggregatedQuality>();
       
       rawData.forEach(item => {
-        if (qualityMap.has(item.quality)) {
-          const existing = qualityMap.get(item.quality)!;
+        if (qualityMap.has(item.normalized_quality)) {
+          const existing = qualityMap.get(item.normalized_quality)!;
           existing.color_count += 1;
           existing.total_meters += item.total_meters;
           existing.total_rolls += item.total_rolls;
           existing.lot_count += item.lot_count;
         } else {
-          qualityMap.set(item.quality, {
-            quality: item.quality,
+          qualityMap.set(item.normalized_quality, {
+            quality: item.quality, // Keep the original quality for display
+            normalized_quality: item.normalized_quality,
             color_count: 1,
             total_meters: item.total_meters,
             total_rolls: item.total_rolls,
@@ -144,12 +148,12 @@ const InventoryPivotTable = () => {
     }
   };
 
-  const navigateToQualityDetails = (quality: string) => {
+  const navigateToQualityDetails = (normalizedQuality: string) => {
     if (isSampleMode) {
       // In sample mode, navigate to quality selection but keep sample mode
-      navigate(`/inventory/${encodeURIComponent(quality)}?mode=sample`);
+      navigate(`/inventory/${encodeURIComponent(normalizedQuality)}?mode=sample`);
     } else {
-      navigate(`/inventory/${encodeURIComponent(quality)}`);
+      navigate(`/inventory/${encodeURIComponent(normalizedQuality)}`);
     }
   };
 
@@ -157,39 +161,51 @@ const InventoryPivotTable = () => {
     navigate(`/inventory/${encodeURIComponent(quality)}/${encodeURIComponent(color)}`);
   };
 
-  const handleDeleteQuality = async (quality: string) => {
+  const handleDeleteQuality = async (normalizedQuality: string) => {
     try {
       // Show progress dialog
       setProgressDialog({
         isOpen: true,
-        title: `Deleting Quality: ${quality}`,
+        title: `Deleting Quality: ${normalizedQuality}`,
         progress: 0,
         statusText: 'Fetching lots to delete...',
         isComplete: false
       });
 
-      // Get all lots for this quality
+      // Get all lots for this normalized quality using a query that normalizes quality
       const { data: lots, error: fetchError } = await supabase
         .from('lots')
-        .select('id')
-        .eq('quality', quality)
+        .select('id, quality')
         .eq('status', 'in_stock');
 
       if (fetchError) throw fetchError;
 
-      if (lots && lots.length > 0) {
+      // Filter lots that match the normalized quality on the frontend
+      const { data: normalizeResult, error: normalizeError } = await supabase
+        .rpc('normalize_quality', { quality_input: lots?.[0]?.quality || '' });
+
+      if (normalizeError) throw normalizeError;
+
+      // Get all lots that normalize to this quality
+      const lotsToDelete = lots?.filter(async (lot) => {
+        const { data: normalized } = await supabase
+          .rpc('normalize_quality', { quality_input: lot.quality });
+        return normalized === normalizedQuality;
+      }) || [];
+
+      if (lotsToDelete && lotsToDelete.length > 0) {
         setProgressDialog(prev => ({
           ...prev,
           progress: 30,
-          statusText: `Deleting ${lots.length} lots...`
+          statusText: `Deleting ${lotsToDelete.length} lots...`
         }));
 
-        // Delete all lots for this quality
+        // Delete all lots for this normalized quality
+        const lotIds = lotsToDelete.map(lot => lot.id);
         const { error: deleteError } = await supabase
           .from('lots')
           .delete()
-          .eq('quality', quality)
-          .eq('status', 'in_stock');
+          .in('id', lotIds);
 
         if (deleteError) throw deleteError;
 
@@ -205,7 +221,7 @@ const InventoryPivotTable = () => {
         setProgressDialog(prev => ({
           ...prev,
           progress: 100,
-          statusText: `${lots.length} lots deleted successfully`,
+          statusText: `${lotsToDelete.length} lots deleted successfully`,
           isComplete: true
         }));
       } else {
@@ -360,32 +376,32 @@ const InventoryPivotTable = () => {
     } else {
       const allKeys = new Set<string>();
       filteredData.forEach(item => {
-        allKeys.add(item.quality);
+        allKeys.add(item.normalized_quality);
       });
       setSelectedItems(allKeys);
     }
   };
 
-  const handleSelectItem = (quality: string) => {
+  const handleSelectItem = (normalizedQuality: string) => {
     const newSelected = new Set(selectedItems);
     
-    if (newSelected.has(quality)) {
-      newSelected.delete(quality);
+    if (newSelected.has(normalizedQuality)) {
+      newSelected.delete(normalizedQuality);
     } else {
-      newSelected.add(quality);
+      newSelected.add(normalizedQuality);
     }
     
     setSelectedItems(newSelected);
   };
 
   const filteredData = pivotData.filter(item => {
-    const matchesSearch = item.quality.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesQuality = !qualityFilter || item.quality.toLowerCase().includes(qualityFilter.toLowerCase());
+    const matchesSearch = item.normalized_quality.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesQuality = !qualityFilter || item.normalized_quality.toLowerCase().includes(qualityFilter.toLowerCase());
     return matchesSearch && matchesQuality;
   });
 
   // Get unique qualities for the filter dropdown
-  const uniqueQualities = [...new Set(pivotData.map(item => item.quality))].sort();
+  const uniqueQualities = [...new Set(pivotData.map(item => item.normalized_quality))].sort();
 
   if (loading) {
     return (
@@ -566,24 +582,24 @@ const InventoryPivotTable = () => {
             </TableHeader>
             <TableBody>
               {filteredData.map((item) => (
-                <TableRow key={item.quality}>
+                <TableRow key={item.normalized_quality}>
                   {deleteMode && getEffectiveRole() === 'admin' && (
                     <TableCell>
                       <Checkbox
-                        checked={selectedItems.has(item.quality)}
-                        onCheckedChange={() => handleSelectItem(item.quality)}
+                        checked={selectedItems.has(item.normalized_quality)}
+                        onCheckedChange={() => handleSelectItem(item.normalized_quality)}
                       />
                     </TableCell>
                   )}
                   <TableCell className="text-sm">
                     {getEffectiveRole() !== 'warehouse_staff' ? (
                       <InlineEditableField
-                        value={item.quality}
-                        onSave={(newValue) => handleQualityUpdate(item.quality, String(newValue))}
+                        value={item.normalized_quality}
+                        onSave={(newValue) => handleQualityUpdate(item.normalized_quality, String(newValue))}
                         placeholder="Enter quality"
                       />
                     ) : (
-                      item.quality
+                      item.normalized_quality
                     )}
                   </TableCell>
                   <TableCell className="text-sm">
@@ -602,7 +618,7 @@ const InventoryPivotTable = () => {
                   <Button
                     size="sm"
                     className={`text-xs ${isSampleMode ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-black text-white hover:bg-black/90'}`}
-                    onClick={() => navigateToQualityDetails(item.quality)}
+                    onClick={() => navigateToQualityDetails(item.normalized_quality)}
                   >
                     {isSampleMode ? t('selectForSample') : t('viewQuality')}
                   </Button>
@@ -619,12 +635,12 @@ const InventoryPivotTable = () => {
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete all lots for {item.quality}? {t('actionCannotBeUndone')}
+                              Are you sure you want to delete all lots for {item.normalized_quality}? {t('actionCannotBeUndone')}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteQuality(item.quality)}>
+                            <AlertDialogAction onClick={() => handleDeleteQuality(item.normalized_quality)}>
                               {t('delete')}
                             </AlertDialogAction>
                           </AlertDialogFooter>
