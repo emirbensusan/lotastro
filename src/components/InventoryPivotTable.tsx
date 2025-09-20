@@ -353,7 +353,6 @@ const InventoryPivotTable = () => {
       });
     }
   };
-  };
 
   const handleSelectAll = () => {
     if (selectedItems.size === filteredData.length) {

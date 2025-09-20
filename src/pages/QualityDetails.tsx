@@ -233,7 +233,6 @@ const QualityDetails = () => {
       });
     }
   };
-  };
 
   // Filter colors based on search
   const filteredColors = colors.filter(colorData => {
