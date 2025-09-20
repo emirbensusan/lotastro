@@ -343,22 +343,24 @@ const QualityDetails = () => {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{normalizedQuality}</h1>
-          <p className="text-muted-foreground">
-            {searchTerm || colorFilter ? `${filteredColors.length} of ${qualityColors.length}` : qualityColors.length} {qualityColors.length === 1 ? 'entry' : 'entries'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
-          </p>
+        <div className="flex items-center space-x-4">
+          <div>
+            <h1 className="text-3xl font-bold">{normalizedQuality}</h1>
+            <p className="text-muted-foreground">
+              {searchTerm || colorFilter ? `${filteredColors.length} of ${qualityColors.length}` : qualityColors.length} {qualityColors.length === 1 ? 'entry' : 'entries'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
+            </p>
+          </div>
+          <Button variant="outline" onClick={navigateBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t('backToInventory')}
+          </Button>
         </div>
         <div className="flex items-center space-x-2">
           {!selectionMode && (
             <>
               <Button variant="outline" onClick={handleStartSelection}>
                 <ShoppingCart className="mr-2 h-4 w-4" />
-                Select Multiple Colors
-              </Button>
-              <Button variant="outline" onClick={navigateBack}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t('backToInventory')}
+                {t('selectMultipleColors')}
               </Button>
             </>
           )}
