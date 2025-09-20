@@ -352,9 +352,9 @@ const LotDetails = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => navigate(isSampleMode ? '/inventory?mode=sample' : '/inventory')}>
+          <Button variant="outline" onClick={() => navigate(isSampleMode ? `/inventory/${normalizedQuality}?mode=sample` : `/inventory/${normalizedQuality}`)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToInventory')}
+            {t('backToColorSelection')}
           </Button>
           <div>
             <h1 className="text-3xl font-bold">
