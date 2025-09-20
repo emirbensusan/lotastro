@@ -50,6 +50,20 @@ const LotSelection = () => {
   const color = searchParams.get('color') || '';
   const colors = searchParams.get('colors'); // For multi-color selection
   
+  // State declarations - must come first before functions that reference them
+  const [lots, setLots] = useState<Lot[]>([]);
+  const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedLots, setSelectedLots] = useState<SelectedLot[]>([]);
+  const [currentColorIndex, setCurrentColorIndex] = useState(0);
+  
+  // Filters
+  const [dateFilter, setDateFilter] = useState('all');
+  const [supplierFilter, setSupplierFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
+  
   // Parse colors that may be in format "quality|color" or just "color"
   const parseColorEntry = (colorEntry: string) => {
     console.log('Parsing color entry:', colorEntry);
@@ -83,19 +97,6 @@ const LotSelection = () => {
   const hasConsistentQuality = isBulkSelection ? true : colorArray.every(entry => entry.quality === getCurrentQuality());
   
   console.log('Quality validation:', { currentQuality: getCurrentQuality(), hasConsistentQuality, colorCount: colorArray.length });
-  
-  const [lots, setLots] = useState<Lot[]>([]);
-  const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedLots, setSelectedLots] = useState<SelectedLot[]>([]);
-  const [currentColorIndex, setCurrentColorIndex] = useState(0);
-  
-  // Filters
-  const [dateFilter, setDateFilter] = useState('all');
-  const [supplierFilter, setSupplierFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     console.log('LotSelection useEffect - Debug info:', {
