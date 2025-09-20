@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck } from 'lucide-react';
+import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
@@ -40,6 +40,10 @@ const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<Profile | null>(null);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [userToChangePassword, setUserToChangePassword] = useState<Profile | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const { toast } = useToast();
   const { hasRole, loading: authLoading } = useAuth();
   const { t } = useLanguage();
@@ -120,6 +124,54 @@ const Admin: React.FC = () => {
       toast({
         title: t('error') as string,
         description: t('failedToDeleteUser') as string,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const changePassword = async (profile: Profile) => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: t('error') as string,
+        description: t('passwordsDoNotMatch') as string,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: t('error') as string,
+        description: t('passwordTooShort') as string,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('admin-change-password', {
+        body: { 
+          userId: profile.user_id,
+          newPassword: newPassword
+        }
+      });
+      
+      if (error) throw error;
+
+      toast({
+        title: t('success') as string,
+        description: t('passwordChangedSuccessfully') as string
+      });
+      
+      setPasswordDialogOpen(false);
+      setUserToChangePassword(null);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Error changing password:', error);
+      toast({
+        title: t('error') as string,
+        description: t('failedToChangePassword') as string,
         variant: 'destructive'
       });
     }
@@ -285,18 +337,28 @@ const Admin: React.FC = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>{formatDate(profile.created_at)}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setEditingProfile(profile);
-                            setDialogOpen(true);
-                          }}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
+                     <TableCell>
+                       <div className="flex space-x-2">
+                         <Button 
+                           variant="outline" 
+                           size="sm"
+                           onClick={() => {
+                             setEditingProfile(profile);
+                             setDialogOpen(true);
+                           }}
+                         >
+                           <Edit className="h-3 w-3" />
+                         </Button>
+                         <Button 
+                           variant="outline" 
+                           size="sm"
+                           onClick={() => {
+                             setUserToChangePassword(profile);
+                             setPasswordDialogOpen(true);
+                           }}
+                         >
+                           <Key className="h-3 w-3" />
+                         </Button>
                         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                           <AlertDialogTrigger asChild>
                             <Button 
@@ -478,8 +540,54 @@ const Admin: React.FC = () => {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+
+        {/* Change Password Dialog */}
+        <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {userToChangePassword && (t('changePasswordFor') as string).replace('{name}', userToChangePassword.full_name || userToChangePassword.email)}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="newPassword">{t('newPassword')}</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password (min 6 characters)"
+                />
+              </div>
+              <div>
+                <Label htmlFor="confirmPassword">{t('confirmPassword')}</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => {
+                  setPasswordDialogOpen(false);
+                  setUserToChangePassword(null);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}>
+                  {t('cancel')}
+                </Button>
+                <Button onClick={() => userToChangePassword && changePassword(userToChangePassword)}>
+                  {t('changePassword')}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 };
