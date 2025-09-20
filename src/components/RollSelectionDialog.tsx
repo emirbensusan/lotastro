@@ -31,6 +31,7 @@ interface RollSelectionDialogProps {
   invoiceDate?: string;
   ageDays?: number;
   sampleMode?: boolean;
+  onRollsSelected?: (selectedRollIds: string[], selectedRollsData: Array<{ id: string; meters: number; position: number }>) => void;
 }
 
 export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
@@ -48,6 +49,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
   invoiceDate,
   ageDays,
   sampleMode = false,
+  onRollsSelected,
 }) => {
   const [rolls, setRolls] = useState<Roll[]>([]);
   const [selectedRollIds, setSelectedRollIds] = useState<string[]>([]);
@@ -157,6 +159,20 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
         meters: sampleMode ? sampleMeters : roll.meters, 
         position: roll.position 
       }));
+
+    // If onRollsSelected callback is provided, use it instead of adding to cart
+    if (onRollsSelected) {
+      onRollsSelected(selectedRollIds, selectedRollsData);
+      toast({
+        title: String(t('success')),
+        description: sampleMode 
+          ? `Sample ${sampleMeters}m selected from ${lotNumber}`
+          : `${selectedRollIds.length} ${String(t('rolls'))} selected from ${lotNumber}`,
+      });
+      setSelectedRollIds([]);
+      setSampleMeters(0);
+      return;
+    }
 
     addToCart({
       id: lotId,

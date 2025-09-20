@@ -13,6 +13,7 @@ import { ArrowLeft, Package, Filter, ShoppingCart } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { format } from 'date-fns';
+import { RollSelectionDialog } from '@/components/RollSelectionDialog';
 
 interface Lot {
   id: string;
@@ -36,7 +37,8 @@ interface SelectedLot {
   lotNumber: string;
   meters: number;
   availableRolls: number;
-  rollCount: number;
+  selectedRollIds: string[];
+  selectedRollsData: Array<{ id: string; meters: number; position: number }>;
   lineType: 'sample' | 'standard';
 }
 
@@ -63,6 +65,9 @@ const LotSelection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
+  
+  // Roll selection dialog state
+  const [rollSelectionDialogLotId, setRollSelectionDialogLotId] = useState<string | null>(null);
   
   // Parse colors that may be in format "quality|color" or just "color"
   const parseColorEntry = (colorEntry: string) => {
@@ -236,7 +241,8 @@ const LotSelection = () => {
           lotNumber: lot.lot_number,
           meters: lot.meters,
           availableRolls: lot.roll_count,
-          rollCount: 1,
+          selectedRollIds: [],
+          selectedRollsData: [],
           lineType: 'standard' as const
         };
         const updated = [...prev, newLot];
@@ -246,9 +252,9 @@ const LotSelection = () => {
     }
   };
 
-  const updateRollCount = (lotId: string, rollCount: number) => {
+  const updateSelectedRolls = (lotId: string, selectedRollIds: string[], selectedRollsData: Array<{ id: string; meters: number; position: number }>) => {
     setSelectedLots(prev => prev.map(sl => 
-      sl.lotId === lotId ? { ...sl, rollCount } : sl
+      sl.lotId === lotId ? { ...sl, selectedRollIds, selectedRollsData } : sl
     ));
   };
 
@@ -273,31 +279,31 @@ const LotSelection = () => {
 
     console.log('Processing selected lots for cart...');
     try {
-      // For each selected lot, fetch roll data and add to cart
+      // For each selected lot, add to cart using already selected rolls
       for (const selectedLot of selectedLots) {
-        const { data: rollsData, error } = await supabase
-          .from('rolls')
-          .select('id, meters, position')
-          .eq('lot_id', selectedLot.lotId)
-          .order('position');
-
-        if (error) throw error;
+        if (selectedLot.selectedRollIds.length === 0) {
+          toast({
+            title: t('validationError') as string,
+            description: `Please select rolls for ${selectedLot.lotNumber}`,
+            variant: "destructive",
+          });
+          return;
+        }
 
         const lot = lots.find(l => l.id === selectedLot.lotId);
         if (!lot) continue;
 
-        // Take only the required number of rolls
-        const selectedRolls = rollsData?.slice(0, selectedLot.rollCount) || [];
+        const totalSelectedMeters = selectedLot.selectedRollsData.reduce((sum, roll) => sum + roll.meters, 0);
         
         const cartLot = {
           id: selectedLot.lotId,
           lot_number: selectedLot.lotNumber,
           quality: selectedLot.quality,
           color: colorArray[currentColorIndex].color,
-          meters: selectedLot.meters,
-          roll_count: selectedLot.rollCount,
-          selectedRollIds: selectedRolls.map(r => r.id),
-          selectedRollsData: selectedRolls,
+          meters: totalSelectedMeters,
+          roll_count: selectedLot.selectedRollIds.length,
+          selectedRollIds: selectedLot.selectedRollIds,
+          selectedRollsData: selectedLot.selectedRollsData,
           entry_date: lot.entry_date,
           supplier_name: lot.suppliers?.name,
           lineType: selectedLot.lineType,
@@ -472,7 +478,7 @@ const LotSelection = () => {
                 <TableHead>{t('meters')}</TableHead>
                 <TableHead>{t('rollCount')}</TableHead>
                 <TableHead>{t('entryDate')}</TableHead>
-                <TableHead>{t('rollsToOrder')}</TableHead>
+                <TableHead>{t('selectRolls')}</TableHead>
                 <TableHead>{t('type')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -501,14 +507,26 @@ const LotSelection = () => {
                     <TableCell>{format(new Date(lot.entry_date), 'MMM dd, yyyy')}</TableCell>
                     <TableCell>
                       {isSelected && (
-                        <Input
-                          type="number"
-                          min="1"
-                          max={lot.roll_count}
-                          value={selectedLot?.rollCount || 1}
-                          onChange={(e) => updateRollCount(lot.id, parseInt(e.target.value) || 1)}
-                          className="w-20"
-                        />
+                        <div className="space-y-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRollSelectionDialogLotId(lot.id);
+                            }}
+                          >
+                            {selectedLot?.selectedRollIds.length 
+                              ? `${selectedLot.selectedRollIds.length} rolls selected`
+                              : 'Select Rolls'
+                            }
+                          </Button>
+                          {selectedLot?.selectedRollsData.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              {selectedLot.selectedRollsData.reduce((sum, roll) => sum + roll.meters, 0).toFixed(2)}m total
+                            </div>
+                          )}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell>
@@ -554,7 +572,11 @@ const LotSelection = () => {
                 return (
                   <div key={selectedLot.lotId} className="flex items-center justify-between p-2 bg-muted rounded">
                     <span className="font-mono">{selectedLot.lotNumber}</span>
-                    <span>{selectedLot.rollCount} rolls ({selectedLot.lineType})</span>
+                    <span>
+                      {selectedLot.selectedRollIds.length} rolls 
+                      ({selectedLot.selectedRollsData.reduce((sum, roll) => sum + roll.meters, 0).toFixed(2)}m) 
+                      ({selectedLot.lineType})
+                    </span>
                   </div>
                 );
               })}
@@ -574,6 +596,33 @@ const LotSelection = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Roll Selection Dialog */}
+      {rollSelectionDialogLotId && (() => {
+        const lot = lots.find(l => l.id === rollSelectionDialogLotId);
+        const selectedLot = selectedLots.find(sl => sl.lotId === rollSelectionDialogLotId);
+        if (!lot) return null;
+        
+        return (
+          <RollSelectionDialog
+            isOpen={true}
+            onClose={() => setRollSelectionDialogLotId(null)}
+            lotId={lot.id}
+            lotNumber={lot.lot_number}
+            quality={lot.quality}
+            color={lot.color}
+            totalMeters={lot.meters}
+            totalRolls={lot.roll_count}
+            entryDate={lot.entry_date}
+            supplierName={lot.suppliers?.name}
+            sampleMode={selectedLot?.lineType === 'sample'}
+            onRollsSelected={(selectedRollIds, selectedRollsData) => {
+              updateSelectedRolls(lot.id, selectedRollIds, selectedRollsData);
+              setRollSelectionDialogLotId(null);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 };
