@@ -468,8 +468,8 @@ const QualityDetails = () => {
                 />
                   </TableHead>
                 )}
-                <TableHead>{t('quality')}</TableHead>
-                <TableHead>
+                <TableHead className="whitespace-nowrap">{t('quality')}</TableHead>
+                <TableHead className="whitespace-nowrap">
                   <div className="flex items-center space-x-2">
                     <span>{t('color')}</span>
                     <Popover>
