@@ -586,7 +586,7 @@ const translations = {
     noInventoryItems: 'Filtrelerinizle eşleşen envanter öğesi bulunamadı.',
     rolls: 'Top Sayısı',
     meters: 'metre',
-    lots: 'LOT',
+    lots: 'Farklı Lot Sayısı',
     age: 'Yaş',
     status: 'Durum',
     entryDate: 'Giriş Tarihi',
