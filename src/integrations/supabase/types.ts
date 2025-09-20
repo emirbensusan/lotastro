@@ -453,6 +453,7 @@ export type Database = {
         Returns: {
           color: string
           lot_count: number
+          normalized_quality: string
           quality: string
           total_meters: number
           total_rolls: number
@@ -476,6 +477,10 @@ export type Database = {
           user_id: string
         }
         Returns: boolean
+      }
+      normalize_quality: {
+        Args: { quality_input: string }
+        Returns: string
       }
     }
     Enums: {
