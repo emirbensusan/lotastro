@@ -36,6 +36,7 @@ interface Order {
     color: string;
     roll_count: number;
     line_type: 'sample' | 'standard';
+    selected_roll_meters: string | null;
     lot: {
       lot_number: string;
       meters: number;
@@ -127,6 +128,7 @@ const Orders = () => {
             color,
             roll_count,
             line_type,
+            selected_roll_meters,
             lot:lots (
               lot_number,
               meters
@@ -214,6 +216,7 @@ const Orders = () => {
             color,
             roll_count,
             line_type,
+            selected_roll_meters,
             lot:lots (
               lot_number,
               meters
@@ -635,6 +638,7 @@ const Orders = () => {
                       <TableHead>Color</TableHead>
                       <TableHead>Lot Number</TableHead>
                       <TableHead>Rolls</TableHead>
+                      <TableHead>Meters</TableHead>
                       <TableHead>Type</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -645,6 +649,12 @@ const Orders = () => {
                         <TableCell>{lot.color}</TableCell>
                         <TableCell>{lot.lot.lot_number}</TableCell>
                         <TableCell>{lot.roll_count}</TableCell>
+                        <TableCell>
+                          {lot.selected_roll_meters ? 
+                            lot.selected_roll_meters.split(',').reduce((sum, meters) => sum + parseFloat(meters.trim()), 0).toFixed(1) + 'm' 
+                            : '0m'
+                          }
+                        </TableCell>
                         <TableCell>
                           <Badge variant={lot.line_type === 'sample' ? 'secondary' : 'default'}>
                             {lot.line_type}
