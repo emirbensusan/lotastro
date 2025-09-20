@@ -8,10 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
-import { ArrowLeft, Package, ShoppingCart, X, Filter } from 'lucide-react';
+import { ArrowLeft, Package, ShoppingCart, X, Filter, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
@@ -51,6 +52,7 @@ const QualityDetails = () => {
   const [selectedColors, setSelectedColors] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [colorFilter, setColorFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [qualityVariants, setQualityVariants] = useState<QualityVariant[]>([]);
   const [qualityTotals, setQualityTotals] = useState({
     total_meters: 0,
@@ -287,9 +289,15 @@ const QualityDetails = () => {
     }
   };
 
-  // Filter colors based on search
+  // Filter colors based on search (searches both color names and original quality codes)
   const filteredColors = colors.filter(colorData => {
-    return !colorFilter || colorData.color.toLowerCase().includes(colorFilter.toLowerCase());
+    const colorMatch = colorData.color.toLowerCase().includes(searchTerm.toLowerCase());
+    const qualityMatch = qualityVariants.some(variant => 
+      variant.original_quality.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const filterMatch = !colorFilter || colorData.color.toLowerCase().includes(colorFilter.toLowerCase());
+    
+    return (searchTerm === '' || colorMatch || qualityMatch) && filterMatch;
   });
 
   if (loading) {
@@ -331,13 +339,20 @@ const QualityDetails = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">{normalizedQuality}</h1>
-          {qualityVariants.length > 1 && (
-            <p className="text-sm text-muted-foreground mb-1">
-              Includes variants: {qualityVariants.map(v => `${v.original_quality} (${v.count} lots)`).join(', ')}
-            </p>
+          {qualityVariants.length > 0 && (
+            <div className="mt-2 mb-1">
+              <p className="text-sm font-medium text-muted-foreground mb-1">Original Quality Codes:</p>
+              <div className="flex flex-wrap gap-2">
+                {qualityVariants.map((variant, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {variant.original_quality} ({variant.count} lots)
+                  </Badge>
+                ))}
+              </div>
+            </div>
           )}
           <p className="text-muted-foreground">
-            {colorFilter ? `${filteredColors.length} of ${colors.length}` : colors.length} {colors.length === 1 ? 'color' : 'colors'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
+            {searchTerm || colorFilter ? `${filteredColors.length} of ${colors.length}` : colors.length} {colors.length === 1 ? 'color' : 'colors'} • {qualityTotals.total_lots} {t('lots')} • {qualityTotals.total_meters.toLocaleString()} {t('meters')} • {qualityTotals.total_rolls.toLocaleString()} {t('rolls')}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -432,7 +447,20 @@ const QualityDetails = () => {
       {/* Colors Table */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('availableColors')}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>{t('availableColors')}</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search colors or quality codes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 w-64"
+                />
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -486,7 +514,31 @@ const QualityDetails = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredColors.map((colorData) => (
+              {filteredColors.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={selectionMode ? 6 : 5} className="text-center py-8">
+                    <div className="flex flex-col items-center gap-2">
+                      <Package className="w-8 h-8 text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        {searchTerm || colorFilter ? 'No colors found matching your search' : 'No colors available for this quality'}
+                      </p>
+                      {(searchTerm || colorFilter) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSearchTerm('');
+                            setColorFilter('');
+                          }}
+                        >
+                          Clear filters
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredColors.map((colorData) => (
                 <TableRow 
                   key={colorData.color} 
                   className={`hover:bg-muted/50 ${selectionMode ? 'cursor-pointer' : ''} ${
@@ -544,20 +596,10 @@ const QualityDetails = () => {
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+                 ))
+              )}
             </TableBody>
           </Table>
-          
-          {filteredColors.length === 0 && colors.length > 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No colors match the current filter
-            </div>
-          )}
-          {colors.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No colors available for this quality
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
