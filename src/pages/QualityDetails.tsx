@@ -68,74 +68,121 @@ const QualityDetails = () => {
     try {
       setLoading(true);
       
-      // Get all lots from the database
-      const { data: allLots, error } = await supabase
+      // Use a database query to filter lots efficiently
+      const { data: matchingLots, error } = await supabase
         .from('lots')
         .select('quality, color, meters, roll_count')
-        .eq('status', 'in_stock');
+        .eq('status', 'in_stock')
+        .filter('quality', 'eq', normalizedQuality, { 
+          filterFn: (value) => `normalize_quality("${value}")` 
+        });
 
-      if (error) throw error;
+      if (error) {
+        // Fallback: Use RPC query for filtering
+        const { data: rpcResults, error: rpcError } = await supabase
+          .rpc('get_lots_by_normalized_quality', { 
+            target_normalized_quality: normalizedQuality 
+          });
 
-      // Filter lots that normalize to our target quality
-      const matchingLots: Array<{quality: string, color: string, meters: number, roll_count: number}> = [];
-      const qualityVariantMap = new Map<string, number>();
+        if (rpcError) {
+          // Final fallback: manual filtering (less efficient but works)
+          const { data: allLots, error: fallbackError } = await supabase
+            .from('lots')
+            .select('quality, color, meters, roll_count')
+            .eq('status', 'in_stock');
 
-      for (const lot of allLots) {
-        const { data: normalized, error: normalizeError } = await supabase
-          .rpc('normalize_quality', { quality_input: lot.quality });
+          if (fallbackError) throw fallbackError;
 
-        if (normalizeError) {
-          console.error('Error normalizing quality:', normalizeError);
-          continue;
-        }
+          const filteredLots = [];
+          const qualityVariantMap = new Map<string, number>();
 
-        if (normalized === normalizedQuality) {
-          matchingLots.push(lot);
-          
-          // Track quality variants
-          const count = qualityVariantMap.get(lot.quality) || 0;
-          qualityVariantMap.set(lot.quality, count + 1);
+          for (const lot of allLots) {
+            const { data: normalized, error: normalizeError } = await supabase
+              .rpc('normalize_quality', { quality_input: lot.quality });
+
+            if (normalizeError) continue;
+
+            if (normalized === normalizedQuality) {
+              filteredLots.push(lot);
+              const count = qualityVariantMap.get(lot.quality) || 0;
+              qualityVariantMap.set(lot.quality, count + 1);
+            }
+          }
+
+          // Set quality variants
+          const variants = Array.from(qualityVariantMap.entries()).map(([quality, count]) => ({
+            original_quality: quality,
+            count
+          }));
+          setQualityVariants(variants);
+
+          // Process the filtered lots
+          processLotData(filteredLots);
+          return;
+        } else {
+          processLotData(rpcResults);
+          return;
         }
       }
 
-      // Convert quality variants to array
+      // Track quality variants from the matching lots
+      const qualityVariantMap = new Map<string, number>();
+      matchingLots.forEach(lot => {
+        const count = qualityVariantMap.get(lot.quality) || 0;
+        qualityVariantMap.set(lot.quality, count + 1);
+      });
+
       const variants = Array.from(qualityVariantMap.entries()).map(([quality, count]) => ({
         original_quality: quality,
         count
       }));
       setQualityVariants(variants);
 
-      // Group by color
-      const colorMap = new Map<string, { meters: number; rolls: number; count: number }>();
-
-      matchingLots.forEach(lot => {
-        if (!colorMap.has(lot.color)) {
-          colorMap.set(lot.color, { meters: 0, rolls: 0, count: 0 });
-        }
-        
-        const colorData = colorMap.get(lot.color)!;
-        colorData.meters += Number(lot.meters);
-        colorData.rolls += lot.roll_count;
-        colorData.count += 1;
+      processLotData(matchingLots);
+    } catch (error) {
+      console.error('Error fetching color data:', error);
+      toast({
+        title: String(t('error')),
+        description: 'Failed to load color data',
+        variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Convert to array and sort by meters (descending)
-      const colorsArray = Array.from(colorMap.entries()).map(([color, data]) => ({
-        color,
-        total_meters: data.meters,
-        total_rolls: data.rolls,
-        lot_count: data.count,
-      })).sort((a, b) => b.total_meters - a.total_meters);
+  const processLotData = (lots: Array<{quality: string, color: string, meters: number, roll_count: number}>) => {
+    // Group by color
+    const colorMap = new Map<string, { meters: number; rolls: number; count: number }>();
 
-      // Calculate totals
-      const totals = {
-        total_meters: colorsArray.reduce((sum, color) => sum + color.total_meters, 0),
-        total_rolls: colorsArray.reduce((sum, color) => sum + color.total_rolls, 0),
-        total_lots: colorsArray.reduce((sum, color) => sum + color.lot_count, 0),
-      };
+    lots.forEach(lot => {
+      if (!colorMap.has(lot.color)) {
+        colorMap.set(lot.color, { meters: 0, rolls: 0, count: 0 });
+      }
+      
+      const colorData = colorMap.get(lot.color)!;
+      colorData.meters += Number(lot.meters);
+      colorData.rolls += lot.roll_count;
+      colorData.count += 1;
+    });
 
-      setColors(colorsArray);
-      setQualityTotals(totals);
+    // Convert to array and sort by meters (descending)
+    const colorsArray = Array.from(colorMap.entries()).map(([color, data]) => ({
+      color,
+      total_meters: data.meters,
+      total_rolls: data.rolls,
+      lot_count: data.count,
+    })).sort((a, b) => b.total_meters - a.total_meters);
+
+    // Calculate totals
+    const totals = {
+      total_meters: colorsArray.reduce((sum, color) => sum + color.total_meters, 0),
+      total_rolls: colorsArray.reduce((sum, color) => sum + color.total_rolls, 0),
+      total_lots: colorsArray.reduce((sum, color) => sum + color.lot_count, 0),
+    };
+
+    setColors(colorsArray);
+    setQualityTotals(totals);
     } catch (error) {
       console.error('Error fetching color data:', error);
       toast({
