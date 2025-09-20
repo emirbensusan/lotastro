@@ -584,7 +584,7 @@ const translations = {
     allStatus: 'Tüm Durumlar',
     exportExcel: 'Excel Dışa Aktar',
     noInventoryItems: 'Filtrelerinizle eşleşen envanter öğesi bulunamadı.',
-    rolls: 'top sayısı',
+    rolls: 'Top Sayısı',
     meters: 'metre',
     lots: 'LOT',
     age: 'Yaş',
