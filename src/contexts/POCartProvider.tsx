@@ -105,7 +105,6 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
       }
       return [...prev, lot];
     });
-    setIsCartOpen(true);
   };
 
   const removeFromCart = (lotId: string) => {
