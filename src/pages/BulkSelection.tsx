@@ -47,7 +47,7 @@ const BulkSelection = () => {
       return;
     }
     fetchQualityColorData();
-  }, [selectedQualities]);
+  }, [qualitiesParam]);
 
   const fetchQualityColorData = async () => {
     try {
