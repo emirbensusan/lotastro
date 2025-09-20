@@ -77,11 +77,28 @@ serve(async (req) => {
 
     console.log(`Admin ${user.email} attempting to delete user ${userId}`);
 
+    // Log security event for audit trail
+    await supabaseAdmin.rpc('log_security_event', {
+      event_type: 'USER_DELETE_ATTEMPT',
+      user_id: user.id,
+      target_user_id: userId,
+      details: { admin_email: user.email, timestamp: new Date().toISOString() }
+    });
+
     // Delete user using service role
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
     
     if (deleteError) {
       console.error('Failed to delete user:', deleteError);
+      
+      // Log failed deletion attempt
+      await supabaseAdmin.rpc('log_security_event', {
+        event_type: 'USER_DELETE_FAILED',
+        user_id: user.id,
+        target_user_id: userId,
+        details: { error: deleteError.message, admin_email: user.email }
+      });
+      
       return new Response(
         JSON.stringify({ error: 'Failed to delete user' }),
         { status: 500, headers: corsHeaders }
@@ -89,6 +106,14 @@ serve(async (req) => {
     }
 
     console.log(`User ${userId} successfully deleted by admin ${user.email}`);
+
+    // Log successful deletion
+    await supabaseAdmin.rpc('log_security_event', {
+      event_type: 'USER_DELETE_SUCCESS',
+      user_id: user.id,
+      target_user_id: userId,
+      details: { admin_email: user.email, timestamp: new Date().toISOString() }
+    });
 
     return new Response(
       JSON.stringify({ success: true }),

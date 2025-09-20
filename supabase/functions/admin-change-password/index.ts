@@ -95,6 +95,14 @@ serve(async (req) => {
       )
     }
 
+    // Log security event for audit trail
+    await supabaseAdmin.rpc('log_security_event', {
+      event_type: 'PASSWORD_CHANGE_ATTEMPT',
+      user_id: currentUser.user.id,
+      target_user_id: userId,
+      details: { admin_id: currentUser.user.id, timestamp: new Date().toISOString() }
+    });
+
     // Update user password using admin client
     const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
       userId,
@@ -103,6 +111,14 @@ serve(async (req) => {
 
     if (error) {
       console.error('Error updating password:', error)
+      
+      // Log failed password change
+      await supabaseAdmin.rpc('log_security_event', {
+        event_type: 'PASSWORD_CHANGE_FAILED',
+        user_id: currentUser.user.id,
+        target_user_id: userId,
+        details: { error: error.message, admin_id: currentUser.user.id }
+      });
       
       // Handle specific error types
       if (error.message && error.message.includes('weak')) {
@@ -135,6 +151,14 @@ serve(async (req) => {
     }
 
     console.log(`Password changed for user ${userId} by admin ${currentUser.user.id}`)
+
+    // Log successful password change
+    await supabaseAdmin.rpc('log_security_event', {
+      event_type: 'PASSWORD_CHANGE_SUCCESS',
+      user_id: currentUser.user.id,
+      target_user_id: userId,
+      details: { admin_id: currentUser.user.id, timestamp: new Date().toISOString() }
+    });
 
     return new Response(
       JSON.stringify({ 

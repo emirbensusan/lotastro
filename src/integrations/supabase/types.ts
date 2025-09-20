@@ -487,6 +487,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      log_security_event: {
+        Args: {
+          details?: Json
+          event_type: string
+          target_user_id?: string
+          user_id: string
+        }
+        Returns: undefined
+      }
       normalize_quality: {
         Args: { quality_input: string }
         Returns: string
