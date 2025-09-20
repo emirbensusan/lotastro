@@ -509,7 +509,7 @@ const LotDetails = () => {
                         lot.lot_number
                       )}
                     </TableCell>
-                    <TableCell className="text-sm font-mono">
+                    <TableCell className="text-sm">
                       {lot.quality}
                     </TableCell>
                     <TableCell className="text-right">{lot.meters.toLocaleString()}</TableCell>
