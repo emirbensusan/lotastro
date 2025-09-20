@@ -56,7 +56,6 @@ const LotSelection = () => {
   const [lots, setLots] = useState<Lot[]>([]);
   const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedLots, setSelectedLots] = useState<SelectedLot[]>([]);
   const [currentColorIndex, setCurrentColorIndex] = useState(0);
   
   // Filters
@@ -156,7 +155,6 @@ const LotSelection = () => {
 
       if (error) throw error;
       setLots(data || []);
-      setSelectedLots([]); // Clear selection when switching colors
     } catch (error) {
       console.error('Error fetching lots:', error);
       toast({
@@ -221,120 +219,14 @@ const LotSelection = () => {
     setFilteredLots(filtered);
   };
 
-  const toggleLotSelection = (lot: Lot) => {
-    console.log('Toggling lot selection:', lot.lot_number);
-    const isSelected = selectedLots.some(sl => sl.lotId === lot.id);
-    console.log('Currently selected:', isSelected);
-    
-    if (isSelected) {
-      setSelectedLots(prev => {
-        const updated = prev.filter(sl => sl.lotId !== lot.id);
-        console.log('After removal, selected lots:', updated.length);
-        return updated;
-      });
+  const handleRollSelectionComplete = () => {
+    // Move to next color if available
+    if (currentColorIndex < colorArray.length - 1) {
+      setCurrentColorIndex(currentColorIndex + 1);
+      setLoading(true);
     } else {
-      setSelectedLots(prev => {
-        const newLot = {
-          lotId: lot.id,
-          quality: lot.quality,
-          color: lot.color,
-          lotNumber: lot.lot_number,
-          meters: lot.meters,
-          availableRolls: lot.roll_count,
-          selectedRollIds: [],
-          selectedRollsData: [],
-          lineType: 'standard' as const
-        };
-        const updated = [...prev, newLot];
-        console.log('After addition, selected lots:', updated.length);
-        return updated;
-      });
-    }
-  };
-
-  const updateSelectedRolls = (lotId: string, selectedRollIds: string[], selectedRollsData: Array<{ id: string; meters: number; position: number }>) => {
-    setSelectedLots(prev => prev.map(sl => 
-      sl.lotId === lotId ? { ...sl, selectedRollIds, selectedRollsData } : sl
-    ));
-  };
-
-  const updateLineType = (lotId: string, lineType: 'sample' | 'standard') => {
-    setSelectedLots(prev => prev.map(sl => 
-      sl.lotId === lotId ? { ...sl, lineType } : sl
-    ));
-  };
-
-  const addSelectedToCart = async () => {
-    console.log('Add to cart clicked, selected lots:', selectedLots.length);
-    
-    if (selectedLots.length === 0) {
-      console.log('No lots selected, showing error');
-      toast({
-        title: t('validationError') as string,
-        description: "Please select at least one lot",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    console.log('Processing selected lots for cart...');
-    try {
-      // For each selected lot, add to cart using already selected rolls
-      for (const selectedLot of selectedLots) {
-        if (selectedLot.selectedRollIds.length === 0) {
-          toast({
-            title: t('validationError') as string,
-            description: `Please select rolls for ${selectedLot.lotNumber}`,
-            variant: "destructive",
-          });
-          return;
-        }
-
-        const lot = lots.find(l => l.id === selectedLot.lotId);
-        if (!lot) continue;
-
-        const totalSelectedMeters = selectedLot.selectedRollsData.reduce((sum, roll) => sum + roll.meters, 0);
-        
-        const cartLot = {
-          id: selectedLot.lotId,
-          lot_number: selectedLot.lotNumber,
-          quality: selectedLot.quality,
-          color: colorArray[currentColorIndex].color,
-          meters: totalSelectedMeters,
-          roll_count: selectedLot.selectedRollIds.length,
-          selectedRollIds: selectedLot.selectedRollIds,
-          selectedRollsData: selectedLot.selectedRollsData,
-          entry_date: lot.entry_date,
-          supplier_name: lot.suppliers?.name,
-          lineType: selectedLot.lineType,
-        };
-
-        addToCart(cartLot);
-      }
-
-      toast({
-        title: t('success') as string,
-        description: `Added ${selectedLots.length} lots to cart`,
-        variant: "default",
-      });
-
-      setSelectedLots([]);
-      
-      // Move to next color if available
-      if (currentColorIndex < colorArray.length - 1) {
-        setCurrentColorIndex(currentColorIndex + 1);
-        setLoading(true);
-      } else {
-        // All colors processed, show cart
-        setIsCartOpen(true);
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      toast({
-        title: t('error') as string,
-        description: "Failed to add lots to cart",
-        variant: "destructive",
-      });
+      // All colors processed, show cart
+      setIsCartOpen(true);
     }
   };
 
@@ -391,9 +283,6 @@ const LotSelection = () => {
         </div>
         <div className="flex items-center space-x-4">
           <Package className="h-8 w-8 text-primary" />
-          <Badge variant="secondary">
-            {selectedLots.length} {t('selected')}
-          </Badge>
         </div>
       </div>
 
@@ -484,21 +373,10 @@ const LotSelection = () => {
             </TableHeader>
             <TableBody>
               {filteredLots.map((lot) => {
-                const isSelected = selectedLots.some(sl => sl.lotId === lot.id);
-                const selectedLot = selectedLots.find(sl => sl.lotId === lot.id);
-                
                 return (
-                  <TableRow 
-                    key={lot.id} 
-                    className={isSelected ? "bg-primary/5" : ""}
-                  >
+                  <TableRow key={lot.id}>
                     <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleLotSelection(lot)}
-                        className="rounded"
-                      />
+                      -
                     </TableCell>
                     <TableCell className="font-mono">{lot.lot_number}</TableCell>
                     <TableCell>{lot.suppliers?.name || 'Unknown'}</TableCell>
@@ -506,44 +384,19 @@ const LotSelection = () => {
                     <TableCell>{lot.roll_count}</TableCell>
                     <TableCell>{format(new Date(lot.entry_date), 'MMM dd, yyyy')}</TableCell>
                     <TableCell>
-                      {isSelected && (
-                        <div className="space-y-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRollSelectionDialogLotId(lot.id);
-                            }}
-                          >
-                            {selectedLot?.selectedRollIds.length 
-                              ? `${selectedLot.selectedRollIds.length} rolls selected`
-                              : 'Select Rolls'
-                            }
-                          </Button>
-                          {selectedLot?.selectedRollsData.length > 0 && (
-                            <div className="text-xs text-muted-foreground">
-                              {selectedLot.selectedRollsData.reduce((sum, roll) => sum + roll.meters, 0).toFixed(2)}m total
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRollSelectionDialogLotId(lot.id);
+                        }}
+                      >
+                        {t('selectRolls')}
+                      </Button>
                     </TableCell>
                     <TableCell>
-                      {isSelected && (
-                        <Select
-                          value={selectedLot?.lineType || 'standard'}
-                          onValueChange={(value: 'sample' | 'standard') => updateLineType(lot.id, value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="standard">{t('standard')}</SelectItem>
-                            <SelectItem value="sample">{t('sample')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
+                      -
                     </TableCell>
                   </TableRow>
                 );
@@ -559,67 +412,26 @@ const LotSelection = () => {
         </CardContent>
       </Card>
 
-      {/* Selected Lots Summary */}
-      {selectedLots.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('selectedLotsSummary')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 mb-4">
-              {selectedLots.map((selectedLot) => {
-                const lot = lots.find(l => l.id === selectedLot.lotId);
-                return (
-                  <div key={selectedLot.lotId} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <span className="font-mono">{selectedLot.lotNumber}</span>
-                    <span>
-                      {selectedLot.selectedRollIds.length} rolls 
-                      ({selectedLot.selectedRollsData.reduce((sum, roll) => sum + roll.meters, 0).toFixed(2)}m) 
-                      ({selectedLot.lineType})
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setSelectedLots([])}>
-                {t('clearSelection')}
-              </Button>
-              <Button variant="outline" onClick={continueShopping}>
-                {t('continueShopping')}
-              </Button>
-              <Button onClick={addSelectedToCart}>
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                {t('addToCart')} ({selectedLots.length} {t('lots')})
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Roll Selection Dialog */}
       {rollSelectionDialogLotId && (() => {
         const lot = lots.find(l => l.id === rollSelectionDialogLotId);
-        const selectedLot = selectedLots.find(sl => sl.lotId === rollSelectionDialogLotId);
         if (!lot) return null;
         
         return (
           <RollSelectionDialog
             isOpen={true}
-            onClose={() => setRollSelectionDialogLotId(null)}
+            onClose={() => {
+              setRollSelectionDialogLotId(null);
+              handleRollSelectionComplete();
+            }}
             lotId={lot.id}
             lotNumber={lot.lot_number}
             quality={lot.quality}
-            color={lot.color}
+            color={colorArray[currentColorIndex].color}
             totalMeters={lot.meters}
             totalRolls={lot.roll_count}
             entryDate={lot.entry_date}
             supplierName={lot.suppliers?.name}
-            sampleMode={selectedLot?.lineType === 'sample'}
-            onRollsSelected={(selectedRollIds, selectedRollsData) => {
-              updateSelectedRolls(lot.id, selectedRollIds, selectedRollsData);
-              setRollSelectionDialogLotId(null);
-            }}
           />
         );
       })()}
