@@ -152,13 +152,12 @@ const BulkSelection = () => {
     navigate(`/lot-selection?colors=${colorParams}`);
   };
 
-  // Filter and sort data for display
+  // Filter and sort data for display (exact same logic as inventory page)
   const filteredData = allColorData.filter(item => {
     const matchesSearch = item.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.quality.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesQuality = !qualityFilter || 
-                          item.quality.toLowerCase().includes(qualityFilter.toLowerCase()) ||
-                          item.normalized_quality.toLowerCase().includes(qualityFilter.toLowerCase());
+                         item.quality.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.normalized_quality.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesQuality = !qualityFilter || item.normalized_quality.toLowerCase().includes(qualityFilter.toLowerCase());
     return matchesSearch && matchesQuality;
   }).sort((a, b) => {
     // Sort by quality first, then by color
@@ -247,12 +246,12 @@ const BulkSelection = () => {
         </Card>
       </div>
 
-      {/* Search and Filter Controls */}
+      {/* Search and Filter Controls - Exact same as inventory page */}
       <div className="flex items-center justify-between space-x-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
-            placeholder="Search colors or qualities..."
+            placeholder="Search qualities and colors..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 pr-10"
@@ -281,7 +280,7 @@ const BulkSelection = () => {
             <div className="space-y-2">
               <label className="text-sm font-medium">Filter by Quality</label>
               <Textarea
-                placeholder="Enter quality to filter (e.g., P200, A800)..."
+                placeholder="Enter qualities to filter (e.g., P200, A800)..."
                 value={qualityFilter}
                 onChange={(e) => setQualityFilter(e.target.value)}
                 className="min-h-[60px]"
