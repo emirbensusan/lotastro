@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface CartLot {
   id: string;
@@ -45,9 +45,45 @@ interface POCartProviderProps {
   children: ReactNode;
 }
 
+const CART_STORAGE_KEY = 'po_cart_items';
+const CART_OPEN_STORAGE_KEY = 'po_cart_open';
+
+// Helper functions for localStorage
+const saveToStorage = (key: string, value: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error('Failed to save to localStorage:', error);
+  }
+};
+
+const loadFromStorage = (key: string, defaultValue: any) => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.error('Failed to load from localStorage:', error);
+    return defaultValue;
+  }
+};
+
 export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
-  const [cartItems, setCartItems] = useState<CartLot[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartItems, setCartItems] = useState<CartLot[]>(() => 
+    loadFromStorage(CART_STORAGE_KEY, [])
+  );
+  const [isCartOpen, setIsCartOpen] = useState(() => 
+    loadFromStorage(CART_OPEN_STORAGE_KEY, false)
+  );
+
+  // Save cart items to localStorage whenever they change
+  useEffect(() => {
+    saveToStorage(CART_STORAGE_KEY, cartItems);
+  }, [cartItems]);
+
+  // Save cart open state to localStorage whenever it changes
+  useEffect(() => {
+    saveToStorage(CART_OPEN_STORAGE_KEY, isCartOpen);
+  }, [isCartOpen]);
 
   const addToCart = (lot: CartLot) => {
     setCartItems(prev => {
@@ -93,6 +129,9 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
   const clearCart = () => {
     setCartItems([]);
     setIsCartOpen(false);
+    // Clear localStorage as well
+    saveToStorage(CART_STORAGE_KEY, []);
+    saveToStorage(CART_OPEN_STORAGE_KEY, false);
   };
 
   const getTotalMeters = () => {
