@@ -185,20 +185,44 @@ const LotDetails = () => {
     if (oldLotNumber === newLotNumber) return;
 
     try {
-      const { error } = await supabase
-        .from('lots')
-        .update({ lot_number: newLotNumber })
-        .eq('id', lotId);
-
-      if (error) throw error;
-
-      // Refresh the data
-      await fetchLotDetails();
+      const effectiveRole = getEffectiveRole();
       
-      toast({
-        title: 'Lot Number Updated',
-        description: `Updated lot number from "${oldLotNumber}" to "${newLotNumber}"`,
-      });
+      // Senior managers and admins can apply changes directly
+      if (effectiveRole === 'senior_manager' || effectiveRole === 'admin') {
+        const { error } = await supabase
+          .from('lots')
+          .update({ lot_number: newLotNumber })
+          .eq('id', lotId);
+
+        if (error) throw error;
+
+        // Refresh the data
+        await fetchLotDetails();
+        
+        toast({
+          title: 'Lot Number Updated',
+          description: `Updated lot number from "${oldLotNumber}" to "${newLotNumber}"`,
+        });
+      } else {
+        // Other users submit to approval queue
+        const { error } = await supabase
+          .from('field_edit_queue')
+          .insert({
+            table_name: 'lots',
+            record_id: lotId,
+            field_name: 'lot_number',
+            old_value: oldLotNumber,
+            new_value: newLotNumber,
+            submitted_by: profile?.user_id
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Change Submitted',
+          description: `Lot number change from "${oldLotNumber}" to "${newLotNumber}" submitted for approval`
+        });
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -209,14 +233,50 @@ const LotDetails = () => {
   };
 
   const handleRollBreakdownUpdate = async (lotId: string, newBreakdown: string) => {
-    // Note: Roll breakdown is a calculated field, so we'd need to update individual rolls
-    // For now, this is a placeholder - in a real implementation, you'd need to parse
-    // the breakdown and update the individual roll records
-    toast({
-      title: 'Info',
-      description: 'Roll breakdown editing requires individual roll updates',
-      variant: 'default',
-    });
+    try {
+      const effectiveRole = getEffectiveRole();
+      
+      // Get current roll breakdown for comparison
+      const currentLot = lots.find(lot => lot.id === lotId);
+      const oldRollBreakdown = currentLot?.roll_breakdown || '';
+      
+      // Senior managers and admins can apply changes directly
+      if (effectiveRole === 'senior_manager' || effectiveRole === 'admin') {
+        // Note: Roll breakdown is a calculated field, so we'd need to update individual rolls
+        // For now, this is a placeholder - in a real implementation, you'd need to parse
+        // the breakdown and update the individual roll records
+        toast({
+          title: 'Info',
+          description: 'Roll breakdown editing requires individual roll updates',
+          variant: 'default',
+        });
+      } else {
+        // Other users submit to approval queue
+        const { error } = await supabase
+          .from('field_edit_queue')
+          .insert({
+            table_name: 'lots',
+            record_id: lotId,
+            field_name: 'roll_breakdown',
+            old_value: oldRollBreakdown,
+            new_value: newBreakdown,
+            submitted_by: profile?.user_id
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Change Submitted',
+          description: 'Roll breakdown change submitted for approval'
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: `Failed to submit roll breakdown change: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {

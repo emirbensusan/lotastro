@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      field_edit_queue: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          field_name: string
+          id: string
+          new_value: string
+          old_value: string | null
+          record_id: string
+          rejection_reason: string | null
+          status: string
+          submitted_at: string
+          submitted_by: string
+          table_name: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          field_name: string
+          id?: string
+          new_value: string
+          old_value?: string | null
+          record_id: string
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by: string
+          table_name: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          field_name?: string
+          id?: string
+          new_value?: string
+          old_value?: string | null
+          record_id?: string
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string
+          table_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lot_queue: {
         Row: {
           color: string

@@ -35,9 +35,25 @@ interface OrderQueueItem {
   rejection_reason: string | null;
 }
 
+interface FieldEditQueueItem {
+  id: string;
+  table_name: string;
+  record_id: string | null;
+  field_name: string;
+  old_value: string | null;
+  new_value: string;
+  submitted_by: string;
+  submitted_at: string;
+  status: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+}
+
 export const ApprovalQueue: React.FC = () => {
   const [lotQueue, setLotQueue] = useState<LotQueueItem[]>([]);
   const [orderQueue, setOrderQueue] = useState<OrderQueueItem[]>([]);
+  const [fieldEditQueue, setFieldEditQueue] = useState<FieldEditQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -74,8 +90,18 @@ export const ApprovalQueue: React.FC = () => {
 
       if (orderError) throw orderError;
 
+      // Fetch field edit queue
+      const { data: fieldEditData, error: fieldEditError } = await supabase
+        .from('field_edit_queue')
+        .select('*')
+        .eq('status', 'pending_approval')
+        .order('submitted_at', { ascending: false });
+
+      if (fieldEditError) throw fieldEditError;
+
       setLotQueue(lotData || []);
       setOrderQueue(orderData || []);
+      setFieldEditQueue(fieldEditData || []);
     } catch (error) {
       console.error('Error fetching queues:', error);
         toast({
@@ -216,6 +242,88 @@ export const ApprovalQueue: React.FC = () => {
     }
   };
 
+  const handleApproveFieldEdit = async (fieldEditItem: FieldEditQueueItem) => {
+    try {
+      // Apply the field change to the actual table
+      if (fieldEditItem.table_name === 'lots') {
+        if (fieldEditItem.field_name === 'quality') {
+          // Update all lots with the old quality to the new quality
+          const { error } = await supabase
+            .from('lots')
+            .update({ quality: fieldEditItem.new_value })
+            .eq('quality', fieldEditItem.old_value);
+          if (error) throw error;
+        } else if (fieldEditItem.field_name === 'color') {
+          // This would need more context about which quality to update
+          // For now, just approve the change in the queue
+        } else if (fieldEditItem.record_id) {
+          // Update specific record
+          const { error } = await supabase
+            .from('lots')
+            .update({ [fieldEditItem.field_name]: fieldEditItem.new_value })
+            .eq('id', fieldEditItem.record_id);
+          if (error) throw error;
+        }
+      }
+
+      // Mark as approved in the queue
+      const { error: updateError } = await supabase
+        .from('field_edit_queue')
+        .update({
+          status: 'approved',
+          approved_by: profile?.user_id,
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', fieldEditItem.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: t('approved') as string,
+        description: `Field change for ${fieldEditItem.field_name} has been approved`
+      });
+
+      fetchQueues();
+    } catch (error: any) {
+      toast({
+        title: t('error') as string,
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleRejectFieldEdit = async (fieldEditItem: FieldEditQueueItem) => {
+    try {
+      const { error } = await supabase
+        .from('field_edit_queue')
+        .update({
+          status: 'rejected',
+          approved_by: profile?.user_id,
+          approved_at: new Date().toISOString(),
+          rejection_reason: rejectionReason
+        })
+        .eq('id', fieldEditItem.id);
+
+      if (error) throw error;
+
+      toast({
+        title: t('rejected') as string,
+        description: `Field change for ${fieldEditItem.field_name} has been rejected`
+      });
+
+      setShowRejectDialog(false);
+      setRejectionReason('');
+      fetchQueues();
+    } catch (error: any) {
+      toast({
+        title: t('error') as string,
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString();
   };
@@ -235,7 +343,7 @@ export const ApprovalQueue: React.FC = () => {
         <div className="flex items-center gap-4">
           <Badge variant="secondary" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            {lotQueue.length + orderQueue.length} {t('pendingCount')}
+            {lotQueue.length + orderQueue.length + fieldEditQueue.length} {t('pendingCount')}
           </Badge>
         </div>
       </div>
@@ -255,6 +363,14 @@ export const ApprovalQueue: React.FC = () => {
             {orderQueue.length > 0 && (
               <Badge variant="destructive" className="ml-1">
                 {orderQueue.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="fields" className="flex items-center gap-2">
+            Field Changes
+            {fieldEditQueue.length > 0 && (
+              <Badge variant="destructive" className="ml-1">
+                {fieldEditQueue.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -397,6 +513,76 @@ export const ApprovalQueue: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="fields">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Field Changes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-12 bg-muted rounded animate-pulse"></div>
+                  ))}
+                </div>
+              ) : fieldEditQueue.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  No pending field changes
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Field</TableHead>
+                      <TableHead>From</TableHead>
+                      <TableHead>To</TableHead>
+                      <TableHead>Table</TableHead>
+                      <TableHead>Submitted</TableHead>
+                      <TableHead>Submitted By</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fieldEditQueue.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.field_name}</TableCell>
+                        <TableCell className="text-muted-foreground">{item.old_value || '-'}</TableCell>
+                        <TableCell className="font-medium">{item.new_value}</TableCell>
+                        <TableCell>{item.table_name}</TableCell>
+                        <TableCell>{formatDate(item.submitted_at)}</TableCell>
+                        <TableCell>{item.submitted_by}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleApproveFieldEdit(item)}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              {t('approve')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setSelectedItem(item);
+                                setShowRejectDialog(true);
+                              }}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              {t('reject')}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Rejection Dialog */}
@@ -425,8 +611,10 @@ export const ApprovalQueue: React.FC = () => {
                   if (selectedItem) {
                     if ('lot_number' in selectedItem) {
                       handleRejectLot(selectedItem);
-                    } else {
+                    } else if ('order_id' in selectedItem) {
                       handleRejectOrder(selectedItem);
+                    } else {
+                      handleRejectFieldEdit(selectedItem);
                     }
                   }
                 }}

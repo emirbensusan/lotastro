@@ -305,22 +305,46 @@ const InventoryPivotTable = () => {
     if (oldQuality === newQuality) return;
 
     try {
-      // Update all lots with this quality
-      const { error } = await supabase
-        .from('lots')
-        .update({ quality: newQuality })
-        .eq('quality', oldQuality)
-        .eq('status', 'in_stock');
-
-      if (error) throw error;
-
-      // Refresh the data
-      await fetchPivotData();
+      const effectiveRole = getEffectiveRole();
       
-      toast({
-        title: 'Quality Updated',
-        description: `Updated quality from "${oldQuality}" to "${newQuality}"`,
-      });
+      // Senior managers and admins can apply changes directly
+      if (effectiveRole === 'senior_manager' || effectiveRole === 'admin') {
+        // Update all lots with this quality
+        const { error } = await supabase
+          .from('lots')
+          .update({ quality: newQuality })
+          .eq('quality', oldQuality)
+          .eq('status', 'in_stock');
+
+        if (error) throw error;
+
+        // Refresh the data
+        await fetchPivotData();
+        
+        toast({
+          title: 'Quality Updated',
+          description: `Updated quality from "${oldQuality}" to "${newQuality}"`,
+        });
+      } else {
+        // Other users submit to approval queue
+        const { error } = await supabase
+          .from('field_edit_queue')
+          .insert({
+            table_name: 'lots',
+            record_id: null, // For quality changes affecting multiple records
+            field_name: 'quality',
+            old_value: oldQuality,
+            new_value: newQuality,
+            submitted_by: profile?.user_id
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Change Submitted',
+          description: `Quality change from "${oldQuality}" to "${newQuality}" submitted for approval`
+        });
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -328,6 +352,7 @@ const InventoryPivotTable = () => {
         variant: 'destructive',
       });
     }
+  };
   };
 
   const handleSelectAll = () => {

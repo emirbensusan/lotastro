@@ -184,23 +184,47 @@ const QualityDetails = () => {
     if (oldColor === newColor) return;
 
     try {
-      // Update all lots with this color for the current quality
-      const { error } = await supabase
-        .from('lots')
-        .update({ color: newColor })
-        .eq('quality', quality)
-        .eq('color', oldColor)
-        .eq('status', 'in_stock');
-
-      if (error) throw error;
-
-      // Refresh the data
-      await fetchColorData();
+      const effectiveRole = getEffectiveRole();
       
-      toast({
-        title: 'Color Updated',
-        description: `Updated color from "${oldColor}" to "${newColor}"`,
-      });
+      // Senior managers and admins can apply changes directly
+      if (effectiveRole === 'senior_manager' || effectiveRole === 'admin') {
+        // Update all lots with this color for the current quality
+        const { error } = await supabase
+          .from('lots')
+          .update({ color: newColor })
+          .eq('quality', quality)
+          .eq('color', oldColor)
+          .eq('status', 'in_stock');
+
+        if (error) throw error;
+
+        // Refresh the data
+        await fetchColorData();
+        
+        toast({
+          title: 'Color Updated',
+          description: `Updated color from "${oldColor}" to "${newColor}"`,
+        });
+      } else {
+        // Other users submit to approval queue
+        const { error } = await supabase
+          .from('field_edit_queue')
+          .insert({
+            table_name: 'lots',
+            record_id: null, // For color changes affecting multiple records with same quality/color
+            field_name: 'color',
+            old_value: oldColor,
+            new_value: newColor,
+            submitted_by: profile?.user_id
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Change Submitted',
+          description: `Color change from "${oldColor}" to "${newColor}" submitted for approval`
+        });
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -208,6 +232,7 @@ const QualityDetails = () => {
         variant: 'destructive',
       });
     }
+  };
   };
 
   // Filter colors based on search
