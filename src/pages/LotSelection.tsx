@@ -9,8 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft, Package, Filter } from 'lucide-react';
+import { ArrowLeft, Package, Filter, ShoppingCart } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePOCart } from '@/contexts/POCartProvider';
 import { format } from 'date-fns';
 
 interface Lot {
@@ -43,14 +44,18 @@ const LotSelection = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useLanguage();
+  const { addToCart, setIsCartOpen } = usePOCart();
   
   const quality = searchParams.get('quality') || '';
   const color = searchParams.get('color') || '';
+  const colors = searchParams.get('colors'); // For multi-color selection
+  const colorArray = colors ? colors.split(',') : [color];
   
   const [lots, setLots] = useState<Lot[]>([]);
   const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLots, setSelectedLots] = useState<SelectedLot[]>([]);
+  const [currentColorIndex, setCurrentColorIndex] = useState(0);
   
   // Filters
   const [dateFilter, setDateFilter] = useState('all');
@@ -60,13 +65,13 @@ const LotSelection = () => {
   const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
-    if (!quality || !color) {
-      navigate('/orders');
+    if (!quality || colorArray.length === 0) {
+      navigate('/inventory');
       return;
     }
     fetchLots();
     fetchSuppliers();
-  }, [quality, color]);
+  }, [quality, currentColorIndex]);
 
   useEffect(() => {
     applyFilters();
@@ -74,6 +79,7 @@ const LotSelection = () => {
 
   const fetchLots = async () => {
     try {
+      const currentColor = colorArray[currentColorIndex];
       const { data, error } = await supabase
         .from('lots')
         .select(`
@@ -84,11 +90,12 @@ const LotSelection = () => {
         `)
         .eq('status', 'in_stock')
         .eq('quality', quality)
-        .eq('color', color)
+        .eq('color', currentColor)
         .order('entry_date', { ascending: false });
 
       if (error) throw error;
       setLots(data || []);
+      setSelectedLots([]); // Clear selection when switching colors
     } catch (error) {
       console.error('Error fetching lots:', error);
       toast({
@@ -184,7 +191,7 @@ const LotSelection = () => {
     ));
   };
 
-  const proceedToOrder = () => {
+  const addSelectedToCart = async () => {
     if (selectedLots.length === 0) {
       toast({
         title: t('validationError') as string,
@@ -194,24 +201,84 @@ const LotSelection = () => {
       return;
     }
 
-    navigate('/orders', {
-      state: {
-        prefilledLots: selectedLots,
-        quality,
-        color
+    try {
+      // For each selected lot, fetch roll data and add to cart
+      for (const selectedLot of selectedLots) {
+        const { data: rollsData, error } = await supabase
+          .from('rolls')
+          .select('id, meters, position')
+          .eq('lot_id', selectedLot.lotId)
+          .order('position');
+
+        if (error) throw error;
+
+        const lot = lots.find(l => l.id === selectedLot.lotId);
+        if (!lot) continue;
+
+        // Take only the required number of rolls
+        const selectedRolls = rollsData?.slice(0, selectedLot.rollCount) || [];
+        
+        const cartLot = {
+          id: selectedLot.lotId,
+          lot_number: selectedLot.lotNumber,
+          quality: selectedLot.quality,
+          color: colorArray[currentColorIndex],
+          meters: selectedLot.meters,
+          roll_count: selectedLot.rollCount,
+          selectedRollIds: selectedRolls.map(r => r.id),
+          selectedRollsData: selectedRolls,
+          entry_date: lot.entry_date,
+          supplier_name: lot.suppliers?.name,
+          lineType: selectedLot.lineType,
+        };
+
+        addToCart(cartLot);
       }
-    });
+
+      toast({
+        title: t('success') as string,
+        description: `Added ${selectedLots.length} lots to cart`,
+        variant: "default",
+      });
+
+      setSelectedLots([]);
+      
+      // Move to next color if available
+      if (currentColorIndex < colorArray.length - 1) {
+        setCurrentColorIndex(currentColorIndex + 1);
+        setLoading(true);
+      } else {
+        // All colors processed, show cart
+        setIsCartOpen(true);
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: t('error') as string,
+        description: "Failed to add lots to cart",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const goBackToColors = () => {
+    const normalizedQuality = encodeURIComponent(quality);
+    navigate(`/inventory/${normalizedQuality}`);
+  };
+
+  const continueShopping = () => {
+    navigate('/inventory');
   };
 
   if (loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={() => navigate('/orders')}>
+          <Button variant="ghost" onClick={goBackToColors}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Orders
+            {t('backToColorSelection')}
           </Button>
-          <h1 className="text-3xl font-bold">Select Lots</h1>
+          <h1 className="text-3xl font-bold">{t('selectLots')}</h1>
         </div>
         <Card>
           <CardContent className="p-6">
@@ -231,14 +298,17 @@ const LotSelection = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={() => navigate('/orders')}>
+          <Button variant="ghost" onClick={goBackToColors}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('backToOrders')}
+            {t('backToColorSelection')}
           </Button>
           <div>
             <h1 className="text-3xl font-bold">{t('selectLots')}</h1>
             <p className="text-muted-foreground">
-              {t('quality')}: <span className="font-medium">{quality}</span> | {t('color')}: <span className="font-medium">{color}</span>
+              {t('quality')}: <span className="font-medium">{quality}</span> | {t('color')}: <span className="font-medium">{colorArray[currentColorIndex]}</span>
+              {colorArray.length > 1 && (
+                <span className="ml-2">({currentColorIndex + 1} of {colorArray.length})</span>
+              )}
             </p>
           </div>
         </div>
@@ -422,8 +492,12 @@ const LotSelection = () => {
               <Button variant="outline" onClick={() => setSelectedLots([])}>
                 {t('clearSelection')}
               </Button>
-              <Button onClick={proceedToOrder}>
-                {t('proceedToOrder')} ({selectedLots.length} {t('lots')})
+              <Button variant="outline" onClick={continueShopping}>
+                {t('continueShopping')}
+              </Button>
+              <Button onClick={addSelectedToCart}>
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                {t('addToCart')} ({selectedLots.length} {t('lots')})
               </Button>
             </div>
           </CardContent>
