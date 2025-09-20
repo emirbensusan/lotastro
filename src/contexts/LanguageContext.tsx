@@ -625,7 +625,7 @@ const translations = {
     selectLotsAction: 'Lot Seç',
     selectActionPage: 'Seç',
     actionAddPage: 'İşlem',
-    viewQuality: 'kalite gör',
+    viewQuality: 'Kalite Gör',
     selectForSample: 'Numune için Seç',
     unknownValue: 'Bilinmeyen',
     selectQualityColor: "Kalite ve Renk Seç",
