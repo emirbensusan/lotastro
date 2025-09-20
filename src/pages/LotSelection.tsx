@@ -68,16 +68,21 @@ const LotSelection = () => {
   
   console.log('Final colorArray:', colorArray);
   
-  // For bulk selection, use the quality of the first color entry
+  // For bulk selection, use the quality of the current color entry being processed
   // For single color selection, use the quality parameter
-  const currentQuality = colorArray.length > 0 ? colorArray[0].quality : quality;
+  const getCurrentQuality = () => {
+    if (colorArray.length > 0) {
+      return colorArray[currentColorIndex]?.quality || colorArray[0]?.quality;
+    }
+    return quality;
+  };
   
-  // For bulk selection, allow mixed qualities but warn user
-  // For single color selection, quality must be consistent
-  const hasConsistentQuality = colorArray.length <= 1 || 
-    colorArray.every(entry => entry.quality === currentQuality);
+  // For bulk selection (colors parameter), allow mixed qualities
+  // For single color selection (quality + color parameters), quality must be consistent
+  const isBulkSelection = !!colors;
+  const hasConsistentQuality = isBulkSelection ? true : colorArray.every(entry => entry.quality === getCurrentQuality());
   
-  console.log('Quality validation:', { currentQuality, hasConsistentQuality, colorCount: colorArray.length });
+  console.log('Quality validation:', { currentQuality: getCurrentQuality(), hasConsistentQuality, colorCount: colorArray.length });
   
   const [lots, setLots] = useState<Lot[]>([]);
   const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
@@ -94,14 +99,14 @@ const LotSelection = () => {
 
   useEffect(() => {
     console.log('LotSelection useEffect - Debug info:', {
-      currentQuality,
+      currentQuality: getCurrentQuality(),
       colorArray,
       colors: searchParams.get('colors'),
       hasConsistentQuality,
       colorArrayLength: colorArray.length
     });
 
-    if (!currentQuality || colorArray.length === 0) {
+    if (!getCurrentQuality() || colorArray.length === 0) {
       console.log('Redirecting to inventory - missing quality or colors');
       navigate('/inventory');
       return;
@@ -121,7 +126,7 @@ const LotSelection = () => {
     console.log('All validations passed, fetching lots and suppliers');
     fetchLots();
     fetchSuppliers();
-  }, [currentQuality, currentColorIndex]);
+  }, [getCurrentQuality(), currentColorIndex]);
 
   useEffect(() => {
     applyFilters();
@@ -327,7 +332,7 @@ const LotSelection = () => {
   };
 
   const goBackToColors = () => {
-    const normalizedQuality = encodeURIComponent(currentQuality);
+    const normalizedQuality = encodeURIComponent(getCurrentQuality());
     navigate(`/inventory/${normalizedQuality}`);
   };
 
@@ -370,7 +375,7 @@ const LotSelection = () => {
           <div>
             <h1 className="text-3xl font-bold">{t('selectLots')}</h1>
             <p className="text-muted-foreground">
-              {t('quality')}: <span className="font-medium">{currentQuality}</span> | {t('color')}: <span className="font-medium">{colorArray[currentColorIndex].color}</span>
+              {t('quality')}: <span className="font-medium">{getCurrentQuality()}</span> | {t('color')}: <span className="font-medium">{colorArray[currentColorIndex].color}</span>
               {colorArray.length > 1 && (
                 <span className="ml-2">({currentColorIndex + 1} of {colorArray.length})</span>
               )}
