@@ -18,7 +18,7 @@ interface Order {
     color: string;
     roll_count: number;
     line_type: 'sample' | 'standard';
-    selected_roll_meters?: string;
+    selected_roll_meters: string | null;
     selected_roll_ids?: string;
     lot: {
       lot_number: string;
@@ -43,6 +43,19 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
     }, 0);
     const randomSuffix = Math.abs(hash % 10000).toString().padStart(4, '0');
     return `ORD-${randomSuffix}`;
+  };
+
+  const formatRollMeters = (lot: any) => {
+    if (!lot.selected_roll_meters) return '0m';
+    
+    const rollMeters = lot.selected_roll_meters.split(',').map((m: string) => m.trim());
+    
+    if (rollMeters.length === 1) {
+      return `${rollMeters[0]}m`;
+    } else {
+      const total = rollMeters.reduce((sum: number, meters: string) => sum + parseFloat(meters), 0);
+      return `${rollMeters.join('m + ')}m (${total.toFixed(1)}m)`;
+    }
   };
 
   if (!order) return null;
@@ -120,10 +133,7 @@ const OrderPrintDialog = ({ open, onOpenChange, order }: OrderPrintDialogProps) 
                       {lot.line_type === 'sample' ? t('sample') : t('standard')}
                     </td>
                     <td className="border border-gray-300 print:border-0 p-2 print:text-xs print:text-black">
-                      {lot.line_type === 'sample' 
-                        ? (lot.selected_roll_meters || '0') + 'm'
-                        : (lot.lot.meters * lot.roll_count).toLocaleString() + 'm'
-                      }
+                      {formatRollMeters(lot)}
                     </td>
                     <td className="border border-gray-300 print:border-0 p-2 text-center text-lg">☐</td>
                   </tr>
