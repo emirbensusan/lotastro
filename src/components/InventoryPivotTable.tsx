@@ -603,7 +603,7 @@ const InventoryPivotTable = () => {
                     )}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {item.color_count} color{item.color_count !== 1 ? 's' : ''}
+                    {item.color_count} {t('differentColors')}
                   </TableCell>
                   <TableCell className="text-right text-sm">
                     {item.total_meters.toLocaleString()}
