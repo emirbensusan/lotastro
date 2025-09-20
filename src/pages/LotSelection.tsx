@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { useToast, toast } from "@/hooks/use-toast";
 import { ArrowLeft, Package, Filter, ShoppingCart } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
@@ -186,21 +186,32 @@ const LotSelection = () => {
   };
 
   const toggleLotSelection = (lot: Lot) => {
+    console.log('Toggling lot selection:', lot.lot_number);
     const isSelected = selectedLots.some(sl => sl.lotId === lot.id);
+    console.log('Currently selected:', isSelected);
     
     if (isSelected) {
-      setSelectedLots(prev => prev.filter(sl => sl.lotId !== lot.id));
+      setSelectedLots(prev => {
+        const updated = prev.filter(sl => sl.lotId !== lot.id);
+        console.log('After removal, selected lots:', updated.length);
+        return updated;
+      });
     } else {
-      setSelectedLots(prev => [...prev, {
-        lotId: lot.id,
-        quality: lot.quality,
-        color: lot.color,
-        lotNumber: lot.lot_number,
-        meters: lot.meters,
-        availableRolls: lot.roll_count,
-        rollCount: 1,
-        lineType: 'standard'
-      }]);
+      setSelectedLots(prev => {
+        const newLot = {
+          lotId: lot.id,
+          quality: lot.quality,
+          color: lot.color,
+          lotNumber: lot.lot_number,
+          meters: lot.meters,
+          availableRolls: lot.roll_count,
+          rollCount: 1,
+          lineType: 'standard' as const
+        };
+        const updated = [...prev, newLot];
+        console.log('After addition, selected lots:', updated.length);
+        return updated;
+      });
     }
   };
 
@@ -217,7 +228,10 @@ const LotSelection = () => {
   };
 
   const addSelectedToCart = async () => {
+    console.log('Add to cart clicked, selected lots:', selectedLots.length);
+    
     if (selectedLots.length === 0) {
+      console.log('No lots selected, showing error');
       toast({
         title: t('validationError') as string,
         description: "Please select at least one lot",
@@ -226,6 +240,7 @@ const LotSelection = () => {
       return;
     }
 
+    console.log('Processing selected lots for cart...');
     try {
       // For each selected lot, fetch roll data and add to cart
       for (const selectedLot of selectedLots) {
