@@ -330,8 +330,70 @@ const BulkSelection = () => {
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>Quality</TableHead>
-                  <TableHead>Color</TableHead>
+                  <TableHead>
+                    <div className="flex items-center space-x-2">
+                      <span>Quality</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <Filter className="h-3 w-3" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-60">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Filter by Quality</label>
+                            <Input
+                              placeholder="Enter quality..."
+                              value={qualityFilter}
+                              onChange={(e) => setQualityFilter(e.target.value)}
+                            />
+                            {qualityFilter && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setQualityFilter('')}
+                                className="w-full"
+                              >
+                                Clear Filter
+                              </Button>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center space-x-2">
+                      <span>Color</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <Filter className="h-3 w-3" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-60">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Filter by Color</label>
+                            <Input
+                              placeholder="Enter color..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            {searchTerm && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSearchTerm('')}
+                                className="w-full"
+                              >
+                                Clear Filter
+                              </Button>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Lots</TableHead>
                   <TableHead className="text-right">Rolls</TableHead>
                   <TableHead className="text-right">Meters</TableHead>
