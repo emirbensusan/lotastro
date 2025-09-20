@@ -467,6 +467,15 @@ export type Database = {
           total_rolls: number
         }[]
       }
+      get_lots_by_normalized_quality: {
+        Args: { target_normalized_quality: string }
+        Returns: {
+          color: string
+          meters: number
+          quality: string
+          roll_count: number
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]

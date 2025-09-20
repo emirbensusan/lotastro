@@ -68,66 +68,25 @@ const QualityDetails = () => {
     try {
       setLoading(true);
       
-      // Use a database query to filter lots efficiently
+      // Use the optimized RPC function to get lots filtered by normalized quality
       const { data: matchingLots, error } = await supabase
-        .from('lots')
-        .select('quality, color, meters, roll_count')
-        .eq('status', 'in_stock')
-        .filter('quality', 'eq', normalizedQuality, { 
-          filterFn: (value) => `normalize_quality("${value}")` 
+        .rpc('get_lots_by_normalized_quality', { 
+          target_normalized_quality: normalizedQuality 
         });
 
       if (error) {
-        // Fallback: Use RPC query for filtering
-        const { data: rpcResults, error: rpcError } = await supabase
-          .rpc('get_lots_by_normalized_quality', { 
-            target_normalized_quality: normalizedQuality 
-          });
-
-        if (rpcError) {
-          // Final fallback: manual filtering (less efficient but works)
-          const { data: allLots, error: fallbackError } = await supabase
-            .from('lots')
-            .select('quality, color, meters, roll_count')
-            .eq('status', 'in_stock');
-
-          if (fallbackError) throw fallbackError;
-
-          const filteredLots = [];
-          const qualityVariantMap = new Map<string, number>();
-
-          for (const lot of allLots) {
-            const { data: normalized, error: normalizeError } = await supabase
-              .rpc('normalize_quality', { quality_input: lot.quality });
-
-            if (normalizeError) continue;
-
-            if (normalized === normalizedQuality) {
-              filteredLots.push(lot);
-              const count = qualityVariantMap.get(lot.quality) || 0;
-              qualityVariantMap.set(lot.quality, count + 1);
-            }
-          }
-
-          // Set quality variants
-          const variants = Array.from(qualityVariantMap.entries()).map(([quality, count]) => ({
-            original_quality: quality,
-            count
-          }));
-          setQualityVariants(variants);
-
-          // Process the filtered lots
-          processLotData(filteredLots);
-          return;
-        } else {
-          processLotData(rpcResults);
-          return;
-        }
+        console.error('Error fetching color data:', error);
+        toast({
+          title: String(t('error')),
+          description: 'Failed to load color data',
+          variant: 'destructive',
+        });
+        return;
       }
 
       // Track quality variants from the matching lots
       const qualityVariantMap = new Map<string, number>();
-      matchingLots.forEach(lot => {
+      matchingLots.forEach((lot: any) => {
         const count = qualityVariantMap.get(lot.quality) || 0;
         qualityVariantMap.set(lot.quality, count + 1);
       });
@@ -183,16 +142,6 @@ const QualityDetails = () => {
 
     setColors(colorsArray);
     setQualityTotals(totals);
-    } catch (error) {
-      console.error('Error fetching color data:', error);
-      toast({
-        title: String(t('error')),
-        description: 'Failed to load color data',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   const navigateToLotDetails = (color: string) => {
