@@ -468,6 +468,7 @@ const QualityDetails = () => {
                 />
                   </TableHead>
                 )}
+                <TableHead>{t('quality')}</TableHead>
                 <TableHead>
                   <div className="flex items-center space-x-2">
                     <span>{t('color')}</span>
@@ -501,9 +502,9 @@ const QualityDetails = () => {
                     </Popover>
                   </div>
                 </TableHead>
-                <TableHead className="text-right">{t('lots')}</TableHead>
+                <TableHead className="text-right">{t('lotCount')}</TableHead>
                 <TableHead className="text-right">{t('meters')}</TableHead>
-                <TableHead className="text-right">{t('rolls')}</TableHead>
+                <TableHead className="text-right">{t('rollCount')}</TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
