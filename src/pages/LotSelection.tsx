@@ -49,7 +49,21 @@ const LotSelection = () => {
   const quality = searchParams.get('quality') || '';
   const color = searchParams.get('color') || '';
   const colors = searchParams.get('colors'); // For multi-color selection
-  const colorArray = colors ? colors.split(',') : [color];
+  
+  // Parse colors that may be in format "quality|color" or just "color"
+  const parseColorEntry = (colorEntry: string) => {
+    if (colorEntry.includes('|')) {
+      const [entryQuality, entryColor] = colorEntry.split('|');
+      return { quality: entryQuality, color: entryColor };
+    }
+    return { quality, color: colorEntry };
+  };
+  
+  const colorArray = colors ? colors.split(',').map(parseColorEntry) : [parseColorEntry(color)];
+  
+  // Validate that all colors have the same quality (for bulk selection)
+  const currentQuality = colorArray[0]?.quality || quality;
+  const hasConsistentQuality = colorArray.every(entry => entry.quality === currentQuality);
   
   const [lots, setLots] = useState<Lot[]>([]);
   const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
@@ -65,13 +79,24 @@ const LotSelection = () => {
   const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
-    if (!quality || colorArray.length === 0) {
+    if (!currentQuality || colorArray.length === 0) {
       navigate('/inventory');
       return;
     }
+    
+    if (!hasConsistentQuality) {
+      toast({
+        title: "Quality Mismatch",
+        description: "All selected colors must have the same quality",
+        variant: "destructive",
+      });
+      navigate('/inventory');
+      return;
+    }
+    
     fetchLots();
     fetchSuppliers();
-  }, [quality, currentColorIndex]);
+  }, [currentQuality, currentColorIndex]);
 
   useEffect(() => {
     applyFilters();
@@ -79,7 +104,7 @@ const LotSelection = () => {
 
   const fetchLots = async () => {
     try {
-      const currentColor = colorArray[currentColorIndex];
+      const currentColorEntry = colorArray[currentColorIndex];
       const { data, error } = await supabase
         .from('lots')
         .select(`
@@ -89,8 +114,8 @@ const LotSelection = () => {
           )
         `)
         .eq('status', 'in_stock')
-        .eq('quality', quality)
-        .eq('color', currentColor)
+        .eq('quality', currentColorEntry.quality)
+        .eq('color', currentColorEntry.color)
         .order('entry_date', { ascending: false });
 
       if (error) throw error;
@@ -222,7 +247,7 @@ const LotSelection = () => {
           id: selectedLot.lotId,
           lot_number: selectedLot.lotNumber,
           quality: selectedLot.quality,
-          color: colorArray[currentColorIndex],
+          color: colorArray[currentColorIndex].color,
           meters: selectedLot.meters,
           roll_count: selectedLot.rollCount,
           selectedRollIds: selectedRolls.map(r => r.id),
@@ -262,7 +287,7 @@ const LotSelection = () => {
   };
 
   const goBackToColors = () => {
-    const normalizedQuality = encodeURIComponent(quality);
+    const normalizedQuality = encodeURIComponent(currentQuality);
     navigate(`/inventory/${normalizedQuality}`);
   };
 
@@ -305,7 +330,7 @@ const LotSelection = () => {
           <div>
             <h1 className="text-3xl font-bold">{t('selectLots')}</h1>
             <p className="text-muted-foreground">
-              {t('quality')}: <span className="font-medium">{quality}</span> | {t('color')}: <span className="font-medium">{colorArray[currentColorIndex]}</span>
+              {t('quality')}: <span className="font-medium">{currentQuality}</span> | {t('color')}: <span className="font-medium">{colorArray[currentColorIndex].color}</span>
               {colorArray.length > 1 && (
                 <span className="ml-2">({currentColorIndex + 1} of {colorArray.length})</span>
               )}
