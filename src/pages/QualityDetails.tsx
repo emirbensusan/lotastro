@@ -358,7 +358,7 @@ const QualityDetails = () => {
         <div className="flex items-center space-x-2">
           {!selectionMode && (
             <>
-              <Button variant="outline" onClick={handleStartSelection}>
+              <Button variant="outline" onClick={handleStartSelection} className="ml-4">
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Birden Fazla Renk Seç
               </Button>
