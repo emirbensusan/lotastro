@@ -11,7 +11,8 @@ import { usePOCart } from '@/contexts/POCartProvider';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import GlobalSearch from '@/components/GlobalSearch';
 import { 
-  Package, 
+  Home,
+  PackagePlus, 
   ClipboardList, 
   BarChart3, 
   Settings, 
@@ -22,8 +23,23 @@ import {
   Clock,
   Menu,
   CheckCircle,
-  ShoppingCart
+  ShoppingCart,
+  ListOrdered,
+  Timer
 } from 'lucide-react';
+import { 
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -46,12 +62,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const cartItemCount = getItemCount();
 
   const navigationItems = [
-    { path: '/', label: t('dashboard'), icon: Package, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
-    { path: '/lot-intake', label: t('lotIntake'), icon: Package, roles: ['warehouse_staff', 'senior_manager', 'admin'] },
-    { path: '/lot-queue', label: t('lotQueue'), icon: Clock, roles: ['accounting', 'senior_manager', 'admin'] },
+    { path: '/', label: t('dashboard'), icon: Home, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
+    { path: '/lot-intake', label: t('lotIntake'), icon: PackagePlus, roles: ['warehouse_staff', 'senior_manager', 'admin'] },
+    { path: '/lot-queue', label: t('lotQueue'), icon: Timer, roles: ['accounting', 'senior_manager', 'admin'] },
     { path: '/inventory', label: t('inventory'), icon: ClipboardList, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
     { path: '/orders', label: t('orders'), icon: Truck, roles: ['accounting', 'senior_manager', 'admin'] },
-    { path: '/order-queue', label: t('orderQueue'), icon: Clock, roles: ['accounting', 'senior_manager', 'admin'] },
+    { path: '/order-queue', label: t('orderQueue'), icon: ListOrdered, roles: ['accounting', 'senior_manager', 'admin'] },
     { path: '/qr-scan', label: t('qrScan'), icon: QrCode, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
     { path: '/reports', label: t('reports'), icon: BarChart3, roles: ['accounting', 'senior_manager', 'admin'] },
     { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, roles: ['senior_manager', 'admin'] },
@@ -92,7 +108,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   };
 
-  const NavigationContent = () => (
+  const AppSidebar = () => {
+    const { state } = useSidebar();
+    const isCollapsed = state === "collapsed";
+    
+    return (
+      <Sidebar collapsible="icon">
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredNavigation.map((item) => {
+                  const Icon = item.icon;
+                  const active = location.pathname === item.path;
+                  
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        onClick={() => navigate(item.path)}
+                        isActive={active}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+    );
+  };
+
+  const MobileNavigationContent = () => (
     <nav className="space-y-2">
       {filteredNavigation.map((item) => {
         const Icon = item.icon;
@@ -117,155 +168,158 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
-      <header className="border-b bg-card">
-        <div className="flex h-16 items-center justify-between px-4 md:px-6">
-          <div className="flex items-center space-x-4">
-            {/* Mobile menu button */}
-            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="md:hidden">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-4">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-primary">LotAstro</h2>
-                </div>
-                <NavigationContent />
-              </SheetContent>
-            </Sheet>
+    <SidebarProvider>
+      <div className="min-h-screen bg-background flex w-full">
+        {/* Top Navigation */}
+        <header className="fixed top-0 left-0 right-0 z-50 border-b bg-card">
+          <div className="flex h-16 items-center justify-between px-4 md:px-6">
+            <div className="flex items-center space-x-4">
+              {/* Desktop Sidebar Toggle */}
+              <SidebarTrigger className="hidden md:block" />
+              
+              {/* Mobile menu button */}
+              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="md:hidden">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-4">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold text-primary">LotAstro</h2>
+                  </div>
+                  <MobileNavigationContent />
+                </SheetContent>
+              </Sheet>
 
-            {/* LotAstro Logo */}
-            <div className="flex items-center space-x-2">
-            <img 
-              src="/lotastro-logo.svg" 
-              alt="LotAstro Logo" 
-              className="w-8 h-8 object-contain"
-            />
-              <h1 className="text-xl font-semibold text-primary">LotAstro</h1>
-            </div>
-            
-            {profile && (
-              <>
-                {profile.role === 'admin' ? (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="sm" className="p-0 h-auto">
-                        <Badge className={getRoleBadgeColor(effectiveRole!, isViewingAsOtherRole)}>
-                          {isViewingAsOtherRole && (
-                            <span className="text-xs mr-1">👁️</span>
-                          )}
-                          {(effectiveRole || '').replace('_', ' ').toUpperCase()}
-                        </Badge>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56" align="start">
-                      <div className="space-y-3">
-                        <div className="font-medium text-sm">View as Role</div>
-                        <div className="space-y-2">
-                          {roleOptions.map((option) => (
-                            <Button
-                              key={option.value}
-                              variant={effectiveRole === option.value ? "secondary" : "ghost"}
-                              size="sm"
-                              className="w-full justify-start"
-                              onClick={() => handleRoleChange(option.value)}
-                            >
-                              {option.label}
-                              {effectiveRole === option.value && !isViewingAsOtherRole && (
-                                <span className="ml-auto text-xs">(Current)</span>
-                              )}
-                            </Button>
-                          ))}
-                          {isViewingAsOtherRole && (
-                            <>
-                              <div className="border-t pt-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full"
-                                  onClick={() => handleRoleChange('reset')}
-                                >
-                                  Return to Admin View
-                                </Button>
-                              </div>
-                            </>
-                          )}
+              {/* LotAstro Logo */}
+              <div className="flex items-center space-x-2">
+              <img 
+                src="/lotastro-logo.svg" 
+                alt="LotAstro Logo" 
+                className="w-8 h-8 object-contain"
+              />
+                <h1 className="text-xl font-semibold text-primary">LotAstro</h1>
+              </div>
+              
+              {profile && (
+                <>
+                  {profile.role === 'admin' ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="sm" className="p-0 h-auto">
+                          <Badge className={getRoleBadgeColor(effectiveRole!, isViewingAsOtherRole)}>
+                            {isViewingAsOtherRole && (
+                              <span className="text-xs mr-1">👁️</span>
+                            )}
+                            {(effectiveRole || '').replace('_', ' ').toUpperCase()}
+                          </Badge>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56" align="start">
+                        <div className="space-y-3">
+                          <div className="font-medium text-sm">View as Role</div>
+                          <div className="space-y-2">
+                            {roleOptions.map((option) => (
+                              <Button
+                                key={option.value}
+                                variant={effectiveRole === option.value ? "secondary" : "ghost"}
+                                size="sm"
+                                className="w-full justify-start"
+                                onClick={() => handleRoleChange(option.value)}
+                              >
+                                {option.label}
+                                {effectiveRole === option.value && !isViewingAsOtherRole && (
+                                  <span className="ml-auto text-xs">(Current)</span>
+                                )}
+                              </Button>
+                            ))}
+                            {isViewingAsOtherRole && (
+                              <>
+                                <div className="border-t pt-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full"
+                                    onClick={() => handleRoleChange('reset')}
+                                  >
+                                    Return to Admin View
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <Badge className={getRoleBadgeColor(profile.role)}>
-                    {profile.role.replace('_', ' ').toUpperCase()}
-                  </Badge>
-                )}
-              </>
-            )}
-          </div>
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Badge className={getRoleBadgeColor(profile.role)}>
+                      {profile.role.replace('_', ' ').toUpperCase()}
+                    </Badge>
+                  )}
+                </>
+              )}
+            </div>
 
-          <div className="flex items-center space-x-2 md:space-x-4">
-            <GlobalSearch />
-            
-            <Select value={language} onValueChange={(value: 'en' | 'tr') => setLanguage(value)}>
-              <SelectTrigger className="w-16 md:w-20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">🇺🇸</SelectItem>
-                <SelectItem value="tr">🇹🇷</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center space-x-2 md:space-x-4">
+              <GlobalSearch />
+              
+              <Select value={language} onValueChange={(value: 'en' | 'tr') => setLanguage(value)}>
+                <SelectTrigger className="w-16 md:w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">🇺🇸</SelectItem>
+                  <SelectItem value="tr">🇹🇷</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {/* Cart Icon - Only visible to users who can create orders */}
-            {canCreateOrders && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setIsCartOpen(true)}
-                className="relative"
-              >
-                <ShoppingCart className="h-4 w-4" />
-                {cartItemCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                  >
-                    {cartItemCount}
-                  </Badge>
-                )}
+              {/* Cart Icon - Only visible to users who can create orders */}
+              {canCreateOrders && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsCartOpen(true)}
+                  className="relative"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  {cartItemCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                    >
+                      {cartItemCount}
+                    </Badge>
+                  )}
+                </Button>
+              )}
+              
+              <span className="text-sm text-muted-foreground hidden md:block">
+                {profile?.full_name || profile?.email}
+              </span>
+              <Button variant="ghost" size="sm" onClick={signOut}>
+                <LogOut className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">{t('signOut')}</span>
               </Button>
-            )}
-            
-            <span className="text-sm text-muted-foreground hidden md:block">
-              {profile?.full_name || profile?.email}
-            </span>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">{t('signOut')}</span>
-            </Button>
+            </div>
           </div>
+        </header>
+
+        <div className="flex w-full">
+          {/* Desktop Sidebar */}
+          <div className="hidden md:block">
+            <AppSidebar />
+          </div>
+
+          {/* Main Content */}
+          <main className="flex-1 pt-16">
+            <div className="p-4 md:p-6">
+              {children}
+            </div>
+          </main>
         </div>
-      </header>
-
-      <div className="flex h-[calc(100vh-4rem)]">
-        {/* Desktop Sidebar Navigation */}
-        <aside className="hidden md:block w-64 border-r bg-card">
-          <div className="p-4">
-            <NavigationContent />
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-4 md:p-6">
-            {children}
-          </div>
-        </main>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
