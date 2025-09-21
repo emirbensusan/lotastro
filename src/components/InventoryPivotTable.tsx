@@ -493,7 +493,7 @@ const InventoryPivotTable = () => {
             <>
               <Button variant="default" onClick={toggleBulkSelectionMode}>
                 <ShoppingCart className="h-4 w-4 mr-2" />
-                Select Qualities in Bulk
+                Sipariş için toplu kalite seç
               </Button>
               {getEffectiveRole() === 'admin' && (
                 <Button
