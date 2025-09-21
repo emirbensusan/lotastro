@@ -445,17 +445,6 @@ const QualityDetails = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{t('availableColors')}</CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search colors or quality codes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64"
-                />
-              </div>
-            </div>
           </div>
         </CardHeader>
         <CardContent>
