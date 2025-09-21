@@ -387,17 +387,18 @@ const LotDetails = () => {
         <CardHeader>
           <CardTitle>{t('availableLots')}</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    {t('lotNumber')}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="p-1 hover:bg-muted rounded">
-                          <Filter className={`h-3 w-3 ${lotNumberFilter ? 'text-primary' : 'text-muted-foreground'}`} />
+        <CardContent className="p-0">
+          <div className="overflow-auto max-h-[calc(100vh-300px)]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      {t('lotNumber')}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="p-1 hover:bg-muted rounded">
+                            <Filter className={`h-3 w-3 ${lotNumberFilter ? 'text-primary' : 'text-muted-foreground'}`} />
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-64" align="start">
@@ -550,6 +551,7 @@ const LotDetails = () => {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
