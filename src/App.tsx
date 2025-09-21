@@ -25,6 +25,7 @@ import QRPrint from "./pages/QRPrint";
 import OrderQueue from "./pages/OrderQueue";
 import BulkSelection from "./pages/BulkSelection";
 import QualityDetails from "./pages/QualityDetails";
+import LotDetails from "./pages/LotDetails";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 
@@ -75,6 +76,11 @@ const App = () => (
               <Route path="/inventory" element={
                 <ProtectedRoute>
                   <Inventory />
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory/:quality/:color" element={
+                <ProtectedRoute>
+                  <LotDetails />
                 </ProtectedRoute>
               } />
               <Route path="/inventory/:quality" element={
