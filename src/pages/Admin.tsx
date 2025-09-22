@@ -52,12 +52,19 @@ const Admin: React.FC = () => {
   const { t } = useLanguage();
 
   useEffect(() => {
-    fetchProfiles();
-  }, []);
+    if (!authLoading) {
+      fetchProfiles();
+    }
+  }, [authLoading]);
 
   const fetchProfiles = async () => {
-    if (!hasRole('admin')) return;
     setLoading(true);
+    
+    if (!hasRole('admin')) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('profiles')
