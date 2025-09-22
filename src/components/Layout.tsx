@@ -113,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const isCollapsed = state === "collapsed";
     
     return (
-      <Sidebar collapsible="icon" className="flex flex-col">
+      <Sidebar collapsible="icon" className="flex flex-col mt-16 h-[calc(100vh-4rem)]">
         <SidebarContent>
           <SidebarGroup className="flex-1">
             <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>Navigation</SidebarGroupLabel>
