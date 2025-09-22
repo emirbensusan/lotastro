@@ -314,6 +314,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active: boolean
           created_at: string
           email: string
           full_name: string | null
@@ -323,6 +324,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active?: boolean
           created_at?: string
           email: string
           full_name?: string | null
@@ -332,6 +334,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active?: boolean
           created_at?: string
           email?: string
           full_name?: string | null
@@ -475,6 +478,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_user_dependencies: {
+        Args: { target_user_id: string }
+        Returns: {
+          dependency_count: number
+          table_name: string
+        }[]
+      }
       generate_order_number: {
         Args: Record<PropertyKey, never>
         Returns: string

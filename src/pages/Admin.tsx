@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail } from 'lucide-react';
+import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
@@ -25,6 +25,7 @@ interface Profile {
   full_name: string;
   role: UserRole;
   created_at: string;
+  active?: boolean;
 }
 
 const Admin: React.FC = () => {
@@ -40,6 +41,9 @@ const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<Profile | null>(null);
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [userToDeactivate, setUserToDeactivate] = useState<Profile | null>(null);
+  const [conflictDetails, setConflictDetails] = useState<string>('');
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [userToChangePassword, setUserToChangePassword] = useState<Profile | null>(null);
   const [newPassword, setNewPassword] = useState('');
@@ -115,11 +119,26 @@ const Admin: React.FC = () => {
   const deleteProfile = async (profile: Profile) => {
     try {
       // Use edge function for secure admin deletion
-      const { error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
+      const { data, error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
         body: { userId: profile.user_id }
       });
       
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        // Check if it's a conflict error (user has dependencies)
+        if (deleteError.status === 409) {
+          const errorData = typeof deleteError.details === 'string' 
+            ? JSON.parse(deleteError.details) 
+            : deleteError.details;
+          
+          setConflictDetails(errorData.details || 'User has associated records');
+          setUserToDeactivate(profile);
+          setDeleteDialogOpen(false);
+          setUserToDelete(null);
+          setDeactivateDialogOpen(true);
+          return;
+        }
+        throw deleteError;
+      }
 
       toast({
         title: t('success') as string,
@@ -129,11 +148,38 @@ const Admin: React.FC = () => {
       fetchProfiles();
       setDeleteDialogOpen(false);
       setUserToDelete(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting profile:', error);
       toast({
         title: t('error') as string,
-        description: t('failedToDeleteUser') as string,
+        description: error?.message || t('failedToDeleteUser') as string,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const deactivateProfile = async (profile: Profile) => {
+    try {
+      const { error: deactivateError } = await supabase.functions.invoke('admin-deactivate-user', {
+        body: { userId: profile.user_id }
+      });
+      
+      if (deactivateError) throw deactivateError;
+
+      toast({
+        title: t('success') as string,
+        description: `User ${profile.full_name || profile.email} has been deactivated`
+      });
+      
+      fetchProfiles();
+      setDeactivateDialogOpen(false);
+      setUserToDeactivate(null);
+      setConflictDetails('');
+    } catch (error: any) {
+      console.error('Error deactivating profile:', error);
+      toast({
+        title: t('error') as string,
+        description: error?.message || 'Failed to deactivate user',
         variant: 'destructive'
       });
     }
@@ -466,6 +512,11 @@ const Admin: React.FC = () => {
                         {getRoleDisplayName(profile.role)}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={profile.active !== false ? "default" : "destructive"}>
+                        {profile.active !== false ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{formatDate(profile.created_at)}</TableCell>
                      <TableCell>
                        <div className="flex space-x-2">
@@ -718,6 +769,43 @@ const Admin: React.FC = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Deactivate User Dialog */}
+        <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cannot Delete User</AlertDialogTitle>
+              <AlertDialogDescription>
+                <div className="space-y-3">
+                  <p>
+                    {userToDeactivate && `User "${userToDeactivate.full_name || userToDeactivate.email}" cannot be deleted because they have associated records:`}
+                  </p>
+                  <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                    {conflictDetails}
+                  </p>
+                  <p>
+                    Would you like to deactivate this user instead? Deactivated users cannot log in but their data remains intact.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setDeactivateDialogOpen(false);
+                setUserToDeactivate(null);
+                setConflictDetails('');
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => userToDeactivate && deactivateProfile(userToDeactivate)}
+                className="bg-orange-600 text-white hover:bg-orange-700"
+              >
+                Deactivate User
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 };

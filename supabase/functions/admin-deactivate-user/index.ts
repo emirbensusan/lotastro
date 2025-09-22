@@ -89,74 +89,44 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Admin ${user.email} attempting to delete user ${userId}`);
-
-    // Check for user dependencies before deletion
-    const { data: dependencies, error: depsError } = await supabaseAdmin.rpc('check_user_dependencies', {
-      target_user_id: userId
-    });
-
-    if (depsError) {
-      console.error('Failed to check user dependencies:', depsError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to check user dependencies' }),
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    // Check if user has any dependencies
-    const totalDependencies = dependencies?.reduce((sum: number, dep: any) => sum + parseInt(dep.dependency_count), 0) || 0;
-    
-    if (totalDependencies > 0) {
-      const dependencyDetails = dependencies?.filter((dep: any) => parseInt(dep.dependency_count) > 0)
-        .map((dep: any) => `${dep.table_name}: ${dep.dependency_count}`)
-        .join(', ');
-      
-      console.log(`Cannot delete user ${userId}: has dependencies - ${dependencyDetails}`);
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'Cannot delete user with existing records',
-          details: `User has associated records in: ${dependencyDetails}`,
-          canDeactivate: true
-        }),
-        { status: 409, headers: corsHeaders }
-      );
-    }
+    console.log(`Admin ${user.email} attempting to deactivate user ${userId}`);
 
     // Log security event for audit trail
     await supabaseAdmin.rpc('log_security_event', {
-      event_type: 'USER_DELETE_ATTEMPT',
+      event_type: 'USER_DEACTIVATE_ATTEMPT',
       user_id: user.id,
       target_user_id: userId,
       details: { admin_email: user.email, timestamp: new Date().toISOString() }
     });
 
-    // Delete user using service role
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    // Deactivate user by setting active to false
+    const { error: deactivateError } = await supabaseAdmin
+      .from('profiles')
+      .update({ active: false, updated_at: new Date().toISOString() })
+      .eq('user_id', userId);
     
-    if (deleteError) {
-      console.error('Failed to delete user:', deleteError);
+    if (deactivateError) {
+      console.error('Failed to deactivate user:', deactivateError);
       
-      // Log failed deletion attempt
+      // Log failed deactivation attempt
       await supabaseAdmin.rpc('log_security_event', {
-        event_type: 'USER_DELETE_FAILED',
+        event_type: 'USER_DEACTIVATE_FAILED',
         user_id: user.id,
         target_user_id: userId,
-        details: { error: deleteError.message, admin_email: user.email }
+        details: { error: deactivateError.message, admin_email: user.email }
       });
       
       return new Response(
-        JSON.stringify({ error: 'Failed to delete user' }),
+        JSON.stringify({ error: 'Failed to deactivate user' }),
         { status: 500, headers: corsHeaders }
       );
     }
 
-    console.log(`User ${userId} successfully deleted by admin ${user.email}`);
+    console.log(`User ${userId} successfully deactivated by admin ${user.email}`);
 
-    // Log successful deletion
+    // Log successful deactivation
     await supabaseAdmin.rpc('log_security_event', {
-      event_type: 'USER_DELETE_SUCCESS',
+      event_type: 'USER_DEACTIVATE_SUCCESS',
       user_id: user.id,
       target_user_id: userId,
       details: { admin_email: user.email, timestamp: new Date().toISOString() }
@@ -168,7 +138,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in admin-delete-user function:', error);
+    console.error('Error in admin-deactivate-user function:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: corsHeaders }
