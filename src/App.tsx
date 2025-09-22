@@ -26,6 +26,7 @@ import OrderQueue from "./pages/OrderQueue";
 import BulkSelection from "./pages/BulkSelection";
 import QualityDetails from "./pages/QualityDetails";
 import LotDetails from "./pages/LotDetails";
+import InviteAccept from "./pages/InviteAccept";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 

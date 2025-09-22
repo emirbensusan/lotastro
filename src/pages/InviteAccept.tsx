@@ -89,10 +89,7 @@ const InviteAccept = () => {
 
     try {
       // Sign up the user with the invitation email
-      const { error: signUpError } = await signUp(invitation.email, password, {
-        full_name: fullName,
-        role: invitation.role
-      });
+      const { error: signUpError } = await signUp(invitation.email, password, fullName, invitation.role);
 
       if (signUpError) {
         throw signUpError;

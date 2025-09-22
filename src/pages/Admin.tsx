@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key } from 'lucide-react';
+import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
@@ -44,6 +44,9 @@ const Admin: React.FC = () => {
   const [userToChangePassword, setUserToChangePassword] = useState<Profile | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<UserRole>('warehouse_staff');
+  const [inviteLoading, setInviteLoading] = useState(false);
   const { toast } = useToast();
   const { hasRole, loading: authLoading } = useAuth();
   const { t } = useLanguage();
@@ -217,6 +220,49 @@ const Admin: React.FC = () => {
     }
   };
 
+  const handleSendInvitation = async () => {
+    if (!inviteEmail || !inviteRole) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please provide email and role',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setInviteLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-invitation', {
+        body: {
+          email: inviteEmail,
+          role: inviteRole
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Invitation sent successfully'
+      });
+
+      setInviteEmail('');
+      setInviteRole('warehouse_staff');
+    } catch (error: any) {
+      console.error('Error sending invitation:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send invitation',
+        variant: 'destructive'
+      });
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -342,7 +388,7 @@ const Admin: React.FC = () => {
               </div>
               <div>
                 <Label htmlFor="invite-role">Role</Label>
-                <Select value={inviteRole} onValueChange={setInviteRole}>
+                <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as UserRole)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
