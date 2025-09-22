@@ -113,12 +113,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const isCollapsed = state === "collapsed";
     
     return (
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible="icon" className="flex flex-col">
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroup className="flex-1">
+            <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>Navigation</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="space-y-1">
                 {filteredNavigation.map((item) => {
                   const Icon = item.icon;
                   const active = location.pathname === item.path;
@@ -128,9 +128,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       <SidebarMenuButton
                         onClick={() => navigate(item.path)}
                         isActive={active}
+                        className="flex items-center justify-start h-10"
                       >
-                        <Icon className="h-4 w-4" />
-                        <span>{item.label}</span>
+                        <Icon className="h-4 w-4 flex-shrink-0" />
+                        <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
