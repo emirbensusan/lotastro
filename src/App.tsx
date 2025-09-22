@@ -62,7 +62,8 @@ const App = () => (
               <POCartProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/invite" element={<InviteAccept />} />
               <Route path="/" element={
                 <ProtectedRoute>
                   <Dashboard />

@@ -321,6 +321,63 @@ const Admin: React.FC = () => {
         </Card>
       </div>
 
+      {/* User Invitations */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Invite New Users</CardTitle>
+          <CardDescription>Send invitations to new team members</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="invite-email">Email Address</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="Enter email address"
+                />
+              </div>
+              <div>
+                <Label htmlFor="invite-role">Role</Label>
+                <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="warehouse_staff">Warehouse Staff</SelectItem>
+                    <SelectItem value="accounting">Accounting</SelectItem>
+                    <SelectItem value="senior_manager">Senior Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  onClick={handleSendInvitation}
+                  disabled={inviteLoading || !inviteEmail}
+                  className="w-full"
+                >
+                  {inviteLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Send Invitation
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* User Management */}
       <Card>
         <CardHeader>
