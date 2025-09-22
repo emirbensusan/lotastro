@@ -306,14 +306,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </header>
 
-        <div className="flex w-full">
+        <div className="flex w-full pt-16">
           {/* Desktop Sidebar */}
           <div className="hidden md:block">
             <AppSidebar />
           </div>
 
           {/* Main Content */}
-          <main className="flex-1 pt-16">
+          <main className="flex-1">
             <div className="p-4 md:p-6">
               {children}
             </div>
