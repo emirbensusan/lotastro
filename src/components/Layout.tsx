@@ -116,7 +116,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <Sidebar collapsible="icon" className="flex flex-col mt-16 h-[calc(100vh-4rem)]">
         <SidebarContent>
           <SidebarGroup className="flex-1">
-            <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>Navigation</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
                 {filteredNavigation.map((item) => {
