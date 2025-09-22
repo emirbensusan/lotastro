@@ -28,40 +28,54 @@ serve(async (req) => {
     // Verify the request comes from an authenticated admin
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
+      console.error('Missing authorization header');
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: corsHeaders }
       );
     }
 
-    // Create client with user token to verify admin role
-    const supabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: {
-        headers: { authorization: authHeader }
-      }
-    });
-
-    // Verify user is admin
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.error('User verification failed:', userError);
+    // Extract JWT token from Bearer header
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) {
+      console.error('Invalid authorization header format');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Invalid authorization header' }),
         { status: 401, headers: corsHeaders }
       );
     }
 
-    // Check if user has admin role
-    const { data: profile, error: profileError } = await supabase
+    // Verify JWT token using service role client
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !user) {
+      console.error('User verification failed:', userError?.message || 'No user found');
+      return new Response(
+        JSON.stringify({ error: 'Invalid token or user not found' }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    console.log(`Verifying admin role for user: ${user.email}`);
+
+    // Check if user has admin role using service role client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('user_id', user.id)
       .single();
 
-    if (profileError || profile?.role !== 'admin') {
-      console.error('Admin check failed:', profileError);
+    if (profileError) {
+      console.error('Profile lookup failed:', profileError.message);
       return new Response(
-        JSON.stringify({ error: 'Insufficient permissions' }),
+        JSON.stringify({ error: 'Profile lookup failed' }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    if (profile?.role !== 'admin') {
+      console.error(`Access denied. User ${user.email} has role: ${profile?.role}`);
+      return new Response(
+        JSON.stringify({ error: 'Insufficient permissions - admin role required' }),
         { status: 403, headers: corsHeaders }
       );
     }
