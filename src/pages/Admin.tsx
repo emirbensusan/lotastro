@@ -116,11 +116,11 @@ const Admin: React.FC = () => {
     }
   };
 
-  const deleteProfile = async (profile: Profile) => {
+  const deleteProfile = async (profile: Profile, force = false) => {
     try {
       // Use edge function for secure admin deletion
       const { data, error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
-        body: { userId: profile.user_id }
+        body: { userId: profile.user_id, force }
       });
       
       if (deleteError) {
@@ -148,6 +148,9 @@ const Admin: React.FC = () => {
       fetchProfiles();
       setDeleteDialogOpen(false);
       setUserToDelete(null);
+      setDeactivateDialogOpen(false);
+      setUserToDeactivate(null);
+      setConflictDetails('');
     } catch (error: any) {
       console.error('Error deleting profile:', error);
       toast({
@@ -774,22 +777,22 @@ const Admin: React.FC = () => {
         <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Cannot Delete User</AlertDialogTitle>
+              <AlertDialogTitle>User Has Associated Records</AlertDialogTitle>
               <AlertDialogDescription>
                 <div className="space-y-3">
                   <p>
-                    {userToDeactivate && `User "${userToDeactivate.full_name || userToDeactivate.email}" cannot be deleted because they have associated records:`}
+                    {userToDeactivate && `User "${userToDeactivate.full_name || userToDeactivate.email}" has associated records:`}
                   </p>
                   <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
                     {conflictDetails}
                   </p>
                   <p>
-                    Would you like to deactivate this user instead? Deactivated users cannot log in but their data remains intact.
+                    You can either <strong>reassign all records to yourself and delete the user</strong>, or <strong>deactivate the user</strong> (keeps data intact but prevents login).
                   </p>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <AlertDialogCancel onClick={() => {
                 setDeactivateDialogOpen(false);
                 setUserToDeactivate(null);
@@ -797,10 +800,18 @@ const Admin: React.FC = () => {
               }}>
                 Cancel
               </AlertDialogCancel>
+              <Button
+                variant="destructive"
+                onClick={() => userToDeactivate && deleteProfile(userToDeactivate, true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Reassign & Delete
+              </Button>
               <AlertDialogAction 
                 onClick={() => userToDeactivate && deactivateProfile(userToDeactivate)}
                 className="bg-orange-600 text-white hover:bg-orange-700"
               >
+                <UserX className="h-4 w-4 mr-2" />
                 Deactivate User
               </AlertDialogAction>
             </AlertDialogFooter>

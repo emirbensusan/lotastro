@@ -81,7 +81,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { userId } = await req.json();
+    const { userId, force = false, reassignToUserId } = await req.json();
     if (!userId) {
       return new Response(
         JSON.stringify({ error: 'User ID is required' }),
@@ -107,7 +107,7 @@ serve(async (req) => {
     // Check if user has any dependencies
     const totalDependencies = dependencies?.reduce((sum: number, dep: any) => sum + parseInt(dep.dependency_count), 0) || 0;
     
-    if (totalDependencies > 0) {
+    if (totalDependencies > 0 && !force) {
       const dependencyDetails = dependencies?.filter((dep: any) => parseInt(dep.dependency_count) > 0)
         .map((dep: any) => `${dep.table_name}: ${dep.dependency_count}`)
         .join(', ');
@@ -118,10 +118,75 @@ serve(async (req) => {
         JSON.stringify({ 
           error: 'Cannot delete user with existing records',
           details: `User has associated records in: ${dependencyDetails}`,
-          canDeactivate: true
+          canDeactivate: true,
+          canForceDelete: true
         }),
         { status: 409, headers: corsHeaders }
       );
+    }
+
+    // If force deletion is requested, reassign all dependent records
+    if (force && totalDependencies > 0) {
+      const assignToUser = reassignToUserId || user.id; // Default to current admin
+      
+      console.log(`Force deleting user ${userId}, reassigning records to ${assignToUser}`);
+      
+      try {
+        // Reassign orders created by user
+        await supabaseAdmin
+          .from('orders')
+          .update({ created_by: assignToUser })
+          .eq('created_by', userId);
+          
+        // Reassign orders fulfilled by user
+        await supabaseAdmin
+          .from('orders')
+          .update({ fulfilled_by: assignToUser })
+          .eq('fulfilled_by', userId);
+          
+        // Reassign lot_queue records
+        await supabaseAdmin
+          .from('lot_queue')
+          .update({ created_by: assignToUser })
+          .eq('created_by', userId);
+          
+        // Reassign field_edit_queue submitted records
+        await supabaseAdmin
+          .from('field_edit_queue')
+          .update({ submitted_by: assignToUser })
+          .eq('submitted_by', userId);
+          
+        // Reassign field_edit_queue approved records
+        await supabaseAdmin
+          .from('field_edit_queue')
+          .update({ approved_by: assignToUser })
+          .eq('approved_by', userId);
+          
+        // Reassign order_queue submitted records
+        await supabaseAdmin
+          .from('order_queue')
+          .update({ submitted_by: assignToUser })
+          .eq('submitted_by', userId);
+          
+        // Reassign order_queue approved records
+        await supabaseAdmin
+          .from('order_queue')
+          .update({ approved_by: assignToUser })
+          .eq('approved_by', userId);
+          
+        // Reassign user_invitations records
+        await supabaseAdmin
+          .from('user_invitations')
+          .update({ invited_by: assignToUser })
+          .eq('invited_by', userId);
+          
+      } catch (reassignError) {
+        console.error('Failed to reassign user dependencies:', reassignError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to reassign user dependencies' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
     }
 
     // Log security event for audit trail
