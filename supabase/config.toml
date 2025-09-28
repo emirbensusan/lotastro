@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.admin-change-password]
 verify_jwt = true
+
+[functions.admin-deactivate-user]
+verify_jwt = true
+
+[functions.send-invitation]
+verify_jwt = true

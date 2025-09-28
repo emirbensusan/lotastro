@@ -499,6 +499,7 @@ const Admin: React.FC = () => {
                   <TableHead>{t('fullName')}</TableHead>
                   <TableHead>{t('email')}</TableHead>
                   <TableHead>{t('role')}</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>{t('created')}</TableHead>
                   <TableHead>{t('actions')}</TableHead>
                 </TableRow>
