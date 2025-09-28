@@ -250,7 +250,7 @@ const LotIntake = () => {
     if (!selectedFile) {
       toast({
         title: t('error') as string,
-        description: 'Please select a file to import',
+        description: t('selectFileToImport'),
         variant: 'destructive',
       });
       return;
@@ -268,7 +268,7 @@ const LotIntake = () => {
           
           toast({
             title: t('importStarted') as string,
-            description: t('processingFile') || 'Processing file...',
+            description: t('processingFile'),
           });
           
           setImportProgress(25);
@@ -293,7 +293,7 @@ const LotIntake = () => {
             // Create import result with only parsing errors (no database import)
             const result = {
               success: false,
-              message: `Validation failed: ${parseResult.errors.length} errors found in the uploaded file. Please fix the errors and upload again.`,
+              message: `${t('validationFailed')}: ${parseResult.errors.length} ${t('errorsFoundInFile')}`,
               processedCount: 0,
               totalCount: parseResult.lots.length,
               parsingErrors: parseResult.errors,
@@ -601,7 +601,7 @@ const LotIntake = () => {
                     {t('qrCodeGenerated')}
                   </CardTitle>
                   <CardDescription>
-                    LOT {createdLot.lot_number} created successfully
+                    LOT {createdLot.lot_number} {t('lotCreatedSuccessMessage')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -640,7 +640,7 @@ const LotIntake = () => {
                   {t('bulkLotImport')}
                 </CardTitle>
                 <CardDescription>
-                  Import multiple lots from a CSV file. Follow the exact column order for successful import.
+                  {t('bulkImportInstructions')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -735,7 +735,7 @@ const LotIntake = () => {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-destructive">
-                            {(importResults.parsingErrors?.length || 0) + (importResults.databaseErrors?.length || 0)} errors found
+                            {(importResults.parsingErrors?.length || 0) + (importResults.databaseErrors?.length || 0)} {t('errorsFound')}
                           </Badge>
                           <Button
                             onClick={() => generateErrorReport(
@@ -746,22 +746,22 @@ const LotIntake = () => {
                             size="sm"
                           >
                             <Download className="mr-2 h-4 w-4" />
-                            Download Error Report
+                            {t('downloadErrorReport')}
                           </Button>
                         </div>
                         
                         {importResults.parsingErrors && importResults.parsingErrors.length > 0 && (
                           <div className="space-y-2">
-                            <h4 className="text-sm font-medium">Parsing Errors ({importResults.parsingErrors.length}):</h4>
+                            <h4 className="text-sm font-medium">{t('parsingErrors')} ({importResults.parsingErrors.length}):</h4>
                             <div className="bg-destructive/10 p-3 rounded-lg max-h-32 overflow-y-auto">
                               {importResults.parsingErrors.slice(0, 5).map((error, index) => (
                                 <div key={index} className="text-xs text-destructive">
-                                  Row {error.rowNumber}: {error.message}
+                                  {t('rowError')} {error.rowNumber}: {error.message}
                                 </div>
                               ))}
                               {importResults.parsingErrors.length > 5 && (
                                 <div className="text-xs text-muted-foreground">
-                                  ... and {importResults.parsingErrors.length - 5} more parsing errors
+                                  ... and {importResults.parsingErrors.length - 5} {t('moreParsingErrors')}
                                 </div>
                               )}
                             </div>
@@ -770,7 +770,7 @@ const LotIntake = () => {
                         
                         {importResults.databaseErrors && importResults.databaseErrors.length > 0 && (
                           <div className="space-y-2">
-                            <h4 className="text-sm font-medium">Database Errors ({importResults.databaseErrors.length}):</h4>
+                            <h4 className="text-sm font-medium">{t('databaseErrors')} ({importResults.databaseErrors.length}):</h4>
                             <div className="bg-destructive/10 p-3 rounded-lg max-h-32 overflow-y-auto">
                               {importResults.databaseErrors.slice(0, 3).map((error, index) => (
                                 <div key={index} className="text-xs text-destructive">
@@ -779,7 +779,7 @@ const LotIntake = () => {
                               ))}
                               {importResults.databaseErrors.length > 3 && (
                                 <div className="text-xs text-muted-foreground">
-                                  ... and {importResults.databaseErrors.length - 3} more database errors
+                                  ... and {importResults.databaseErrors.length - 3} {t('moreDatabaseErrors')}
                                 </div>
                               )}
                             </div>

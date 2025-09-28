@@ -478,6 +478,21 @@ const translations = {
     errors: "Errors",
     failed: "Failed",
     
+    // Bulk Import Translations
+    bulkImportInstructions: "Import multiple lots from a CSV file. Follow the exact column order for successful import.",
+    lotCreatedSuccessMessage: "created successfully",
+    errorsFound: "errors found", 
+    downloadErrorReport: "Download Error Report",
+    parsingErrors: "Parsing Errors",
+    databaseErrors: "Database Errors", 
+    rowError: "Row",
+    moreParsingErrors: "more parsing errors",
+    moreDatabaseErrors: "more database errors",
+    selectFileToImport: "Please select a file to import",
+    validationFailed: "Validation failed",
+    errorsFoundInFile: "errors found in the uploaded file. Please fix the errors and upload again.",
+    browseFile: "Browse File",
+    
     // Sample Order Translations
     sampleRollSelection: 'Sample Roll Selection',
     sampleMeters: 'Sample Meters:',
@@ -723,6 +738,21 @@ const translations = {
     importResults: "İçe Aktarma Sonuçları",
     errors: "Hatalar",
     failed: "Başarısız",
+    
+    // Bulk Import Translations
+    bulkImportInstructions: "CSV dosyasından birden fazla lot içe aktarın. Başarılı içe aktarma için tam sütun sırasını takip edin.",
+    lotCreatedSuccessMessage: "başarıyla oluşturuldu",
+    errorsFound: "hata bulundu",
+    downloadErrorReport: "Hata Raporunu İndir", 
+    parsingErrors: "Ayrıştırma Hataları",
+    databaseErrors: "Veritabanı Hataları",
+    rowError: "Satır",
+    moreParsingErrors: "daha fazla ayrıştırma hatası",
+    moreDatabaseErrors: "daha fazla veritabanı hatası", 
+    selectFileToImport: "Lütfen içe aktaracak bir dosya seçin",
+    validationFailed: "Doğrulama başarısız",
+    errorsFoundInFile: "yüklenen dosyada hata bulundu. Lütfen hataları düzeltin ve tekrar yükleyin.",
+    browseFile: "Dosya Yükle",
     prepared: 'Hazırlandı',
     sample: 'Numune',
     standard: 'Standart',
