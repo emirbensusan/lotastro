@@ -28,9 +28,20 @@ interface Profile {
   active?: boolean;
 }
 
+interface PendingInvitation {
+  id: string;
+  email: string;
+  role: UserRole;
+  status: string;
+  invited_at: string;
+  expires_at: string;
+}
+
 const Admin: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [invitationsLoading, setInvitationsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [newProfile, setNewProfile] = useState({
@@ -58,6 +69,7 @@ const Admin: React.FC = () => {
   useEffect(() => {
     if (!authLoading) {
       fetchProfiles();
+      fetchPendingInvitations();
     }
   }, [authLoading]);
 
@@ -86,6 +98,35 @@ const Admin: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingInvitations = async () => {
+    setInvitationsLoading(true);
+    
+    if (!hasRole('admin')) {
+      setInvitationsLoading(false);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_invitations')
+        .select('*')
+        .eq('status', 'pending')
+        .order('invited_at', { ascending: false });
+
+      if (error) throw error;
+      setPendingInvitations(data || []);
+    } catch (error) {
+      console.error('Error fetching pending invitations:', error);
+      toast({
+        title: t('error') as string,
+        description: 'Failed to fetch pending invitations',
+        variant: 'destructive'
+      });
+    } finally {
+      setInvitationsLoading(false);
     }
   };
 
@@ -307,6 +348,7 @@ const Admin: React.FC = () => {
 
       setInviteEmail('');
       setInviteRole('warehouse_staff');
+      fetchPendingInvitations();
     } catch (error: any) {
       console.error('Error sending invitation:', error);
       toast({
@@ -477,6 +519,56 @@ const Admin: React.FC = () => {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Pending Invitations */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Invitations</CardTitle>
+          <CardDescription>Users who have been invited but haven't accepted yet</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {invitationsLoading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-12 bg-muted rounded animate-pulse"></div>
+              ))}
+            </div>
+          ) : pendingInvitations.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No pending invitations
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Invited</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingInvitations.map((invitation) => (
+                  <TableRow key={invitation.id}>
+                    <TableCell className="font-medium">{invitation.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={getRoleBadgeVariant(invitation.role)}>
+                        {getRoleDisplayName(invitation.role)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatDate(invitation.invited_at)}</TableCell>
+                    <TableCell>{formatDate(invitation.expires_at)}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{invitation.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
