@@ -1,8 +1,5 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { Resend } from 'https://esm.sh/resend@2.0.0';
-
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,65 +49,36 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { email, role }: InvitationRequest = await req.json();
 
-    // Generate invitation token
-    const token_value = crypto.randomUUID();
+    // Use Supabase's built-in invitation system
+    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+      data: {
+        role: role,
+        invited_by: user.id
+      },
+      redirectTo: `${req.headers.get('origin')}/auth`
+    });
 
-    // Create invitation record
-    const { error: inviteError } = await supabase
+    if (inviteError) {
+      console.error('Error sending invitation:', inviteError);
+      throw new Error(`Failed to send invitation: ${inviteError.message}`);
+    }
+
+    // Create invitation record for tracking
+    const { error: trackingError } = await supabase
       .from('user_invitations')
       .insert({
         email,
         role,
         invited_by: user.id,
-        token: token_value,
+        token: crypto.randomUUID(), // For tracking purposes
         status: 'pending'
       });
 
-    if (inviteError) {
-      console.error('Error creating invitation:', inviteError);
-      throw new Error('Failed to create invitation');
+    if (trackingError) {
+      console.log('Warning: Failed to create tracking record:', trackingError);
     }
 
-    // Send invitation email
-    const invitationUrl = `${Deno.env.get('SUPABASE_URL')?.replace('supabase.co', 'supabase.co')}/invite?token=${token_value}`;
-    
-    const emailResponse = await resend.emails.send({
-      from: 'LotAstro <onboarding@resend.dev>',
-      to: [email],
-      subject: 'You\'re invited to join LotAstro',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #2563eb; margin-bottom: 10px;">LotAstro</h1>
-            <h2 style="color: #334155; margin-top: 0;">You're Invited!</h2>
-          </div>
-          
-          <p style="color: #475569; font-size: 16px; line-height: 1.5;">
-            You've been invited to join LotAstro as a <strong>${role.replace('_', ' ')}</strong>.
-          </p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${invitationUrl}" 
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 500;">
-              Accept Invitation
-            </a>
-          </div>
-          
-          <p style="color: #64748b; font-size: 14px; margin-top: 30px;">
-            This invitation will expire in 7 days. If you have any questions, please contact your administrator.
-          </p>
-          
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
-          
-          <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            <a href="${invitationUrl}" style="color: #2563eb; word-break: break-all;">${invitationUrl}</a>
-          </p>
-        </div>
-      `,
-    });
-
-    console.log('Invitation email sent:', emailResponse);
+    console.log('Invitation sent successfully to:', email);
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
