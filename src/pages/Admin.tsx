@@ -110,14 +110,27 @@ const Admin: React.FC = () => {
     }
     
     try {
-      const { data, error } = await supabase
+      // Get pending invitations
+      const { data: invitations, error: invitationsError } = await supabase
         .from('user_invitations')
         .select('*')
         .eq('status', 'pending')
         .order('invited_at', { ascending: false });
 
-      if (error) throw error;
-      setPendingInvitations(data || []);
+      if (invitationsError) throw invitationsError;
+
+      // Get all profiles to check which invitations have been accepted
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('email');
+
+      if (profilesError) throw profilesError;
+
+      // Filter out invitations where user already has a profile
+      const profileEmails = new Set(profiles?.map(p => p.email) || []);
+      const pendingOnly = invitations?.filter(inv => !profileEmails.has(inv.email)) || [];
+
+      setPendingInvitations(pendingOnly);
     } catch (error) {
       console.error('Error fetching pending invitations:', error);
       toast({
