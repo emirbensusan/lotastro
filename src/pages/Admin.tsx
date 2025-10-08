@@ -130,6 +130,31 @@ const Admin: React.FC = () => {
     }
   };
 
+  const handleDeleteInvitation = async (invitationId: string, email: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_invitations')
+        .delete()
+        .eq('id', invitationId);
+
+      if (error) throw error;
+
+      toast({
+        title: t('success') as string,
+        description: `Invitation for ${email} has been deleted`,
+      });
+
+      fetchPendingInvitations();
+    } catch (error) {
+      console.error('Error deleting invitation:', error);
+      toast({
+        title: t('error') as string,
+        description: 'Failed to delete invitation',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const updateProfile = async (profileId: string, updates: { full_name?: string; role?: UserRole }) => {
     try {
       const { error } = await supabase
@@ -548,6 +573,7 @@ const Admin: React.FC = () => {
                   <TableHead>Invited</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -563,6 +589,31 @@ const Admin: React.FC = () => {
                     <TableCell>{formatDate(invitation.expires_at)}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{invitation.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Invitation</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete the invitation for <strong>{invitation.email}</strong>? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteInvitation(invitation.id, invitation.email)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))}
