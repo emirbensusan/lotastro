@@ -55,12 +55,45 @@ const handler = async (req: Request): Promise<Response> => {
         role: role,
         invited_by: user.id
       },
-      redirectTo: `${req.headers.get('origin')}/auth`
+      redirectTo: `${req.headers.get('origin')}/invite`
     });
 
     if (inviteError) {
       console.error('Error sending invitation:', inviteError);
+      
+      // Check if user already exists
+      if (inviteError.message.includes('already registered') || inviteError.message.includes('already exists')) {
+        return new Response(
+          JSON.stringify({ error: 'A user with this email already exists' }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        );
+      }
+      
       throw new Error(`Failed to send invitation: ${inviteError.message}`);
+    }
+
+    // Create profile for the invited user
+    if (inviteData?.user?.id) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          user_id: inviteData.user.id,
+          email: email,
+          role: role,
+          full_name: ''
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (profileError) {
+        console.error('Warning: Failed to create profile for invited user:', profileError);
+        // Don't fail the invitation if profile creation fails
+      } else {
+        console.log('Profile created for invited user:', inviteData.user.id);
+      }
     }
 
     // Create invitation record for tracking

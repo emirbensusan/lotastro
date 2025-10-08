@@ -24,21 +24,33 @@ const InviteAccept = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'token' | 'supabase' | 'none'>('none');
 
   useEffect(() => {
-    if (user) {
-      navigate('/');
-      return;
-    }
-
-    if (!token) {
-      setError('Invalid invitation link');
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // If we have a token parameter, use legacy mode
+      if (token) {
+        setMode('token');
+        fetchInvitation();
+        return;
+      }
+      
+      // If we have a session but no token, use Supabase invite mode
+      if (session?.user) {
+        setMode('supabase');
+        setLoading(false);
+        return;
+      }
+      
+      // No token and no session
+      setError('Please open the invitation link from your email');
       setLoading(false);
-      return;
-    }
+    };
 
-    fetchInvitation();
-  }, [token, user, navigate]);
+    checkSession();
+  }, [token]);
 
   const fetchInvitation = async () => {
     try {
@@ -88,38 +100,82 @@ const InviteAccept = () => {
     setCreating(true);
 
     try {
-      // Sign up the user with the invitation email
-      const { error: signUpError } = await signUp(invitation.email, password, fullName, invitation.role);
+      if (mode === 'token') {
+        // Legacy token-based invitation
+        const { error: signUpError } = await signUp(invitation.email, password, fullName, invitation.role);
 
-      if (signUpError) {
-        throw signUpError;
+        if (signUpError) {
+          throw signUpError;
+        }
+
+        // Update invitation status
+        const { error: updateError } = await supabase
+          .from('user_invitations')
+          .update({
+            status: 'accepted',
+            accepted_at: new Date().toISOString()
+          })
+          .eq('token', token);
+
+        if (updateError) {
+          console.error('Error updating invitation status:', updateError);
+        }
+
+        toast({
+          title: 'Account Created',
+          description: 'Your account has been created successfully. Please check your email for verification.',
+        });
+
+        navigate('/auth');
+      } else if (mode === 'supabase') {
+        // Supabase native invitation - user already exists, just needs to set password and name
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.user) {
+          throw new Error('No active session found');
+        }
+
+        // Update user password
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: password
+        });
+
+        if (passwordError) {
+          throw passwordError;
+        }
+
+        // Update user profile with full name
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ full_name: fullName })
+          .eq('user_id', session.user.id);
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+        }
+
+        // Try to update invitation status (best effort)
+        await supabase
+          .from('user_invitations')
+          .update({
+            status: 'accepted',
+            accepted_at: new Date().toISOString()
+          })
+          .eq('email', session.user.email)
+          .eq('status', 'pending');
+
+        toast({
+          title: 'Account Setup Complete',
+          description: 'Your account has been set up successfully.',
+        });
+
+        navigate('/');
       }
-
-      // Update invitation status
-      const { error: updateError } = await supabase
-        .from('user_invitations')
-        .update({
-          status: 'accepted',
-          accepted_at: new Date().toISOString()
-        })
-        .eq('token', token);
-
-      if (updateError) {
-        console.error('Error updating invitation status:', updateError);
-      }
-
-      toast({
-        title: 'Account Created',
-        description: 'Your account has been created successfully. Please check your email for verification.',
-      });
-
-      // Redirect to auth page for login
-      navigate('/auth');
     } catch (error: any) {
       console.error('Error accepting invitation:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create account',
+        description: error.message || 'Failed to complete account setup',
         variant: 'destructive',
       });
     } finally {
@@ -175,18 +231,22 @@ const InviteAccept = () => {
           </div>
           <CardTitle className="text-2xl font-bold text-primary">Welcome to LotAstro</CardTitle>
           <CardDescription>
-            You've been invited to join as <strong>{invitation?.role?.replace('_', ' ')}</strong>
+            {mode === 'token' && invitation?.role 
+              ? `You've been invited to join as ${invitation.role.replace('_', ' ')}`
+              : 'Complete your account setup'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 p-3 bg-muted rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium">Invitation Details</span>
+          {mode === 'token' && invitation && (
+            <div className="mb-4 p-3 bg-muted rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium">Invitation Details</span>
+              </div>
+              <p className="text-sm text-muted-foreground">Email: {invitation.email}</p>
+              <p className="text-sm text-muted-foreground">Role: {invitation.role?.replace('_', ' ')}</p>
             </div>
-            <p className="text-sm text-muted-foreground">Email: {invitation?.email}</p>
-            <p className="text-sm text-muted-foreground">Role: {invitation?.role?.replace('_', ' ')}</p>
-          </div>
+          )}
 
           <form onSubmit={handleAcceptInvitation} className="space-y-4">
             <div className="space-y-2">
@@ -261,10 +321,10 @@ const InviteAccept = () => {
               {creating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Account...
+                  {mode === 'supabase' ? 'Setting Up Account...' : 'Creating Account...'}
                 </>
               ) : (
-                'Accept Invitation & Create Account'
+                mode === 'supabase' ? 'Complete Account Setup' : 'Accept Invitation & Create Account'
               )}
             </Button>
           </form>
