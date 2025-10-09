@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 
 interface PermissionCache {
   [key: string]: boolean;
@@ -8,23 +9,27 @@ interface PermissionCache {
 
 export const usePermissions = () => {
   const { profile } = useAuth();
+  const { viewAsRole } = useViewAsRole();
   const [permissions, setPermissions] = useState<PermissionCache>({});
   const [loading, setLoading] = useState(true);
 
+  // Determine effective role (viewAsRole takes precedence for admins)
+  const effectiveRole = viewAsRole || profile?.role;
+
   useEffect(() => {
-    if (profile?.role) {
+    if (effectiveRole) {
       fetchPermissions();
     }
-  }, [profile?.role]);
+  }, [effectiveRole]);
 
   const fetchPermissions = async () => {
-    if (!profile?.role) return;
+    if (!effectiveRole) return;
 
     try {
       const { data, error } = await supabase
         .from('role_permissions')
         .select('permission_category, permission_action, is_allowed')
-        .eq('role', profile.role);
+        .eq('role', effectiveRole);
 
       if (error) throw error;
 
@@ -44,8 +49,8 @@ export const usePermissions = () => {
   };
 
   const hasPermission = (category: string, action: string): boolean => {
-    // Admin always has all permissions
-    if (profile?.role === 'admin') return true;
+    // Admin always has all permissions (unless viewing as another role)
+    if (profile?.role === 'admin' && !viewAsRole) return true;
 
     const key = `${category}:${action}`;
     return permissions[key] === true;

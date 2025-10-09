@@ -64,15 +64,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const cartItemCount = getItemCount();
 
   const navigationItems = [
-    { path: '/', label: t('dashboard'), icon: Home, permission: { category: 'dashboard', action: 'viewdashboard' } },
-    { path: '/lot-intake', label: t('lotIntake'), icon: PackagePlus, permission: { category: 'inventory', action: 'createlots' } },
-    { path: '/lot-queue', label: t('lotQueue'), icon: Timer, permission: { category: 'inventory', action: 'viewlotqueue' } },
+    { path: '/', label: t('dashboard'), icon: Home, permission: { category: 'reports', action: 'accessdashboard' } },
+    { path: '/lot-intake', label: t('lotIntake'), icon: PackagePlus, permission: { category: 'inventory', action: 'createlotentries' } },
+    { path: '/lot-queue', label: t('lotQueue'), icon: Timer, permission: { category: 'inventory', action: 'createlotentries' } },
     { path: '/inventory', label: t('inventory'), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' } },
     { path: '/orders', label: t('orders'), icon: Truck, permission: { category: 'orders', action: 'vieworders' } },
-    { path: '/order-queue', label: t('orderQueue'), icon: ListOrdered, permission: { category: 'orders', action: 'vieworderqueue' } },
-    { path: '/qr-scan', label: t('qrScan'), icon: QrCode, permission: { category: 'qrcode', action: 'scanqrcodes' } },
+    { path: '/order-queue', label: t('orderQueue'), icon: ListOrdered, permission: { category: 'orders', action: 'createorders' } },
+    { path: '/qr-scan', label: t('qrScan'), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
     { path: '/reports', label: t('reports'), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
-    { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
+    { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'inventory', action: 'editlotinfo' } },
     { path: '/suppliers', label: t('suppliers'), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
     { path: '/admin', label: t('admin'), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
   ];
