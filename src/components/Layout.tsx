@@ -48,7 +48,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { language, setLanguage, t } = useLanguage();
   const { getItemCount, setIsCartOpen } = usePOCart();
   const { viewAsRole, setViewAsRole, isViewingAsOtherRole } = useViewAsRole();
@@ -77,9 +77,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/admin', label: t('admin'), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
   ];
 
-  const filteredNavigation = navigationItems.filter(item => 
-    hasPermission(item.permission.category, item.permission.action)
-  );
+  // Wait for permissions to load before filtering navigation
+  const filteredNavigation = permissionsLoading 
+    ? [] 
+    : navigationItems.filter(item => 
+        hasPermission(item.permission.category, item.permission.action)
+      );
 
   const getRoleBadgeColor = (role: string, isViewingAs = false) => {
     const baseColors = {
@@ -120,7 +123,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <SidebarGroup className="flex-1">
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
-                {filteredNavigation.map((item) => {
+                {permissionsLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  filteredNavigation.map((item) => {
                   const Icon = item.icon;
                   const active = location.pathname === item.path;
                   
@@ -136,7 +144,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
-                })}
+                })
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -147,7 +156,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const MobileNavigationContent = () => (
     <nav className="space-y-2">
-      {filteredNavigation.map((item) => {
+      {permissionsLoading ? (
+        <div className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        filteredNavigation.map((item) => {
         const Icon = item.icon;
         const isActive = location.pathname === item.path;
         
@@ -165,7 +179,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {item.label}
           </Button>
         );
-      })}
+      })
+      )}
     </nav>
   );
 
