@@ -10,10 +10,15 @@ import { Search, Package, Truck, Building2 } from 'lucide-react';
 
 interface SearchResult {
   id: string;
-  type: 'lot' | 'order' | 'supplier';
+  type: 'lot' | 'order' | 'supplier' | 'quality' | 'quality-color';
   title: string;
   subtitle: string;
   path: string;
+  metadata?: {
+    totalMeters?: number;
+    totalRolls?: number;
+    lotCount?: number;
+  };
 }
 
 const GlobalSearch: React.FC = () => {
@@ -48,31 +53,129 @@ const GlobalSearch: React.FC = () => {
     setLoading(true);
     try {
       const searchResults: SearchResult[] = [];
+      const trimmedQuery = searchQuery.trim();
+      const queryWords = trimmedQuery.split(/\s+/);
+      
+      // Detect if this is a compound search (quality + color)
+      const isCompoundSearch = queryWords.length > 1;
 
-      // Search lots
+      // Search for quality aggregations (single word searches)
+      if (!isCompoundSearch) {
+        const { data: qualityData } = await supabase
+          .from('lots')
+          .select('quality, color, meters, roll_count')
+          .eq('status', 'in_stock')
+          .ilike('quality', `%${trimmedQuery}%`)
+          .limit(20);
+
+        if (qualityData && qualityData.length > 0) {
+          // Normalize and aggregate by quality
+          const qualityMap = new Map<string, { qualities: Set<string>, colors: Set<string>, totalMeters: number, totalRolls: number, lotCount: number }>();
+          
+          for (const lot of qualityData) {
+            const { data: normalized } = await supabase.rpc('normalize_quality', { quality_input: lot.quality });
+            const normalizedQuality = normalized || lot.quality;
+            
+            if (!qualityMap.has(normalizedQuality)) {
+              qualityMap.set(normalizedQuality, { qualities: new Set(), colors: new Set(), totalMeters: 0, totalRolls: 0, lotCount: 0 });
+            }
+            
+            const entry = qualityMap.get(normalizedQuality)!;
+            entry.qualities.add(lot.quality);
+            entry.colors.add(lot.color);
+            entry.totalMeters += Number(lot.meters);
+            entry.totalRolls += lot.roll_count;
+            entry.lotCount += 1;
+          }
+
+          // Add quality results
+          for (const [normalizedQuality, data] of qualityMap.entries()) {
+            searchResults.push({
+              id: `quality-${normalizedQuality}`,
+              type: 'quality',
+              title: `Quality: ${Array.from(data.qualities)[0]}`,
+              subtitle: `${data.colors.size} colors, ${Math.round(data.totalMeters)}m total`,
+              path: `/inventory/${encodeURIComponent(normalizedQuality)}`,
+              metadata: { totalMeters: data.totalMeters, totalRolls: data.totalRolls, lotCount: data.lotCount }
+            });
+          }
+        }
+      }
+
+      // Search for quality+color combinations (compound searches)
+      if (isCompoundSearch) {
+        const qualityTerm = queryWords[0];
+        const colorTerm = queryWords.slice(1).join(' ');
+        
+        const { data: qualityColorData } = await supabase
+          .from('lots')
+          .select('quality, color, meters, roll_count')
+          .eq('status', 'in_stock')
+          .ilike('quality', `%${qualityTerm}%`)
+          .ilike('color', `%${colorTerm}%`)
+          .limit(10);
+
+        if (qualityColorData && qualityColorData.length > 0) {
+          // Aggregate by normalized quality + color
+          const qualityColorMap = new Map<string, { quality: string, color: string, totalMeters: number, totalRolls: number, lotCount: number }>();
+          
+          for (const lot of qualityColorData) {
+            const { data: normalized } = await supabase.rpc('normalize_quality', { quality_input: lot.quality });
+            const normalizedQuality = normalized || lot.quality;
+            const key = `${normalizedQuality}|${lot.color}`;
+            
+            if (!qualityColorMap.has(key)) {
+              qualityColorMap.set(key, { quality: lot.quality, color: lot.color, totalMeters: 0, totalRolls: 0, lotCount: 0 });
+            }
+            
+            const entry = qualityColorMap.get(key)!;
+            entry.totalMeters += Number(lot.meters);
+            entry.totalRolls += lot.roll_count;
+            entry.lotCount += 1;
+          }
+
+          // Add quality-color results
+          for (const [key, data] of qualityColorMap.entries()) {
+            const [normalizedQuality, color] = key.split('|');
+            searchResults.push({
+              id: `quality-color-${key}`,
+              type: 'quality-color',
+              title: `${data.quality} - ${color}`,
+              subtitle: `${Math.round(data.totalMeters)}m, ${data.totalRolls} rolls, ${data.lotCount} lots`,
+              path: `/inventory/${encodeURIComponent(normalizedQuality)}/${encodeURIComponent(color)}`,
+              metadata: { totalMeters: data.totalMeters, totalRolls: data.totalRolls, lotCount: data.lotCount }
+            });
+          }
+        }
+      }
+
+      // Search individual lots (by lot number or general search)
       const { data: lots } = await supabase
         .from('lots')
         .select('*, suppliers(name)')
-        .or(`lot_number.ilike.%${searchQuery}%,quality.ilike.%${searchQuery}%,color.ilike.%${searchQuery}%`)
+        .or(`lot_number.ilike.%${trimmedQuery}%,quality.ilike.%${trimmedQuery}%,color.ilike.%${trimmedQuery}%`)
         .limit(5);
 
       if (lots) {
-        lots.forEach(lot => {
+        for (const lot of lots) {
+          const { data: normalized } = await supabase.rpc('normalize_quality', { quality_input: lot.quality });
+          const normalizedQuality = normalized || lot.quality;
+          
           searchResults.push({
             id: lot.id,
             type: 'lot',
             title: `LOT ${lot.lot_number}`,
             subtitle: `${lot.quality} - ${lot.color} (${lot.meters}m)`,
-            path: `/inventory`
+            path: `/inventory/${encodeURIComponent(normalizedQuality)}/${encodeURIComponent(lot.color)}`
           });
-        });
+        }
       }
 
       // Search orders
       const { data: orders } = await supabase
         .from('orders')
         .select('*')
-        .or(`order_number.ilike.%${searchQuery}%,customer_name.ilike.%${searchQuery}%`)
+        .or(`order_number.ilike.%${trimmedQuery}%,customer_name.ilike.%${trimmedQuery}%`)
         .limit(5);
 
       if (orders) {
@@ -91,7 +194,7 @@ const GlobalSearch: React.FC = () => {
       const { data: suppliers } = await supabase
         .from('suppliers')
         .select('*')
-        .ilike('name', `%${searchQuery}%`)
+        .ilike('name', `%${trimmedQuery}%`)
         .limit(3);
 
       if (suppliers) {
@@ -116,6 +219,8 @@ const GlobalSearch: React.FC = () => {
 
   const getIcon = (type: string) => {
     switch (type) {
+      case 'quality': return <Package className="h-4 w-4" />;
+      case 'quality-color': return <Package className="h-4 w-4" />;
       case 'lot': return <Package className="h-4 w-4" />;
       case 'order': return <Truck className="h-4 w-4" />;
       case 'supplier': return <Building2 className="h-4 w-4" />;
@@ -123,12 +228,25 @@ const GlobalSearch: React.FC = () => {
     }
   };
 
-  const getBadgeVariant = (type: string) => {
+  const getBadgeVariant = (type: string): "default" | "secondary" | "outline" | "destructive" => {
     switch (type) {
-      case 'lot': return 'default';
+      case 'quality': return 'default';
+      case 'quality-color': return 'secondary';
+      case 'lot': return 'outline';
       case 'order': return 'secondary';
       case 'supplier': return 'outline';
       default: return 'outline';
+    }
+  };
+
+  const getBadgeText = (type: string) => {
+    switch (type) {
+      case 'quality': return 'QUALITY';
+      case 'quality-color': return 'COLOR';
+      case 'lot': return 'LOT';
+      case 'order': return 'ORDER';
+      case 'supplier': return 'SUPPLIER';
+      default: return type.toUpperCase();
     }
   };
 
@@ -181,7 +299,7 @@ const GlobalSearch: React.FC = () => {
                         </div>
                       </div>
                       <Badge variant={getBadgeVariant(result.type)}>
-                        {result.type.toUpperCase()}
+                        {getBadgeText(result.type)}
                       </Badge>
                     </div>
                   </Button>
