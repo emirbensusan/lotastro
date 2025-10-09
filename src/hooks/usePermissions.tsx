@@ -26,12 +26,16 @@ export const usePermissions = () => {
     if (!effectiveRole) return;
 
     try {
+      console.info('[usePermissions] Fetching permissions for role:', effectiveRole);
       const { data, error } = await supabase
         .from('role_permissions')
         .select('permission_category, permission_action, is_allowed')
         .eq('role', effectiveRole);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[usePermissions] Database error:', error);
+        throw error;
+      }
 
       // Build permission cache
       const cache: PermissionCache = {};
@@ -40,9 +44,12 @@ export const usePermissions = () => {
         cache[key] = perm.is_allowed;
       });
 
+      console.info('[usePermissions] Loaded permissions:', Object.keys(cache).length, 'entries');
       setPermissions(cache);
     } catch (error) {
-      console.error('Error fetching permissions:', error);
+      console.error('[usePermissions] Fatal error fetching permissions:', error);
+      // Set a minimal fallback so the app doesn't break completely
+      setPermissions({});
     } finally {
       setLoading(false);
     }

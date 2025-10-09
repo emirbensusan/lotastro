@@ -72,7 +72,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/order-queue', label: t('orderQueue'), icon: ListOrdered, permission: { category: 'orders', action: 'createorders' } },
     { path: '/qr-scan', label: t('qrScan'), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
     { path: '/reports', label: t('reports'), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
-    { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'inventory', action: 'editlotinfo' } },
+    { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
     { path: '/suppliers', label: t('suppliers'), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
     { path: '/admin', label: t('admin'), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
   ];

@@ -255,6 +255,52 @@ const Dashboard = () => {
           </>
         )}
 
+        {profile?.role === 'senior_manager' && (
+          <>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/approvals'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  ✅ Review Approvals
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Approve or reject pending changes</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Approvals
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/reports'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  📊 View Reports
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Access analytics and reports</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Reports
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders'}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-lg">
+                  📦 Manage Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">Create and monitor orders</p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Go to Orders
+                </Button>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
         {profile?.role === 'admin' && (
           <>
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/suppliers'}>
