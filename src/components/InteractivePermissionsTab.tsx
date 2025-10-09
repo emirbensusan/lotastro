@@ -66,6 +66,11 @@ const defaultPermissions: Permission[] = [
   { categoryKey: 'categoryQrDocuments', actionKey: 'actionScanQrCodes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryQrDocuments', actionKey: 'actionPrintLotLabels', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryQrDocuments', actionKey: 'actionBulkQrGeneration', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+
+  // Approvals (Change Request Management)
+  { categoryKey: 'categoryApprovals', actionKey: 'actionViewApprovals', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+  { categoryKey: 'categoryApprovals', actionKey: 'actionApproveChanges', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+  { categoryKey: 'categoryApprovals', actionKey: 'actionRejectChanges', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
 ];
 
 const getRoleColor = (role: string) => {
