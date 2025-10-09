@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/components/ui/use-toast';
 import { Clock, Package, Edit, CheckCircle } from 'lucide-react';
@@ -31,6 +32,7 @@ interface Supplier {
 
 const LotQueue = () => {
   const { profile } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { t } = useLanguage();
   const [pendingLots, setPendingLots] = useState<PendingLot[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -138,8 +140,16 @@ const LotQueue = () => {
     }
   };
 
-  // Check if user has permission
-  if (!profile || (!['accounting', 'admin'].includes(profile.role))) {
+  // Permissions
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!hasPermission('inventory', 'createlotentries')) {
     return (
       <Card>
         <CardContent className="p-6">

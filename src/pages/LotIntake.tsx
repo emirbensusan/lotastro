@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from '@/components/ui/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2, Package, QrCode, Printer, Upload, Download, FileText, CheckCircle, XCircle } from 'lucide-react';
@@ -36,6 +37,7 @@ interface LotFormData {
 
 const LotIntake = () => {
   const { profile } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
@@ -387,8 +389,16 @@ const LotIntake = () => {
     }
   };
 
-  // Check if user has permission
-  if (!profile || (!['warehouse_staff', 'admin'].includes(profile.role))) {
+  // Permissions
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!hasPermission('inventory', 'createlotentries')) {
     return (
       <Card>
         <CardContent className="p-6">
