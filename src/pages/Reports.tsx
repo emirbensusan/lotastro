@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +41,8 @@ interface ReportData {
 }
 
 const Reports: React.FC = () => {
-  const { hasRole, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -213,11 +215,11 @@ const Reports: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  if (authLoading) {
+  if (authLoading || permissionsLoading) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
 
-  if (!hasRole('admin')) {
+  if (!hasPermission('reports', 'viewreports')) {
     return <div className="text-sm text-muted-foreground">You are not authorized to access reports.</div>;
   }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ interface Supplier {
 }
 
 const Suppliers: React.FC = () => {
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -142,6 +144,14 @@ const Suppliers: React.FC = () => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
+
+  if (permissionsLoading) {
+    return <div className="text-sm text-muted-foreground">Loading…</div>;
+  }
+
+  if (!hasPermission('suppliers', 'viewsuppliers')) {
+    return <div className="text-sm text-muted-foreground">You are not authorized to access suppliers.</div>;
+  }
 
   return (
     <div className="space-y-6">

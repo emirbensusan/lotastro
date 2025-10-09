@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
@@ -47,6 +48,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
+  const { hasPermission } = usePermissions();
   const { language, setLanguage, t } = useLanguage();
   const { getItemCount, setIsCartOpen } = usePOCart();
   const { viewAsRole, setViewAsRole, isViewingAsOtherRole } = useViewAsRole();
@@ -62,21 +64,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const cartItemCount = getItemCount();
 
   const navigationItems = [
-    { path: '/', label: t('dashboard'), icon: Home, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
-    { path: '/lot-intake', label: t('lotIntake'), icon: PackagePlus, roles: ['warehouse_staff', 'senior_manager', 'admin'] },
-    { path: '/lot-queue', label: t('lotQueue'), icon: Timer, roles: ['accounting', 'senior_manager', 'admin'] },
-    { path: '/inventory', label: t('inventory'), icon: ClipboardList, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
-    { path: '/orders', label: t('orders'), icon: Truck, roles: ['accounting', 'senior_manager', 'admin'] },
-    { path: '/order-queue', label: t('orderQueue'), icon: ListOrdered, roles: ['accounting', 'senior_manager', 'admin'] },
-    { path: '/qr-scan', label: t('qrScan'), icon: QrCode, roles: ['warehouse_staff', 'accounting', 'senior_manager', 'admin'] },
-    { path: '/reports', label: t('reports'), icon: BarChart3, roles: ['accounting', 'senior_manager', 'admin'] },
-    { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, roles: ['senior_manager', 'admin'] },
-    { path: '/suppliers', label: t('suppliers'), icon: Users, roles: ['admin'] },
-    { path: '/admin', label: t('admin'), icon: Settings, roles: ['admin'] },
+    { path: '/', label: t('dashboard'), icon: Home, permission: { category: 'dashboard', action: 'viewdashboard' } },
+    { path: '/lot-intake', label: t('lotIntake'), icon: PackagePlus, permission: { category: 'inventory', action: 'createlots' } },
+    { path: '/lot-queue', label: t('lotQueue'), icon: Timer, permission: { category: 'inventory', action: 'viewlotqueue' } },
+    { path: '/inventory', label: t('inventory'), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' } },
+    { path: '/orders', label: t('orders'), icon: Truck, permission: { category: 'orders', action: 'vieworders' } },
+    { path: '/order-queue', label: t('orderQueue'), icon: ListOrdered, permission: { category: 'orders', action: 'vieworderqueue' } },
+    { path: '/qr-scan', label: t('qrScan'), icon: QrCode, permission: { category: 'qrcode', action: 'scanqrcodes' } },
+    { path: '/reports', label: t('reports'), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
+    { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
+    { path: '/suppliers', label: t('suppliers'), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
+    { path: '/admin', label: t('admin'), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
   ];
 
   const filteredNavigation = navigationItems.filter(item => 
-    item.roles.includes(effectiveRole || '')
+    hasPermission(item.permission.category, item.permission.action)
   );
 
   const getRoleBadgeColor = (role: string, isViewingAs = false) => {

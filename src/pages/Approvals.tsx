@@ -1,14 +1,16 @@
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ApprovalQueue } from '@/components/ApprovalQueue';
 import { CheckCircle } from 'lucide-react';
 
 const Approvals: React.FC = () => {
-  const { hasRole, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { t } = useLanguage();
 
-  if (authLoading) {
+  if (authLoading || permissionsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -16,7 +18,7 @@ const Approvals: React.FC = () => {
     );
   }
 
-  if (!hasRole('senior_manager') && !hasRole('admin')) {
+  if (!hasPermission('approvals', 'viewapprovals')) {
     return (
       <div className="text-center py-12">
         <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

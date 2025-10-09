@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -38,6 +39,10 @@ interface PendingInvitation {
 }
 
 const Admin: React.FC = () => {
+  const { profile, hasRole, loading: authLoading } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
+  const { toast } = useToast();
+  const { t } = useLanguage();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,9 +67,6 @@ const Admin: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<UserRole>('warehouse_staff');
   const [inviteLoading, setInviteLoading] = useState(false);
-  const { toast } = useToast();
-  const { hasRole, loading: authLoading } = useAuth();
-  const { t } = useLanguage();
 
   useEffect(() => {
     if (!authLoading) {
@@ -403,10 +405,11 @@ const Admin: React.FC = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (authLoading) {
+  if (authLoading || permissionsLoading) {
     return <div className="text-sm text-muted-foreground">{t('loading')}</div>;
   }
-  if (!hasRole('admin')) {
+  
+  if (!hasPermission('usermanagement', 'viewusers')) {
     return <div className="text-sm text-muted-foreground">{t('notAuthorizedAccess')}</div>;
   }
 
