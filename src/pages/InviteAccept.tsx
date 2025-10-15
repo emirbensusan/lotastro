@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +15,7 @@ const InviteAccept = () => {
   const token = searchParams.get('token');
   const navigate = useNavigate();
   const { signUp, user } = useAuth();
+  const { t } = useLanguage();
 
   const [invitation, setInvitation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,7 @@ const InviteAccept = () => {
       }
       
       // No token and no session
-      setError('Please open the invitation link from your email');
+      setError(t('openInvitationFromEmail') as string);
       setLoading(false);
     };
 
@@ -63,14 +65,14 @@ const InviteAccept = () => {
         .single();
 
       if (error || !data) {
-        setError('Invalid or expired invitation');
+        setError(t('invalidOrExpiredInvitation') as string);
         return;
       }
 
       setInvitation(data);
     } catch (error: any) {
       console.error('Error fetching invitation:', error);
-      setError('Failed to load invitation');
+      setError(t('invalidOrExpiredInvitation') as string);
     } finally {
       setLoading(false);
     }
@@ -81,8 +83,8 @@ const InviteAccept = () => {
     
     if (password !== confirmPassword) {
       toast({
-        title: 'Validation Error',
-        description: 'Passwords do not match',
+        title: t('validationError') as string,
+        description: t('passwordsDoNotMatch') as string,
         variant: 'destructive',
       });
       return;
@@ -90,8 +92,8 @@ const InviteAccept = () => {
 
     if (password.length < 6) {
       toast({
-        title: 'Validation Error',
-        description: 'Password must be at least 6 characters long',
+        title: t('validationError') as string,
+        description: t('passwordMinLength') as string,
         variant: 'destructive',
       });
       return;
@@ -122,8 +124,8 @@ const InviteAccept = () => {
         }
 
         toast({
-          title: 'Account Created',
-          description: 'Your account has been created successfully. Please check your email for verification.',
+          title: t('accountCreated') as string,
+          description: t('accountCreatedSuccess') as string,
         });
 
         navigate('/auth');
@@ -165,8 +167,8 @@ const InviteAccept = () => {
           .eq('status', 'pending');
 
         toast({
-          title: 'Account Setup Complete',
-          description: 'Your account has been set up successfully.',
+          title: t('accountSetupComplete') as string,
+          description: t('accountSetupSuccess') as string,
         });
 
         navigate('/');
@@ -174,8 +176,8 @@ const InviteAccept = () => {
     } catch (error: any) {
       console.error('Error accepting invitation:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to complete account setup',
+        title: t('error') as string,
+        description: error.message || (t('failedToCompleteSetup') as string),
         variant: 'destructive',
       });
     } finally {
@@ -205,12 +207,12 @@ const InviteAccept = () => {
             <div className="flex justify-center mb-4">
               <XCircle className="h-16 w-16 text-destructive" />
             </div>
-            <CardTitle className="text-xl font-bold text-destructive">Invalid Invitation</CardTitle>
+            <CardTitle className="text-xl font-bold text-destructive">{t('invalidInvitation')}</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-muted-foreground mb-4">{error}</p>
             <Button onClick={() => navigate('/auth')} variant="outline">
-              Go to Login
+              {t('goToLogin')}
             </Button>
           </CardContent>
         </Card>
@@ -229,11 +231,11 @@ const InviteAccept = () => {
               className="w-16 h-16 object-contain"
             />
           </div>
-          <CardTitle className="text-2xl font-bold text-primary">Welcome to LotAstro</CardTitle>
+          <CardTitle className="text-2xl font-bold text-primary">{t('welcomeToLotAstro')}</CardTitle>
           <CardDescription>
             {mode === 'token' && invitation?.role 
-              ? `You've been invited to join as ${invitation.role.replace('_', ' ')}`
-              : 'Complete your account setup'}
+              ? `${t('invitedAsRole')} ${invitation.role.replace('_', ' ')}`
+              : t('completeAccountSetup')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -241,28 +243,28 @@ const InviteAccept = () => {
             <div className="mb-4 p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium">Invitation Details</span>
+                <span className="text-sm font-medium">{t('invitationDetails')}</span>
               </div>
-              <p className="text-sm text-muted-foreground">Email: {invitation.email}</p>
-              <p className="text-sm text-muted-foreground">Role: {invitation.role?.replace('_', ' ')}</p>
+              <p className="text-sm text-muted-foreground">{t('email')}: {invitation.email}</p>
+              <p className="text-sm text-muted-foreground">{t('role')}: {invitation.role?.replace('_', ' ')}</p>
             </div>
           )}
 
           <form onSubmit={handleAcceptInvitation} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName">{t('fullName')}</Label>
               <Input
                 id="fullName"
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
-                placeholder="Enter your full name"
+                placeholder={t('enterFullName') as string}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('password')}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -270,7 +272,7 @@ const InviteAccept = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="Create a password"
+                  placeholder={t('createPassword') as string}
                   className="pr-10"
                 />
                 <Button
@@ -290,7 +292,7 @@ const InviteAccept = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">{t('confirmPassword')}</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
@@ -298,7 +300,7 @@ const InviteAccept = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  placeholder="Confirm your password"
+                  placeholder={t('confirmYourPassword') as string}
                   className="pr-10"
                 />
                 <Button
@@ -321,17 +323,17 @@ const InviteAccept = () => {
               {creating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {mode === 'supabase' ? 'Setting Up Account...' : 'Creating Account...'}
+                  {mode === 'supabase' ? t('settingUpAccount') : t('creatingAccount')}
                 </>
               ) : (
-                mode === 'supabase' ? 'Complete Account Setup' : 'Accept Invitation & Create Account'
+                mode === 'supabase' ? t('completeAccountSetupButton') : t('acceptInvitationCreateAccount')
               )}
             </Button>
           </form>
 
           <div className="mt-4 text-center">
             <Button variant="link" onClick={() => navigate('/auth')}>
-              Already have an account? Sign in
+              {t('alreadyHaveAccount')}
             </Button>
           </div>
         </CardContent>
