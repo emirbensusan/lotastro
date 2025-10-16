@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.4"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -316,6 +316,7 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          deleted_at: string | null
           email: string
           full_name: string | null
           id: string
@@ -326,6 +327,7 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          deleted_at?: string | null
           email: string
           full_name?: string | null
           id?: string
@@ -336,6 +338,7 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          deleted_at?: string | null
           email?: string
           full_name?: string | null
           id?: string
@@ -436,10 +439,14 @@ export type Database = {
           accepted_at: string | null
           created_at: string
           email: string
+          email_error: string | null
+          email_sent: boolean | null
           expires_at: string
           id: string
+          invite_link: string | null
           invited_at: string
           invited_by: string
+          last_attempt_at: string | null
           role: Database["public"]["Enums"]["user_role"]
           status: string
           token: string
@@ -449,10 +456,14 @@ export type Database = {
           accepted_at?: string | null
           created_at?: string
           email: string
+          email_error?: string | null
+          email_sent?: boolean | null
           expires_at?: string
           id?: string
+          invite_link?: string | null
           invited_at?: string
           invited_by: string
+          last_attempt_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           status?: string
           token: string
@@ -462,10 +473,14 @@ export type Database = {
           accepted_at?: string | null
           created_at?: string
           email?: string
+          email_error?: string | null
+          email_sent?: boolean | null
           expires_at?: string
           id?: string
+          invite_link?: string | null
           invited_at?: string
           invited_by?: string
+          last_attempt_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           status?: string
           token?: string

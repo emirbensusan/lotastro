@@ -10,12 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX } from 'lucide-react';
+import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, Link2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
@@ -36,6 +37,10 @@ interface PendingInvitation {
   status: string;
   invited_at: string;
   expires_at: string;
+  email_sent?: boolean;
+  email_error?: string;
+  invite_link?: string;
+  last_attempt_at?: string;
 }
 
 const Admin: React.FC = () => {
@@ -67,6 +72,11 @@ const Admin: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<UserRole>('warehouse_staff');
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteLinkDialog, setInviteLinkDialog] = useState(false);
+  const [currentInviteLink, setCurrentInviteLink] = useState('');
+  const [reconcilingUsers, setReconcilingUsers] = useState(false);
+  const [forceDeleteDialog, setForceDeleteDialog] = useState(false);
+  const [deleteDependencies, setDeleteDependencies] = useState<any[]>([]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -358,10 +368,33 @@ const Admin: React.FC = () => {
   };
 
   const handleSendInvitation = async () => {
+    // Client-side validation
     if (!inviteEmail || !inviteRole) {
       toast({
         title: 'Validation Error',
         description: 'Please provide email and role',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail)) {
+      toast({
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Check if email already exists in profiles list
+    const emailExists = profiles.some(p => p.email.toLowerCase() === inviteEmail.toLowerCase());
+    if (emailExists) {
+      toast({
+        title: 'User Already Exists',
+        description: 'This email is already registered. Edit the existing user instead.',
         variant: 'destructive'
       });
       return;
@@ -377,28 +410,151 @@ const Admin: React.FC = () => {
         }
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      toast({
-        title: 'Success',
-        description: 'Invitation sent successfully'
-      });
+      // Check response structure
+      const responseData = data as any;
+
+      // Handle email sending failure but still show invite link
+      if (responseData?.invite_link && responseData?.email_sent === false) {
+        setCurrentInviteLink(responseData.invite_link);
+        setInviteLinkDialog(true);
+        
+        toast({
+          title: 'Email Failed',
+          description: responseData.error || 'Email delivery failed, but invitation created. Use the link to share manually.',
+          variant: 'destructive'
+        });
+      } else if (responseData?.success) {
+        // Success - email sent
+        toast({
+          title: 'Success',
+          description: 'Invitation sent successfully via email'
+        });
+
+        // Show invite link for manual sharing if available
+        if (responseData.invite_link) {
+          setCurrentInviteLink(responseData.invite_link);
+        }
+      }
 
       setInviteEmail('');
       setInviteRole('warehouse_staff');
       fetchPendingInvitations();
+      fetchProfiles(); // Refresh profiles as well
     } catch (error: any) {
       console.error('Error sending invitation:', error);
+      
+      // Parse structured error from edge function
+      let errorTitle = 'Error';
+      let errorMessage = 'Failed to send invitation';
+      
+      if (error.message) {
+        const errorData = typeof error.message === 'string' ? 
+          (error.message.includes('{') ? JSON.parse(error.message) : { details: error.message }) : 
+          error.message;
+
+        if (errorData.code === 'USER_EXISTS') {
+          errorTitle = 'User Already Exists';
+          errorMessage = 'This email is already registered. Use password reset or edit the existing user instead.';
+        } else if (errorData.code === 'AUTH_ONLY_USER') {
+          errorTitle = 'Ghost User Detected';
+          errorMessage = 'This email exists in authentication but has no profile. Click "Reconcile Users" to fix this issue.';
+        } else if (errorData.code === 'RATE_LIMIT') {
+          errorTitle = 'Rate Limit Exceeded';
+          errorMessage = 'Too many invitations sent. Please wait a few minutes before trying again.';
+        } else if (errorData.code === 'EMAIL_DELIVERY') {
+          errorTitle = 'Email Delivery Failed';
+          errorMessage = 'Unable to send invitation email. The link is available to share manually.';
+          
+          // Show invite link if available
+          if (errorData.invite_link) {
+            setCurrentInviteLink(errorData.invite_link);
+            setInviteLinkDialog(true);
+          }
+        } else if (errorData.code === 'INVALID_EMAIL') {
+          errorTitle = 'Invalid Email';
+          errorMessage = 'Please enter a valid email address.';
+        } else {
+          errorMessage = errorData.details || errorData.error || error.message;
+        }
+      }
+      
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to send invitation',
-        variant: 'destructive'
+        title: errorTitle,
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 6000
       });
     } finally {
       setInviteLoading(false);
     }
+  };
+
+  const handleReconcileUsers = async () => {
+    setReconcilingUsers(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-reconcile-users');
+
+      if (error) throw error;
+
+      const result = data as any;
+
+      toast({
+        title: 'Reconciliation Complete',
+        description: result.message || `${result.createdProfiles} profiles created, ${result.reactivatedProfiles} reactivated`,
+        duration: 5000
+      });
+
+      // Refresh profiles
+      fetchProfiles();
+      fetchPendingInvitations();
+    } catch (error: any) {
+      console.error('Error reconciling users:', error);
+      toast({
+        title: 'Reconciliation Failed',
+        description: error.message || 'Failed to reconcile users',
+        variant: 'destructive'
+      });
+    } finally {
+      setReconcilingUsers(false);
+    }
+  };
+
+  const handleResendInvitation = async (invitation: PendingInvitation) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-invitation', {
+        body: {
+          email: invitation.email,
+          role: invitation.role
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Invitation Resent',
+        description: `Invitation resent to ${invitation.email}`
+      });
+
+      fetchPendingInvitations();
+    } catch (error: any) {
+      console.error('Error resending invitation:', error);
+      toast({
+        title: 'Resend Failed',
+        description: error.message || 'Failed to resend invitation',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: 'Copied',
+      description: 'Invitation link copied to clipboard'
+    });
   };
 
   const formatDate = (dateString: string) => {
@@ -508,9 +664,29 @@ const Admin: React.FC = () => {
 
       {/* User Invitations */}
       <Card>
-        <CardHeader>
-          <CardTitle>Invite New Users</CardTitle>
-          <CardDescription>Send invitations to new team members</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Invite New Users</CardTitle>
+            <CardDescription>Send invitations to new team members</CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleReconcileUsers}
+            disabled={reconcilingUsers}
+          >
+            {reconcilingUsers ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Reconciling...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reconcile Users
+              </>
+            )}
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -586,8 +762,8 @@ const Admin: React.FC = () => {
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Email Status</TableHead>
                   <TableHead>Invited</TableHead>
-                  <TableHead>Expires</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -601,35 +777,96 @@ const Admin: React.FC = () => {
                         {getRoleDisplayName(invitation.role)}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            {invitation.email_sent === false ? (
+                              <Badge variant="destructive" className="cursor-help">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Failed
+                              </Badge>
+                            ) : (
+                              <Badge variant="default" className="cursor-help">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Sent
+                              </Badge>
+                            )}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs max-w-xs">
+                              {invitation.email_error || 'Email sent successfully'}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
                     <TableCell>{formatDate(invitation.invited_at)}</TableCell>
-                    <TableCell>{formatDate(invitation.expires_at)}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{invitation.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Invitation</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete the invitation for <strong>{invitation.email}</strong>? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteInvitation(invitation.id, invitation.email)}
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <div className="flex justify-end gap-1">
+                        {invitation.invite_link && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => copyToClipboard(invitation.invite_link!)}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Copy invitation link</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {invitation.email_sent === false && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleResendInvitation(invitation)}
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Resend invitation</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Invitation</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete the invitation for <strong>{invitation.email}</strong>? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteInvitation(invitation.id, invitation.email)}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -638,6 +875,40 @@ const Admin: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Invite Link Dialog */}
+      <Dialog open={inviteLinkDialog} onOpenChange={setInviteLinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5" />
+              Shareable Invitation Link
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Email delivery failed, but the invitation was created. Share this link manually with the user:
+            </p>
+            <div className="flex gap-2">
+              <Input 
+                value={currentInviteLink} 
+                readOnly 
+                className="font-mono text-sm"
+              />
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => copyToClipboard(currentInviteLink)}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button onClick={() => setInviteLinkDialog(false)} className="w-full">
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* User Management */}
       <Card>
