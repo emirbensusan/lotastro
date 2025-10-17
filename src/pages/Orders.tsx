@@ -37,6 +37,7 @@ interface Order {
     roll_count: number;
     line_type: 'sample' | 'standard';
     selected_roll_meters: string | null;
+    selected_roll_ids: string | null;
     lot: {
       lot_number: string;
       meters: number;
@@ -129,6 +130,7 @@ const Orders = () => {
             roll_count,
             line_type,
             selected_roll_meters,
+            selected_roll_ids,
             lot:lots (
               lot_number,
               meters
@@ -187,7 +189,7 @@ const Orders = () => {
 
       if (orderError) throw orderError;
 
-      // Create order lots
+      // Create order lots and mark rolls as allocated
       for (const selectedLot of selectedLots) {
         await supabase
           .from('order_lots')
@@ -201,6 +203,21 @@ const Orders = () => {
             selected_roll_meters: selectedLot.rollMeters || '',
             selected_roll_ids: selectedLot.rollIds || '',
           });
+
+        // Mark selected rolls as allocated
+        if (selectedLot.rollIds) {
+          const rollIds = selectedLot.rollIds.split(',').filter(id => id.trim());
+          if (rollIds.length > 0) {
+            const { error: rollUpdateError } = await supabase
+              .from('rolls')
+              .update({ status: 'allocated' })
+              .in('id', rollIds);
+            
+            if (rollUpdateError) {
+              console.error('Error marking rolls as allocated:', rollUpdateError);
+            }
+          }
+        }
       }
 
       toast.success(`${t('orderCreatedSuccessfully')} ${orderData.order_number}`);
@@ -217,6 +234,7 @@ const Orders = () => {
             roll_count,
             line_type,
             selected_roll_meters,
+            selected_roll_ids,
             lot:lots (
               lot_number,
               meters
@@ -258,44 +276,72 @@ const Orders = () => {
 
       if (error) throw error;
 
-      // Properly deduct inventory from lots
+      // Get order details with selected roll IDs
       const order = orders.find(o => o.id === orderId);
       if (order) {
         for (const orderLot of order.order_lots) {
-          // Get current lot data
-          const { data: currentLot, error: fetchError } = await supabase
-            .from('lots')
-            .select('roll_count, meters')
-            .eq('lot_number', orderLot.lot.lot_number)
-            .single();
+          // Parse selected roll IDs
+          const selectedRollIds = orderLot.selected_roll_ids?.split(',').filter(id => id.trim()) || [];
+          
+          if (selectedRollIds.length > 0) {
+            // Mark specific rolls as fulfilled
+            const { error: rollUpdateError } = await supabase
+              .from('rolls')
+              .update({ status: 'fulfilled' })
+              .in('id', selectedRollIds);
+            
+            if (rollUpdateError) {
+              console.error('Error marking rolls as fulfilled:', rollUpdateError);
+            }
 
-          if (fetchError) {
-            console.error('Error fetching lot:', fetchError);
-            continue;
-          }
+            // Get the actual meters from fulfilled rolls
+            const { data: fulfilledRolls, error: rollFetchError } = await supabase
+              .from('rolls')
+              .select('meters')
+              .in('id', selectedRollIds);
+            
+            if (rollFetchError) {
+              console.error('Error fetching fulfilled rolls:', rollFetchError);
+              continue;
+            }
 
-          const newRollCount = currentLot.roll_count - orderLot.roll_count;
-          const rollRatio = orderLot.roll_count / currentLot.roll_count;
-          const newMeters = Math.max(0, currentLot.meters - (currentLot.meters * rollRatio));
+            const totalFulfilledMeters = fulfilledRolls?.reduce((sum, roll) => sum + Number(roll.meters), 0) || 0;
 
-          // Update lot quantities or mark as out_of_stock
-          const updateData: any = {
-            roll_count: Math.max(0, newRollCount),
-            meters: newMeters
-          };
+            // Get current lot data
+            const { data: currentLot, error: fetchError } = await supabase
+              .from('lots')
+              .select('roll_count, meters, id')
+              .eq('lot_number', orderLot.lot.lot_number)
+              .single();
 
-          // Only mark as out_of_stock if no rolls remaining
-          if (newRollCount <= 0) {
-            updateData.status = 'out_of_stock';
-          }
+            if (fetchError) {
+              console.error('Error fetching lot:', fetchError);
+              continue;
+            }
 
-          const { error: lotError } = await supabase
-            .from('lots')
-            .update(updateData)
-            .eq('lot_number', orderLot.lot.lot_number);
+            // Calculate new values based on actual roll data
+            const newRollCount = currentLot.roll_count - selectedRollIds.length;
+            const newMeters = Math.max(0, currentLot.meters - totalFulfilledMeters);
 
-          if (lotError) {
-            console.error('Error updating lot:', lotError);
+            // Update lot quantities or mark as out_of_stock
+            const updateData: any = {
+              roll_count: Math.max(0, newRollCount),
+              meters: newMeters
+            };
+
+            // Mark as out_of_stock if no available rolls remaining
+            if (newRollCount <= 0) {
+              updateData.status = 'out_of_stock';
+            }
+
+            const { error: lotError } = await supabase
+              .from('lots')
+              .update(updateData)
+              .eq('lot_number', orderLot.lot.lot_number);
+
+            if (lotError) {
+              console.error('Error updating lot:', lotError);
+            }
           }
         }
       }
@@ -315,6 +361,27 @@ const Orders = () => {
 
   const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
     try {
+      // First, get the order details to release allocated rolls
+      const order = orders.find(o => o.id === orderId);
+      if (order && !order.fulfilled_at) { // Only release if not fulfilled
+        for (const orderLot of order.order_lots) {
+          const selectedRollIds = orderLot.selected_roll_ids?.split(',').filter(id => id.trim()) || [];
+          
+          if (selectedRollIds.length > 0) {
+            // Mark rolls as available again
+            const { error: rollUpdateError } = await supabase
+              .from('rolls')
+              .update({ status: 'available' })
+              .in('id', selectedRollIds)
+              .eq('status', 'allocated'); // Only update if they were allocated
+            
+            if (rollUpdateError) {
+              console.error('Error releasing rolls:', rollUpdateError);
+            }
+          }
+        }
+      }
+
       const { error } = await supabase
         .from('orders')
         .delete()

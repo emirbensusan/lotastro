@@ -135,10 +135,11 @@ const LotDetails = () => {
           invoice_number,
           invoice_date,
           suppliers(name),
-          rolls(meters, position)
+          rolls!inner(meters, position)
         `)
         .eq('color', decodeURIComponent(color))
         .eq('status', 'in_stock')
+        .eq('rolls.status', 'available')
         .order('entry_date', { ascending: false });
 
       if (error) throw error;

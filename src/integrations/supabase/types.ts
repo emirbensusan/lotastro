@@ -385,6 +385,7 @@ export type Database = {
           lot_id: string
           meters: number
           position: number
+          status: string
           updated_at: string
         }
         Insert: {
@@ -393,6 +394,7 @@ export type Database = {
           lot_id: string
           meters: number
           position: number
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -401,6 +403,7 @@ export type Database = {
           lot_id?: string
           meters?: number
           position?: number
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -503,6 +506,14 @@ export type Database = {
       generate_order_number: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_available_rolls_count: {
+        Args: { p_lot_id: string }
+        Returns: number
+      }
+      get_available_rolls_meters: {
+        Args: { p_lot_id: string }
+        Returns: number
       }
       get_dashboard_stats: {
         Args: Record<PropertyKey, never>

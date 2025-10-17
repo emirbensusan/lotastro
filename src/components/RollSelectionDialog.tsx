@@ -72,6 +72,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
         .from('rolls')
         .select('id, position, meters')
         .eq('lot_id', lotId)
+        .eq('status', 'available') // Only fetch available rolls
         .order('position');
 
       if (error) throw error;
