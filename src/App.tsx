@@ -18,6 +18,7 @@ import QRScan from "./pages/QRScan";
 import Reports from "./pages/Reports";
 import Admin from "./pages/Admin";
 import Approvals from "./pages/Approvals";
+import AuditLogs from "./pages/AuditLogs";
 import Suppliers from "./pages/Suppliers";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -140,6 +141,11 @@ const App = () => (
               <Route path="/approvals" element={
                 <ProtectedRoute>
                   <Approvals />
+                </ProtectedRoute>
+              } />
+              <Route path="/audit-logs" element={
+                <ProtectedRoute>
+                  <AuditLogs />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

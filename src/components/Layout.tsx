@@ -26,7 +26,8 @@ import {
   CheckCircle,
   ShoppingCart,
   ListOrdered,
-  Timer
+  Timer,
+  History
 } from 'lucide-react';
 import { 
   Sidebar,
@@ -73,6 +74,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/qr-scan', label: t('qrScan'), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
     { path: '/reports', label: t('reports'), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
     { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
+    { path: '/audit-logs', label: 'Audit Logs', icon: History, permission: { category: 'audit', action: 'viewlogs' } },
     { path: '/suppliers', label: t('suppliers'), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
     { path: '/admin', label: t('admin'), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
   ];

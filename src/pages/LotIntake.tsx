@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from '@/components/ui/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -37,6 +38,7 @@ interface LotFormData {
 
 const LotIntake = () => {
   const { profile } = useAuth();
+  const { logAction } = useAuditLog();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -161,6 +163,17 @@ const LotIntake = () => {
 
       setCreatedLot(data);
       
+      // Log audit action
+      await logAction(
+        'CREATE',
+        'lot',
+        data.id,
+        data.lot_number,
+        null,
+        data,
+        `Created lot with ${meters}m in ${rollCount} roll(s)`
+      );
+
       toast({
         title: t('lotCreated') as string,
         description: `LOT ${formData.lotNumber} has been added to inventory`,

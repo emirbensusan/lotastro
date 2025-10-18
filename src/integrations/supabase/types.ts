@@ -14,6 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: Database["public"]["Enums"]["audit_action_type"]
+          changed_fields: Json | null
+          created_at: string | null
+          entity_id: string
+          entity_identifier: string | null
+          entity_type: Database["public"]["Enums"]["audit_entity_type"]
+          id: string
+          is_reversed: boolean | null
+          new_data: Json | null
+          notes: string | null
+          old_data: Json | null
+          reversal_audit_id: string | null
+          reversed_at: string | null
+          reversed_by: string | null
+          user_email: string
+          user_id: string
+          user_role: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["audit_action_type"]
+          changed_fields?: Json | null
+          created_at?: string | null
+          entity_id: string
+          entity_identifier?: string | null
+          entity_type: Database["public"]["Enums"]["audit_entity_type"]
+          id?: string
+          is_reversed?: boolean | null
+          new_data?: Json | null
+          notes?: string | null
+          old_data?: Json | null
+          reversal_audit_id?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          user_email: string
+          user_id: string
+          user_role: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["audit_action_type"]
+          changed_fields?: Json | null
+          created_at?: string | null
+          entity_id?: string
+          entity_identifier?: string | null
+          entity_type?: Database["public"]["Enums"]["audit_entity_type"]
+          id?: string
+          is_reversed?: boolean | null
+          new_data?: Json | null
+          notes?: string | null
+          old_data?: Json | null
+          reversal_audit_id?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          user_email?: string
+          user_id?: string
+          user_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_reversal_audit_id_fkey"
+            columns: ["reversal_audit_id"]
+            isOneToOne: false
+            referencedRelation: "audit_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       field_edit_queue: {
         Row: {
           approved_at: string | null
@@ -496,6 +564,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_reverse_action: {
+        Args: { p_audit_id: string }
+        Returns: {
+          can_reverse: boolean
+          reason: string
+          reversal_strategy: string
+        }[]
+      }
       check_user_dependencies: {
         Args: { target_user_id: string }
         Returns: {
@@ -565,6 +641,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      log_audit_action: {
+        Args: {
+          p_action: Database["public"]["Enums"]["audit_action_type"]
+          p_changed_fields?: Json
+          p_entity_id: string
+          p_entity_identifier: string
+          p_entity_type: Database["public"]["Enums"]["audit_entity_type"]
+          p_new_data?: Json
+          p_notes?: string
+          p_old_data?: Json
+        }
+        Returns: string
+      }
       log_security_event: {
         Args: {
           details?: Json
@@ -580,6 +669,25 @@ export type Database = {
       }
     }
     Enums: {
+      audit_action_type:
+        | "CREATE"
+        | "UPDATE"
+        | "DELETE"
+        | "STATUS_CHANGE"
+        | "FULFILL"
+        | "APPROVE"
+        | "REJECT"
+      audit_entity_type:
+        | "lot"
+        | "roll"
+        | "order"
+        | "order_lot"
+        | "supplier"
+        | "lot_queue"
+        | "order_queue"
+        | "field_edit_queue"
+        | "profile"
+        | "role_permission"
       order_line_type: "sample" | "standard"
       stock_status: "in_stock" | "out_of_stock" | "partially_fulfilled"
       user_role: "warehouse_staff" | "accounting" | "admin" | "senior_manager"
@@ -710,6 +818,27 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      audit_action_type: [
+        "CREATE",
+        "UPDATE",
+        "DELETE",
+        "STATUS_CHANGE",
+        "FULFILL",
+        "APPROVE",
+        "REJECT",
+      ],
+      audit_entity_type: [
+        "lot",
+        "roll",
+        "order",
+        "order_lot",
+        "supplier",
+        "lot_queue",
+        "order_queue",
+        "field_edit_queue",
+        "profile",
+        "role_permission",
+      ],
       order_line_type: ["sample", "standard"],
       stock_status: ["in_stock", "out_of_stock", "partially_fulfilled"],
       user_role: ["warehouse_staff", "accounting", "admin", "senior_manager"],

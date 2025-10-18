@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { toast } from "sonner";
 import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown } from 'lucide-react';
@@ -57,6 +58,7 @@ interface Lot {
 
 const Orders = () => {
   const { profile } = useAuth();
+  const { logAction } = useAuditLog();
   const { clearCart } = usePOCart();
   const { t } = useLanguage();
   const location = useLocation();
@@ -222,6 +224,17 @@ const Orders = () => {
 
       toast.success(`${t('orderCreatedSuccessfully')} ${orderData.order_number}`);
 
+      // Log audit action
+      await logAction(
+        'CREATE',
+        'order',
+        orderData.id,
+        orderData.order_number,
+        null,
+        { ...orderData, order_lots: selectedLots },
+        `Created order for ${customerName} with ${selectedLots.length} lots`
+      );
+
       // Show print dialog for new order
       const newOrder = await supabase
         .from('orders')
@@ -348,6 +361,17 @@ const Orders = () => {
 
       toast.success(t('orderMarkedFulfilled') as string);
 
+      // Log audit action
+      await logAction(
+        'FULFILL',
+        'order',
+        orderId,
+        order?.order_number || orderId,
+        { fulfilled_at: null, fulfilled_by: null },
+        { fulfilled_at: new Date().toISOString(), fulfilled_by: profile?.user_id },
+        `Fulfilled order with ${order?.order_lots.length || 0} lots`
+      );
+
       fetchOrders();
     } catch (error: any) {
       toast.error(error.message);
@@ -363,6 +387,20 @@ const Orders = () => {
     try {
       // First, get the order details to release allocated rolls
       const order = orders.find(o => o.id === orderId);
+
+      // Log audit action BEFORE deletion
+      if (order) {
+        await logAction(
+          'DELETE',
+          'order',
+          orderId,
+          orderNumber,
+          order,
+          null,
+          `Deleted order with ${order.order_lots.length} lots`
+        );
+      }
+
       if (order && !order.fulfilled_at) { // Only release if not fulfilled
         for (const orderLot of order.order_lots) {
           const selectedRollIds = orderLot.selected_roll_ids?.split(',').filter(id => id.trim()) || [];
@@ -399,12 +437,28 @@ const Orders = () => {
 
   const handleUpdateOrder = async (orderId: string, updates: Record<string, any>) => {
     try {
+      // Get old data before update
+      const oldOrder = orders.find(o => o.id === orderId);
+
       const { error } = await supabase
         .from('orders')
         .update(updates)
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Log audit action
+      if (oldOrder) {
+        await logAction(
+          'UPDATE',
+          'order',
+          orderId,
+          oldOrder.order_number,
+          { [Object.keys(updates)[0]]: oldOrder[Object.keys(updates)[0] as keyof typeof oldOrder] },
+          updates,
+          `Updated order field: ${Object.keys(updates).join(', ')}`
+        );
+      }
 
       toast.success('Order updated successfully');
       fetchOrders();
