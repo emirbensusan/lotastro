@@ -224,15 +224,21 @@ const Orders = () => {
 
       toast.success(`${t('orderCreatedSuccessfully')} ${orderData.order_number}`);
 
-      // Log audit action
+      // Log audit action with detailed description
+      const totalMeters = selectedLots.reduce((sum, lot) => {
+        const meters = lot.rollMeters?.split(',').reduce((s, m) => s + parseFloat(m), 0) || 0;
+        return sum + meters;
+      }, 0);
+      const totalRolls = selectedLots.reduce((sum, lot) => sum + lot.rollCount, 0);
+
       await logAction(
         'CREATE',
         'order',
         orderData.id,
         orderData.order_number,
         null,
-        { ...orderData, order_lots: selectedLots },
-        `Created order for ${customerName} with ${selectedLots.length} lots`
+        { ...orderData, order_lots: selectedLots, customer_name: customerName },
+        `Created order ${orderData.order_number} for ${customerName} with ${selectedLots.length} lot(s), ${totalRolls} roll(s), total ${totalMeters.toFixed(2)}m`
       );
 
       // Show print dialog for new order
@@ -361,7 +367,7 @@ const Orders = () => {
 
       toast.success(t('orderMarkedFulfilled') as string);
 
-      // Log audit action
+      // Log audit action with detailed description
       await logAction(
         'FULFILL',
         'order',
@@ -369,7 +375,7 @@ const Orders = () => {
         order?.order_number || orderId,
         { fulfilled_at: null, fulfilled_by: null },
         { fulfilled_at: new Date().toISOString(), fulfilled_by: profile?.user_id },
-        `Fulfilled order with ${order?.order_lots.length || 0} lots`
+        `Fulfilled order ${order?.order_number} for customer ${order?.customer_name}`
       );
 
       fetchOrders();
@@ -390,6 +396,7 @@ const Orders = () => {
 
       // Log audit action BEFORE deletion
       if (order) {
+        const totalRolls = order.order_lots.reduce((sum, ol) => sum + ol.roll_count, 0);
         await logAction(
           'DELETE',
           'order',
@@ -397,7 +404,7 @@ const Orders = () => {
           orderNumber,
           order,
           null,
-          `Deleted order with ${order.order_lots.length} lots`
+          `Deleted order ${orderNumber} with ${totalRolls} roll(s)`
         );
       }
 

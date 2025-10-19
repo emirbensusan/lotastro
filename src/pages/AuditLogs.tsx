@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { History, Undo, Search, Filter, FileText } from 'lucide-react';
 import { format } from 'date-fns';
+import { Textarea } from '@/components/ui/textarea';
 
 interface AuditLog {
   id: string;
@@ -29,7 +30,212 @@ interface AuditLog {
   reversed_by: string | null;
   notes: string | null;
   created_at: string;
+  reversal_audit_id?: string | null;
 }
+
+// Formatter functions for user-friendly display
+const formatOrderDetails = (data: any): string[] => {
+  if (!data) return [];
+  
+  const details: string[] = [];
+  
+  if (data.order_number) details.push(`Order Number: ${data.order_number}`);
+  if (data.customer_name) details.push(`Customer: ${data.customer_name}`);
+  
+  if (data.order_lots && Array.isArray(data.order_lots)) {
+    const totalRolls = data.order_lots.reduce((sum: number, lot: any) => sum + (lot.rollCount || lot.roll_count || 0), 0);
+    const lotDescriptions = data.order_lots.map((lot: any) => 
+      `${lot.quality || ''} ${lot.color || ''} - ${lot.rollCount || lot.roll_count || 0} roll(s)`
+    );
+    
+    details.push(`Total Rolls: ${totalRolls}`);
+    if (lotDescriptions.length > 0) {
+      details.push(`Lots:`);
+      lotDescriptions.forEach(desc => details.push(`  • ${desc}`));
+    }
+  }
+  
+  if (data.fulfilled_at) {
+    details.push(`Fulfilled: ${format(new Date(data.fulfilled_at), 'PPpp')}`);
+  }
+  
+  return details;
+};
+
+const formatLotDetails = (data: any): string[] => {
+  if (!data) return [];
+  
+  const details: string[] = [];
+  
+  if (data.lot_number) details.push(`Lot Number: ${data.lot_number}`);
+  if (data.quality) details.push(`Quality: ${data.quality}`);
+  if (data.color) details.push(`Color: ${data.color}`);
+  if (data.meters) details.push(`Meters: ${data.meters}m`);
+  if (data.roll_count) details.push(`Roll Count: ${data.roll_count}`);
+  if (data.warehouse_location) details.push(`Location: ${data.warehouse_location}`);
+  if (data.suppliers?.name || data.supplier_name) {
+    details.push(`Supplier: ${data.suppliers?.name || data.supplier_name}`);
+  }
+  if (data.entry_date) details.push(`Entry Date: ${format(new Date(data.entry_date), 'PP')}`);
+  if (data.invoice_number) details.push(`Invoice: ${data.invoice_number}`);
+  
+  return details;
+};
+
+const formatRollDetails = (data: any): string[] => {
+  if (!data) return [];
+  
+  const details: string[] = [];
+  
+  if (data.position) details.push(`Roll Position: #${data.position}`);
+  if (data.meters) details.push(`Meters: ${data.meters}m`);
+  if (data.status) details.push(`Status: ${data.status}`);
+  
+  return details;
+};
+
+const formatSupplierDetails = (data: any): string[] => {
+  if (!data) return [];
+  
+  const details: string[] = [];
+  
+  if (data.name) details.push(`Supplier Name: ${data.name}`);
+  
+  return details;
+};
+
+const formatProfileDetails = (data: any): string[] => {
+  if (!data) return [];
+  
+  const details: string[] = [];
+  
+  if (data.email) details.push(`Email: ${data.email}`);
+  if (data.full_name) details.push(`Name: ${data.full_name}`);
+  if (data.role) details.push(`Role: ${data.role}`);
+  if (data.active !== undefined) details.push(`Status: ${data.active ? 'Active' : 'Inactive'}`);
+  
+  return details;
+};
+
+const formatEntityDetails = (entityType: string, data: any): string[] => {
+  switch (entityType) {
+    case 'order':
+      return formatOrderDetails(data);
+    case 'lot':
+    case 'lot_queue':
+      return formatLotDetails(data);
+    case 'roll':
+      return formatRollDetails(data);
+    case 'supplier':
+      return formatSupplierDetails(data);
+    case 'profile':
+      return formatProfileDetails(data);
+    default:
+      return ['Details not available'];
+  }
+};
+
+const formatValue = (val: any): string => {
+  if (val === null || val === undefined) return '(empty)';
+  if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+  if (typeof val === 'object') return JSON.stringify(val);
+  return String(val);
+};
+
+// Helper component to show reversal reason
+const ReversalReason: React.FC<{ reversalAuditId: string }> = ({ reversalAuditId }) => {
+  const [reason, setReason] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReversalReason = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('audit_logs')
+          .select('notes')
+          .eq('id', reversalAuditId)
+          .single();
+
+        if (error) throw error;
+        
+        if (data?.notes) {
+          const match = data.notes.match(/Reason: (.+)$/);
+          setReason(match ? match[1] : data.notes);
+        }
+      } catch (error) {
+        console.error('Error fetching reversal reason:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReversalReason();
+  }, [reversalAuditId]);
+
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Loading reason...</div>;
+  }
+
+  if (!reason) {
+    return null;
+  }
+
+  return (
+    <div>
+      <span className="text-muted-foreground">Reason:</span>{' '}
+      <span className="font-medium">{reason}</span>
+    </div>
+  );
+};
+
+// Helper component to show changes
+const ChangesSummary: React.FC<{ 
+  oldData: any; 
+  newData: any;
+  entityType: string;
+}> = ({ oldData, newData }) => {
+  const changes: Array<{ field: string; from: any; to: any }> = [];
+
+  const allKeys = new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]);
+  
+  allKeys.forEach(key => {
+    if (['id', 'created_at', 'updated_at'].includes(key)) return;
+    
+    const oldVal = oldData?.[key];
+    const newVal = newData?.[key];
+    
+    if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+      changes.push({
+        field: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        from: oldVal,
+        to: newVal
+      });
+    }
+  });
+
+  if (changes.length === 0) {
+    return <div className="text-sm text-muted-foreground">No fields changed</div>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {changes.map((change, idx) => (
+        <div key={idx} className="bg-muted p-3 rounded-lg text-sm">
+          <div className="font-medium mb-1">{change.field}</div>
+          <div className="flex items-center gap-2 text-xs flex-wrap">
+            <span className="bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 px-2 py-1 rounded">
+              {formatValue(change.from)}
+            </span>
+            <span>→</span>
+            <span className="bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 px-2 py-1 rounded">
+              {formatValue(change.to)}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const AuditLogs: React.FC = () => {
   const { profile } = useAuth();
@@ -273,55 +479,147 @@ const AuditLogs: React.FC = () => {
       </Card>
 
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Audit Log Details</DialogTitle>
+            <DialogTitle>Action Details</DialogTitle>
+            <DialogDescription>
+              {selectedLog?.action} {selectedLog?.entity_type} - {selectedLog?.entity_identifier}
+            </DialogDescription>
           </DialogHeader>
           {selectedLog && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-6">
+              {/* Header Info */}
+              <div className="grid grid-cols-2 gap-4 pb-4 border-b">
                 <div>
-                  <Label>Action</Label>
-                  <div>{getActionBadge(selectedLog.action)}</div>
+                  <Label className="text-muted-foreground">Action</Label>
+                  <div className="mt-1">{getActionBadge(selectedLog.action)}</div>
                 </div>
                 <div>
-                  <Label>Entity Type</Label>
-                  <div>{selectedLog.entity_type}</div>
+                  <Label className="text-muted-foreground">Entity Type</Label>
+                  <div className="mt-1">
+                    <Badge variant="outline">{selectedLog.entity_type}</Badge>
+                  </div>
                 </div>
                 <div>
-                  <Label>User</Label>
-                  <div>{selectedLog.user_email}</div>
+                  <Label className="text-muted-foreground">Performed By</Label>
+                  <div className="mt-1 text-sm">
+                    <div className="font-medium">{selectedLog.user_email}</div>
+                    <div className="text-muted-foreground">{selectedLog.user_role}</div>
+                  </div>
                 </div>
                 <div>
-                  <Label>Timestamp</Label>
-                  <div>{format(new Date(selectedLog.created_at), 'PPpp')}</div>
+                  <Label className="text-muted-foreground">Timestamp</Label>
+                  <div className="mt-1 text-sm">{format(new Date(selectedLog.created_at), 'PPpp')}</div>
                 </div>
               </div>
 
-              {selectedLog.old_data && (
-                <div>
-                  <Label>Previous Data</Label>
-                  <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-40">
-                    {JSON.stringify(selectedLog.old_data, null, 2)}
-                  </pre>
+              {/* Reversal Information */}
+              {selectedLog.is_reversed && (
+                <div className="bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <Undo className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="font-semibold text-orange-900 dark:text-orange-100 mb-2">
+                        This action was reversed
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 text-sm">
+                        {selectedLog.reversed_at && (
+                          <div>
+                            <span className="text-muted-foreground">Reversed at:</span>{' '}
+                            <span className="font-medium">{format(new Date(selectedLog.reversed_at), 'PPpp')}</span>
+                          </div>
+                        )}
+                        {selectedLog.reversal_audit_id && (
+                          <ReversalReason reversalAuditId={selectedLog.reversal_audit_id} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {selectedLog.new_data && (
-                <div>
-                  <Label>New Data</Label>
-                  <pre className="bg-muted p-4 rounded text-sm overflow-auto max-h-40">
-                    {JSON.stringify(selectedLog.new_data, null, 2)}
-                  </pre>
-                </div>
-              )}
-
+              {/* Action Description */}
               {selectedLog.notes && (
                 <div>
-                  <Label>Notes</Label>
-                  <div className="bg-muted p-3 rounded">{selectedLog.notes}</div>
+                  <Label className="text-muted-foreground">Description</Label>
+                  <div className="mt-2 bg-muted p-3 rounded-lg text-sm">
+                    {selectedLog.notes}
+                  </div>
                 </div>
               )}
+
+              {/* Previous State */}
+              {selectedLog.old_data && ['UPDATE', 'DELETE'].includes(selectedLog.action) && (
+                <div>
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <span className="text-red-600 dark:text-red-400">●</span>
+                    Previous State
+                  </Label>
+                  <div className="mt-2 bg-muted p-4 rounded-lg space-y-1 text-sm">
+                    {formatEntityDetails(selectedLog.entity_type, selectedLog.old_data).map((line, idx) => (
+                      <div key={idx} className={line.startsWith('  •') ? 'ml-4 text-muted-foreground' : ''}>
+                        {line}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* New State */}
+              {selectedLog.new_data && ['CREATE', 'UPDATE'].includes(selectedLog.action) && (
+                <div>
+                  <Label className="text-muted-foreground flex items-center gap-2">
+                    <span className="text-green-600 dark:text-green-400">●</span>
+                    {selectedLog.action === 'CREATE' ? 'Created With' : 'New State'}
+                  </Label>
+                  <div className="mt-2 bg-muted p-4 rounded-lg space-y-1 text-sm">
+                    {formatEntityDetails(selectedLog.entity_type, selectedLog.new_data).map((line, idx) => (
+                      <div key={idx} className={line.startsWith('  •') ? 'ml-4 text-muted-foreground' : ''}>
+                        {line}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Changes Summary for UPDATE */}
+              {selectedLog.action === 'UPDATE' && selectedLog.old_data && selectedLog.new_data && (
+                <div>
+                  <Label className="text-muted-foreground">Changes Made</Label>
+                  <div className="mt-2 space-y-2">
+                    <ChangesSummary 
+                      oldData={selectedLog.old_data} 
+                      newData={selectedLog.new_data}
+                      entityType={selectedLog.entity_type}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Technical Details - Collapsible */}
+              <details className="border rounded-lg p-4">
+                <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+                  View Technical Details (JSON)
+                </summary>
+                <div className="mt-4 space-y-4">
+                  {selectedLog.old_data && (
+                    <div>
+                      <Label className="text-xs">Old Data (JSON)</Label>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-auto max-h-40 mt-1">
+                        {JSON.stringify(selectedLog.old_data, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                  {selectedLog.new_data && (
+                    <div>
+                      <Label className="text-xs">New Data (JSON)</Label>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-auto max-h-40 mt-1">
+                        {JSON.stringify(selectedLog.new_data, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </details>
             </div>
           )}
         </DialogContent>
@@ -338,10 +636,11 @@ const AuditLogs: React.FC = () => {
           <div className="space-y-4">
             <div>
               <Label>Reason for Reversal</Label>
-              <Input
-                placeholder="Enter reason..."
+              <Textarea
+                placeholder="Enter reason for reversal..."
                 value={reversalReason}
                 onChange={(e) => setReversalReason(e.target.value)}
+                rows={3}
               />
             </div>
           </div>
@@ -352,7 +651,7 @@ const AuditLogs: React.FC = () => {
             <Button
               variant="destructive"
               onClick={handleReverseAction}
-              disabled={reversing}
+              disabled={reversing || !reversalReason.trim()}
             >
               {reversing ? 'Reversing...' : 'Reverse Action'}
             </Button>
