@@ -44,9 +44,16 @@ const formatOrderDetails = (data: any): string[] => {
   
   if (data.order_lots && Array.isArray(data.order_lots)) {
     const totalRolls = data.order_lots.reduce((sum: number, lot: any) => sum + (lot.rollCount || lot.roll_count || 0), 0);
-    const lotDescriptions = data.order_lots.map((lot: any) => 
-      `${lot.quality || ''} ${lot.color || ''} - ${lot.rollCount || lot.roll_count || 0} roll(s)`
-    );
+    const lotDescriptions = data.order_lots.map((lot: any) => {
+      const lotNumber = lot.lot?.lot_number || lot.lotNumber || '';
+      const quality = lot.quality || '';
+      const color = lot.color || '';
+      const rolls = lot.rollCount || lot.roll_count || 0;
+      
+      return lotNumber 
+        ? `Lot ${lotNumber}: ${quality} ${color} - ${rolls} roll(s)`
+        : `${quality} ${color} - ${rolls} roll(s)`;
+    });
     
     details.push(`Total Rolls: ${totalRolls}`);
     if (lotDescriptions.length > 0) {
