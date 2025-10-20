@@ -21,6 +21,7 @@ import Approvals from "./pages/Approvals";
 import AuditLogs from "./pages/AuditLogs";
 import Suppliers from "./pages/Suppliers";
 import IncomingStock from "./pages/IncomingStock";
+import GoodsReceipt from "./pages/GoodsReceipt";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import QRPrint from "./pages/QRPrint";
@@ -137,6 +138,11 @@ const App = () => (
               <Route path="/incoming-stock" element={
                 <ProtectedRoute>
                   <IncomingStock />
+                </ProtectedRoute>
+              } />
+              <Route path="/goods-receipt" element={
+                <ProtectedRoute>
+                  <GoodsReceipt />
                 </ProtectedRoute>
               } />
               <Route path="/admin" element={

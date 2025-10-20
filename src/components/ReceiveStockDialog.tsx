@@ -88,13 +88,30 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
         throw new Error('Lot count must be at least 1');
       }
 
-      // Calculate meters per lot
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Step 1: Create goods_in_receipt entry
+      const { data: receipt, error: receiptError } = await supabase
+        .from('goods_in_receipts')
+        .insert({
+          incoming_stock_id: incomingStock.id,
+          received_by: user.id,
+          received_at: new Date().toISOString(),
+          defect_notes: formData.notes || null
+        })
+        .select()
+        .single();
+
+      if (receiptError) throw receiptError;
+
+      // Step 2: Calculate meters per lot
       const metersPerLot = metersReceived / lotCount;
 
-      // Generate lot numbers
+      // Step 3: Generate lot numbers
       const baseLotNumber = `${incomingStock.quality}-${incomingStock.color}-${Date.now()}`;
 
-      // Create lots
+      // Step 4: Create lots
       const lotsToCreate = [];
       for (let i = 0; i < lotCount; i++) {
         const lotNumber = lotCount > 1 ? `${baseLotNumber}-${i + 1}` : baseLotNumber;
@@ -124,7 +141,25 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
 
       if (lotsError) throw lotsError;
 
-      // Create roll entries for each lot
+      // Step 5: Create goods_in_rows for each lot
+      const rowsToCreate = createdLots.map(lot => ({
+        receipt_id: receipt.id,
+        lot_id: lot.id,
+        quality: lot.quality,
+        color: lot.color,
+        meters: lot.meters
+      }));
+
+      const { error: rowsError } = await supabase
+        .from('goods_in_rows')
+        .insert(rowsToCreate);
+
+      if (rowsError) {
+        console.error('Error creating goods_in_rows:', rowsError);
+        // Don't fail the entire operation
+      }
+
+      // Step 6: Create roll entries for each lot
       const rollsToCreate = createdLots.map(lot => ({
         lot_id: lot.id,
         meters: lot.meters,
@@ -140,7 +175,7 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
         console.error('Error creating rolls:', rollsError);
       }
 
-      // Update incoming stock
+      // Step 7: Update incoming stock
       const newReceivedMeters = incomingStock.received_meters + metersReceived;
       const { error: updateError } = await supabase
         .from('incoming_stock')
@@ -151,15 +186,19 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
 
       if (updateError) throw updateError;
 
-      // Log action
+      // Step 8: Log action
       await logAction(
         'CREATE',
         'lot',
         createdLots[0].id,
         `Received ${metersReceived}m from incoming stock ${incomingStock.invoice_number}`,
         null,
-        { lots: createdLots, incoming_stock_id: incomingStock.id },
-        `Received ${metersReceived}m in ${lotCount} lot(s)`
+        { 
+          lots: createdLots, 
+          incoming_stock_id: incomingStock.id,
+          receipt_id: receipt.id 
+        },
+        `Received ${metersReceived}m in ${lotCount} lot(s) via goods receipt`
       );
 
       toast({
