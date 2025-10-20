@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { History, Undo, Search, Filter, FileText } from 'lucide-react';
+import { History, Undo, Search, Filter, FileText, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -403,7 +403,7 @@ const AuditLogs: React.FC = () => {
             </Select>
 
             <Button onClick={fetchAuditLogs} variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
+              <RefreshCw className="mr-2 h-4 w-4" />
               {String(t('refresh'))}
             </Button>
           </div>
