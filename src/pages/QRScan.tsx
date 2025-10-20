@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from "@/hooks/use-toast";
 import { QrCode, Upload, Camera, Package, Calendar, MapPin, Plus, Printer } from 'lucide-react';
@@ -31,6 +33,7 @@ const QRScan = () => {
   const { lotNumber } = useParams();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -41,6 +44,9 @@ const QRScan = () => {
   const [error, setError] = useState('');
   const [showQuickEntry, setShowQuickEntry] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+
+  // Check permissions
+  const canScanQR = hasPermission('qrdocuments', 'scanqrcodes');
 
   useEffect(() => {
     fetchAvailableLots();
@@ -193,6 +199,23 @@ const QRScan = () => {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Permission check
+  if (!permissionsLoading && !canScanQR) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">{t('qrCodeScanner')}</h1>
+          <QrCode className="h-8 w-8 text-primary" />
+        </div>
+        <Alert variant="destructive">
+          <AlertDescription>
+            You do not have permission to scan QR codes. Contact your administrator for access.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }

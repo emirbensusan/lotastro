@@ -359,6 +359,8 @@ const translations = {
     categorySuppliers: 'Suppliers',
     categoryReports: 'Reports',
     categoryQrDocuments: 'QR & Documents',
+    categoryApprovals: 'Approvals',
+    categoryAuditLogs: 'Audit Logs',
     
     // User Management Actions
     actionViewUsers: 'View Users',
@@ -398,6 +400,11 @@ const translations = {
     actionScanQrCodes: 'Scan QR Codes',
     actionPrintLotLabels: 'Print Lot Labels',
     actionBulkQrGeneration: 'Bulk QR Generation',
+    
+    // Audit Logs Actions
+    actionViewOwnLogs: 'View Own Audit Logs',
+    actionViewAllLogs: 'View All Audit Logs',
+    actionReverseActions: 'Reverse Actions',
     
     // Table Headers
     tableHeaderAction: 'Action',
@@ -1098,6 +1105,8 @@ const translations = {
     categorySuppliers: 'Tedarikçiler',
     categoryReports: 'Raporlar',
     categoryQrDocuments: 'QR ve Belgeler',
+    categoryApprovals: 'Onaylar',
+    categoryAuditLogs: 'İşlem Geçmişi',
     
     // User Management Actions
     actionViewUsers: 'Kullanıcıları Görüntüle',
@@ -1137,6 +1146,11 @@ const translations = {
     actionScanQrCodes: 'QR Kodlarını Tara',
     actionPrintLotLabels: 'LOT Etiketlerini Yazdır',
     actionBulkQrGeneration: 'Toplu QR Oluşturma',
+    
+    // Audit Logs Actions
+    actionViewOwnLogs: 'Kendi İşlem Kayıtlarını Görüntüle',
+    actionViewAllLogs: 'Tüm İşlem Kayıtlarını Görüntüle',
+    actionReverseActions: 'İşlemleri Geri Al',
     
     // Table Headers
     tableHeaderAction: 'Eylem',

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,15 +44,20 @@ interface QueueItem {
 
 const OrderQueue: React.FC = () => {
   const { hasRole, profile, loading: authLoading } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processingItem, setProcessingItem] = useState<string | null>(null);
 
+  const canCreateOrders = hasPermission('orders', 'createorders');
+
   useEffect(() => {
-    fetchQueueItems();
-  }, []);
+    if (!permissionsLoading) {
+      fetchQueueItems();
+    }
+  }, [permissionsLoading]);
 
   const fetchQueueItems = async () => {
     setLoading(true);
@@ -161,11 +167,11 @@ const OrderQueue: React.FC = () => {
     });
   };
 
-  if (authLoading) {
+  if (authLoading || permissionsLoading) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
 
-  if (!hasRole('accounting') && !hasRole('senior_manager') && !hasRole('admin')) {
+  if (!canCreateOrders) {
     return (
       <Alert>
         <AlertDescription>

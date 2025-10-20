@@ -71,6 +71,11 @@ const defaultPermissions: Permission[] = [
   { categoryKey: 'categoryApprovals', actionKey: 'actionViewApprovals', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
   { categoryKey: 'categoryApprovals', actionKey: 'actionApproveChanges', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
   { categoryKey: 'categoryApprovals', actionKey: 'actionRejectChanges', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+  
+  // Audit Logs
+  { categoryKey: 'categoryAuditLogs', actionKey: 'actionViewOwnLogs', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryAuditLogs', actionKey: 'actionViewAllLogs', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+  { categoryKey: 'categoryAuditLogs', actionKey: 'actionReverseActions', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
 ];
 
 const getRoleColor = (role: string) => {

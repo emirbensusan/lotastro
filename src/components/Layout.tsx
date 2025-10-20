@@ -74,7 +74,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/qr-scan', label: t('qrScan'), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
     { path: '/reports', label: t('reports'), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
     { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
-    { path: '/audit-logs', label: t('actionHistory'), icon: History, permission: { category: 'audit', action: 'viewlogs' } },
+    { path: '/audit-logs', label: t('actionHistory'), icon: History, permission: { category: 'auditlogs', action: 'viewalllogs' } },
     { path: '/suppliers', label: t('suppliers'), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
     { path: '/admin', label: t('admin'), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
   ];

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +25,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ProgressDialog } from '@/components/ui/progress-dialog';
@@ -138,6 +140,7 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const { profile, hasRole } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const [editOpen, setEditOpen] = useState(false);
   const [editLot, setEditLot] = useState<Lot | null>(null);
@@ -151,6 +154,8 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
     statusText: '',
     isComplete: false
   });
+
+  const canViewInventory = hasPermission('inventory', 'viewinventory');
 
   // Group lots by quality -> color -> lots
   const groupedData = React.useMemo(() => {
@@ -202,14 +207,28 @@ const InventoryExcel: React.FC<InventoryExcelProps> = ({
   const statuses = [...new Set(lots.map(lot => lot.status))];
 
   useEffect(() => {
-    fetchLots();
-  }, []);
+    if (!permissionsLoading) {
+      fetchLots();
+    }
+  }, [permissionsLoading]);
 
   useEffect(() => {
     filterAndSort();
   }, [lots, searchTerm, qualityFilter, colorFilter, statusFilter, sortField, sortDirection]);
 
   const fetchLots = async () => {
+    if (permissionsLoading) return;
+    
+    if (!canViewInventory) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to view inventory',
+        variant: 'destructive'
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase

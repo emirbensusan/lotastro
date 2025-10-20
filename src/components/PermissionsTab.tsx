@@ -53,6 +53,11 @@ const permissions: Permission[] = [
   { categoryKey: 'categoryQrDocuments', actionKey: 'actionScanQrCodes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryQrDocuments', actionKey: 'actionPrintLotLabels', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryQrDocuments', actionKey: 'actionBulkQrGeneration', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  
+  // Audit Logs
+  { categoryKey: 'categoryAuditLogs', actionKey: 'actionViewOwnLogs', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryAuditLogs', actionKey: 'actionViewAllLogs', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+  { categoryKey: 'categoryAuditLogs', actionKey: 'actionReverseActions', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
 ];
 
 const getRoleColor = (role: string) => {
