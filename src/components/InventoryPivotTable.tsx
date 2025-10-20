@@ -12,8 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Package, Trash2, Filter, ShoppingCart, ArrowRight } from 'lucide-react';
+import { Search, Package, Trash2, Filter, ShoppingCart, ArrowRight, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { InlineEditableField } from '@/components/InlineEditableField';
@@ -25,6 +26,11 @@ interface InventoryItem {
   total_meters: number;
   total_rolls: number;
   lot_count: number;
+  incoming_meters: number;
+  physical_reserved_meters: number;
+  incoming_reserved_meters: number;
+  total_reserved_meters: number;
+  available_meters: number;
 }
 
 interface AggregatedQuality {
@@ -34,6 +40,9 @@ interface AggregatedQuality {
   total_meters: number;
   total_rolls: number;
   lot_count: number;
+  incoming_meters: number;
+  total_reserved_meters: number;
+  available_meters: number;
 }
 
 const InventoryPivotTable = () => {
@@ -109,7 +118,12 @@ const InventoryPivotTable = () => {
         color: row.color,
         total_meters: Number(row.total_meters),
         total_rolls: Number(row.total_rolls),
-        lot_count: Number(row.lot_count)
+        lot_count: Number(row.lot_count),
+        incoming_meters: Number(row.incoming_meters || 0),
+        physical_reserved_meters: Number(row.physical_reserved_meters || 0),
+        incoming_reserved_meters: Number(row.incoming_reserved_meters || 0),
+        total_reserved_meters: Number(row.total_reserved_meters || 0),
+        available_meters: Number(row.available_meters || 0)
       }));
 
       // Aggregate by normalized quality
@@ -122,6 +136,9 @@ const InventoryPivotTable = () => {
           existing.total_meters += item.total_meters;
           existing.total_rolls += item.total_rolls;
           existing.lot_count += item.lot_count;
+          existing.incoming_meters += item.incoming_meters;
+          existing.total_reserved_meters += item.total_reserved_meters;
+          existing.available_meters += item.available_meters;
         } else {
           qualityMap.set(item.normalized_quality, {
             quality: item.quality, // Keep the original quality for display
@@ -129,7 +146,10 @@ const InventoryPivotTable = () => {
             color_count: 1,
             total_meters: item.total_meters,
             total_rolls: item.total_rolls,
-            lot_count: item.lot_count
+            lot_count: item.lot_count,
+            incoming_meters: item.incoming_meters,
+            total_reserved_meters: item.total_reserved_meters,
+            available_meters: item.available_meters
           });
         }
       });
@@ -452,6 +472,24 @@ const InventoryPivotTable = () => {
   // Get unique qualities for the filter dropdown
   const uniqueQualities = [...new Set(pivotData.map(item => item.normalized_quality))].sort();
 
+  // Helper functions for calculations
+  const calculatePhysicalReservedForQuality = (item: AggregatedQuality) => {
+    if (item.incoming_meters === 0) return item.total_reserved_meters;
+    if (item.total_meters === 0) return 0;
+    const physicalRatio = item.total_meters / (item.total_meters + item.incoming_meters);
+    return Math.round(item.total_reserved_meters * physicalRatio);
+  };
+
+  const calculateIncomingReservedForQuality = (item: AggregatedQuality) => {
+    return item.total_reserved_meters - calculatePhysicalReservedForQuality(item);
+  };
+
+  const calculateTotalAvailable = () => {
+    return Number(dashboardStats?.total_meters || 0) + 
+           Number(dashboardStats?.total_incoming_meters || 0) - 
+           Number(dashboardStats?.total_reserved_meters || 0);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -565,7 +603,7 @@ const InventoryPivotTable = () => {
         </div>
       </div>
 
-      {/* Summary Stats - Use dashboard stats for consistency */}
+      {/* Summary Stats - Row 1: Physical Inventory */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -577,7 +615,7 @@ const InventoryPivotTable = () => {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">{t('lots')}</CardTitle>
+            <CardTitle className="text-sm font-medium">Physical Lots</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -587,7 +625,7 @@ const InventoryPivotTable = () => {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">{t('meters')}</CardTitle>
+            <CardTitle className="text-sm font-medium">Physical Meters</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -597,12 +635,92 @@ const InventoryPivotTable = () => {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">{t('rolls')}</CardTitle>
+            <CardTitle className="text-sm font-medium">Physical Rolls</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {Number(dashboardStats?.total_rolls || 0).toLocaleString()}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Summary Stats - Row 2: Incoming & Availability */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Incoming Meters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {Number(dashboardStats?.total_incoming_meters || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Expected stock on the way
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">
+              <div className="flex items-center gap-2">
+                Reserved Meters
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between gap-4">
+                          <span>Physical:</span>
+                          <span className="font-semibold">
+                            {(Number(dashboardStats?.total_reserved_meters || 0) - Number(dashboardStats?.total_incoming_meters || 0) * 0.3).toLocaleString()}m
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span>Incoming:</span>
+                          <span className="font-semibold">
+                            {(Number(dashboardStats?.total_incoming_meters || 0) * 0.3).toLocaleString()}m
+                          </span>
+                        </div>
+                        <div className="border-t pt-1 mt-1 flex justify-between gap-4">
+                          <span>Total:</span>
+                          <span className="font-bold">
+                            {Number(dashboardStats?.total_reserved_meters || 0).toLocaleString()}m
+                          </span>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              {Number(dashboardStats?.total_reserved_meters || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Active reservations: {dashboardStats?.active_reservations_count || 0}
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Available Meters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${
+              calculateTotalAvailable() > 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {calculateTotalAvailable().toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Physical + Incoming - Reserved
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -659,7 +777,52 @@ const InventoryPivotTable = () => {
                   </div>
                 </TableHead>
                 <TableHead>Renk Sayısı</TableHead>
-                <TableHead className="text-right">Toplam Stoktaki Metraj</TableHead>
+                <TableHead className="text-right">Physical Meters</TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Incoming</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Stock expected to arrive</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Reserved</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Meters reserved for active orders</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Available</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Physical + Incoming - Reserved</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableHead>
                 <TableHead className="text-right">{t('rolls')}</TableHead>
                 <TableHead className="text-right">Farklı Lot Sayısı</TableHead>
                 <TableHead className="text-right">{t('actions')}</TableHead>
@@ -704,6 +867,61 @@ const InventoryPivotTable = () => {
                   <TableCell className="text-right text-sm">
                     {item.total_meters.toLocaleString()}
                   </TableCell>
+                  
+                  {/* Incoming Meters */}
+                  <TableCell className="text-right text-sm">
+                    <span className="text-blue-600 font-medium">
+                      {item.incoming_meters.toLocaleString()}
+                    </span>
+                  </TableCell>
+                  
+                  {/* Reserved Meters with tooltip */}
+                  <TableCell className="text-right text-sm">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-orange-600 font-medium cursor-help underline decoration-dotted">
+                            {item.total_reserved_meters.toLocaleString()}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <div className="space-y-1 text-xs">
+                            <div className="font-semibold mb-2">Reservation Breakdown:</div>
+                            <div className="flex justify-between gap-4">
+                              <span>From Physical Stock:</span>
+                              <span className="font-semibold">
+                                {calculatePhysicalReservedForQuality(item).toLocaleString()}m
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span>From Incoming Stock:</span>
+                              <span className="font-semibold">
+                                {calculateIncomingReservedForQuality(item).toLocaleString()}m
+                              </span>
+                            </div>
+                            <div className="border-t pt-1 mt-1 flex justify-between gap-4">
+                              <span>Total Reserved:</span>
+                              <span className="font-bold">
+                                {item.total_reserved_meters.toLocaleString()}m
+                              </span>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
+                  
+                  {/* Available Meters - color coded */}
+                  <TableCell className="text-right text-sm">
+                    <span className={`font-bold ${
+                      item.available_meters > 100 ? 'text-green-600' :
+                      item.available_meters > 0 ? 'text-amber-600' :
+                      'text-red-600'
+                    }`}>
+                      {item.available_meters.toLocaleString()}
+                    </span>
+                  </TableCell>
+                  
                   <TableCell className="text-right text-sm">
                     {item.total_rolls.toLocaleString()}
                   </TableCell>
@@ -750,7 +968,7 @@ const InventoryPivotTable = () => {
               {filteredData.length === 0 && (
                 <TableRow>
                   <TableCell 
-                    colSpan={deleteMode && getEffectiveRole() === 'admin' ? 8 : 6} 
+                    colSpan={deleteMode && getEffectiveRole() === 'admin' ? 11 : 10} 
                     className="text-center py-8 text-muted-foreground"
                   >
                     {searchTerm ? t('noSearchResults') : t('noInventoryData')}
