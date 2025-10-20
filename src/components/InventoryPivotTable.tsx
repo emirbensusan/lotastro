@@ -706,20 +706,6 @@ const InventoryPivotTable = () => {
       </div>
 
       {/* Pivot Table */}
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Physical Rolls</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Number(dashboardStats?.total_rolls || 0).toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Pivot Table */}
       <Card>
         <CardHeader>
           <CardTitle>{t('stockOverview')}</CardTitle>

@@ -21,8 +21,6 @@ const translations = {
     suppliers: 'Suppliers',
     admin: 'Admin',
     signOut: 'Sign Out',
-    
-    // Navigation and sections
     overview: 'Overview',
     inventoryManagement: 'Inventory Management',
     incomingStockLabel: 'Incoming Stock',
@@ -30,53 +28,6 @@ const translations = {
     ordersAndReservations: 'Orders & Reservations',
     toolsAndUtilities: 'Tools & Utilities',
     reportsAndAdmin: 'Reports & Admin',
-    
-    // Orders Tab
-    reservations: 'Reservations',
-    
-    // Inventory Stats
-    physicalLots: 'Physical Lots',
-    physicalMeters: 'Physical Meters',
-    physicalRolls: 'Physical Rolls',
-    incomingMeters: 'Incoming Meters',
-    expectedStockOnTheWay: 'Expected stock on the way',
-    reservedMeters: 'Reserved Meters',
-    activeReservations: 'Active Reservations',
-    availableMeters: 'Available Meters',
-    physicalPlusIncomingMinusReserved: 'Physical + Incoming - Reserved',
-    incoming: 'Incoming',
-    reserved: 'Reserved',
-    available: 'Available',
-    
-    // Goods Receipt
-    pendingShipments: 'Pending Shipments',
-    totalPendingMeters: 'Total pending meters',
-    expectedToday: 'Expected Today',
-    overdue: 'Overdue',
-    pendingReceipts: 'Pending Receipts',
-    receiptHistory: 'Receipt History',
-    pending: 'Pending',
-    invoice: 'Invoice:',
-    expected: 'Expected:',
-    received: 'Received:',
-    remaining: 'Remaining:',
-    receiveStock: 'Receive Stock',
-    
-    // Reports
-    reportsAndAnalytics: 'Reports & Analytics',
-    pickDateRange: 'Pick a date range',
-    totalLots: 'Total Lots',
-    totalOrders: 'Total Orders',
-    totalMeters: 'Total Meters',
-    totalRolls: 'Total Rolls',
-    totalQualities: 'Total qualities',
-    suppliers: 'Suppliers',
-    lotsByQuality: 'Lots by Quality',
-    orderStatus: 'Order Status',
-    inventoryAnalysis: 'Inventory Analysis',
-    orderPerformance: 'Order Performance',
-    salesReport: 'Sales Report',
-    supplierAnalysis: 'Supplier Analysis',
     
     // Common
     search: 'Search',
