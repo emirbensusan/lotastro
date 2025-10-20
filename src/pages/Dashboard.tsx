@@ -141,25 +141,25 @@ const Dashboard = () => {
       color: 'text-blue-600',
     },
     {
-      title: 'Incoming Stock',
+      title: t('incomingStockLabel'),
       value: `${stats.incomingMeters.toLocaleString()}m`,
-      description: 'Expected meters pending receipt',
+      description: t('expectedMetersPendingReceipt'),
       icon: TruckIcon,
       color: 'text-cyan-600',
       link: '/incoming-stock',
     },
     {
-      title: 'Reserved Stock',
+      title: t('reservedStock'),
       value: `${stats.reservedMeters.toLocaleString()}m`,
-      description: `${stats.activeReservations} active reservations`,
+      description: `${stats.activeReservations} ${t('reservedStockCount')}`,
       icon: Lock,
       color: 'text-amber-600',
       link: '/orders?tab=reservations',
     },
     {
-      title: 'Pending Receipts',
+      title: t('pendingReceipts'),
       value: stats.pendingReceipts.toString(),
-      description: 'Shipments awaiting goods receipt',
+      description: t('shipmentsAwaitingGoodsReceipt'),
       icon: PackageCheck,
       color: 'text-green-600',
       link: '/goods-receipt',
@@ -280,13 +280,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/goods-receipt'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📦 Receive Goods
+                  {t('receiveGoodsAction')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Process pending shipments</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('receiveGoodsDesc')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Goods Receipt
+                  {t('goToGoodsReceipt')}
                 </Button>
               </CardContent>
             </Card>
@@ -294,13 +294,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders?tab=reservations'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📅 Manage Reservations
+                  {t('manageReservationsAction')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Create and manage stock reservations</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('manageReservationsDesc')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Reservations
+                  {t('goToReservations')}
                 </Button>
               </CardContent>
             </Card>
@@ -308,13 +308,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/incoming-stock'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  🚚 Track Incoming Stock
+                  {t('trackIncomingStockAction')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Monitor expected deliveries</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('trackIncomingStockDesc')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Incoming Stock
+                  {t('goToIncomingStock')}
                 </Button>
               </CardContent>
             </Card>
@@ -354,13 +354,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/incoming-stock'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📊 View Incoming Stock
+                  {t('viewIncomingStockAction')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Monitor expected inventory</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('viewIncomingStockDesc')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Incoming Stock
+                  {t('goToIncomingStock')}
                 </Button>
               </CardContent>
             </Card>

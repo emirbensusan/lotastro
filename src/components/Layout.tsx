@@ -78,37 +78,37 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navigationGroups: NavigationGroup[] = [
     {
-      label: 'Overview',
+      label: String(t('overview')),
       items: [
         { path: '/', label: String(t('dashboard')), icon: Home, permission: { category: 'reports', action: 'accessdashboard' } },
       ]
     },
     {
-      label: 'Inventory Management',
+      label: String(t('inventoryManagement')),
       items: [
         { path: '/lot-intake', label: String(t('lotIntake')), icon: PackagePlus, permission: { category: 'inventory', action: 'createlotentries' } },
         { path: '/lot-queue', label: String(t('lotQueue')), icon: Timer, permission: { category: 'inventory', action: 'createlotentries' } },
         { path: '/inventory', label: String(t('inventory')), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' } },
-        { path: '/incoming-stock', label: 'Incoming Stock', icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
-        { path: '/goods-receipt', label: 'Goods Receipt', icon: PackageCheck, permission: { category: 'inventory', action: 'receiveincoming' } },
+        { path: '/incoming-stock', label: String(t('incomingStockNav')), icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
+        { path: '/goods-receipt', label: String(t('goodsReceiptNav')), icon: PackageCheck, permission: { category: 'inventory', action: 'receiveincoming' } },
       ]
     },
     {
-      label: 'Orders & Reservations',
+      label: String(t('ordersAndReservations')),
       items: [
         { path: '/orders', label: String(t('orders')), icon: Truck, permission: { category: 'orders', action: 'vieworders' } },
         { path: '/order-queue', label: String(t('orderQueue')), icon: ListOrdered, permission: { category: 'orders', action: 'createorders' } },
       ]
     },
     {
-      label: 'Tools & Utilities',
+      label: String(t('toolsAndUtilities')),
       items: [
         { path: '/qr-scan', label: String(t('qrScan')), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
         { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
       ]
     },
     {
-      label: 'Reports & Admin',
+      label: String(t('reportsAndAdmin')),
       items: [
         { path: '/reports', label: String(t('reports')), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
         { path: '/audit-logs', label: String(t('actionHistory')), icon: History, permission: { category: 'auditlogs', action: 'viewalllogs' } },

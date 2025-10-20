@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +41,7 @@ interface IncomingStockWithSupplier extends IncomingStock {
 
 const IncomingStock: React.FC = () => {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
+  const { t } = useLanguage();
   const [incomingStock, setIncomingStock] = useState<IncomingStockWithSupplier[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,7 @@ const IncomingStock: React.FC = () => {
       console.error('Error fetching incoming stock:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch incoming stock.',
+        description: t('failedToFetchIncomingStock'),
         variant: 'destructive'
       });
     } finally {
@@ -144,7 +146,7 @@ const IncomingStock: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this incoming stock entry?')) return;
+    if (!confirm(t('confirmDeleteIncomingStock') as string)) return;
 
     try {
       const { error } = await supabase
@@ -156,7 +158,7 @@ const IncomingStock: React.FC = () => {
 
       toast({
         title: 'Success',
-        description: 'Incoming stock entry deleted successfully.'
+        description: t('incomingStockDeletedSuccess')
       });
 
       fetchIncomingStock();
@@ -164,7 +166,7 @@ const IncomingStock: React.FC = () => {
       console.error('Error deleting incoming stock:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete incoming stock entry.',
+        description: error.message || t('failedToDeleteIncomingStock'),
         variant: 'destructive'
       });
     }
@@ -173,7 +175,7 @@ const IncomingStock: React.FC = () => {
   const stats = calculateSummaryStats();
 
   if (permissionsLoading) {
-    return <div className="text-sm text-muted-foreground">Loading…</div>;
+    return <div className="text-sm text-muted-foreground">{t('loadingEllipsis')}</div>;
   }
 
   if (!hasPermission('inventory', 'viewincoming')) {
@@ -181,7 +183,7 @@ const IncomingStock: React.FC = () => {
       <Card>
         <CardContent className="p-6">
           <p className="text-center text-muted-foreground">
-            You don't have permission to access incoming stock.
+            {t('noPermissionIncomingStock')}
           </p>
         </CardContent>
       </Card>
@@ -192,20 +194,20 @@ const IncomingStock: React.FC = () => {
     <div className="space-y-6">
       {/* Header with actions */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Incoming Stock</h1>
+        <h1 className="text-3xl font-bold">{t('incomingStockLabel')}</h1>
         <div className="flex gap-2">
           {hasPermission('inventory', 'createincoming') && (
             <>
               <Button onClick={() => setBulkUploadOpen(true)} variant="outline">
                 <Upload className="h-4 w-4 mr-2" />
-                Bulk Upload
+                {t('bulkUpload')}
               </Button>
               <Button onClick={() => {
                 setSelectedStock(null);
                 setDialogOpen(true);
               }}>
                 <Plus className="h-4 w-4 mr-2" />
-                New Entry
+                {t('newEntry')}
               </Button>
             </>
           )}
@@ -218,7 +220,7 @@ const IncomingStock: React.FC = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <TruckIcon className="h-4 w-4 text-muted-foreground" />
-              Total Incoming Meters
+              {t('totalIncomingMeters')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -226,7 +228,7 @@ const IncomingStock: React.FC = () => {
               {stats.totalIncoming.toLocaleString()}m
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Expected stock on the way
+              {t('expectedStockOnTheWay')}
             </p>
           </CardContent>
         </Card>
@@ -235,7 +237,7 @@ const IncomingStock: React.FC = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <PackageIcon className="h-4 w-4 text-muted-foreground" />
-              Pending Shipments
+              {t('pendingShipments')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -243,7 +245,7 @@ const IncomingStock: React.FC = () => {
               {stats.pendingCount}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Awaiting arrival
+              {t('awaitingArrival')}
             </p>
           </CardContent>
         </Card>
@@ -252,7 +254,7 @@ const IncomingStock: React.FC = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              Partially Received
+              {t('partiallyReceived')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -260,7 +262,7 @@ const IncomingStock: React.FC = () => {
               {stats.partialCount}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              In progress
+              {t('inProgress')}
             </p>
           </CardContent>
         </Card>
@@ -269,7 +271,7 @@ const IncomingStock: React.FC = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-muted-foreground" />
-              Overdue
+              {t('overdue')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -277,7 +279,7 @@ const IncomingStock: React.FC = () => {
               {stats.overdueCount}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Past expected date
+              {t('pastExpectedDate')}
             </p>
           </CardContent>
         </Card>
@@ -287,22 +289,22 @@ const IncomingStock: React.FC = () => {
       <div className="flex gap-4">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder={t('filterByStatus')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending_inbound">Pending Inbound</SelectItem>
-            <SelectItem value="partially_received">Partially Received</SelectItem>
-            <SelectItem value="fully_received">Fully Received</SelectItem>
+            <SelectItem value="all">{t('allStatusFilter')}</SelectItem>
+            <SelectItem value="pending_inbound">{t('pendingInbound')}</SelectItem>
+            <SelectItem value="partially_received">{t('partiallyReceived')}</SelectItem>
+            <SelectItem value="fully_received">{t('fullyReceived')}</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={supplierFilter} onValueChange={setSupplierFilter}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by supplier" />
+            <SelectValue placeholder={t('filterBySupplier')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Suppliers</SelectItem>
+            <SelectItem value="all">{t('allSuppliers')}</SelectItem>
             {suppliers.map(supplier => (
               <SelectItem key={supplier.id} value={supplier.id}>
                 {supplier.name}
@@ -315,7 +317,7 @@ const IncomingStock: React.FC = () => {
       {/* Incoming Stock Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Incoming Stock Entries</CardTitle>
+          <CardTitle>{t('incomingStockEntries')}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -326,24 +328,24 @@ const IncomingStock: React.FC = () => {
             </div>
           ) : incomingStock.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No incoming stock entries found.
+              {t('noIncomingStockFound')}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Quality</TableHead>
-                  <TableHead>Color</TableHead>
-                  <TableHead className="text-right">Expected</TableHead>
-                  <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Reserved</TableHead>
-                  <TableHead className="text-right">Open</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Arrival Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('invoiceNumber')}</TableHead>
+                  <TableHead>{t('supplier')}</TableHead>
+                  <TableHead>{t('quality')}</TableHead>
+                  <TableHead>{t('color')}</TableHead>
+                  <TableHead className="text-right">{t('expected')}</TableHead>
+                  <TableHead className="text-right">{t('received')}</TableHead>
+                  <TableHead className="text-right">{t('reserved')}</TableHead>
+                  <TableHead className="text-right">{t('open')}</TableHead>
+                  <TableHead>{t('progressLabel')}</TableHead>
+                  <TableHead>{t('arrivalDate')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead>{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -379,7 +381,7 @@ const IncomingStock: React.FC = () => {
                             <span className="text-sm">
                               {new Date(item.expected_arrival_date).toLocaleDateString()}
                             </span>
-                            {isOverdue(item) && <Badge variant="destructive">Overdue</Badge>}
+                            {isOverdue(item) && <Badge variant="destructive">{t('overdue')}</Badge>}
                           </div>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>
@@ -387,13 +389,13 @@ const IncomingStock: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         {item.status === 'pending_inbound' && (
-                          <Badge variant="outline" className="bg-blue-50">Pending</Badge>
+                          <Badge variant="outline" className="bg-blue-50">{t('pending')}</Badge>
                         )}
                         {item.status === 'partially_received' && (
-                          <Badge variant="outline" className="bg-amber-50">Partial</Badge>
+                          <Badge variant="outline" className="bg-amber-50">{t('partial')}</Badge>
                         )}
                         {item.status === 'fully_received' && (
-                          <Badge variant="outline" className="bg-green-50">Complete</Badge>
+                          <Badge variant="outline" className="bg-green-50">{t('complete')}</Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -404,7 +406,7 @@ const IncomingStock: React.FC = () => {
                               size="sm"
                               onClick={() => handleReceive(item)}
                             >
-                              Receive
+                              {t('receive')}
                             </Button>
                           )}
                           {hasPermission('inventory', 'createincoming') && (
