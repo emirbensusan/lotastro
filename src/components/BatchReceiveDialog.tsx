@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Plus, Trash2 } from 'lucide-react';
 
 interface IncomingStockWithSupplier {
   id: string;
@@ -35,11 +37,17 @@ interface BatchReceiveDialogProps {
   onSuccess: () => void;
 }
 
-interface ReceiptFormData {
-  meters_received: string;
-  lot_count: number;
+interface LotRow {
+  id: string;
+  lot_number: string;
+  roll_count: number;
+  roll_meters: string;
   warehouse_location: string;
   notes: string;
+}
+
+interface StockReceiptData {
+  lots: LotRow[];
 }
 
 export default function BatchReceiveDialog({
@@ -48,93 +56,150 @@ export default function BatchReceiveDialog({
   selectedStock,
   onSuccess
 }: BatchReceiveDialogProps) {
-  const [receiptData, setReceiptData] = useState<Map<string, ReceiptFormData>>(new Map());
+  const [receiptData, setReceiptData] = useState<Map<string, StockReceiptData>>(new Map());
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { logAction } = useAuditLog();
 
   useEffect(() => {
     if (open && selectedStock.length > 0) {
-      const initialData = new Map<string, ReceiptFormData>();
+      const initialData = new Map<string, StockReceiptData>();
       selectedStock.forEach(item => {
         initialData.set(item.id, {
-          meters_received: (item.expected_meters - item.received_meters).toFixed(2),
-          lot_count: 1,
-          warehouse_location: '',
-          notes: ''
+          lots: [{
+            id: crypto.randomUUID(),
+            lot_number: `${item.quality}-${item.color}-${Date.now()}`,
+            roll_count: 1,
+            roll_meters: '',
+            warehouse_location: '',
+            notes: ''
+          }]
         });
       });
       setReceiptData(initialData);
     }
   }, [open, selectedStock]);
 
-  const updateReceiptData = (id: string, field: keyof ReceiptFormData, value: string | number) => {
+  const addLotRow = (stockId: string) => {
     const newData = new Map(receiptData);
-    const current = newData.get(id);
-    if (current) {
-      newData.set(id, { ...current, [field]: value });
+    const existing = newData.get(stockId);
+    if (existing) {
+      const stock = selectedStock.find(s => s.id === stockId);
+      existing.lots.push({
+        id: crypto.randomUUID(),
+        lot_number: `${stock?.quality}-${stock?.color}-${Date.now()}-${existing.lots.length + 1}`,
+        roll_count: 1,
+        roll_meters: '',
+        warehouse_location: '',
+        notes: ''
+      });
       setReceiptData(newData);
     }
   };
 
+  const removeLotRow = (stockId: string, lotId: string) => {
+    const newData = new Map(receiptData);
+    const existing = newData.get(stockId);
+    if (existing && existing.lots.length > 1) {
+      existing.lots = existing.lots.filter(lot => lot.id !== lotId);
+      setReceiptData(newData);
+    }
+  };
+
+  const updateLot = (stockId: string, lotId: string, field: keyof LotRow, value: string | number) => {
+    const newData = new Map(receiptData);
+    const existing = newData.get(stockId);
+    if (existing) {
+      existing.lots = existing.lots.map(lot =>
+        lot.id === lotId ? { ...lot, [field]: value } : lot
+      );
+      setReceiptData(newData);
+    }
+  };
+
+  const calculateStockTotal = (stockId: string) => {
+    const data = receiptData.get(stockId);
+    if (!data) return 0;
+    return data.lots.reduce((sum, lot) => {
+      const rollMeters = parseFloat(lot.roll_meters) || 0;
+      const rollCount = parseInt(lot.roll_count.toString()) || 0;
+      return sum + (rollMeters * rollCount);
+    }, 0);
+  };
+
   const processReceipt = async (
-    item: IncomingStockWithSupplier, 
-    data: ReceiptFormData, 
+    item: IncomingStockWithSupplier,
+    data: StockReceiptData,
     userId: string
   ) => {
-    const metersReceived = parseFloat(data.meters_received);
-    const lotCount = parseInt(data.lot_count.toString());
-
-    if (isNaN(metersReceived) || metersReceived <= 0) {
-      throw new Error(`Invalid meters for ${item.invoice_number || item.quality}`);
+    // Validation
+    if (data.lots.length === 0) {
+      throw new Error(`${item.invoice_number}: No lots defined`);
     }
 
-    const remainingMeters = item.expected_meters - item.received_meters;
-    if (metersReceived > remainingMeters) {
-      throw new Error(`Cannot receive more than ${remainingMeters}m for ${item.invoice_number || item.quality}`);
+    const totalMeters = data.lots.reduce((sum, lot) => {
+      const rollMeters = parseFloat(lot.roll_meters) || 0;
+      const rollCount = parseInt(lot.roll_count.toString()) || 0;
+      return sum + (rollMeters * rollCount);
+    }, 0);
+
+    if (totalMeters <= 0) {
+      throw new Error(`${item.invoice_number}: Total meters must be greater than 0`);
     }
 
-    // Create goods_in_receipt entry
+    const remaining = item.expected_meters - item.received_meters;
+    if (totalMeters > remaining) {
+      throw new Error(`${item.invoice_number}: Cannot receive ${totalMeters}m, only ${remaining}m remaining`);
+    }
+
+    for (const lot of data.lots) {
+      if (!lot.lot_number.trim()) {
+        throw new Error(`${item.invoice_number}: All lots must have a lot number`);
+      }
+      if (!lot.roll_meters || parseFloat(lot.roll_meters) <= 0) {
+        throw new Error(`${item.invoice_number}: All lots must have valid roll meters`);
+      }
+      if (!lot.roll_count || lot.roll_count <= 0) {
+        throw new Error(`${item.invoice_number}: All lots must have at least 1 roll`);
+      }
+    }
+
+    // Create goods_in_receipt
     const { data: receipt, error: receiptError } = await supabase
       .from('goods_in_receipts')
       .insert({
         incoming_stock_id: item.id,
         received_by: userId,
         received_at: new Date().toISOString(),
-        defect_notes: data.notes || null
+        defect_notes: data.lots.map(l => l.notes).filter(Boolean).join('; ') || null
       })
       .select()
       .single();
 
     if (receiptError) throw receiptError;
 
-    // Calculate meters per lot
-    const metersPerLot = metersReceived / lotCount;
-
-    // Generate lot numbers
-    const baseLotNumber = `${item.quality}-${item.color}-${Date.now()}`;
-    
     // Create lots
-    const lotsToCreate = [];
-    for (let i = 0; i < lotCount; i++) {
-      const lotNumber = lotCount > 1 ? `${baseLotNumber}-${i + 1}` : baseLotNumber;
-      
-      lotsToCreate.push({
+    const lotsToCreate = data.lots.map(lot => {
+      const rollMeters = parseFloat(lot.roll_meters);
+      const rollCount = parseInt(lot.roll_count.toString());
+      const totalLotMeters = rollMeters * rollCount;
+
+      return {
         quality: item.quality,
         color: item.color,
-        roll_count: 1,
-        meters: metersPerLot,
-        lot_number: lotNumber,
+        roll_count: rollCount,
+        meters: totalLotMeters,
+        lot_number: lot.lot_number,
         entry_date: new Date().toISOString().split('T')[0],
         supplier_id: item.supplier_id,
         invoice_number: item.invoice_number,
         invoice_date: item.invoice_date,
-        warehouse_location: data.warehouse_location || null,
-        notes: data.notes || null,
-        qr_code_url: `${window.location.origin}/qr/${lotNumber}`,
-        status: 'in_stock'
-      });
-    }
+        warehouse_location: lot.warehouse_location || null,
+        notes: lot.notes || null,
+        qr_code_url: `${window.location.origin}/qr/${lot.lot_number}`,
+        status: 'in_stock' as const
+      };
+    });
 
     const { data: createdLots, error: lotsError } = await supabase
       .from('lots')
@@ -152,38 +217,62 @@ export default function BatchReceiveDialog({
       meters: lot.meters
     }));
 
-    await supabase.from('goods_in_rows').insert(rowsToCreate);
+    const { error: rowsError } = await supabase
+      .from('goods_in_rows')
+      .insert(rowsToCreate);
 
-    // Create roll entries
-    const rollsToCreate = createdLots.map(lot => ({
-      lot_id: lot.id,
-      meters: lot.meters,
-      position: 1,
-      status: 'available'
-    }));
+    if (rowsError) {
+      console.error('Error creating goods_in_rows:', rowsError);
+    }
 
-    await supabase.from('rolls').insert(rollsToCreate);
+    // Create rolls
+    const rollsToCreate: any[] = [];
+    createdLots.forEach((lot, lotIndex) => {
+      const rollMeters = parseFloat(data.lots[lotIndex].roll_meters);
+      const rollCount = parseInt(data.lots[lotIndex].roll_count.toString());
+      
+      for (let i = 0; i < rollCount; i++) {
+        rollsToCreate.push({
+          lot_id: lot.id,
+          meters: rollMeters,
+          position: i + 1,
+          status: 'available'
+        });
+      }
+    });
+
+    const { error: rollsError } = await supabase
+      .from('rolls')
+      .insert(rollsToCreate);
+
+    if (rollsError) {
+      console.error('Error creating rolls:', rollsError);
+    }
 
     // Update incoming stock
-    const newReceivedMeters = item.received_meters + metersReceived;
-    await supabase
+    const newReceivedMeters = item.received_meters + totalMeters;
+    const { error: updateError } = await supabase
       .from('incoming_stock')
-      .update({ received_meters: newReceivedMeters })
+      .update({
+        received_meters: newReceivedMeters
+      })
       .eq('id', item.id);
 
-    // Log audit action
+    if (updateError) throw updateError;
+
+    // Log audit
     await logAction(
       'CREATE',
       'lot',
       createdLots[0].id,
-      `Batch received ${metersReceived}m from ${item.invoice_number || item.quality}`,
+      `Batch received ${totalMeters}m from ${item.invoice_number}`,
       null,
-      { 
-        lots: createdLots, 
+      {
+        lots: createdLots,
         incoming_stock_id: item.id,
-        receipt_id: receipt.id 
+        receipt_id: receipt.id
       },
-      `Batch received ${metersReceived}m in ${lotCount} lot(s)`
+      `Batch received ${totalMeters}m in ${data.lots.length} lot(s) with ${rollsToCreate.length} roll(s)`
     );
   };
 
@@ -241,69 +330,125 @@ export default function BatchReceiveDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh]">
+      <DialogContent className="max-w-6xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Batch Receive ({selectedStock.length} items)</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="h-[60vh] pr-4">
-          <div className="space-y-4">
+        <ScrollArea className="h-[70vh]">
+          <div className="space-y-6 pr-4">
             {selectedStock.map(item => {
               const data = receiptData.get(item.id);
-              if (!data) return null;
+              const remaining = item.expected_meters - item.received_meters;
+              const totalMeters = calculateStockTotal(item.id);
 
               return (
                 <Card key={item.id}>
                   <CardHeader>
-                    <CardTitle className="text-base">
-                      {item.invoice_number || 'No Invoice'} - {item.quality} {item.color}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Supplier: {item.suppliers.name}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-base">
+                          {item.invoice_number} - {item.quality} {item.color}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Remaining: {remaining}m | Total to receive: <span className={totalMeters > remaining ? 'text-destructive font-bold' : 'text-green-600 font-bold'}>{totalMeters.toFixed(2)}m</span>
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addLotRow(item.id)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Lot
+                      </Button>
+                    </div>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Meters to Receive *</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={data.meters_received}
-                        onChange={(e) => updateReceiptData(item.id, 'meters_received', e.target.value)}
-                        placeholder="Meters"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Remaining: {(item.expected_meters - item.received_meters).toFixed(2)}m
-                      </p>
-                    </div>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[180px]">Lot Number</TableHead>
+                          <TableHead className="w-[80px]">Rolls</TableHead>
+                          <TableHead className="w-[100px]">M/Roll</TableHead>
+                          <TableHead className="w-[80px]">Total</TableHead>
+                          <TableHead className="w-[120px]">Location</TableHead>
+                          <TableHead className="w-[150px]">Notes</TableHead>
+                          <TableHead className="w-[50px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data?.lots.map((lot) => {
+                          const rollMeters = parseFloat(lot.roll_meters) || 0;
+                          const rollCount = parseInt(lot.roll_count.toString()) || 0;
+                          const totalLotMeters = rollMeters * rollCount;
 
-                    <div className="space-y-2">
-                      <Label>Lot Count *</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={data.lot_count}
-                        onChange={(e) => updateReceiptData(item.id, 'lot_count', parseInt(e.target.value) || 1)}
-                      />
-                    </div>
-
-                    <div className="space-y-2 col-span-2">
-                      <Label>Warehouse Location</Label>
-                      <Input
-                        value={data.warehouse_location}
-                        onChange={(e) => updateReceiptData(item.id, 'warehouse_location', e.target.value)}
-                        placeholder="e.g., A1-B2"
-                      />
-                    </div>
-
-                    <div className="space-y-2 col-span-2">
-                      <Label>Notes / Defects</Label>
-                      <Input
-                        value={data.notes}
-                        onChange={(e) => updateReceiptData(item.id, 'notes', e.target.value)}
-                        placeholder="Any defects or notes"
-                      />
-                    </div>
+                          return (
+                            <TableRow key={lot.id}>
+                              <TableCell>
+                                <Input
+                                  value={lot.lot_number}
+                                  onChange={(e) => updateLot(item.id, lot.id, 'lot_number', e.target.value)}
+                                  placeholder="Lot number"
+                                  className="h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={lot.roll_count}
+                                  onChange={(e) => updateLot(item.id, lot.id, 'roll_count', parseInt(e.target.value) || 1)}
+                                  className="h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={lot.roll_meters}
+                                  onChange={(e) => updateLot(item.id, lot.id, 'roll_meters', e.target.value)}
+                                  placeholder="0.00"
+                                  className="h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm font-medium">{totalLotMeters.toFixed(2)}</span>
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={lot.warehouse_location}
+                                  onChange={(e) => updateLot(item.id, lot.id, 'warehouse_location', e.target.value)}
+                                  placeholder="A1-B2"
+                                  className="h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={lot.notes}
+                                  onChange={(e) => updateLot(item.id, lot.id, 'notes', e.target.value)}
+                                  placeholder="Notes"
+                                  className="h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeLotRow(item.id, lot.id)}
+                                  disabled={data.lots.length === 1}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </CardContent>
                 </Card>
               );
