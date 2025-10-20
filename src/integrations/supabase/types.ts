@@ -133,6 +133,162 @@ export type Database = {
         }
         Relationships: []
       }
+      goods_in_receipts: {
+        Row: {
+          created_at: string
+          defect_notes: string | null
+          id: string
+          incoming_stock_id: string | null
+          received_at: string
+          received_by: string
+        }
+        Insert: {
+          created_at?: string
+          defect_notes?: string | null
+          id?: string
+          incoming_stock_id?: string | null
+          received_at?: string
+          received_by: string
+        }
+        Update: {
+          created_at?: string
+          defect_notes?: string | null
+          id?: string
+          incoming_stock_id?: string | null
+          received_at?: string
+          received_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_in_receipts_incoming_stock_id_fkey"
+            columns: ["incoming_stock_id"]
+            isOneToOne: false
+            referencedRelation: "incoming_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_in_receipts_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      goods_in_rows: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          lot_id: string
+          meters: number
+          quality: string
+          receipt_id: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          lot_id: string
+          meters: number
+          quality: string
+          receipt_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          lot_id?: string
+          meters?: number
+          quality?: string
+          receipt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goods_in_rows_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_in_rows_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "goods_in_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incoming_stock: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string
+          expected_arrival_date: string | null
+          expected_meters: number
+          id: string
+          invoice_date: string | null
+          invoice_number: string | null
+          notes: string | null
+          quality: string
+          received_meters: number
+          reserved_meters: number
+          status: string
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          created_by: string
+          expected_arrival_date?: string | null
+          expected_meters: number
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          notes?: string | null
+          quality: string
+          received_meters?: number
+          reserved_meters?: number
+          status?: string
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string
+          expected_arrival_date?: string | null
+          expected_meters?: number
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          notes?: string | null
+          quality?: string
+          received_meters?: number
+          reserved_meters?: number
+          status?: string
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incoming_stock_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "incoming_stock_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lot_queue: {
         Row: {
           color: string
@@ -688,7 +844,14 @@ export type Database = {
         | "field_edit_queue"
         | "profile"
         | "role_permission"
+      cancel_reason_type:
+        | "no_payment"
+        | "customer_canceled"
+        | "incorrect_entry"
+        | "other"
+      convert_reason_type: "payment_confirmation" | "manager_confirmation"
       order_line_type: "sample" | "standard"
+      reservation_status: "active" | "released" | "converted" | "canceled"
       stock_status: "in_stock" | "out_of_stock" | "partially_fulfilled"
       user_role: "warehouse_staff" | "accounting" | "admin" | "senior_manager"
     }
@@ -839,7 +1002,15 @@ export const Constants = {
         "profile",
         "role_permission",
       ],
+      cancel_reason_type: [
+        "no_payment",
+        "customer_canceled",
+        "incorrect_entry",
+        "other",
+      ],
+      convert_reason_type: ["payment_confirmation", "manager_confirmation"],
       order_line_type: ["sample", "standard"],
+      reservation_status: ["active", "released", "converted", "canceled"],
       stock_status: ["in_stock", "out_of_stock", "partially_fulfilled"],
       user_role: ["warehouse_staff", "accounting", "admin", "senior_manager"],
     },
