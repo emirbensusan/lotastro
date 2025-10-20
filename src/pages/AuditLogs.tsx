@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { History, Undo, Search, Filter, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AuditLog {
   id: string;
@@ -34,13 +35,13 @@ interface AuditLog {
 }
 
 // Formatter functions for user-friendly display
-const formatOrderDetails = (data: any): string[] => {
+const formatOrderDetails = (data: any, t: (key: string) => string | string[]): string[] => {
   if (!data) return [];
   
   const details: string[] = [];
   
-  if (data.order_number) details.push(`Order Number: ${data.order_number}`);
-  if (data.customer_name) details.push(`Customer: ${data.customer_name}`);
+  if (data.order_number) details.push(`${String(t('auditOrderNumber'))} ${data.order_number}`);
+  if (data.customer_name) details.push(`${String(t('auditCustomer'))} ${data.customer_name}`);
   
   if (data.order_lots && Array.isArray(data.order_lots)) {
     const totalRolls = data.order_lots.reduce((sum: number, lot: any) => sum + (lot.rollCount || lot.roll_count || 0), 0);
@@ -51,100 +52,100 @@ const formatOrderDetails = (data: any): string[] => {
       const rolls = lot.rollCount || lot.roll_count || 0;
       
       return lotNumber 
-        ? `Lot ${lotNumber}: ${quality} ${color} - ${rolls} roll(s)`
-        : `${quality} ${color} - ${rolls} roll(s)`;
+        ? `${t('auditLot')} ${lotNumber}: ${quality} ${color} - ${rolls} ${t('auditRollsCount')}`
+        : `${quality} ${color} - ${rolls} ${t('auditRollsCount')}`;
     });
     
-    details.push(`Total Rolls: ${totalRolls}`);
+    details.push(`${t('auditTotalRolls')} ${totalRolls}`);
     if (lotDescriptions.length > 0) {
-      details.push(`Lots:`);
+      details.push(`${t('auditLots')}`);
       lotDescriptions.forEach(desc => details.push(`  • ${desc}`));
     }
   }
   
   if (data.fulfilled_at) {
-    details.push(`Fulfilled: ${format(new Date(data.fulfilled_at), 'PPpp')}`);
+    details.push(`${t('auditFulfilled')} ${format(new Date(data.fulfilled_at), 'PPpp')}`);
   }
   
   return details;
 };
 
-const formatLotDetails = (data: any): string[] => {
+const formatLotDetails = (data: any, t: (key: string) => string | string[]): string[] => {
   if (!data) return [];
   
   const details: string[] = [];
   
-  if (data.lot_number) details.push(`Lot Number: ${data.lot_number}`);
-  if (data.quality) details.push(`Quality: ${data.quality}`);
-  if (data.color) details.push(`Color: ${data.color}`);
-  if (data.meters) details.push(`Meters: ${data.meters}m`);
-  if (data.roll_count) details.push(`Roll Count: ${data.roll_count}`);
-  if (data.warehouse_location) details.push(`Location: ${data.warehouse_location}`);
+  if (data.lot_number) details.push(`${t('auditLotNumber')} ${data.lot_number}`);
+  if (data.quality) details.push(`${t('auditQuality')} ${data.quality}`);
+  if (data.color) details.push(`${t('auditColor')} ${data.color}`);
+  if (data.meters) details.push(`${t('auditMeters')} ${data.meters}m`);
+  if (data.roll_count) details.push(`${t('auditRollCount')} ${data.roll_count}`);
+  if (data.warehouse_location) details.push(`${t('auditLocation')} ${data.warehouse_location}`);
   if (data.suppliers?.name || data.supplier_name) {
-    details.push(`Supplier: ${data.suppliers?.name || data.supplier_name}`);
+    details.push(`${t('auditSupplier')} ${data.suppliers?.name || data.supplier_name}`);
   }
-  if (data.entry_date) details.push(`Entry Date: ${format(new Date(data.entry_date), 'PP')}`);
-  if (data.invoice_number) details.push(`Invoice: ${data.invoice_number}`);
+  if (data.entry_date) details.push(`${t('auditEntryDate')} ${format(new Date(data.entry_date), 'PP')}`);
+  if (data.invoice_number) details.push(`${t('auditInvoice')} ${data.invoice_number}`);
   
   return details;
 };
 
-const formatRollDetails = (data: any): string[] => {
+const formatRollDetails = (data: any, t: (key: string) => string | string[]): string[] => {
   if (!data) return [];
   
   const details: string[] = [];
   
-  if (data.position) details.push(`Roll Position: #${data.position}`);
-  if (data.meters) details.push(`Meters: ${data.meters}m`);
-  if (data.status) details.push(`Status: ${data.status}`);
+  if (data.position) details.push(`${t('auditRollPosition')} #${data.position}`);
+  if (data.meters) details.push(`${t('auditMeters')} ${data.meters}m`);
+  if (data.status) details.push(`${t('auditStatus')} ${data.status}`);
   
   return details;
 };
 
-const formatSupplierDetails = (data: any): string[] => {
+const formatSupplierDetails = (data: any, t: (key: string) => string | string[]): string[] => {
   if (!data) return [];
   
   const details: string[] = [];
   
-  if (data.name) details.push(`Supplier Name: ${data.name}`);
+  if (data.name) details.push(`${t('auditSupplierName')} ${data.name}`);
   
   return details;
 };
 
-const formatProfileDetails = (data: any): string[] => {
+const formatProfileDetails = (data: any, t: (key: string) => string | string[]): string[] => {
   if (!data) return [];
   
   const details: string[] = [];
   
-  if (data.email) details.push(`Email: ${data.email}`);
-  if (data.full_name) details.push(`Name: ${data.full_name}`);
-  if (data.role) details.push(`Role: ${data.role}`);
-  if (data.active !== undefined) details.push(`Status: ${data.active ? 'Active' : 'Inactive'}`);
+  if (data.email) details.push(`${t('auditEmail')} ${data.email}`);
+  if (data.full_name) details.push(`${t('auditName')} ${data.full_name}`);
+  if (data.role) details.push(`${t('auditRole')} ${data.role}`);
+  if (data.active !== undefined) details.push(`${t('auditStatus')} ${data.active ? t('auditActive') : t('auditInactive')}`);
   
   return details;
 };
 
-const formatEntityDetails = (entityType: string, data: any): string[] => {
+const formatEntityDetails = (entityType: string, data: any, t: (key: string) => string | string[]): string[] => {
   switch (entityType) {
     case 'order':
-      return formatOrderDetails(data);
+      return formatOrderDetails(data, t);
     case 'lot':
     case 'lot_queue':
-      return formatLotDetails(data);
+      return formatLotDetails(data, t);
     case 'roll':
-      return formatRollDetails(data);
+      return formatRollDetails(data, t);
     case 'supplier':
-      return formatSupplierDetails(data);
+      return formatSupplierDetails(data, t);
     case 'profile':
-      return formatProfileDetails(data);
+      return formatProfileDetails(data, t);
     default:
-      return ['Details not available'];
+      return [String(t('detailsNotAvailable'))];
   }
 };
 
-const formatValue = (val: any): string => {
-  if (val === null || val === undefined) return '(empty)';
-  if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+const formatValue = (val: any, t: (key: string) => string | string[]): string => {
+  if (val === null || val === undefined) return String(t('empty'));
+  if (typeof val === 'boolean') return val ? String(t('yes')) : String(t('no'));
   if (typeof val === 'object') return JSON.stringify(val);
   return String(val);
 };
@@ -231,11 +232,11 @@ const ChangesSummary: React.FC<{
           <div className="font-medium mb-1">{change.field}</div>
           <div className="flex items-center gap-2 text-xs flex-wrap">
             <span className="bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 px-2 py-1 rounded">
-              {formatValue(change.from)}
+              {formatValue(change.from, t)}
             </span>
             <span>→</span>
             <span className="bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 px-2 py-1 rounded">
-              {formatValue(change.to)}
+              {formatValue(change.to, t)}
             </span>
           </div>
         </div>
@@ -247,6 +248,7 @@ const ChangesSummary: React.FC<{
 const AuditLogs: React.FC = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterAction, setFilterAction] = useState<string>('all');
@@ -563,7 +565,7 @@ const AuditLogs: React.FC = () => {
                     Previous State
                   </Label>
                   <div className="mt-2 bg-muted p-4 rounded-lg space-y-1 text-sm">
-                    {formatEntityDetails(selectedLog.entity_type, selectedLog.old_data).map((line, idx) => (
+                    {formatEntityDetails(selectedLog.entity_type, selectedLog.old_data, t).map((line, idx) => (
                       <div key={idx} className={line.startsWith('  •') ? 'ml-4 text-muted-foreground' : ''}>
                         {line}
                       </div>
@@ -580,7 +582,7 @@ const AuditLogs: React.FC = () => {
                     {selectedLog.action === 'CREATE' ? 'Created With' : 'New State'}
                   </Label>
                   <div className="mt-2 bg-muted p-4 rounded-lg space-y-1 text-sm">
-                    {formatEntityDetails(selectedLog.entity_type, selectedLog.new_data).map((line, idx) => (
+                    {formatEntityDetails(selectedLog.entity_type, selectedLog.new_data, t).map((line, idx) => (
                       <div key={idx} className={line.startsWith('  •') ? 'ml-4 text-muted-foreground' : ''}>
                         {line}
                       </div>
