@@ -66,29 +66,65 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const canCreateOrders = effectiveRole && ['accounting', 'senior_manager', 'admin'].includes(effectiveRole);
   const cartItemCount = getItemCount();
 
-  const navigationItems = [
-    { path: '/', label: t('dashboard'), icon: Home, permission: { category: 'reports', action: 'accessdashboard' } },
-    { path: '/lot-intake', label: t('lotIntake'), icon: PackagePlus, permission: { category: 'inventory', action: 'createlotentries' } },
-    { path: '/lot-queue', label: t('lotQueue'), icon: Timer, permission: { category: 'inventory', action: 'createlotentries' } },
-    { path: '/inventory', label: t('inventory'), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' } },
-    { path: '/orders', label: t('orders'), icon: Truck, permission: { category: 'orders', action: 'vieworders' } },
-    { path: '/order-queue', label: t('orderQueue'), icon: ListOrdered, permission: { category: 'orders', action: 'createorders' } },
-    { path: '/qr-scan', label: t('qrScan'), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
-    { path: '/reports', label: t('reports'), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
-    { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
-    { path: '/audit-logs', label: t('actionHistory'), icon: History, permission: { category: 'auditlogs', action: 'viewalllogs' } },
-    { path: '/suppliers', label: t('suppliers'), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
-    { path: '/incoming-stock', label: 'Incoming Stock', icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
-    { path: '/goods-receipt', label: 'Goods Receipt', icon: PackageCheck, permission: { category: 'inventory', action: 'receiveincoming' } },
-    { path: '/admin', label: t('admin'), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
+  interface NavigationGroup {
+    label: string;
+    items: Array<{
+      path: string;
+      label: string;
+      icon: any;
+      permission: { category: string; action: string };
+    }>;
+  }
+
+  const navigationGroups: NavigationGroup[] = [
+    {
+      label: 'Overview',
+      items: [
+        { path: '/', label: String(t('dashboard')), icon: Home, permission: { category: 'reports', action: 'accessdashboard' } },
+      ]
+    },
+    {
+      label: 'Inventory Management',
+      items: [
+        { path: '/lot-intake', label: String(t('lotIntake')), icon: PackagePlus, permission: { category: 'inventory', action: 'createlotentries' } },
+        { path: '/lot-queue', label: String(t('lotQueue')), icon: Timer, permission: { category: 'inventory', action: 'createlotentries' } },
+        { path: '/inventory', label: String(t('inventory')), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' } },
+        { path: '/incoming-stock', label: 'Incoming Stock', icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
+        { path: '/goods-receipt', label: 'Goods Receipt', icon: PackageCheck, permission: { category: 'inventory', action: 'receiveincoming' } },
+      ]
+    },
+    {
+      label: 'Orders & Reservations',
+      items: [
+        { path: '/orders', label: String(t('orders')), icon: Truck, permission: { category: 'orders', action: 'vieworders' } },
+        { path: '/order-queue', label: String(t('orderQueue')), icon: ListOrdered, permission: { category: 'orders', action: 'createorders' } },
+      ]
+    },
+    {
+      label: 'Tools & Utilities',
+      items: [
+        { path: '/qr-scan', label: String(t('qrScan')), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
+        { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
+      ]
+    },
+    {
+      label: 'Reports & Admin',
+      items: [
+        { path: '/reports', label: String(t('reports')), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
+        { path: '/audit-logs', label: String(t('actionHistory')), icon: History, permission: { category: 'auditlogs', action: 'viewalllogs' } },
+        { path: '/suppliers', label: String(t('suppliers')), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
+        { path: '/admin', label: String(t('admin')), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
+      ]
+    }
   ];
 
   // Wait for permissions to load before filtering navigation
-  const filteredNavigation = permissionsLoading 
+  const filteredNavigationGroups = permissionsLoading 
     ? [] 
-    : navigationItems.filter(item => 
-        hasPermission(item.permission.category, item.permission.action)
-      );
+    : navigationGroups.map(group => ({
+        ...group,
+        items: group.items.filter(item => hasPermission(item.permission.category, item.permission.action))
+      })).filter(group => group.items.length > 0);
 
   const getRoleBadgeColor = (role: string, isViewingAs = false) => {
     const baseColors = {
@@ -126,66 +162,81 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return (
       <Sidebar collapsible="icon" className="flex flex-col mt-16 h-[calc(100vh-4rem)]">
         <SidebarContent>
-          <SidebarGroup className="flex-1">
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {permissionsLoading ? (
-                  <div className="flex items-center justify-center p-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                  </div>
-                ) : (
-                  filteredNavigation.map((item) => {
-                  const Icon = item.icon;
-                  const active = location.pathname === item.path;
-                  
-                  return (
-                    <SidebarMenuItem key={item.path}>
-                      <SidebarMenuButton
-                        onClick={() => navigate(item.path)}
-                        isActive={active}
-                        className="flex items-center justify-start h-10"
-                      >
-                        <Icon className="h-4 w-4 flex-shrink-0" />
-                        <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })
+          {permissionsLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            filteredNavigationGroups.map((group) => (
+              <SidebarGroup key={group.label}>
+                {!isCollapsed && (
+                  <SidebarGroupLabel className="text-xs text-muted-foreground">
+                    {group.label}
+                  </SidebarGroupLabel>
                 )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = location.pathname === item.path;
+                      
+                      return (
+                        <SidebarMenuItem key={item.path}>
+                          <SidebarMenuButton
+                            onClick={() => navigate(item.path)}
+                            isActive={active}
+                            className="flex items-center justify-start h-10"
+                            tooltip={isCollapsed ? item.label : undefined}
+                          >
+                            <Icon className="h-4 w-4 flex-shrink-0" />
+                            <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))
+          )}
         </SidebarContent>
       </Sidebar>
     );
   };
 
   const MobileNavigationContent = () => (
-    <nav className="space-y-2">
+    <nav className="space-y-4">
       {permissionsLoading ? (
         <div className="flex items-center justify-center p-4">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
         </div>
       ) : (
-        filteredNavigation.map((item) => {
-        const Icon = item.icon;
-        const isActive = location.pathname === item.path;
-        
-        return (
-          <Button
-            key={item.path}
-            variant={isActive ? "secondary" : "ghost"}
-            className="w-full justify-start"
-            onClick={() => {
-              navigate(item.path);
-              setSidebarOpen(false);
-            }}
-          >
-            <Icon className="h-4 w-4 mr-2" />
-            {item.label}
-          </Button>
-        );
-      })
+        filteredNavigationGroups.map((group) => (
+          <div key={group.label} className="space-y-2">
+            <h3 className="text-xs font-semibold text-muted-foreground px-2">
+              {group.label}
+            </h3>
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              
+              return (
+                <Button
+                  key={item.path}
+                  variant={isActive ? "secondary" : "ghost"}
+                  className="w-full justify-start"
+                  onClick={() => {
+                    navigate(item.path);
+                    setSidebarOpen(false);
+                  }}
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  {item.label}
+                </Button>
+              );
+            })}
+          </div>
+        ))
       )}
     </nav>
   );

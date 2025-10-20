@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Package, Truck, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Package, Truck, AlertTriangle, TrendingUp, TruckIcon, Lock, PackageCheck, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface DashboardStats {
@@ -15,11 +16,16 @@ interface DashboardStats {
   outOfStockLots: number;
   pendingOrders: number;
   oldestLotDays: number;
+  incomingMeters: number;
+  reservedMeters: number;
+  activeReservations: number;
+  pendingReceipts: number;
 }
 
 const Dashboard = () => {
   const { profile } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalLots: 0,
     totalRolls: 0,
@@ -28,11 +34,22 @@ const Dashboard = () => {
     outOfStockLots: 0,
     pendingOrders: 0,
     oldestLotDays: 0,
+    incomingMeters: 0,
+    reservedMeters: 0,
+    activeReservations: 0,
+    pendingReceipts: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardStats();
+    
+    // Auto-refresh every 60 seconds
+    const interval = setInterval(() => {
+      fetchDashboardStats();
+    }, 60000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -46,12 +63,21 @@ const Dashboard = () => {
 
       if (error) throw error;
 
+      // Count pending receipts (incoming stock with status pending/partial)
+      const { count: pendingReceiptCount } = await supabase
+        .from('incoming_stock')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['pending_inbound', 'partially_received']);
+
       const inStockLots = Number(data?.total_in_stock_lots || 0);
       const outOfStockLots = Number(data?.total_out_of_stock_lots || 0);
       const totalRolls = Number(data?.total_rolls || 0);
       const totalMeters = Number(data?.total_meters || 0);
       const oldestLotDays = Number(data?.oldest_lot_days || 0);
       const pendingOrders = Number(data?.pending_orders || 0);
+      const incomingMeters = Number(data?.total_incoming_meters || 0);
+      const reservedMeters = Number(data?.total_reserved_meters || 0);
+      const activeReservations = Number(data?.active_reservations_count || 0);
 
       console.info('Dashboard Stats (DB Aggregated):', {
         inStockLots,
@@ -59,6 +85,10 @@ const Dashboard = () => {
         totalMeters,
         oldestLotDays,
         pendingOrders,
+        incomingMeters,
+        reservedMeters,
+        activeReservations,
+        pendingReceipts: pendingReceiptCount,
       });
 
       setStats({
@@ -69,6 +99,10 @@ const Dashboard = () => {
         outOfStockLots,
         pendingOrders,
         oldestLotDays,
+        incomingMeters,
+        reservedMeters,
+        activeReservations,
+        pendingReceipts: pendingReceiptCount || 0,
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -106,25 +140,49 @@ const Dashboard = () => {
       icon: Truck,
       color: 'text-blue-600',
     },
+    {
+      title: 'Incoming Stock',
+      value: `${stats.incomingMeters.toLocaleString()}m`,
+      description: 'Expected meters pending receipt',
+      icon: TruckIcon,
+      color: 'text-cyan-600',
+      link: '/incoming-stock',
+    },
+    {
+      title: 'Reserved Stock',
+      value: `${stats.reservedMeters.toLocaleString()}m`,
+      description: `${stats.activeReservations} active reservations`,
+      icon: Lock,
+      color: 'text-amber-600',
+      link: '/orders?tab=reservations',
+    },
+    {
+      title: 'Pending Receipts',
+      value: stats.pendingReceipts.toString(),
+      description: 'Shipments awaiting goods receipt',
+      icon: PackageCheck,
+      color: 'text-green-600',
+      link: '/goods-receipt',
+    },
   ];
 
   if (loading) {
     return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
-                <div className="h-3 bg-muted rounded w-full"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader className="pb-2">
+              <div className="h-4 bg-muted rounded w-3/4"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
+              <div className="h-3 bg-muted rounded w-full"></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
       </div>
     );
   }
@@ -142,20 +200,28 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat) => {
           const Icon = stat.icon;
+          const CardWrapper = stat.link ? 'button' : 'div';
+          
           return (
-            <Card key={stat.title as string}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <Icon className={`h-4 w-4 ${stat.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stat.description}
-                </p>
-              </CardContent>
+            <Card 
+              key={stat.title as string}
+              className={stat.link ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}
+              onClick={stat.link ? () => navigate(stat.link) : undefined}
+            >
+              <CardWrapper className="w-full text-left">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {stat.title}
+                  </CardTitle>
+                  <Icon className={`h-4 w-4 ${stat.color}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {stat.description}
+                  </p>
+                </CardContent>
+              </CardWrapper>
             </Card>
           );
         })}
@@ -211,44 +277,44 @@ const Dashboard = () => {
 
         {profile?.role === 'accounting' && (
           <>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/lot-queue'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/goods-receipt'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  🚛 Check Lot Queue
+                  📦 Receive Goods
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Monitor pending lot processing queue</p>
+                <p className="text-sm text-muted-foreground mb-3">Process pending shipments</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Lot Queue
+                  Go to Goods Receipt
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders?tab=reservations'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📦 Create Orders
+                  📅 Manage Reservations
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Create new customer orders</p>
+                <p className="text-sm text-muted-foreground mb-3">Create and manage stock reservations</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Orders
+                  Go to Reservations
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/inventory'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/incoming-stock'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📈 Check Stock Levels
+                  🚚 Track Incoming Stock
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Monitor inventory and stock levels</p>
+                <p className="text-sm text-muted-foreground mb-3">Monitor expected deliveries</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  {t('goToInventory')}
+                  Go to Incoming Stock
                 </Button>
               </CardContent>
             </Card>
@@ -285,16 +351,16 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/incoming-stock'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📦 Manage Orders
+                  📊 View Incoming Stock
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Create and monitor orders</p>
+                <p className="text-sm text-muted-foreground mb-3">Monitor expected inventory</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Orders
+                  Go to Incoming Stock
                 </Button>
               </CardContent>
             </Card>
