@@ -20,6 +20,7 @@ import Admin from "./pages/Admin";
 import Approvals from "./pages/Approvals";
 import AuditLogs from "./pages/AuditLogs";
 import Suppliers from "./pages/Suppliers";
+import IncomingStock from "./pages/IncomingStock";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import QRPrint from "./pages/QRPrint";
@@ -131,6 +132,11 @@ const App = () => (
               <Route path="/suppliers" element={
                 <ProtectedRoute>
                   <Suppliers />
+                </ProtectedRoute>
+              } />
+              <Route path="/incoming-stock" element={
+                <ProtectedRoute>
+                  <IncomingStock />
                 </ProtectedRoute>
               } />
               <Route path="/admin" element={

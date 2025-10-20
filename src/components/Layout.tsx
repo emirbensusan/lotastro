@@ -27,7 +27,8 @@ import {
   ShoppingCart,
   ListOrdered,
   Timer,
-  History
+  History,
+  TruckIcon
 } from 'lucide-react';
 import { 
   Sidebar,
@@ -76,6 +77,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
     { path: '/audit-logs', label: t('actionHistory'), icon: History, permission: { category: 'auditlogs', action: 'viewalllogs' } },
     { path: '/suppliers', label: t('suppliers'), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
+    { path: '/incoming-stock', label: 'Incoming Stock', icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
     { path: '/admin', label: t('admin'), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
   ];
 
