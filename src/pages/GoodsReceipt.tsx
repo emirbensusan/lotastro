@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { format, isToday, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface IncomingStockWithSupplier {
   id: string;
@@ -78,6 +79,7 @@ export default function GoodsReceipt() {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (hasPermission('inventory', 'receiveincoming')) {
@@ -234,7 +236,7 @@ export default function GoodsReceipt() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <PackageCheck className="h-8 w-8" />
-          Goods Receipt
+          {t('goodsReceipt')}
         </h1>
         
         {viewMode === 'pending' && (
@@ -265,7 +267,7 @@ export default function GoodsReceipt() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pending Shipments
+              {t('pendingShipments')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -279,7 +281,7 @@ export default function GoodsReceipt() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Pending Meters
+              {t('totalPendingMeters')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -293,7 +295,7 @@ export default function GoodsReceipt() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Expected Today
+              {t('expectedToday')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -307,7 +309,7 @@ export default function GoodsReceipt() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Overdue
+              {t('overdue')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -323,10 +325,10 @@ export default function GoodsReceipt() {
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'pending' | 'history')}>
         <TabsList>
           <TabsTrigger value="pending">
-            Pending Receipts ({totalPendingShipments})
+            {t('pendingReceipts')} ({totalPendingShipments})
           </TabsTrigger>
           <TabsTrigger value="history">
-            Receipt History
+            {t('receiptHistory')}
           </TabsTrigger>
         </TabsList>
 
@@ -378,17 +380,17 @@ export default function GoodsReceipt() {
                         <CardTitle className="text-lg">{item.quality} - {item.color}</CardTitle>
                         {item.invoice_number && (
                           <p className="text-sm text-muted-foreground mt-1">
-                            Invoice: {item.invoice_number}
+                            {t('invoice')} {item.invoice_number}
                           </p>
                         )}
                       </div>
                       
                       {isOverdue(item) ? (
-                        <Badge variant="destructive">Overdue</Badge>
+                        <Badge variant="destructive">{t('overdue')}</Badge>
                       ) : isExpectedToday(item) ? (
-                        <Badge className="bg-blue-600 text-white">Today</Badge>
+                        <Badge className="bg-blue-600 text-white">{t('expectedToday')}</Badge>
                       ) : (
-                        <Badge variant="outline">Pending</Badge>
+                        <Badge variant="outline">{t('pending')}</Badge>
                       )}
                     </div>
                   </CardHeader>
@@ -408,14 +410,14 @@ export default function GoodsReceipt() {
 
                     <div className="space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Expected:</span>
+                        <span className="text-muted-foreground">{t('expected')}</span>
                         <span className="font-medium">{item.expected_meters}m</span>
                       </div>
 
                       {item.received_meters > 0 && (
                         <>
                           <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Received:</span>
+                            <span className="text-muted-foreground">{t('received')}</span>
                             <span className="font-medium text-green-600">{item.received_meters}m</span>
                           </div>
                           <Progress 
@@ -426,7 +428,7 @@ export default function GoodsReceipt() {
                       )}
 
                       <div className="flex justify-between text-sm pt-1 border-t">
-                        <span className="font-semibold">Remaining:</span>
+                        <span className="font-semibold">{t('remaining')}</span>
                         <span className="font-bold text-primary">
                           {(item.expected_meters - item.received_meters).toFixed(2)}m
                         </span>
@@ -453,7 +455,7 @@ export default function GoodsReceipt() {
                         }}
                       >
                         <PackageCheck className="h-4 w-4 mr-2" />
-                        Receive Stock
+                        {t('receiveStock')}
                       </Button>
                     </CardFooter>
                   )}

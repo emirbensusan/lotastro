@@ -670,11 +670,11 @@ const Orders = () => {
         <TabsList className="mb-4">
           <TabsTrigger value="orders" className="flex items-center gap-2">
             <Truck className="h-4 w-4" />
-            Orders ({orders.length})
+            {t('orders')} ({orders.length})
           </TabsTrigger>
           <TabsTrigger value="reservations" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            Reservations ({reservations.length})
+            {t('reservations')} ({reservations.length})
           </TabsTrigger>
         </TabsList>
 

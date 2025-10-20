@@ -615,23 +615,97 @@ const InventoryPivotTable = () => {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Physical Lots</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('physicalLots')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {dashboardStats?.total_in_stock_lots || 0}
-            </div>
+            <div className="text-2xl font-bold">{dashboardStats?.total_in_stock_lots || 0}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Physical Meters</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('physicalMeters')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {Number(dashboardStats?.total_meters || 0).toLocaleString()}
+            <div className="text-2xl font-bold">{Number(dashboardStats?.total_meters || 0).toFixed(2)}m</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">{t('physicalRolls')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardStats?.total_rolls || 0}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Summary Stats - Row 2: Incoming & Reserved */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">{t('incomingMeters')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{Number(dashboardStats?.total_incoming_meters || 0).toFixed(2)}m</div>
+            <p className="text-xs text-muted-foreground">{t('expectedStockOnTheWay')}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">{t('reservedMeters')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{Number(dashboardStats?.total_reserved_meters || 0).toFixed(2)}m</div>
+            <p className="text-xs text-muted-foreground">{t('activeReservations')}: {dashboardStats?.active_reservations || 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">{t('availableMeters')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{Number(dashboardStats?.available_meters || 0).toFixed(2)}m</div>
+            <p className="text-xs text-muted-foreground">{t('physicalPlusIncomingMinusReserved')}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-1">
+              Breakdown
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3 w-3 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t('incoming')}: {Number(dashboardStats?.total_incoming_meters || 0).toFixed(2)}m</p>
+                    <p>{t('reserved')}: {Number(dashboardStats?.total_reserved_meters || 0).toFixed(2)}m</p>
+                    <p>{t('available')}: {Number(dashboardStats?.available_meters || 0).toFixed(2)}m</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t('incoming')}:</span>
+                <span className="font-medium">{Number(dashboardStats?.total_incoming_meters || 0).toFixed(2)}m</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t('reserved')}:</span>
+                <span className="font-medium">{Number(dashboardStats?.total_reserved_meters || 0).toFixed(2)}m</span>
+              </div>
+              <div className="flex justify-between border-t pt-1">
+                <span className="font-semibold">{t('available')}:</span>
+                <span className="font-bold text-primary">{Number(dashboardStats?.available_meters || 0).toFixed(2)}m</span>
+              </div>
             </div>
           </CardContent>
+        </Card>
+      </div>
+
+      {/* Pivot Table */}
         </Card>
         <Card>
           <CardHeader className="pb-2">
@@ -641,86 +715,6 @@ const InventoryPivotTable = () => {
             <div className="text-2xl font-bold">
               {Number(dashboardStats?.total_rolls || 0).toLocaleString()}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Summary Stats - Row 2: Incoming & Availability */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Incoming Meters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {Number(dashboardStats?.total_incoming_meters || 0).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Expected stock on the way
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              <div className="flex items-center gap-2">
-                Reserved Meters
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between gap-4">
-                          <span>Physical:</span>
-                          <span className="font-semibold">
-                            {(Number(dashboardStats?.total_reserved_meters || 0) - Number(dashboardStats?.total_incoming_meters || 0) * 0.3).toLocaleString()}m
-                          </span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span>Incoming:</span>
-                          <span className="font-semibold">
-                            {(Number(dashboardStats?.total_incoming_meters || 0) * 0.3).toLocaleString()}m
-                          </span>
-                        </div>
-                        <div className="border-t pt-1 mt-1 flex justify-between gap-4">
-                          <span>Total:</span>
-                          <span className="font-bold">
-                            {Number(dashboardStats?.total_reserved_meters || 0).toLocaleString()}m
-                          </span>
-                        </div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {Number(dashboardStats?.total_reserved_meters || 0).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Active reservations: {dashboardStats?.active_reservations_count || 0}
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Available Meters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${
-              calculateTotalAvailable() > 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {calculateTotalAvailable().toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Physical + Incoming - Reserved
-            </p>
           </CardContent>
         </Card>
       </div>

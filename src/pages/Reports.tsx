@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart3, TrendingUp, Package, Truck, Download } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface SalesDataItem {
   orderNumber: string;
@@ -43,6 +44,7 @@ interface ReportData {
 const Reports: React.FC = () => {
   const { loading: authLoading } = useAuth();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
+  const { t } = useLanguage();
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -241,7 +243,7 @@ const Reports: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Reports & Analytics</h1>
+        <h1 className="text-3xl font-bold">{t('reportsAndAnalytics')}</h1>
         <Button onClick={exportReport} className="flex items-center gap-2">
           <Download className="h-4 w-4" />
           Export Report
@@ -255,11 +257,11 @@ const Reports: React.FC = () => {
             <SelectValue placeholder="Select report type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="overview">Overview</SelectItem>
-            <SelectItem value="inventory">Inventory Analysis</SelectItem>
-            <SelectItem value="orders">Order Performance</SelectItem>
-            <SelectItem value="sales">Sales Report</SelectItem>
-            <SelectItem value="suppliers">Supplier Analysis</SelectItem>
+            <SelectItem value="overview">{t('overview')}</SelectItem>
+            <SelectItem value="inventory">{t('inventoryAnalysis')}</SelectItem>
+            <SelectItem value="orders">{t('orderPerformance')}</SelectItem>
+            <SelectItem value="sales">{t('salesReport')}</SelectItem>
+            <SelectItem value="suppliers">{t('supplierAnalysis')}</SelectItem>
           </SelectContent>
         </Select>
         <DatePickerWithRange date={dateRange} setDate={setDateRange} />
@@ -281,7 +283,7 @@ const Reports: React.FC = () => {
             /* Sales Report */
             <Card>
               <CardHeader>
-                <CardTitle>Sales Report</CardTitle>
+                <CardTitle>{t('salesReport')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -344,7 +346,7 @@ const Reports: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Lots</CardTitle>
+                    <CardTitle className="text-sm font-medium">{t('totalLots')}</CardTitle>
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -357,7 +359,7 @@ const Reports: React.FC = () => {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                    <CardTitle className="text-sm font-medium">{t('totalOrders')}</CardTitle>
                     <Truck className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -370,7 +372,7 @@ const Reports: React.FC = () => {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Meters</CardTitle>
+                    <CardTitle className="text-sm font-medium">{t('totalMeters')}</CardTitle>
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -383,7 +385,7 @@ const Reports: React.FC = () => {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Rolls</CardTitle>
+                    <CardTitle className="text-sm font-medium">{t('totalRolls')}</CardTitle>
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -399,7 +401,7 @@ const Reports: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Qualities</CardTitle>
+                    <CardTitle className="text-sm font-medium">{t('totalQualities')}</CardTitle>
                     <BarChart3 className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -412,7 +414,7 @@ const Reports: React.FC = () => {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Suppliers</CardTitle>
+                    <CardTitle className="text-sm font-medium">{t('suppliers')}</CardTitle>
                     <Truck className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
