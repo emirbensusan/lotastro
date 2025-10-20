@@ -58,8 +58,7 @@ const translations = {
     // Form
     fillAllFields: 'Please fill in all fields.',
     
-    // Orders
-    orders: 'Orders',
+    // Orders - specific fields
     allOrders: 'All Orders',
     viewManageOrders: 'View and manage existing orders',
     orderNumberField: 'Order Number',
@@ -86,7 +85,6 @@ const translations = {
     deleteOrder: 'Delete Order',
     confirmDelete: 'Confirm Delete',
     actionCannotBeUndone: 'This action cannot be undone.',
-    delete: 'Delete',
     cancelDelete: 'Cancel Delete',
     noSearchResults: 'No search results found.',
     noInventoryData: 'No inventory data available.',
@@ -158,10 +156,6 @@ const translations = {
     
     // Permissions
     permissions: 'Permissions',
-    view: 'View',
-    create: 'Create',
-    edit: 'Edit',
-    delete: 'Delete',
     
     // Inventory
     allQualities: 'All Qualities',
@@ -308,53 +302,6 @@ const translations = {
     fullNameValidationMessage: 'Please enter your full name',
     roleValidationMessage: 'Please select a role',
     
-    // Admin Dashboard Tooltips
-    editUserTooltip: 'Edit user',
-    deleteUserTooltip: 'Delete user',
-    
-    // Admin Dashboard Alerts
-    userDeletedSuccess: 'User deleted successfully',
-    
-    // Admin Dashboard Confirmations
-    confirmDeleteUserMessage: 'Are you sure you want to delete this user?',
-    
-    // Admin Dashboard Buttons
-    confirmDeleteUserButton: 'Confirm Delete',
-    cancelDeleteUserButton: 'Cancel',
-    
-    // Admin Dashboard Forms
-    editUserFormTitleText: 'Edit User',
-    createUserFormTitleText: 'Create User',
-    
-    // Admin Dashboard Inputs
-    emailInputLabelText: 'Email',
-    passwordInputLabelText: 'Password',
-    fullNameInputLabelText: 'Full Name',
-    roleSelectLabelText: 'Role',
-    
-    // Admin Dashboard Select Options
-    adminRoleOptionText: 'Admin',
-    managerRoleOptionText: 'Manager',
-    staffRoleOptionText: 'Staff',
-    
-    // Admin Dashboard Buttons
-    submitFormButtonText: 'Submit',
-    cancelFormButtonText: 'Cancel',
-    
-    // Admin Dashboard Messages
-    userCreatedMessageText: 'User created successfully',
-    userUpdatedMessageText: 'User updated successfully',
-    
-    // Admin Dashboard Errors
-    createUserErrorText: 'Failed to create user',
-    updateUserErrorText: 'Failed to update user',
-    
-    // Admin Dashboard Placeholders
-    enterEmailPlaceholderText: 'Enter email',
-    enterPasswordPlaceholderText: 'Enter password',
-    enterFullNamePlaceholderText: 'Enter full name',
-    selectRolePlaceholderText: 'Select role',
-    
     // Admin Dashboard Validation
     emailValidationMessageText: 'Please enter a valid email',
     passwordValidationMessageText: 'Password must be at least 6 characters',
@@ -422,7 +369,6 @@ const translations = {
     totalMeters: 'Toplam Metraj',
     totalRolls: 'Toplam Top sayısı',
     totalQualities: 'Toplam Kaliteler',
-    suppliers: 'Tedarikçiler',
     lotsByQuality: 'Kalite bazında Lot sayısı',
     orderStatus: 'Siparişi Durumu',
     inventoryAnalysis: 'Envanter Analizi',
@@ -459,8 +405,7 @@ const translations = {
     // Form
     fillAllFields: 'Lütfen tüm alanları doldurun.',
     
-    // Orders
-    orders: 'Siparişler',
+    // Orders - specific fields
     allOrders: 'Tüm Siparişler',
     viewManageOrders: 'Mevcut siparişleri görüntüleyin ve yönetin',
     orderNumberField: 'Sipariş Numarası',
@@ -487,7 +432,6 @@ const translations = {
     deleteOrder: 'Siparişi Sil',
     confirmDelete: 'Silmeyi Onayla',
     actionCannotBeUndone: 'Bu işlem geri alınamaz.',
-    delete: 'Sil',
     cancelDelete: 'Silmeyi İptal Et',
     noSearchResults: 'Arama sonucu bulunamadı.',
     noInventoryData: 'Envanter verisi bulunamadı.',
@@ -559,19 +503,6 @@ const translations = {
     
     // Permissions
     permissions: 'İzinler',
-    view: 'Görüntüle',
-    create: 'Oluştur',
-    edit: 'Düzenle',
-    delete: 'Sil',
-    
-    // Inventory
-    allQualities: 'Tüm Kaliteler',
-    physicalLots: 'Fiziki Lotlar',
-    physicalMeters: 'Fiziki Metreler',
-    physicalRolls: 'Fiziki Toplar',
-    incomingMeters: 'Gelecek Metreler',
-    reservedMeters: 'Rezerve Metreler',
-    availableMeters: 'Mevcut Metreler',
     
     // Audit Log
     auditLog: 'Denetim Kaydı',
@@ -708,53 +639,6 @@ const translations = {
     passwordValidationMessage: 'Şifre en az 6 karakter olmalı',
     fullNameValidationMessage: 'Lütfen adınızı ve soyadınızı girin',
     roleValidationMessage: 'Lütfen bir rol seçin',
-    
-    // Admin Dashboard Tooltips
-    editUserTooltip: 'Kullanıcıyı düzenle',
-    deleteUserTooltip: 'Kullanıcıyı sil',
-    
-    // Admin Dashboard Alerts
-    userDeletedSuccess: 'Kullanıcı başarıyla silindi',
-    
-    // Admin Dashboard Confirmations
-    confirmDeleteUserMessage: 'Bu kullanıcıyı silmek istediğinizden emin misiniz?',
-    
-    // Admin Dashboard Buttons
-    confirmDeleteUserButton: 'Silmeyi Onayla',
-    cancelDeleteUserButton: 'İptal',
-    
-    // Admin Dashboard Forms
-    editUserFormTitleText: 'Kullanıcıyı Düzenle',
-    createUserFormTitleText: 'Kullanıcı Oluştur',
-    
-    // Admin Dashboard Inputs
-    emailInputLabelText: 'E-posta',
-    passwordInputLabelText: 'Şifre',
-    fullNameInputLabelText: 'Ad Soyad',
-    roleSelectLabelText: 'Rol',
-    
-    // Admin Dashboard Select Options
-    adminRoleOptionText: 'Yönetici',
-    managerRoleOptionText: 'Yönetici',
-    staffRoleOptionText: 'Personel',
-    
-    // Admin Dashboard Buttons
-    submitFormButtonText: 'Gönder',
-    cancelFormButtonText: 'İptal',
-    
-    // Admin Dashboard Messages
-    userCreatedMessageText: 'Kullanıcı başarıyla oluşturuldu',
-    userUpdatedMessageText: 'Kullanıcı başarıyla güncellendi',
-    
-    // Admin Dashboard Errors
-    createUserErrorText: 'Kullanıcı oluşturulamadı',
-    updateUserErrorText: 'Kullanıcı güncellenemedi',
-    
-    // Admin Dashboard Placeholders
-    enterEmailPlaceholderText: 'E-posta girin',
-    enterPasswordPlaceholderText: 'Şifre girin',
-    enterFullNamePlaceholderText: 'Ad soyad girin',
-    selectRolePlaceholderText: 'Rol seçin',
     
     // Admin Dashboard Validation
     emailValidationMessageText: 'Lütfen geçerli bir e-posta girin',
