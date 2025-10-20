@@ -89,8 +89,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { path: '/lot-intake', label: String(t('lotIntake')), icon: PackagePlus, permission: { category: 'inventory', action: 'createlotentries' } },
         { path: '/lot-queue', label: String(t('lotQueue')), icon: Timer, permission: { category: 'inventory', action: 'createlotentries' } },
         { path: '/inventory', label: String(t('inventory')), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' } },
-        { path: '/incoming-stock', label: String(t('incomingStockNav')), icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
-        { path: '/goods-receipt', label: String(t('goodsReceiptNav')), icon: PackageCheck, permission: { category: 'inventory', action: 'receiveincoming' } },
+        { path: '/incoming-stock', label: String(t('incomingStockLabel')), icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
+        { path: '/goods-receipt', label: String(t('goodsReceipt')), icon: PackageCheck, permission: { category: 'inventory', action: 'receiveincoming' } },
       ]
     },
     {

@@ -168,10 +168,37 @@ const translations = {
     
     // Audit Log
     auditLog: 'Audit Log',
+    actionHistory: 'Action History',
     user: 'User',
     action: 'Action',
     timestamp: 'Timestamp',
     description: 'Description',
+    searchByIdentifierOrUser: 'Search by identifier or user',
+    filterByAction: 'Filter by action',
+    filterByEntity: 'Filter by entity',
+    allActions: 'All Actions',
+    allEntities: 'All Entities',
+    entity: 'Entity',
+    identifier: 'Identifier',
+    reversed: 'Reversed',
+    auditActions: 'Actions',
+    fulfill: 'Fulfill',
+    refresh: 'Refresh',
+    
+    // Action Types
+    actionCreate: 'Create',
+    actionUpdate: 'Update',
+    actionDelete: 'Delete',
+    actionFulfill: 'Fulfill',
+    actionApprove: 'Approve',
+    actionReject: 'Reject',
+    actionStatusChange: 'Status Change',
+    
+    // Entity Types
+    lotsEntity: 'Lots',
+    ordersEntity: 'Orders',
+    rollsEntity: 'Rolls',
+    suppliersEntity: 'Suppliers',
     
     // Settings
     settings: 'Settings',
@@ -506,10 +533,37 @@ const translations = {
     
     // Audit Log
     auditLog: 'Denetim Kaydı',
+    actionHistory: 'İşlem Geçmişi',
     user: 'Kullanıcı',
     action: 'Eylem',
     timestamp: 'Zaman Damgası',
     description: 'Açıklama',
+    searchByIdentifierOrUser: 'Tanımlayıcı veya kullanıcıya göre ara',
+    filterByAction: 'İşleme göre filtrele',
+    filterByEntity: 'Varlığa göre filtrele',
+    allActions: 'Tüm İşlemler',
+    allEntities: 'Tüm Varlıklar',
+    entity: 'Varlık',
+    identifier: 'Tanımlayıcı',
+    reversed: 'Geri Alındı',
+    auditActions: 'Eylemler',
+    fulfill: 'Tamamla',
+    refresh: 'Yenile',
+    
+    // Action Types
+    actionCreate: 'Oluştur',
+    actionUpdate: 'Güncelle',
+    actionDelete: 'Sil',
+    actionFulfill: 'Tamamla',
+    actionApprove: 'Onayla',
+    actionReject: 'Reddet',
+    actionStatusChange: 'Durum Değişikliği',
+    
+    // Entity Types
+    lotsEntity: 'Lotlar',
+    ordersEntity: 'Siparişler',
+    rollsEntity: 'Toplar',
+    suppliersEntity: 'Tedarikçiler',
     
     // Settings
     settings: 'Ayarlar',
