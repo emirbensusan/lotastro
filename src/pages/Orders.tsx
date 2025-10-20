@@ -238,7 +238,12 @@ const Orders = () => {
         orderData.order_number,
         null,
         { ...orderData, order_lots: selectedLots, customer_name: customerName },
-        `Created order ${orderData.order_number} for ${customerName} with ${selectedLots.length} lot(s), ${totalRolls} roll(s), total ${totalMeters.toFixed(2)}m`
+        String(t('createdOrderNote'))
+          .replace('{orderNumber}', orderData.order_number)
+          .replace('{customerName}', customerName)
+          .replace('{lotCount}', String(selectedLots.length))
+          .replace('{rollCount}', String(totalRolls))
+          .replace('{meters}', totalMeters.toFixed(2))
       );
 
       // Show print dialog for new order
@@ -375,7 +380,9 @@ const Orders = () => {
         order?.order_number || orderId,
         { fulfilled_at: null, fulfilled_by: null },
         { fulfilled_at: new Date().toISOString(), fulfilled_by: profile?.user_id },
-        `Fulfilled order ${order?.order_number} for customer ${order?.customer_name}`
+        String(t('fulfilledOrderNote'))
+          .replace('{orderNumber}', order?.order_number || orderId)
+          .replace('{customerName}', order?.customer_name || '')
       );
 
       fetchOrders();
@@ -404,7 +411,9 @@ const Orders = () => {
           orderNumber,
           order,
           null,
-          `Deleted order ${orderNumber} with ${totalRolls} roll(s)`
+          String(t('deletedOrderNote'))
+            .replace('{orderNumber}', orderNumber)
+            .replace('{rollCount}', String(totalRolls))
         );
       }
 

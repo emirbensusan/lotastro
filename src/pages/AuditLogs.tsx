@@ -151,7 +151,7 @@ const formatValue = (val: any, t: (key: string) => string | string[]): string =>
 };
 
 // Helper component to show reversal reason
-const ReversalReason: React.FC<{ reversalAuditId: string }> = ({ reversalAuditId }) => {
+const ReversalReason: React.FC<{ reversalAuditId: string; t: (key: string) => string | string[] }> = ({ reversalAuditId, t }) => {
   const [reason, setReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -171,7 +171,7 @@ const ReversalReason: React.FC<{ reversalAuditId: string }> = ({ reversalAuditId
           setReason(match ? match[1] : data.notes);
         }
       } catch (error) {
-        console.error('Error fetching reversal reason:', error);
+        console.error(String(t('errorFetchingReversalReason')), error);
       } finally {
         setLoading(false);
       }
@@ -181,7 +181,7 @@ const ReversalReason: React.FC<{ reversalAuditId: string }> = ({ reversalAuditId
   }, [reversalAuditId]);
 
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Loading reason...</div>;
+    return <div className="text-sm text-muted-foreground">{String(t('loadingReason'))}</div>;
   }
 
   if (!reason) {
@@ -190,7 +190,7 @@ const ReversalReason: React.FC<{ reversalAuditId: string }> = ({ reversalAuditId
 
   return (
     <div>
-      <span className="text-muted-foreground">Reason:</span>{' '}
+      <span className="text-muted-foreground">{String(t('reason'))}</span>{' '}
       <span className="font-medium">{reason}</span>
     </div>
   );
@@ -201,7 +201,8 @@ const ChangesSummary: React.FC<{
   oldData: any; 
   newData: any;
   entityType: string;
-}> = ({ oldData, newData }) => {
+  t: (key: string) => string | string[];
+}> = ({ oldData, newData, t }) => {
   const changes: Array<{ field: string; from: any; to: any }> = [];
 
   const allKeys = new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]);
@@ -222,7 +223,7 @@ const ChangesSummary: React.FC<{
   });
 
   if (changes.length === 0) {
-    return <div className="text-sm text-muted-foreground">No fields changed</div>;
+    return <div className="text-sm text-muted-foreground">{String(t('noFieldsChanged'))}</div>;
   }
 
   return (
@@ -288,8 +289,8 @@ const AuditLogs: React.FC = () => {
     } catch (error) {
       console.error('Error fetching audit logs:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load audit logs',
+        title: String(t('error')),
+        description: String(t('failedToLoadAuditLogs')),
         variant: 'destructive'
       });
     } finally {
@@ -340,7 +341,7 @@ const AuditLogs: React.FC = () => {
       'APPROVE': 'default',
       'REJECT': 'destructive'
     };
-    return <Badge variant={variants[action] as any || 'outline'}>{action}</Badge>;
+    return <Badge variant={variants[action] as any || 'outline'}>{String(t(`action${action.charAt(0) + action.slice(1).toLowerCase().replace(/_/g, '')}`))}</Badge>;
   };
 
   const filteredLogs = logs.filter(log => {
@@ -358,7 +359,7 @@ const AuditLogs: React.FC = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <History className="h-8 w-8" />
-          Audit Logs
+          {String(t('auditLogs'))}
         </h1>
       </div>
 
@@ -368,7 +369,7 @@ const AuditLogs: React.FC = () => {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by identifier or user..."
+                placeholder={String(t('searchByIdentifierOrUser'))}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -377,33 +378,33 @@ const AuditLogs: React.FC = () => {
 
             <Select value={filterAction} onValueChange={setFilterAction}>
               <SelectTrigger>
-                <SelectValue placeholder="Filter by action" />
+                <SelectValue placeholder={String(t('filterByAction'))} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Actions</SelectItem>
-                <SelectItem value="CREATE">Create</SelectItem>
-                <SelectItem value="UPDATE">Update</SelectItem>
-                <SelectItem value="DELETE">Delete</SelectItem>
-                <SelectItem value="FULFILL">Fulfill</SelectItem>
+                <SelectItem value="all">{String(t('allActions'))}</SelectItem>
+                <SelectItem value="CREATE">{String(t('create'))}</SelectItem>
+                <SelectItem value="UPDATE">{String(t('update'))}</SelectItem>
+                <SelectItem value="DELETE">{String(t('delete'))}</SelectItem>
+                <SelectItem value="FULFILL">{String(t('fulfill'))}</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={filterEntity} onValueChange={setFilterEntity}>
               <SelectTrigger>
-                <SelectValue placeholder="Filter by entity" />
+                <SelectValue placeholder={String(t('filterByEntity'))} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Entities</SelectItem>
-                <SelectItem value="lot">Lots</SelectItem>
-                <SelectItem value="order">Orders</SelectItem>
-                <SelectItem value="roll">Rolls</SelectItem>
-                <SelectItem value="supplier">Suppliers</SelectItem>
+                <SelectItem value="all">{String(t('allEntities'))}</SelectItem>
+                <SelectItem value="lot">{String(t('lotsEntity'))}</SelectItem>
+                <SelectItem value="order">{String(t('ordersEntity'))}</SelectItem>
+                <SelectItem value="roll">{String(t('rollsEntity'))}</SelectItem>
+                <SelectItem value="supplier">{String(t('suppliersEntity'))}</SelectItem>
               </SelectContent>
             </Select>
 
             <Button onClick={fetchAuditLogs} variant="outline">
               <Filter className="mr-2 h-4 w-4" />
-              Refresh
+              {String(t('refresh'))}
             </Button>
           </div>
         </CardContent>
@@ -411,7 +412,7 @@ const AuditLogs: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Action History</CardTitle>
+          <CardTitle>{String(t('actionHistory'))}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -422,13 +423,13 @@ const AuditLogs: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Entity</TableHead>
-                  <TableHead>Identifier</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{String(t('timestamp'))}</TableHead>
+                  <TableHead>{String(t('action'))}</TableHead>
+                  <TableHead>{String(t('entity'))}</TableHead>
+                  <TableHead>{String(t('identifier'))}</TableHead>
+                  <TableHead>{String(t('user'))}</TableHead>
+                  <TableHead>{String(t('status'))}</TableHead>
+                  <TableHead>{String(t('auditActions'))}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -448,9 +449,9 @@ const AuditLogs: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       {log.is_reversed ? (
-                        <Badge variant="secondary">Reversed</Badge>
+                        <Badge variant="secondary">{String(t('reversed'))}</Badge>
                       ) : (
-                        <Badge variant="default">Active</Badge>
+                        <Badge variant="default">{String(t('active'))}</Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -490,7 +491,7 @@ const AuditLogs: React.FC = () => {
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Action Details</DialogTitle>
+            <DialogTitle>{String(t('actionDetails'))}</DialogTitle>
             <DialogDescription>
               {selectedLog?.action} {selectedLog?.entity_type} - {selectedLog?.entity_identifier}
             </DialogDescription>
@@ -500,24 +501,24 @@ const AuditLogs: React.FC = () => {
               {/* Header Info */}
               <div className="grid grid-cols-2 gap-4 pb-4 border-b">
                 <div>
-                  <Label className="text-muted-foreground">Action</Label>
+                  <Label className="text-muted-foreground">{String(t('action'))}</Label>
                   <div className="mt-1">{getActionBadge(selectedLog.action)}</div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Entity Type</Label>
+                  <Label className="text-muted-foreground">{String(t('entityType'))}</Label>
                   <div className="mt-1">
                     <Badge variant="outline">{selectedLog.entity_type}</Badge>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Performed By</Label>
+                  <Label className="text-muted-foreground">{String(t('performedBy'))}</Label>
                   <div className="mt-1 text-sm">
                     <div className="font-medium">{selectedLog.user_email}</div>
                     <div className="text-muted-foreground">{selectedLog.user_role}</div>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Timestamp</Label>
+                  <Label className="text-muted-foreground">{String(t('timestamp'))}</Label>
                   <div className="mt-1 text-sm">{format(new Date(selectedLog.created_at), 'PPpp')}</div>
                 </div>
               </div>
@@ -529,17 +530,17 @@ const AuditLogs: React.FC = () => {
                     <Undo className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
                     <div className="flex-1">
                       <div className="font-semibold text-orange-900 dark:text-orange-100 mb-2">
-                        This action was reversed
+                        {String(t('thisActionWasReversed'))}
                       </div>
                       <div className="grid grid-cols-1 gap-2 text-sm">
                         {selectedLog.reversed_at && (
                           <div>
-                            <span className="text-muted-foreground">Reversed at:</span>{' '}
+                            <span className="text-muted-foreground">{String(t('reversedAt'))}</span>{' '}
                             <span className="font-medium">{format(new Date(selectedLog.reversed_at), 'PPpp')}</span>
                           </div>
                         )}
                         {selectedLog.reversal_audit_id && (
-                          <ReversalReason reversalAuditId={selectedLog.reversal_audit_id} />
+                          <ReversalReason reversalAuditId={selectedLog.reversal_audit_id} t={t} />
                         )}
                       </div>
                     </div>
@@ -550,7 +551,7 @@ const AuditLogs: React.FC = () => {
               {/* Action Description */}
               {selectedLog.notes && (
                 <div>
-                  <Label className="text-muted-foreground">Description</Label>
+                  <Label className="text-muted-foreground">{String(t('description'))}</Label>
                   <div className="mt-2 bg-muted p-3 rounded-lg text-sm">
                     {selectedLog.notes}
                   </div>
@@ -562,7 +563,7 @@ const AuditLogs: React.FC = () => {
                 <div>
                   <Label className="text-muted-foreground flex items-center gap-2">
                     <span className="text-red-600 dark:text-red-400">●</span>
-                    Previous State
+                    {String(t('previousState'))}
                   </Label>
                   <div className="mt-2 bg-muted p-4 rounded-lg space-y-1 text-sm">
                     {formatEntityDetails(selectedLog.entity_type, selectedLog.old_data, t).map((line, idx) => (
@@ -579,7 +580,7 @@ const AuditLogs: React.FC = () => {
                 <div>
                   <Label className="text-muted-foreground flex items-center gap-2">
                     <span className="text-green-600 dark:text-green-400">●</span>
-                    {selectedLog.action === 'CREATE' ? 'Created With' : 'New State'}
+                    {selectedLog.action === 'CREATE' ? String(t('createdWith')) : String(t('newState'))}
                   </Label>
                   <div className="mt-2 bg-muted p-4 rounded-lg space-y-1 text-sm">
                     {formatEntityDetails(selectedLog.entity_type, selectedLog.new_data, t).map((line, idx) => (
@@ -594,12 +595,13 @@ const AuditLogs: React.FC = () => {
               {/* Changes Summary for UPDATE */}
               {selectedLog.action === 'UPDATE' && selectedLog.old_data && selectedLog.new_data && (
                 <div>
-                  <Label className="text-muted-foreground">Changes Made</Label>
+                  <Label className="text-muted-foreground">{String(t('changesMade'))}</Label>
                   <div className="mt-2 space-y-2">
                     <ChangesSummary 
                       oldData={selectedLog.old_data} 
                       newData={selectedLog.new_data}
                       entityType={selectedLog.entity_type}
+                      t={t}
                     />
                   </div>
                 </div>
@@ -608,12 +610,12 @@ const AuditLogs: React.FC = () => {
               {/* Technical Details - Collapsible */}
               <details className="border rounded-lg p-4">
                 <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
-                  View Technical Details (JSON)
+                  {String(t('viewTechnicalDetails'))}
                 </summary>
                 <div className="mt-4 space-y-4">
                   {selectedLog.old_data && (
                     <div>
-                      <Label className="text-xs">Old Data (JSON)</Label>
+                      <Label className="text-xs">{String(t('oldDataJson'))}</Label>
                       <pre className="bg-muted p-3 rounded text-xs overflow-auto max-h-40 mt-1">
                         {JSON.stringify(selectedLog.old_data, null, 2)}
                       </pre>
@@ -621,7 +623,7 @@ const AuditLogs: React.FC = () => {
                   )}
                   {selectedLog.new_data && (
                     <div>
-                      <Label className="text-xs">New Data (JSON)</Label>
+                      <Label className="text-xs">{String(t('newDataJson'))}</Label>
                       <pre className="bg-muted p-3 rounded text-xs overflow-auto max-h-40 mt-1">
                         {JSON.stringify(selectedLog.new_data, null, 2)}
                       </pre>
@@ -637,16 +639,16 @@ const AuditLogs: React.FC = () => {
       <Dialog open={showReversalDialog} onOpenChange={setShowReversalDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reverse Action</DialogTitle>
+            <DialogTitle>{String(t('reverseAction'))}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to reverse this action? This will undo the changes made.
+              {String(t('reverseActionConfirm'))}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Reason for Reversal</Label>
+              <Label>{String(t('reasonForReversal'))}</Label>
               <Textarea
-                placeholder="Enter reason for reversal..."
+                placeholder={String(t('enterReasonForReversal'))}
                 value={reversalReason}
                 onChange={(e) => setReversalReason(e.target.value)}
                 rows={3}
@@ -655,14 +657,14 @@ const AuditLogs: React.FC = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowReversalDialog(false)}>
-              Cancel
+              {String(t('cancel'))}
             </Button>
             <Button
               variant="destructive"
               onClick={handleReverseAction}
               disabled={reversing || !reversalReason.trim()}
             >
-              {reversing ? 'Reversing...' : 'Reverse Action'}
+              {reversing ? String(t('reversing')) : String(t('reverseActionButton'))}
             </Button>
           </DialogFooter>
         </DialogContent>
