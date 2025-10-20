@@ -56,7 +56,7 @@ const IncomingStock: React.FC = () => {
       fetchIncomingStock();
       fetchSuppliers();
     }
-  }, [statusFilter, supplierFilter, hasPermission]);
+  }, [statusFilter, supplierFilter]);
 
   const fetchIncomingStock = async () => {
     setLoading(true);
