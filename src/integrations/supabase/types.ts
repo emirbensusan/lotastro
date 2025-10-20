@@ -923,6 +923,34 @@ export type Database = {
           total_rolls: number
         }[]
       }
+      get_incoming_reserved_stock_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          color: string
+          customer_name: string
+          expected_meters: number
+          incoming_stock_id: string
+          quality: string
+          reservation_number: string
+          reserved_meters: number
+          supplier_name: string
+        }[]
+      }
+      get_incoming_stock_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          color: string
+          expected_meters: number
+          incoming_stock_id: string
+          invoice_number: string
+          open_meters: number
+          quality: string
+          received_meters: number
+          reserved_meters: number
+          status: string
+          supplier_name: string
+        }[]
+      }
       get_inventory_pivot_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -942,6 +970,19 @@ export type Database = {
           total_rolls: number
         }[]
       }
+      get_inventory_with_reservations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          available_meters: number
+          color: string
+          incoming_meters: number
+          incoming_reserved_meters: number
+          instock_meters: number
+          physical_reserved_meters: number
+          quality: string
+          total_reserved_meters: number
+        }[]
+      }
       get_lots_by_normalized_quality: {
         Args: { target_normalized_quality: string }
         Returns: {
@@ -949,6 +990,19 @@ export type Database = {
           meters: number
           quality: string
           roll_count: number
+        }[]
+      }
+      get_reservations_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_by_name: string
+          customer_name: string
+          lines_count: number
+          reservation_id: string
+          reservation_number: string
+          reserved_date: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          total_reserved_meters: number
         }[]
       }
       get_user_role: {
