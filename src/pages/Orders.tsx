@@ -12,11 +12,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { toast } from "sonner";
-import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown } from 'lucide-react';
+import { Truck, Plus, CheckCircle, Download, Eye, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown, Calendar } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
 import MultiQualityOrderDialog from '@/components/MultiQualityOrderDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
+import ReservationDialog from '@/components/ReservationDialog';
+import ReservationDetailsDialog from '@/components/ReservationDetailsDialog';
+import ReservationCancelDialog from '@/components/ReservationCancelDialog';
+import ReservationConvertDialog from '@/components/ReservationConvertDialog';
+import ReservationReleaseDialog from '@/components/ReservationReleaseDialog';
+import ReservationExport from '@/components/ReservationExport';
 
 import InventoryPivotTable from '@/components/InventoryPivotTable';
 import { InlineEditableField } from '@/components/InlineEditableField';
@@ -63,8 +70,11 @@ const Orders = () => {
   const { t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'orders' | 'reservations'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
+  const [reservations, setReservations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingReservations, setLoadingReservations] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showMultiQualityDialog, setShowMultiQualityDialog] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -72,6 +82,14 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
+  
+  // Reservation dialogs
+  const [showReservationDialog, setShowReservationDialog] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState<any>(null);
+  const [showReservationDetails, setShowReservationDetails] = useState(false);
+  const [reservationToCancel, setReservationToCancel] = useState<any>(null);
+  const [reservationToConvert, setReservationToConvert] = useState<any>(null);
+  const [reservationToRelease, setReservationToRelease] = useState<any>(null);
 
   // Create order form state
   const [customerName, setCustomerName] = useState('');
@@ -116,7 +134,33 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
+    fetchReservations();
   }, []);
+  
+  const fetchReservations = async () => {
+    try {
+      setLoadingReservations(true);
+      const { data, error } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          reservation_lines (
+            id, scope, quality, color, reserved_meters, roll_ids, lot_id, incoming_stock_id,
+            lot:lots (lot_number, warehouse_location),
+            incoming_stock:incoming_stock (invoice_number, suppliers (name))
+          ),
+          profiles!reservations_created_by_fkey (full_name, email)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setReservations(data || []);
+    } catch (error: any) {
+      toast.error(`Error loading reservations: ${error.message}`);
+    } finally {
+      setLoadingReservations(false);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -621,7 +665,20 @@ const Orders = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Orders Table */}
+      {/* Tabs for Orders and Reservations */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="orders" className="flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            Orders ({orders.length})
+          </TabsTrigger>
+          <TabsTrigger value="reservations" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Reservations ({reservations.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="orders">
       <Card>
         <CardHeader>
           <CardTitle>{t('allOrders')}</CardTitle>
@@ -736,6 +793,80 @@ const Orders = () => {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="reservations">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Reservations</CardTitle>
+                  <CardDescription>Manage customer reservations</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <ReservationExport reservations={reservations} />
+                  {canCreateOrders && (
+                    <Button onClick={() => setShowReservationDialog(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Reservation
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Reservation #</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Reserved Date</TableHead>
+                    <TableHead>Total Meters</TableHead>
+                    <TableHead>Lines</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reservations.map((res) => (
+                    <TableRow key={res.id}>
+                      <TableCell className="font-mono">{res.reservation_number}</TableCell>
+                      <TableCell>{res.customer_name}</TableCell>
+                      <TableCell>{new Date(res.reserved_date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {res.reservation_lines.reduce((sum: number, l: any) => sum + l.reserved_meters, 0).toFixed(2)}m
+                      </TableCell>
+                      <TableCell>{res.reservation_lines.length}</TableCell>
+                      <TableCell>
+                        <Badge variant={res.status === 'active' ? 'default' : res.status === 'converted' ? 'secondary' : 'outline'}>
+                          {res.status.toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => { setSelectedReservation(res); setShowReservationDetails(true); }}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {res.status === 'active' && (
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => setReservationToConvert(res)}>
+                                <Truck className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setReservationToCancel(res)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Order Details Dialog */}
       {selectedOrder && (
@@ -836,6 +967,16 @@ const Orders = () => {
           setShowBulkUpload(false);
         }}
       />
+
+      {/* Reservation Dialogs */}
+      <ReservationDialog open={showReservationDialog} onOpenChange={setShowReservationDialog} onSuccess={fetchReservations} />
+      <ReservationDetailsDialog open={showReservationDetails} onOpenChange={setShowReservationDetails} reservation={selectedReservation}
+        onCancel={(res) => { setShowReservationDetails(false); setReservationToCancel(res); }}
+        onConvert={(res) => { setShowReservationDetails(false); setReservationToConvert(res); }}
+        onRelease={(res) => { setShowReservationDetails(false); setReservationToRelease(res); }} />
+      <ReservationCancelDialog open={!!reservationToCancel} onOpenChange={() => setReservationToCancel(null)} reservation={reservationToCancel} onSuccess={fetchReservations} />
+      <ReservationConvertDialog open={!!reservationToConvert} onOpenChange={() => setReservationToConvert(null)} reservation={reservationToConvert} onSuccess={() => { fetchReservations(); fetchOrders(); }} />
+      <ReservationReleaseDialog open={!!reservationToRelease} onOpenChange={() => setReservationToRelease(null)} reservation={reservationToRelease} onSuccess={fetchReservations} />
 
     </div>
   );
