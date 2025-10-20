@@ -348,6 +348,7 @@ export type Database = {
           production_date: string | null
           qr_code_url: string | null
           quality: string
+          reserved_meters: number
           roll_count: number
           status: Database["public"]["Enums"]["stock_status"]
           supplier_id: string
@@ -367,6 +368,7 @@ export type Database = {
           production_date?: string | null
           qr_code_url?: string | null
           quality: string
+          reserved_meters?: number
           roll_count?: number
           status?: Database["public"]["Enums"]["stock_status"]
           supplier_id: string
@@ -386,6 +388,7 @@ export type Database = {
           production_date?: string | null
           qr_code_url?: string | null
           quality?: string
+          reserved_meters?: number
           roll_count?: number
           status?: Database["public"]["Enums"]["stock_status"]
           supplier_id?: string
@@ -572,6 +575,164 @@ export type Database = {
         }
         Relationships: []
       }
+      reservation_lines: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          incoming_stock_id: string | null
+          lot_id: string | null
+          quality: string
+          reservation_id: string
+          reserved_meters: number
+          roll_ids: string | null
+          scope: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          incoming_stock_id?: string | null
+          lot_id?: string | null
+          quality: string
+          reservation_id: string
+          reserved_meters: number
+          roll_ids?: string | null
+          scope: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          incoming_stock_id?: string | null
+          lot_id?: string | null
+          quality?: string
+          reservation_id?: string
+          reserved_meters?: number
+          roll_ids?: string | null
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_lines_incoming_stock_id_fkey"
+            columns: ["incoming_stock_id"]
+            isOneToOne: false
+            referencedRelation: "incoming_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservation_lines_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservation_lines_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservations: {
+        Row: {
+          cancel_other_text: string | null
+          cancel_reason:
+            | Database["public"]["Enums"]["cancel_reason_type"]
+            | null
+          canceled_at: string | null
+          canceled_by: string | null
+          convert_reason:
+            | Database["public"]["Enums"]["convert_reason_type"]
+            | null
+          converted_at: string | null
+          converted_by: string | null
+          created_at: string
+          created_by: string
+          customer_id: string | null
+          customer_name: string
+          hold_until: string | null
+          id: string
+          notes: string | null
+          reservation_number: string
+          reserved_date: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          updated_at: string
+        }
+        Insert: {
+          cancel_other_text?: string | null
+          cancel_reason?:
+            | Database["public"]["Enums"]["cancel_reason_type"]
+            | null
+          canceled_at?: string | null
+          canceled_by?: string | null
+          convert_reason?:
+            | Database["public"]["Enums"]["convert_reason_type"]
+            | null
+          converted_at?: string | null
+          converted_by?: string | null
+          created_at?: string
+          created_by: string
+          customer_id?: string | null
+          customer_name: string
+          hold_until?: string | null
+          id?: string
+          notes?: string | null
+          reservation_number?: string
+          reserved_date?: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          updated_at?: string
+        }
+        Update: {
+          cancel_other_text?: string | null
+          cancel_reason?:
+            | Database["public"]["Enums"]["cancel_reason_type"]
+            | null
+          canceled_at?: string | null
+          canceled_by?: string | null
+          convert_reason?:
+            | Database["public"]["Enums"]["convert_reason_type"]
+            | null
+          converted_at?: string | null
+          converted_by?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string | null
+          customer_name?: string
+          hold_until?: string | null
+          id?: string
+          notes?: string | null
+          reservation_number?: string
+          reserved_date?: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_canceled_by_fkey"
+            columns: ["canceled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "reservations_converted_by_fkey"
+            columns: ["converted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "reservations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           created_at: string
@@ -736,6 +897,10 @@ export type Database = {
         }[]
       }
       generate_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_reservation_number: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
