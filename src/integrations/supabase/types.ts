@@ -915,11 +915,14 @@ export type Database = {
       get_dashboard_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
+          active_reservations_count: number
           oldest_lot_days: number
           pending_orders: number
           total_in_stock_lots: number
+          total_incoming_meters: number
           total_meters: number
           total_out_of_stock_lots: number
+          total_reserved_meters: number
           total_rolls: number
         }[]
       }
@@ -954,11 +957,16 @@ export type Database = {
       get_inventory_pivot_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
+          available_meters: number
           color: string
+          incoming_meters: number
+          incoming_reserved_meters: number
           lot_count: number
           normalized_quality: string
+          physical_reserved_meters: number
           quality: string
           total_meters: number
+          total_reserved_meters: number
           total_rolls: number
         }[]
       }
