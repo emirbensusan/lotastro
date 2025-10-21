@@ -54,6 +54,8 @@ interface IncomingStockWithSupplier {
     id: string;
     name: string;
   };
+  has_reversed_receipt?: boolean;
+  latest_receipt_audit_id?: string | null;
 }
 
 interface GoodsInReceipt {
@@ -134,8 +136,40 @@ export default function GoodsReceipt() {
       const filtered = (data || []).filter(item => 
         item.expected_meters - item.received_meters > 0
       );
+
+      // For each item, check if the most recent receipt has been reversed
+      const enrichedData = await Promise.all(
+        filtered.map(async (item) => {
+          try {
+            // Find the most recent CREATE audit for lots created from this incoming stock
+            const { data: auditData, error: auditError } = await supabase
+              .from('audit_logs')
+              .select('id, is_reversed')
+              .eq('entity_type', 'lot')
+              .eq('action', 'CREATE')
+              .ilike('entity_identifier', `%incoming stock%${item.invoice_number || item.id}%`)
+              .order('created_at', { ascending: false })
+              .limit(1);
+
+            if (auditError) {
+              console.error('Error fetching audit data:', auditError);
+              return { ...item, has_reversed_receipt: false, latest_receipt_audit_id: null };
+            }
+
+            const latestAudit = auditData?.[0];
+            return {
+              ...item,
+              has_reversed_receipt: latestAudit?.is_reversed || false,
+              latest_receipt_audit_id: latestAudit?.id || null
+            };
+          } catch (err) {
+            console.error('Error enriching item:', err);
+            return { ...item, has_reversed_receipt: false, latest_receipt_audit_id: null };
+          }
+        })
+      );
       
-      setPendingStock(filtered as IncomingStockWithSupplier[]);
+      setPendingStock(enrichedData as IncomingStockWithSupplier[]);
     } catch (error: any) {
       console.error('Error fetching pending stock:', error);
       toast({
@@ -306,7 +340,7 @@ export default function GoodsReceipt() {
         }
 
         // Call the reverse-audit-action edge function
-        const { error: reverseError } = await supabase.functions.invoke('reverse-audit-action', {
+        const { data: reverseData, error: reverseError } = await supabase.functions.invoke('reverse-audit-action', {
           body: {
             audit_id: auditEntry.id,
             reason: `Unreceived from Goods Receipt for incoming stock ${selectedForUnreceive?.invoice_number || selectedForUnreceive?.id}`
@@ -314,18 +348,28 @@ export default function GoodsReceipt() {
         });
 
         if (reverseError) {
-          throw reverseError;
+          // Try to extract error details from the response
+          const errorDetails = reverseData?.error || reverseError.message || 'Unknown error';
+          const errorReason = reverseData?.reason || '';
+          throw new Error(`${errorDetails}${errorReason ? `: ${errorReason}` : ''}`);
         }
       }
 
       toast({
+        title: String(t('success')),
         description: String(t('stockUnreceivedSuccess'))
       });
 
       setUnreceiveDialogOpen(false);
       setSelectedForUnreceive(null);
       setSelectedLotIds(new Set());
-      refreshData();
+      setUnreceiveLots([]);
+      
+      // Force immediate refresh of both views
+      await fetchPendingStock();
+      if (viewMode === 'history') {
+        await fetchReceiptHistory();
+      }
     } catch (error: any) {
       console.error('Error unreceiving stock:', error);
       toast({
@@ -610,22 +654,30 @@ export default function GoodsReceipt() {
 
                   <CardHeader>
                     <div className="flex justify-between items-start pr-8">
-                      <div>
+                      <div className="flex-1">
                         <CardTitle className="text-lg">{item.quality} - {item.color}</CardTitle>
                         {item.invoice_number && (
                           <p className="text-sm text-muted-foreground mt-1">
                             {t('invoice')} {item.invoice_number}
                           </p>
                         )}
+                        {item.has_reversed_receipt && (
+                          <Badge variant="outline" className="mt-2 text-orange-600 border-orange-600">
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Previously Unreceived
+                          </Badge>
+                        )}
                       </div>
                       
-                      {isOverdue(item) ? (
-                        <Badge variant="destructive">{t('overdue')}</Badge>
-                      ) : isExpectedToday(item) ? (
-                        <Badge className="bg-blue-600 text-white">{t('expectedToday')}</Badge>
-                      ) : (
-                        <Badge variant="outline">{t('pending')}</Badge>
-                      )}
+                      <div className="flex flex-col gap-1">
+                        {isOverdue(item) ? (
+                          <Badge variant="destructive">{t('overdue')}</Badge>
+                        ) : isExpectedToday(item) ? (
+                          <Badge className="bg-blue-600 text-white">{t('expectedToday')}</Badge>
+                        ) : (
+                          <Badge variant="outline">{t('pending')}</Badge>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
 
@@ -699,8 +751,12 @@ export default function GoodsReceipt() {
                           className="w-full"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleUnreceiveClick(item);
+                            if (!item.has_reversed_receipt) {
+                              handleUnreceiveClick(item);
+                            }
                           }}
+                          disabled={item.has_reversed_receipt}
+                          title={item.has_reversed_receipt ? 'This receipt has already been unreceived' : ''}
                         >
                           <RotateCcw className="h-4 w-4 mr-2" />
                           {t('unreceiveStock')}
