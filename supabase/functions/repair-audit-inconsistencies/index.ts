@@ -132,33 +132,54 @@ Deno.serve(async (req) => {
 
     if (body.action === 'direct_reversal' && body.lot_id) {
       // Perform direct reversal of a lot without a CREATE audit
-      const { data: lot } = await supabase
+      const { data: lot, error: lotError } = await supabase
         .from('lots')
-        .select('*, goods_in_rows!inner(receipt_id, incoming_stock_id)')
+        .select('*')
         .eq('id', body.lot_id)
         .single();
 
-      if (!lot) {
-        return new Response(JSON.stringify({ error: 'Lot not found' }), {
+      if (lotError || !lot) {
+        console.error(`[${correlationId}] Lot query failed:`, lotError);
+        return new Response(JSON.stringify({ 
+          error: 'Lot not found',
+          details: lotError?.message,
+          lot_id: body.lot_id 
+        }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      // Get goods_in_rows for this lot
-      const { data: rows } = await supabase
+      // Get goods_in_rows and incoming_stock_id by joining through goods_in_receipts
+      const { data: rows, error: rowsError } = await supabase
         .from('goods_in_rows')
-        .select('*')
+        .select('*, goods_in_receipts!inner(incoming_stock_id)')
         .eq('lot_id', body.lot_id);
 
-      if (!rows || rows.length === 0) {
-        return new Response(JSON.stringify({ error: 'No goods_in_rows found for this lot' }), {
+      if (rowsError || !rows || rows.length === 0) {
+        console.error(`[${correlationId}] Goods_in_rows query failed:`, rowsError);
+        return new Response(JSON.stringify({ 
+          error: 'No goods_in_rows found for this lot',
+          details: rowsError?.message,
+          lot_id: body.lot_id
+        }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      const incomingStockId = rows[0].incoming_stock_id;
+      const incomingStockId = rows[0].goods_in_receipts?.incoming_stock_id;
+      
+      if (!incomingStockId) {
+        console.error(`[${correlationId}] Missing incoming_stock_id in query result`);
+        return new Response(JSON.stringify({ 
+          error: 'Data structure error: Could not determine incoming_stock_id',
+          lot_id: body.lot_id
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
       const totalMeters = lot.meters;
 
       // Delete rolls
