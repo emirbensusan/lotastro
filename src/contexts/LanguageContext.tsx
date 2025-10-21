@@ -878,7 +878,7 @@ const translations = {
     
     // Goods Receipt - Unreceive and Delete functionality
     unreceiveStock: 'Unreceive Stock',
-    deleteIncomingStock: 'Delete Entry',
+    deleteIncomingStock: 'Delete Incoming Stock',
     deleteIncomingStockTitle: 'Delete Incoming Stock Entry',
     deleteIncomingStockDesc: 'Delete incoming stock entry for {quality} - {color}',
     deleteIncomingStockWarning: 'This will permanently remove this pending stock entry',
@@ -1075,6 +1075,7 @@ const translations = {
     
     // Goods Receipt - Unreceive/Delete functionality
     unreceiveStock: 'Stoğa Alımı Geri Al',
+    deleteIncomingStock: 'Yoldaki Stoğu sil',
     unreceiveTitle: 'Stoğa Alımı Geri Al',
     unreceiveDescription: 'Fatura {invoice} stoğa alımını geri al',
     unreceiveInfo: 'Bu işlem bu faturadan stoğa alınan tüm lotları geri alacaktır',
