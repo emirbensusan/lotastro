@@ -1,9 +1,15 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const ReversalRequestSchema = z.object({
+  audit_id: z.string().uuid('Invalid audit ID format'),
+  reason: z.string().optional(),
+});
 
 interface ReversalRequest {
   audit_id: string;
@@ -45,7 +51,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { audit_id, reason }: ReversalRequest = await req.json();
+    const body = await req.json();
+    
+    // Validate input with Zod
+    const parseResult = ReversalRequestSchema.safeParse(body);
+    if (!parseResult.success) {
+      console.error('Validation error:', parseResult.error.flatten());
+      return new Response(JSON.stringify({ 
+        error: 'Invalid request data',
+        details: parseResult.error.flatten().fieldErrors
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { audit_id, reason } = parseResult.data;
+    console.log('Processing reversal request:', { audit_id, reason });
 
     const { data: auditLog, error: fetchError } = await supabaseAdmin
       .from('audit_logs')
@@ -54,25 +76,52 @@ Deno.serve(async (req) => {
       .single();
 
     if (fetchError || !auditLog) {
-      return new Response(JSON.stringify({ error: 'Audit log not found' }), {
+      console.error('Audit log not found:', { audit_id, fetchError });
+      return new Response(JSON.stringify({ 
+        error: 'Audit log not found',
+        details: 'The specified audit log entry does not exist'
+      }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const { data: validationResult } = await supabaseAdmin.rpc('can_reverse_action', {
-      p_audit_id: audit_id
+    // Call with bypass parameter since edge function already validated admin
+    const { data: validationResult, error: validationError } = await supabaseAdmin.rpc('can_reverse_action', {
+      p_audit_id: audit_id,
+      p_bypass_auth_check: true  // Edge function already validated admin access
     });
 
-    if (!validationResult || !validationResult[0]?.can_reverse) {
+    if (validationError) {
+      console.error('Validation RPC error:', validationError);
       return new Response(JSON.stringify({ 
-        error: validationResult?.[0]?.reason || 'Cannot reverse action',
+        error: 'Failed to validate reversal',
+        details: validationError.message
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!validationResult || !validationResult[0]?.can_reverse) {
+      const reason = validationResult?.[0]?.reason || 'Cannot reverse action';
+      console.error('Reversal validation failed:', { audit_id, reason });
+      
+      return new Response(JSON.stringify({ 
+        error: 'Cannot reverse this action',
+        reason: reason,
+        details: 'This action cannot be reversed. It may have already been reversed or have dependent actions.',
         can_reverse: false
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    console.log('Reversal validation passed:', { 
+      audit_id, 
+      strategy: validationResult[0].reversal_strategy 
+    });
 
     const strategy = validationResult[0].reversal_strategy;
     let reversalAuditId: string;
@@ -168,7 +217,9 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Reversal error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message 
+      error: 'Failed to reverse action',
+      details: error.message,
+      hint: 'Check the audit log for this action and verify it can be reversed'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
