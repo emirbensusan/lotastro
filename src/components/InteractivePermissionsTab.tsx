@@ -42,6 +42,8 @@ const defaultPermissions: Permission[] = [
   { categoryKey: 'categoryInventory', actionKey: 'actionEditLotInfo', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryInventory', actionKey: 'actionDeleteLotEntries', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
   { categoryKey: 'categoryInventory', actionKey: 'actionGenerateQrCodes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionViewIncoming', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionReceiveIncoming', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
 
   // Order Management
   { categoryKey: 'categoryOrders', actionKey: 'actionViewOrders', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
@@ -60,7 +62,7 @@ const defaultPermissions: Permission[] = [
   // Reporting & Analytics (Admin Only)
   { categoryKey: 'categoryReports', actionKey: 'actionViewReports', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
   { categoryKey: 'categoryReports', actionKey: 'actionExportReports', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
-  { categoryKey: 'categoryReports', actionKey: 'actionAccessDashboard', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryReports', actionKey: 'actionAccessDashboard', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
 
   // QR Code & Document Management
   { categoryKey: 'categoryQrDocuments', actionKey: 'actionScanQrCodes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
