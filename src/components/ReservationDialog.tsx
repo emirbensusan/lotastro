@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { Trash2, Plus } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ReservationDialogProps {
   open: boolean;
@@ -73,6 +74,7 @@ interface IncomingItem {
 
 export default function ReservationDialog({ open, onOpenChange, onSuccess, preSelectedIncomingStock }: ReservationDialogProps) {
   const { logAction } = useAuditLog();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [scope, setScope] = useState<'INVENTORY' | 'INCOMING'>('INVENTORY');
   
@@ -236,7 +238,7 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
 
   const handleCreateReservation = async () => {
     if (!customerName || selectedLines.length === 0) {
-      toast.error('Please enter customer name and select at least one item');
+      toast.error(String(t('pleaseAddAtLeastOneLine')));
       return;
     }
 
@@ -291,7 +293,7 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
         `Created reservation ${reservation.reservation_number} for ${customerName}`
       );
 
-      toast.success(`Reservation ${reservation.reservation_number} created successfully`);
+      toast.success(String(t('reservationCreated')));
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -308,7 +310,7 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Create New Reservation</DialogTitle>
+          <DialogTitle>{String(t('newReservation'))}</DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="h-[75vh]">
@@ -316,33 +318,33 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
             {/* Customer Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Customer Information</CardTitle>
+                <CardTitle className="text-base">{String(t('customerInformation'))}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="customer-name">Customer Name *</Label>
+                    <Label htmlFor="customer-name">{String(t('customerName'))} *</Label>
                     <Input
                       id="customer-name"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Enter customer name"
+                      placeholder={String(t('customerName'))}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="customer-id">Customer ID (Optional)</Label>
+                    <Label htmlFor="customer-id">{String(t('optionalCustomerId'))}</Label>
                     <Input
                       id="customer-id"
                       value={customerId}
                       onChange={(e) => setCustomerId(e.target.value)}
-                      placeholder="Customer reference #"
+                      placeholder={String(t('customerId'))}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="hold-until">Hold Until (Optional)</Label>
+                  <Label htmlFor="hold-until">{String(t('optionalHoldUntil'))}</Label>
                   <Input
                     id="hold-until"
                     type="date"
@@ -350,16 +352,15 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
                     onChange={(e) => setHoldUntil(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
                   />
-                  <p className="text-xs text-muted-foreground">Leave empty for no expiration</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Label htmlFor="notes">{String(t('additionalNotes'))}</Label>
                   <Textarea
                     id="notes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Additional information..."
+                    placeholder={String(t('additionalNotes'))}
                     rows={3}
                   />
                 </div>
@@ -369,16 +370,16 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
             {/* Inventory Selection */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Select Items to Reserve</CardTitle>
+                <CardTitle className="text-base">{String(t('selectItemsToReserve'))}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Tabs value={scope} onValueChange={(v) => setScope(v as any)}>
                   <TabsList className="mb-4">
                     <TabsTrigger value="INVENTORY">
-                      Physical Inventory ({availableInventory.length})
+                      {String(t('physicalInventory'))} ({availableInventory.length})
                     </TabsTrigger>
                     <TabsTrigger value="INCOMING">
-                      Incoming Stock ({availableIncoming.length})
+                      {String(t('incomingStock'))} ({availableIncoming.length})
                     </TabsTrigger>
                   </TabsList>
 
@@ -395,7 +396,7 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
                                   {lot.quality} - {lot.color}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Available: {availableMeters.toFixed(2)}m ({lot.rolls.length} rolls)
+                                  {String(t('available'))}: {availableMeters.toFixed(2)}m ({lot.rolls.length} {String(t('rolls'))})
                                 </div>
                               </div>
                               <Button
@@ -432,13 +433,13 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
                                   {item.quality} - {item.color}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Invoice: {item.invoice_number || 'N/A'}
+                                  {String(t('invoiceNumber'))}: {item.invoice_number || 'N/A'}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Supplier: {item.suppliers?.name}
+                                  {String(t('supplier'))}: {item.suppliers?.name}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Available: {openMeters.toFixed(2)}m
+                                  {String(t('available'))}: {openMeters.toFixed(2)}m
                                 </div>
                               </div>
                               <Button
@@ -471,18 +472,18 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">
-                    Selected Items ({selectedLines.length})
+                    {String(t('selectedItems'))} ({selectedLines.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Quality</TableHead>
-                        <TableHead>Color</TableHead>
-                        <TableHead>Meters</TableHead>
-                        <TableHead>Reference</TableHead>
+                        <TableHead>{String(t('type'))}</TableHead>
+                        <TableHead>{String(t('quality'))}</TableHead>
+                        <TableHead>{String(t('color'))}</TableHead>
+                        <TableHead>{String(t('meters'))}</TableHead>
+                        <TableHead>{String(t('reference'))}</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -513,7 +514,7 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
                   </Table>
 
                   <div className="mt-4 flex justify-between items-center border-t pt-4">
-                    <span className="font-semibold">Total Reserved:</span>
+                    <span className="font-semibold">{String(t('totalReservedLabel'))}:</span>
                     <span className="text-2xl font-bold text-primary">
                       {totalReservedMeters.toFixed(2)}m
                     </span>
@@ -526,13 +527,13 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {String(t('cancelDialog'))}
           </Button>
           <Button
             onClick={handleCreateReservation}
             disabled={loading || !customerName || selectedLines.length === 0}
           >
-            {loading ? 'Creating...' : `Create Reservation (${selectedLines.length} items)`}
+            {loading ? String(t('creating')) : String(t('createReservationButton')).replace('{count}', selectedLines.length.toString())}
           </Button>
         </div>
       </DialogContent>

@@ -111,6 +111,114 @@ const translations = {
     reservationsForIncoming: 'Reservations for Incoming Stock',
     noReservationsFound: 'No reservations found',
     
+    // Orders & Reservations
+    allReservations: 'All Reservations',
+    activeReservationsTab: 'Active',
+    convertedReservationsTab: 'Converted',
+    canceledReservationsTab: 'Canceled',
+    releasedReservationsTab: 'Released',
+    customerId: 'Customer ID',
+    holdUntil: 'Hold Until',
+    releaseReservation: 'Release Reservation',
+    viewDetails: 'View Details',
+    cancelReservation: 'Cancel Reservation',
+    convertToOrder: 'Convert to Order',
+    noReservations: 'No reservations found',
+    newReservation: 'New Reservation',
+    createReservationFor: 'Create Reservation',
+    physicalInventory: 'Physical Inventory',
+    incomingStock: 'Incoming Stock',
+    customerInformation: 'Customer Information',
+    selectItemsToReserve: 'Select Items to Reserve',
+    selectedItems: 'Selected Items',
+    totalReservedLabel: 'Total Reserved',
+    cancelDialog: 'Cancel',
+    createReservationButton: 'Create Reservation ({count} items)',
+    creating: 'Creating...',
+    pleaseAddAtLeastOneLine: 'Please add at least one line item',
+    reservationCreated: 'Reservation created successfully',
+    optionalCustomerId: 'Customer ID (Optional)',
+    optionalHoldUntil: 'Hold Until (Optional)',
+    additionalNotes: 'Additional Notes (Optional)',
+    totalReserved: 'Total Reserved',
+    lineItems: 'Line Items',
+    reservedDate: 'Reserved Date',
+    reservationDetails: 'Reservation Details',
+    reservedItems: 'Reserved Items',
+    scope: 'Scope',
+    source: 'Source',
+    rollsCount: 'Rolls',
+    canceledOn: 'Canceled On',
+    canceledBy: 'Canceled By',
+    cancelReason: 'Cancel Reason',
+    convertedOn: 'Converted On',
+    convertedBy: 'Converted By',
+    statusHistory: 'Status History',
+    closeDialog: 'Close',
+    releaseStock: 'Release Stock',
+    cancelReservationTitle: 'Cancel Reservation',
+    cancelReservationDesc: 'Cancel reservation {reservationNumber} for {customerName}',
+    thisWillReleaseStock: 'This will release all reserved stock',
+    metersWillBeReleased: '{meters}m will become available again',
+    cancellationReason: 'Cancellation Reason',
+    selectReason: 'Select a reason',
+    customerCanceled: 'Customer Canceled',
+    incorrectEntry: 'Incorrect Entry',
+    noPayment: 'No Payment Received',
+    otherReason: 'Other',
+    additionalDetails: 'Additional Details (Required for "Other")',
+    explainReason: 'Please explain the reason...',
+    keepReservation: 'Keep Reservation',
+    confirmCancel: 'Cancel Reservation',
+    canceling: 'Canceling...',
+    selectCancelReason: 'Please select a cancellation reason',
+    provideAdditionalDetails: 'Please provide additional details',
+    reservationCanceled: 'Reservation canceled successfully',
+    convertReservationTitle: 'Convert to Order',
+    convertReservationDesc: 'Convert reservation {reservationNumber} to a sales order',
+    noteIncomingLinesWont: 'Note: Incoming lines will not be converted',
+    incomingLineCount: '{count} incoming line(s) will remain in the reservation',
+    inventoryLineWillConvert: '{count} inventory line(s) will be converted',
+    leaveEmptyToUse: 'Leave empty to use: {customerName}',
+    createOrderButton: 'Create Order',
+    creatingOrder: 'Creating...',
+    cannotConvert: 'Cannot convert: reservation contains only incoming stock',
+    orderCreated: 'Order created successfully from reservation',
+    releaseReservationTitle: 'Release Reservation',
+    releaseReservationDesc: 'Release reservation {reservationNumber} for {customerName}',
+    releaseInfo: 'This will release reserved stock back to available inventory',
+    metersWillBeAvailable: '{meters}m will become available again',
+    recordKeepingNote: 'The reservation will remain in the system with status "Released" for record keeping.',
+    releaseButton: 'Release Reservation',
+    releasing: 'Releasing...',
+    reservationReleased: 'Reservation released successfully',
+    
+    // Audit Logs
+    actionCreate: 'Create',
+    actionUpdate: 'Update',
+    actionDelete: 'Delete',
+    actionStatusChange: 'Status Change',
+    actionFulfill: 'Fulfill',
+    actionApprove: 'Approve',
+    actionReject: 'Reject',
+    lotsEntity: 'Lots',
+    ordersEntity: 'Orders',
+    rollsEntity: 'Rolls',
+    suppliersEntity: 'Suppliers',
+    profilesEntity: 'Profiles',
+    lotQueue: 'Lot Queue',
+    orderQueue: 'Order Queue',
+    fieldEditQueue: 'Field Edit Queue',
+    rolePermission: 'Role Permission',
+    searchByIdentifierOrUser: 'Search by identifier or user...',
+    filterByAction: 'Filter by Action',
+    filterByEntity: 'Filter by Entity',
+    allActions: 'All Actions',
+    allEntities: 'All Entities',
+    actionDetails: 'Action Details',
+    reverseAction: 'Reverse Action',
+    reverseActionConfirm: 'Are you sure you want to reverse this action?',
+    
     // Lot
     lotNumber: 'Lot Number',
     differentLotCount: 'Different Lot Count',
@@ -885,21 +993,18 @@ interface LanguageProviderProps {
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
   const [language, setLanguage] = useState<'en' | 'tr'>('en');
 
-  const t = (key: string) => {
-    try {
-      const translation = translations[language][key];
-      if (typeof translation === 'string') {
-        return translation;
-      } else if (Array.isArray(translation)) {
-        return translation;
-      } else {
-        console.warn(`Translation for key "${key}" is not a string or array in language "${language}".`);
-        return key;
+  const t = (key: string): string | string[] => {
+    const translation = translations[language][key];
+    
+    // Missing key detection
+    if (translation === undefined) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[i18n] Missing translation key:', key);
       }
-    } catch (error) {
-      console.error(`Error accessing translation for key "${key}" in language "${language}":`, error);
-      return key;
+      return `{{missing:${key}}}`;
     }
+    
+    return translation;
   };
 
   return (

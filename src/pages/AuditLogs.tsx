@@ -152,6 +152,30 @@ const formatValue = (val: any, t: (key: string) => string | string[]): string =>
   return String(val);
 };
 
+// Explicit action-to-key mapping (no more dynamic key generation)
+const ACTION_KEYS: Record<string, string> = {
+  'CREATE': 'actionCreate',
+  'UPDATE': 'actionUpdate',
+  'DELETE': 'actionDelete',
+  'STATUS_CHANGE': 'actionStatusChange',
+  'FULFILL': 'actionFulfill',
+  'APPROVE': 'actionApprove',
+  'REJECT': 'actionReject',
+};
+
+const ENTITY_KEYS: Record<string, string> = {
+  'order': 'ordersEntity',
+  'lot': 'lotsEntity',
+  'lot_queue': 'lotQueue',
+  'roll': 'rollsEntity',
+  'supplier': 'suppliersEntity',
+  'profile': 'profilesEntity',
+  'order_lot': 'ordersEntity',
+  'order_queue': 'orderQueue',
+  'field_edit_queue': 'fieldEditQueue',
+  'role_permission': 'rolePermission',
+};
+
 // Helper component to show reversal reason
 const ReversalReason: React.FC<{ reversalAuditId: string; t: (key: string) => string | string[] }> = ({ reversalAuditId, t }) => {
   const [reason, setReason] = useState<string | null>(null);
@@ -343,7 +367,8 @@ const AuditLogs: React.FC = () => {
       'APPROVE': 'default',
       'REJECT': 'destructive'
     };
-    return <Badge variant={variants[action] as any || 'outline'}>{String(t(`action${action.charAt(0) + action.slice(1).toLowerCase().replace(/_/g, '')}`))}</Badge>;
+    const actionKey = ACTION_KEYS[action] || 'actionCreate';
+    return <Badge variant={variants[action] as any || 'outline'}>{String(t(actionKey))}</Badge>;
   };
 
   const filteredLogs = logs.filter(log => {
@@ -384,10 +409,12 @@ const AuditLogs: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{String(t('allActions'))}</SelectItem>
-                <SelectItem value="CREATE">{String(t('create'))}</SelectItem>
-                <SelectItem value="UPDATE">{String(t('update'))}</SelectItem>
-                <SelectItem value="DELETE">{String(t('delete'))}</SelectItem>
-                <SelectItem value="FULFILL">{String(t('fulfill'))}</SelectItem>
+                <SelectItem value="CREATE">{String(t('actionCreate'))}</SelectItem>
+                <SelectItem value="UPDATE">{String(t('actionUpdate'))}</SelectItem>
+                <SelectItem value="DELETE">{String(t('actionDelete'))}</SelectItem>
+                <SelectItem value="FULFILL">{String(t('actionFulfill'))}</SelectItem>
+                <SelectItem value="APPROVE">{String(t('actionApprove'))}</SelectItem>
+                <SelectItem value="REJECT">{String(t('actionReject'))}</SelectItem>
               </SelectContent>
             </Select>
 

@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Reservation {
   id: string;
@@ -32,6 +33,7 @@ export default function ReservationCancelDialog({
   onSuccess
 }: ReservationCancelDialogProps) {
   const { logAction } = useAuditLog();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState<'customer_canceled' | 'incorrect_entry' | 'no_payment' | 'other' | ''>('');
   const [cancelNotes, setCancelNotes] = useState('');
@@ -42,12 +44,12 @@ export default function ReservationCancelDialog({
 
   const handleCancel = async () => {
     if (!cancelReason) {
-      toast.error('Please select a cancellation reason');
+      toast.error(String(t('selectCancelReason')));
       return;
     }
 
     if (cancelReason === 'other' && !cancelNotes) {
-      toast.error('Please provide additional details');
+      toast.error(String(t('provideAdditionalDetails')));
       return;
     }
 
@@ -86,7 +88,7 @@ export default function ReservationCancelDialog({
         `Canceled reservation ${reservation.reservation_number}. Reason: ${cancelReason}`
       );
 
-      toast.success('Reservation canceled successfully');
+      toast.success(String(t('reservationCanceled')));
       onSuccess();
       onOpenChange(false);
       setCancelReason('');
@@ -103,9 +105,11 @@ export default function ReservationCancelDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Cancel Reservation</DialogTitle>
+          <DialogTitle>{String(t('cancelReservationTitle'))}</DialogTitle>
           <DialogDescription>
-            Cancel reservation {reservation.reservation_number} for {reservation.customer_name}
+            {String(t('cancelReservationDesc'))
+              .replace('{reservationNumber}', reservation.reservation_number)
+              .replace('{customerName}', reservation.customer_name)}
           </DialogDescription>
         </DialogHeader>
 
@@ -114,23 +118,23 @@ export default function ReservationCancelDialog({
           <div className="bg-yellow-50 border border-yellow-200 rounded p-3 flex gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-yellow-800">
-              <p className="font-semibold">This will release all reserved stock</p>
-              <p className="mt-1">{totalMeters.toFixed(2)}m will become available again</p>
+              <p className="font-semibold">{String(t('thisWillReleaseStock'))}</p>
+              <p className="mt-1">{String(t('metersWillBeReleased')).replace('{meters}', totalMeters.toFixed(2))}</p>
             </div>
           </div>
 
           {/* Cancellation Reason */}
           <div className="space-y-2">
-            <Label htmlFor="cancel-reason">Cancellation Reason *</Label>
+            <Label htmlFor="cancel-reason">{String(t('cancellationReason'))} *</Label>
             <Select value={cancelReason} onValueChange={(v) => setCancelReason(v as any)}>
               <SelectTrigger id="cancel-reason">
-                <SelectValue placeholder="Select reason" />
+                <SelectValue placeholder={String(t('selectReason'))} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="customer_canceled">Customer canceled</SelectItem>
-                <SelectItem value="incorrect_entry">Incorrect entry</SelectItem>
-                <SelectItem value="no_payment">No payment</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value="customer_canceled">{String(t('customerCanceled'))}</SelectItem>
+                <SelectItem value="incorrect_entry">{String(t('incorrectEntry'))}</SelectItem>
+                <SelectItem value="no_payment">{String(t('noPayment'))}</SelectItem>
+                <SelectItem value="other">{String(t('otherReason'))}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -138,13 +142,13 @@ export default function ReservationCancelDialog({
           {/* Additional Notes */}
           <div className="space-y-2">
             <Label htmlFor="cancel-notes">
-              Additional Details {cancelReason === 'other' && '*'}
+              {String(t('additionalDetails'))} {cancelReason === 'other' && '*'}
             </Label>
             <Textarea
               id="cancel-notes"
               value={cancelNotes}
               onChange={(e) => setCancelNotes(e.target.value)}
-              placeholder="Enter additional details..."
+              placeholder={String(t('explainReason'))}
               rows={3}
             />
           </div>
@@ -159,14 +163,14 @@ export default function ReservationCancelDialog({
               setCancelNotes('');
             }}
           >
-            Keep Reservation
+            {String(t('keepReservation'))}
           </Button>
           <Button
             variant="destructive"
             onClick={handleCancel}
             disabled={loading || !cancelReason}
           >
-            {loading ? 'Canceling...' : 'Cancel Reservation'}
+            {loading ? String(t('canceling')) : String(t('confirmCancel'))}
           </Button>
         </div>
       </DialogContent>

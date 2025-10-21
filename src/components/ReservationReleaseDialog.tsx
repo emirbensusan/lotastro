@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { Info } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Reservation {
   id: string;
@@ -29,6 +30,7 @@ export default function ReservationReleaseDialog({
   onSuccess
 }: ReservationReleaseDialogProps) {
   const { logAction } = useAuditLog();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   if (!reservation) return null;
@@ -64,7 +66,7 @@ export default function ReservationReleaseDialog({
         `Released reservation ${reservation.reservation_number}`
       );
 
-      toast.success('Reservation released successfully');
+      toast.success(String(t('reservationReleased')));
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -79,9 +81,11 @@ export default function ReservationReleaseDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Release Reservation</DialogTitle>
+          <DialogTitle>{String(t('releaseReservationTitle'))}</DialogTitle>
           <DialogDescription>
-            Release reservation {reservation.reservation_number} for {reservation.customer_name}
+            {String(t('releaseReservationDesc'))
+              .replace('{reservationNumber}', reservation.reservation_number)
+              .replace('{customerName}', reservation.customer_name)}
           </DialogDescription>
         </DialogHeader>
 
@@ -90,10 +94,10 @@ export default function ReservationReleaseDialog({
           <div className="bg-blue-50 border border-blue-200 rounded p-3 flex gap-2">
             <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <p className="font-semibold">This will release reserved stock back to available inventory</p>
-              <p className="mt-1">{totalMeters.toFixed(2)}m will become available again</p>
+              <p className="font-semibold">{String(t('releaseInfo'))}</p>
+              <p className="mt-1">{String(t('metersWillBeAvailable')).replace('{meters}', totalMeters.toFixed(2))}</p>
               <p className="mt-2 text-xs">
-                The reservation will remain in the system with status "Released" for record keeping.
+                {String(t('recordKeepingNote'))}
               </p>
             </div>
           </div>
@@ -101,10 +105,10 @@ export default function ReservationReleaseDialog({
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {String(t('cancel'))}
           </Button>
           <Button onClick={handleRelease} disabled={loading}>
-            {loading ? 'Releasing...' : 'Release Reservation'}
+            {loading ? String(t('releasing')) : String(t('releaseButton'))}
           </Button>
         </div>
       </DialogContent>

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Truck, X, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Reservation {
   id: string;
@@ -67,6 +68,8 @@ export default function ReservationDetailsDialog({
   onConvert,
   onRelease
 }: ReservationDetailsDialogProps) {
+  const { t } = useLanguage();
+  
   if (!reservation) return null;
 
   const totalMeters = reservation.reservation_lines.reduce(
@@ -107,8 +110,8 @@ export default function ReservationDetailsDialog({
                 {reservation.reservation_number}
               </DialogTitle>
               <DialogDescription className="mt-2">
-                Customer: {reservation.customer_name}
-                {reservation.customer_id && ` (ID: ${reservation.customer_id})`}
+                {String(t('customer'))}: {reservation.customer_name}
+                {reservation.customer_id && ` (${String(t('customerId'))}: ${reservation.customer_id})`}
               </DialogDescription>
             </div>
             <Badge variant={getStatusVariant(reservation.status)}>
@@ -123,7 +126,7 @@ export default function ReservationDetailsDialog({
             <div className="grid grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Reserved</CardTitle>
+                  <CardTitle className="text-sm font-medium">{String(t('totalReserved'))}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalMeters.toFixed(2)}m</div>
@@ -132,7 +135,7 @@ export default function ReservationDetailsDialog({
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Line Items</CardTitle>
+                  <CardTitle className="text-sm font-medium">{String(t('lineItems'))}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
@@ -143,7 +146,7 @@ export default function ReservationDetailsDialog({
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Reserved Date</CardTitle>
+                  <CardTitle className="text-sm font-medium">{String(t('reservedDate'))}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-base font-medium">
@@ -156,18 +159,18 @@ export default function ReservationDetailsDialog({
             {/* Metadata */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Details</CardTitle>
+                <CardTitle className="text-base">{String(t('reservationDetails'))}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Created By:</span>
+                  <span className="text-muted-foreground">{String(t('createdBy'))}:</span>
                   <span className="font-medium">
                     {reservation.profiles?.full_name || reservation.profiles?.email || '—'}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Created At:</span>
+                  <span className="text-muted-foreground">{String(t('createdAt'))}:</span>
                   <span className="font-medium">
                     {formatDateTime(reservation.created_at)}
                   </span>
@@ -175,7 +178,7 @@ export default function ReservationDetailsDialog({
 
                 {reservation.hold_until && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Hold Until:</span>
+                    <span className="text-muted-foreground">{String(t('holdUntil'))}:</span>
                     <span className="font-medium">
                       {formatDate(reservation.hold_until)}
                     </span>
@@ -184,7 +187,7 @@ export default function ReservationDetailsDialog({
 
                 {reservation.notes && (
                   <div className="mt-4">
-                    <Label>Notes:</Label>
+                    <Label>{String(t('notes'))}:</Label>
                     <p className="mt-1 text-muted-foreground">{reservation.notes}</p>
                   </div>
                 )}
@@ -194,18 +197,18 @@ export default function ReservationDetailsDialog({
             {/* Line Items */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Reserved Items</CardTitle>
+                <CardTitle className="text-base">{String(t('reservedItems'))}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Quality</TableHead>
-                      <TableHead>Color</TableHead>
-                      <TableHead>Meters</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead>Location</TableHead>
+                      <TableHead>{String(t('type'))}</TableHead>
+                      <TableHead>{String(t('quality'))}</TableHead>
+                      <TableHead>{String(t('color'))}</TableHead>
+                      <TableHead>{String(t('meters'))}</TableHead>
+                      <TableHead>{String(t('source'))}</TableHead>
+                      <TableHead>{String(t('location'))}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -240,18 +243,18 @@ export default function ReservationDetailsDialog({
             {reservation.status !== 'active' && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Status History</CardTitle>
+                  <CardTitle className="text-base">{String(t('statusHistory'))}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   {reservation.canceled_at && (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Canceled At:</span>
+                        <span className="text-muted-foreground">{String(t('canceledOn'))}:</span>
                         <span>{formatDateTime(reservation.canceled_at)}</span>
                       </div>
                       {reservation.cancel_reason && (
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Reason:</span>
+                          <span className="text-muted-foreground">{String(t('cancelReason'))}:</span>
                           <span>{reservation.cancel_reason}</span>
                         </div>
                       )}
@@ -261,7 +264,7 @@ export default function ReservationDetailsDialog({
                   {reservation.converted_at && (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Converted At:</span>
+                        <span className="text-muted-foreground">{String(t('convertedOn'))}:</span>
                         <span>{formatDateTime(reservation.converted_at)}</span>
                       </div>
                     </>
@@ -281,14 +284,14 @@ export default function ReservationDetailsDialog({
                   onClick={() => onConvert?.(reservation)}
                 >
                   <Truck className="h-4 w-4 mr-2" />
-                  Convert to Order
+                  {String(t('convertToOrder'))}
                 </Button>
 
                 <Button
                   variant="outline"
                   onClick={() => onRelease?.(reservation)}
                 >
-                  Release Stock
+                  {String(t('releaseStock'))}
                 </Button>
 
                 <Button
@@ -296,14 +299,14 @@ export default function ReservationDetailsDialog({
                   onClick={() => onCancel?.(reservation)}
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Cancel
+                  {String(t('cancel'))}
                 </Button>
               </>
             )}
           </div>
 
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {String(t('closeDialog'))}
           </Button>
         </div>
       </DialogContent>

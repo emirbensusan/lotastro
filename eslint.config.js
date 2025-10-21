@@ -24,6 +24,13 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector: "JSXText[value=/[a-zA-Z]{3,}/]",
+          message: "Avoid hardcoded text in JSX. Use t('translationKey') instead."
+        }
+      ],
     },
   }
 );

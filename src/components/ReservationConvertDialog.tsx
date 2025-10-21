@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Reservation {
   id: string;
@@ -42,6 +43,7 @@ export default function ReservationConvertDialog({
   onSuccess
 }: ReservationConvertDialogProps) {
   const { logAction } = useAuditLog();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [customerName, setCustomerName] = useState('');
 
@@ -53,7 +55,7 @@ export default function ReservationConvertDialog({
 
   const handleConvert = async () => {
     if (inventoryLines.length === 0) {
-      toast.error('Cannot convert: reservation contains only incoming stock');
+      toast.error(String(t('cannotConvert')));
       return;
     }
 
@@ -149,7 +151,7 @@ export default function ReservationConvertDialog({
         `Converted reservation ${reservation.reservation_number} to order ${order.order_number}`
       );
 
-      toast.success(`Order ${order.order_number} created from reservation`);
+      toast.success(String(t('orderCreated')));
       onSuccess();
       onOpenChange(false);
       setCustomerName('');
@@ -165,9 +167,9 @@ export default function ReservationConvertDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Convert to Order</DialogTitle>
+          <DialogTitle>{String(t('convertReservationTitle'))}</DialogTitle>
           <DialogDescription>
-            Convert reservation {reservation.reservation_number} into a sales order
+            {String(t('convertReservationDesc')).replace('{reservationNumber}', reservation.reservation_number)}
           </DialogDescription>
         </DialogHeader>
 
@@ -177,9 +179,9 @@ export default function ReservationConvertDialog({
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3 flex gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-yellow-800">
-                <p className="font-semibold">Note: Incoming lines will not be converted</p>
+                <p className="font-semibold">{String(t('noteIncomingLinesWont'))}</p>
                 <p className="mt-1">
-                  {incomingLines.length} incoming line(s) will remain in the reservation
+                  {String(t('incomingLineCount')).replace('{count}', incomingLines.length.toString())}
                 </p>
               </div>
             </div>
@@ -191,16 +193,16 @@ export default function ReservationConvertDialog({
               <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-green-800">
                 <p className="font-semibold">
-                  {inventoryLines.length} inventory line(s) will be converted
+                  {String(t('inventoryLineWillConvert')).replace('{count}', inventoryLines.length.toString())}
                 </p>
-                <p className="mt-1">Total: {totalMeters.toFixed(2)}m</p>
+                <p className="mt-1">{String(t('total'))}: {totalMeters.toFixed(2)}m</p>
               </div>
             </div>
           )}
 
           {/* Customer name override */}
           <div className="space-y-2">
-            <Label htmlFor="customer-name">Customer Name</Label>
+            <Label htmlFor="customer-name">{String(t('customerName'))}</Label>
             <Input
               id="customer-name"
               value={customerName}
@@ -208,7 +210,7 @@ export default function ReservationConvertDialog({
               placeholder={reservation.customer_name}
             />
             <p className="text-xs text-muted-foreground">
-              Leave empty to use: {reservation.customer_name}
+              {String(t('leaveEmptyToUse')).replace('{customerName}', reservation.customer_name)}
             </p>
           </div>
 
@@ -238,13 +240,13 @@ export default function ReservationConvertDialog({
               setCustomerName('');
             }}
           >
-            Cancel
+            {String(t('cancel'))}
           </Button>
           <Button
             onClick={handleConvert}
             disabled={loading || inventoryLines.length === 0}
           >
-            {loading ? 'Converting...' : 'Create Order'}
+            {loading ? String(t('creatingOrder')) : String(t('createOrderButton'))}
           </Button>
         </div>
       </DialogContent>
