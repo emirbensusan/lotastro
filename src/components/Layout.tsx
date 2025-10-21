@@ -104,7 +104,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: String(t('toolsAndUtilities')),
       items: [
         { path: '/qr-scan', label: String(t('qrScan')), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
-        { path: '/approvals', label: 'Değişiklik Talepleri', icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
+        { path: '/approvals', label: String(t('approvalRequests')), icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
       ]
     },
     {
@@ -292,7 +292,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       </PopoverTrigger>
                       <PopoverContent className="w-56" align="start">
                         <div className="space-y-3">
-                          <div className="font-medium text-sm">View as Role</div>
+                          <div className="font-medium text-sm">{t('viewAsRole')}</div>
                           <div className="space-y-2">
                             {roleOptions.map((option) => (
                               <Button
@@ -304,7 +304,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                               >
                                 {option.label}
                                 {effectiveRole === option.value && !isViewingAsOtherRole && (
-                                  <span className="ml-auto text-xs">(Current)</span>
+                                  <span className="ml-auto text-xs">{t('currentRole')}</span>
                                 )}
                               </Button>
                             ))}
@@ -317,7 +317,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     className="w-full"
                                     onClick={() => handleRoleChange('reset')}
                                   >
-                                    Return to Admin View
+                                    {t('returnToAdminView')}
                                   </Button>
                                 </div>
                               </>

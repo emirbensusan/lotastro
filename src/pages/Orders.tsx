@@ -800,15 +800,15 @@ const Orders = () => {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>Reservations</CardTitle>
-                  <CardDescription>Manage customer reservations</CardDescription>
+                  <CardTitle>{t('reservations')}</CardTitle>
+                  <CardDescription>{t('manageReservationsDesc')}</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <ReservationExport reservations={reservations} />
                   {canCreateOrders && (
                     <Button onClick={() => setShowReservationDialog(true)}>
                       <Plus className="h-4 w-4 mr-2" />
-                      New Reservation
+                      {t('newReservation')}
                     </Button>
                   )}
                 </div>
@@ -818,13 +818,13 @@ const Orders = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Reservation #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Reserved Date</TableHead>
-                    <TableHead>Total Meters</TableHead>
-                    <TableHead>Lines</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>{t('reservationNumber')}</TableHead>
+                    <TableHead>{t('customer')}</TableHead>
+                    <TableHead>{t('reservedDate')}</TableHead>
+                    <TableHead>{t('totalMeters')}</TableHead>
+                    <TableHead>{t('lineItems')}</TableHead>
+                    <TableHead>{t('status')}</TableHead>
+                    <TableHead>{t('actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

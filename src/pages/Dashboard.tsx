@@ -234,11 +234,11 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/lot-intake'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📦 Generate QR Codes
+                  {t('generateQrCodes')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Create new lot entries with QR codes</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('generateQrCodesDesc')}</p>
                 <Button variant="outline" size="sm" className="w-full">
                   {t('goToLotIntake')}
                 </Button>
@@ -248,13 +248,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/qr-scan'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📦 Scan QR Codes
+                  {t('scanQrCodes')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Scan existing QR codes for lot management</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('scanQrCodesDesc')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to QR Scanner
+                  {t('goToQrScanner')}
                 </Button>
               </CardContent>
             </Card>
@@ -262,13 +262,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  🚛 Fulfill Orders
+                  {t('fulfillOrders')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Process and fulfill customer orders</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('fulfillOrdersDesc')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Orders
+                  {t('goToOrders')}
                 </Button>
               </CardContent>
             </Card>
@@ -326,13 +326,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/approvals'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  ✅ Review Approvals
+                  {t('reviewApprovals')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Approve or reject pending changes</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('reviewApprovalsDesc')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Approvals
+                  {t('goToApprovals')}
                 </Button>
               </CardContent>
             </Card>
@@ -340,13 +340,13 @@ const Dashboard = () => {
             <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/reports'}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
-                  📊 View Reports
+                  {t('viewReports')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">Access analytics and reports</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('viewReportsDesc')}</p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Go to Reports
+                  {t('goToReports')}
                 </Button>
               </CardContent>
             </Card>

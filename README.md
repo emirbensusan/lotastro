@@ -71,3 +71,34 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Translation Guidelines
+
+### Key Naming Rules
+1. Use **camelCase** for all keys
+2. Be descriptive: `goToIncomingStock` NOT `link1`
+3. Use prefixes for grouping:
+   - `audit*` - Audit log related
+   - `reservation*` - Reservation features
+   - `action*` - User actions (buttons, links)
+   - Entity types: `*Entity` suffix
+
+### Adding New Keys
+1. Add to **BOTH** `en` and `tr` sections in `src/contexts/LanguageContext.tsx`
+2. Run `npm run check-translations` to verify
+3. Test with language toggle (EN ↔ TR)
+
+### What NOT to Translate
+- Numbers, dates (use formatters)
+- URLs, file paths
+- Technical identifiers (IDs, UUIDs)
+- Icon-only buttons (use `aria-label` instead)
+
+### Verification
+```bash
+npm run check-translations
+```
+
+This script checks for:
+- Missing keys (used in code but not defined)
+- Unused keys (defined but never used)
