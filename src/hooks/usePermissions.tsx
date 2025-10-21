@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
@@ -55,13 +55,13 @@ export const usePermissions = () => {
     }
   };
 
-  const hasPermission = (category: string, action: string): boolean => {
+  const hasPermission = useCallback((category: string, action: string): boolean => {
     // Admin always has all permissions (unless viewing as another role)
     if (profile?.role === 'admin' && !viewAsRole) return true;
 
     const key = `${category}:${action}`;
     return permissions[key] === true;
-  };
+  }, [profile?.role, viewAsRole, permissions]);
 
   return { hasPermission, loading };
 };
