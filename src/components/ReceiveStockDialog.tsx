@@ -181,6 +181,7 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
         .select();
 
       if (lotsError) throw lotsError;
+      if (!createdLots || createdLots.length === 0) throw new Error('Failed to create lots');
 
       // Step 3: Create goods_in_rows for each lot
       const rowsToCreate = createdLots.map(lot => ({
@@ -197,6 +198,7 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
 
       if (rowsError) {
         console.error('Error creating goods_in_rows:', rowsError);
+        throw new Error('Failed to create goods_in_rows: ' + rowsError.message);
       }
 
       // Step 4: Create roll entries for each lot
@@ -221,6 +223,7 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
 
       if (rollsError) {
         console.error('Error creating rolls:', rollsError);
+        throw new Error('Failed to create rolls: ' + rollsError.message);
       }
 
       // Step 5: Update incoming stock
@@ -234,20 +237,22 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
 
       if (updateError) throw updateError;
 
-      // Step 6: Log audit action
-      await logAction(
-        'CREATE',
-        'lot',
-        createdLots[0].id,
-        `Received ${totalMeters}m from incoming stock ${incomingStock.invoice_number}`,
-        null,
-        {
-          lots: createdLots,
-          incoming_stock_id: incomingStock.id,
-          receipt_id: receipt.id
-        },
-        `Received ${totalMeters}m in ${lots.length} lot(s) via goods receipt`
-      );
+      // Step 6: Log audit action for EACH lot created
+      for (const lot of createdLots) {
+        await logAction(
+          'CREATE',
+          'lot',
+          lot.id,
+          `Received ${lot.meters}m from incoming stock ${incomingStock.invoice_number}`,
+          null,
+          {
+            lot: lot,
+            incoming_stock_id: incomingStock.id,
+            receipt_id: receipt.id
+          },
+          `Created lot ${lot.lot_number} with ${lot.roll_count} roll(s) via goods receipt`
+        );
+      }
 
       toast({
         title: 'Success',

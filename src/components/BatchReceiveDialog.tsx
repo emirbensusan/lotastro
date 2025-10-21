@@ -207,6 +207,7 @@ export default function BatchReceiveDialog({
       .select();
 
     if (lotsError) throw lotsError;
+    if (!createdLots || createdLots.length === 0) throw new Error('Failed to create lots');
 
     // Create goods_in_rows
     const rowsToCreate = createdLots.map(lot => ({
@@ -223,6 +224,7 @@ export default function BatchReceiveDialog({
 
     if (rowsError) {
       console.error('Error creating goods_in_rows:', rowsError);
+      throw new Error('Failed to create goods_in_rows: ' + rowsError.message);
     }
 
     // Create rolls
@@ -247,6 +249,7 @@ export default function BatchReceiveDialog({
 
     if (rollsError) {
       console.error('Error creating rolls:', rollsError);
+      throw new Error('Failed to create rolls: ' + rollsError.message);
     }
 
     // Update incoming stock
@@ -260,20 +263,22 @@ export default function BatchReceiveDialog({
 
     if (updateError) throw updateError;
 
-    // Log audit
-    await logAction(
-      'CREATE',
-      'lot',
-      createdLots[0].id,
-      `Batch received ${totalMeters}m from ${item.invoice_number}`,
-      null,
-      {
-        lots: createdLots,
-        incoming_stock_id: item.id,
-        receipt_id: receipt.id
-      },
-      `Batch received ${totalMeters}m in ${data.lots.length} lot(s) with ${rollsToCreate.length} roll(s)`
-    );
+    // Log audit for EACH lot created
+    for (const lot of createdLots) {
+      await logAction(
+        'CREATE',
+        'lot',
+        lot.id,
+        `Batch received ${lot.meters}m from ${item.invoice_number}`,
+        null,
+        {
+          lot: lot,
+          incoming_stock_id: item.id,
+          receipt_id: receipt.id
+        },
+        `Batch created lot ${lot.lot_number} with ${lot.roll_count} roll(s)`
+      );
+    }
   };
 
   const handleBatchReceive = async () => {

@@ -117,9 +117,30 @@ Deno.serve(async (req) => {
       return returnError(500, 'validation_failed', 'Failed to validate reversal', validationError.message, 'validate_reversal');
     }
 
+    // Enhanced: If "already reversed" but entity exists, treat as recoverable inconsistency
     if (!validationResult || !validationResult[0]?.can_reverse) {
       const validationReason = validationResult?.[0]?.reason || 'Cannot reverse action';
-      return returnError(400, 'cannot_reverse', validationReason, 'This action cannot be reversed. It may have already been reversed or have dependent actions.', 'check_reversibility');
+      
+      if (validationReason === 'Action already reversed') {
+        console.log(`[${correlationId}] Detected "already reversed" flag, checking entity existence...`);
+        
+        // Check if entity still exists
+        const tableName = TABLE_MAP[auditLog.entity_type];
+        const { data: entityCheck } = await supabaseAdmin
+          .from(tableName)
+          .select('id')
+          .eq('id', auditLog.entity_id)
+          .single();
+
+        if (entityCheck) {
+          console.log(`[${correlationId}] INCONSISTENCY DETECTED: is_reversed=true but entity exists. Proceeding with reversal as repair.`);
+          // Continue with reversal - don't return error
+        } else {
+          return returnError(400, 'cannot_reverse', validationReason, 'Action already reversed and entity does not exist.', 'check_reversibility');
+        }
+      } else {
+        return returnError(400, 'cannot_reverse', validationReason, 'This action cannot be reversed. It may have dependent actions.', 'check_reversibility');
+      }
     }
 
     console.log(`[${correlationId}] Reversal validated:`, { 
@@ -156,7 +177,7 @@ Deno.serve(async (req) => {
           
           console.log(`[${correlationId}] Found ${rolls?.length || 0} rolls to delete`);
           
-          // Step 2: Collect goods_in_rows
+          // Step 2: Collect goods_in_rows with fallback
           const { data: goodsInRows, error: rowsError } = await supabaseAdmin
             .from('goods_in_rows')
             .select('id, receipt_id, meters')
@@ -168,14 +189,23 @@ Deno.serve(async (req) => {
           
           console.log(`[${correlationId}] Found ${goodsInRows?.length || 0} goods_in_rows to process`);
           
-          // Step 3: Group by receipt_id and decrement incoming_stock
-          const receiptMeters = new Map<string, number>();
-          const receiptIds = new Set<string>();
+          // Fallback: If no goods_in_rows found, use audit new_data
+          let receiptMeters = new Map<string, number>();
+          let receiptIds = new Set<string>();
+          let fallbackIncomingStockId: string | null = null;
+          let fallbackMeters = 0;
           
-          for (const row of goodsInRows || []) {
-            receiptIds.add(row.receipt_id);
-            const current = receiptMeters.get(row.receipt_id) || 0;
-            receiptMeters.set(row.receipt_id, current + Number(row.meters));
+          if (!goodsInRows || goodsInRows.length === 0) {
+            console.log(`[${correlationId}] No goods_in_rows found, using fallback from audit new_data`);
+            fallbackIncomingStockId = auditLog.new_data?.incoming_stock_id;
+            fallbackMeters = auditLog.new_data?.lot?.meters || auditLog.new_data?.lots?.[0]?.meters || 0;
+          } else {
+            // Step 3: Group by receipt_id and decrement incoming_stock
+            for (const row of goodsInRows) {
+              receiptIds.add(row.receipt_id);
+              const current = receiptMeters.get(row.receipt_id) || 0;
+              receiptMeters.set(row.receipt_id, current + Number(row.meters));
+            }
           }
           
           if (receiptIds.size > 0) {
@@ -206,7 +236,7 @@ Deno.serve(async (req) => {
                 return returnError(500, 'db_error', 'Failed to fetch incoming_stock', fetchIncomingError.message, 'fetch_incoming_stock');
               }
               
-              const newReceivedMeters = Number(incoming.received_meters) - metersToDecrement;
+              const newReceivedMeters = Math.max(0, Number(incoming.received_meters) - metersToDecrement);
               let newStatus = 'pending_inbound';
               
               if (newReceivedMeters >= Number(incoming.expected_meters)) {
@@ -229,43 +259,75 @@ Deno.serve(async (req) => {
               
               console.log(`[${correlationId}] Decremented incoming_stock ${receipt.incoming_stock_id} by ${metersToDecrement}m, status: ${newStatus}`);
             }
+          } else if (fallbackIncomingStockId && fallbackMeters > 0) {
+            // Fallback: decrement using audit data
+            console.log(`[${correlationId}] Using fallback decrement: ${fallbackIncomingStockId}, ${fallbackMeters}m`);
             
-            // Step 4: Delete goods_in_rows
-            const { error: deleteRowsError } = await supabaseAdmin
-              .from('goods_in_rows')
-              .delete()
-              .eq('lot_id', auditLog.entity_id);
+            const { data: incoming, error: fetchIncomingError } = await supabaseAdmin
+              .from('incoming_stock')
+              .select('received_meters, expected_meters')
+              .eq('id', fallbackIncomingStockId)
+              .single();
             
-            if (deleteRowsError) {
-              return returnError(500, 'db_error', 'Failed to delete goods_in_rows', deleteRowsError.message, 'delete_goods_rows');
-            }
-            
-            // Step 5: Delete goods_in_receipts if no more rows remain
-            for (const receiptId of receiptIds) {
-              const { data: remainingRows, error: checkRowsError } = await supabaseAdmin
-                .from('goods_in_rows')
-                .select('id')
-                .eq('receipt_id', receiptId)
-                .limit(1);
+            if (!fetchIncomingError && incoming) {
+              const newReceivedMeters = Math.max(0, Number(incoming.received_meters) - fallbackMeters);
+              let newStatus = 'pending_inbound';
               
-              if (checkRowsError) {
-                return returnError(500, 'db_error', 'Failed to check remaining rows', checkRowsError.message, 'check_remaining_rows');
+              if (newReceivedMeters >= Number(incoming.expected_meters)) {
+                newStatus = 'fully_received';
+              } else if (newReceivedMeters > 0) {
+                newStatus = 'partially_received';
               }
               
-              if (!remainingRows || remainingRows.length === 0) {
-                const { error: deleteReceiptError } = await supabaseAdmin
-                  .from('goods_in_receipts')
-                  .delete()
-                  .eq('id', receiptId);
-                
-                if (deleteReceiptError) {
-                  return returnError(500, 'db_error', 'Failed to delete receipt', deleteReceiptError.message, 'delete_receipt');
-                }
-                
-                console.log(`[${correlationId}] Deleted receipt ${receiptId} (no remaining rows)`);
-              }
+              await supabaseAdmin
+                .from('incoming_stock')
+                .update({ 
+                  received_meters: newReceivedMeters,
+                  status: newStatus
+                })
+                .eq('id', fallbackIncomingStockId);
+              
+              console.log(`[${correlationId}] Fallback decrement successful: ${newReceivedMeters}m, status: ${newStatus}`);
             }
           }
+            
+            // Step 4: Delete goods_in_rows (only if they exist)
+            if (goodsInRows && goodsInRows.length > 0) {
+              const { error: deleteRowsError } = await supabaseAdmin
+                .from('goods_in_rows')
+                .delete()
+                .eq('lot_id', auditLog.entity_id);
+              
+              if (deleteRowsError) {
+                return returnError(500, 'db_error', 'Failed to delete goods_in_rows', deleteRowsError.message, 'delete_goods_rows');
+              }
+              
+              // Step 5: Delete goods_in_receipts if no more rows remain
+              for (const receiptId of receiptIds) {
+                const { data: remainingRows, error: checkRowsError } = await supabaseAdmin
+                  .from('goods_in_rows')
+                  .select('id')
+                  .eq('receipt_id', receiptId)
+                  .limit(1);
+                
+                if (checkRowsError) {
+                  return returnError(500, 'db_error', 'Failed to check remaining rows', checkRowsError.message, 'check_remaining_rows');
+                }
+                
+                if (!remainingRows || remainingRows.length === 0) {
+                  const { error: deleteReceiptError } = await supabaseAdmin
+                    .from('goods_in_receipts')
+                    .delete()
+                    .eq('id', receiptId);
+                  
+                  if (deleteReceiptError) {
+                    return returnError(500, 'db_error', 'Failed to delete receipt', deleteReceiptError.message, 'delete_receipt');
+                  }
+                  
+                  console.log(`[${correlationId}] Deleted receipt ${receiptId} (no remaining rows)`);
+                }
+              }
+            }
           
           // Step 6: Delete rolls
           if (rolls && rolls.length > 0) {

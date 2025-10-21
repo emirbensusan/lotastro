@@ -56,6 +56,8 @@ interface IncomingStockWithSupplier {
   };
   has_reversed_receipt?: boolean;
   latest_receipt_audit_id?: string | null;
+  actual_received_meters?: number;
+  has_mismatch?: boolean;
 }
 
 interface GoodsInReceipt {
@@ -137,7 +139,7 @@ export default function GoodsReceipt() {
         item.expected_meters - item.received_meters > 0
       );
 
-      // For each item, check if the most recent receipt has been reversed
+      // Enrich with reversal status AND validate received_meters consistency
       const enrichedData = await Promise.all(
         filtered.map(async (item) => {
           try {
@@ -151,20 +153,26 @@ export default function GoodsReceipt() {
               .order('created_at', { ascending: false })
               .limit(1);
 
-            if (auditError) {
-              console.error('Error fetching audit data:', auditError);
-              return { ...item, has_reversed_receipt: false, latest_receipt_audit_id: null };
-            }
+            // Cross-validate: sum goods_in_rows.meters for this incoming_stock
+            const { data: rowsSum } = await supabase
+              .from('goods_in_rows')
+              .select('meters, goods_in_receipts!inner(incoming_stock_id)')
+              .eq('goods_in_receipts.incoming_stock_id', item.id);
+
+            const actualReceivedMeters = (rowsSum || []).reduce((sum: number, row: any) => sum + (row.meters || 0), 0);
+            const hasMismatch = Math.abs(actualReceivedMeters - item.received_meters) > 0.01;
 
             const latestAudit = auditData?.[0];
             return {
               ...item,
               has_reversed_receipt: latestAudit?.is_reversed || false,
-              latest_receipt_audit_id: latestAudit?.id || null
+              latest_receipt_audit_id: latestAudit?.id || null,
+              actual_received_meters: actualReceivedMeters,
+              has_mismatch: hasMismatch
             };
           } catch (err) {
             console.error('Error enriching item:', err);
-            return { ...item, has_reversed_receipt: false, latest_receipt_audit_id: null };
+            return { ...item, has_reversed_receipt: false, latest_receipt_audit_id: null, has_mismatch: false };
           }
         })
       );
@@ -661,12 +669,19 @@ export default function GoodsReceipt() {
                             {t('invoice')} {item.invoice_number}
                           </p>
                         )}
-                        {item.has_reversed_receipt && (
-                          <Badge variant="outline" className="mt-2 text-orange-600 border-orange-600">
-                            <RotateCcw className="h-3 w-3 mr-1" />
-                            Previously Unreceived
-                          </Badge>
-                        )}
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          {item.has_reversed_receipt && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-600">
+                              <RotateCcw className="h-3 w-3 mr-1" />
+                              Previously Unreceived
+                            </Badge>
+                          )}
+                          {item.has_mismatch && (
+                            <Badge variant="destructive" className="text-xs">
+                              Data Mismatch
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="flex flex-col gap-1">
