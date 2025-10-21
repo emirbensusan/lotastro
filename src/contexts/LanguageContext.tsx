@@ -105,6 +105,11 @@ const translations = {
     lines: 'Lines',
     active: 'Active',
     converted: 'Converted',
+    reserve: 'Reserve',
+    reserveFromIncoming: 'Reserve from Incoming',
+    viewReservations: 'View Reservations',
+    reservationsForIncoming: 'Reservations for Incoming Stock',
+    noReservationsFound: 'No reservations found',
     
     // Lot
     lotNumber: 'Lot Number',
@@ -591,6 +596,11 @@ const translations = {
     lines: 'Satırlar',
     active: 'Aktif',
     converted: 'Dönüştürüldü',
+    reserve: 'Rezerve Et',
+    reserveFromIncoming: 'Yoldaki Envanterden Rezerve Et',
+    viewReservations: 'Rezervasyonları Görüntüle',
+    reservationsForIncoming: 'Yoldaki Envanter Rezervasyonları',
+    noReservationsFound: 'Rezervasyon bulunamadı',
     
     // Lot
     lotNumber: 'Lot Numarası',

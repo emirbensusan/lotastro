@@ -9,10 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Upload, TruckIcon, PackageIcon, AlertCircle, CheckCircle, Edit, Trash2 } from 'lucide-react';
+import { Plus, Upload, TruckIcon, PackageIcon, AlertCircle, CheckCircle, Edit, Trash2, BookmarkPlus } from 'lucide-react';
 import { IncomingStockDialog } from '@/components/IncomingStockDialog';
 import { IncomingBulkUpload } from '@/components/IncomingBulkUpload';
 import { ReceiveStockDialog } from '@/components/ReceiveStockDialog';
+import ReservationDialog from '@/components/ReservationDialog';
 
 interface IncomingStock {
   id: string;
@@ -48,6 +49,7 @@ const IncomingStock: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
+  const [reservationDialogOpen, setReservationDialogOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<IncomingStockWithSupplier | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
@@ -143,6 +145,11 @@ const IncomingStock: React.FC = () => {
   const handleReceive = (item: IncomingStockWithSupplier) => {
     setSelectedStock(item);
     setReceiveDialogOpen(true);
+  };
+
+  const handleReserve = (item: IncomingStockWithSupplier) => {
+    setSelectedStock(item);
+    setReservationDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -400,6 +407,16 @@ const IncomingStock: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
+                          {hasPermission('reservations', 'create') && openMeters > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReserve(item)}
+                            >
+                              <BookmarkPlus className="h-3 w-3 mr-1" />
+                              {t('reserve')}
+                            </Button>
+                          )}
                           {hasPermission('inventory', 'receiveincoming') && openMeters > 0 && (
                             <Button
                               variant="outline"
@@ -463,6 +480,23 @@ const IncomingStock: React.FC = () => {
           fetchIncomingStock();
           setSelectedStock(null);
         }}
+      />
+
+      <ReservationDialog
+        open={reservationDialogOpen}
+        onOpenChange={setReservationDialogOpen}
+        onSuccess={() => {
+          fetchIncomingStock();
+          setReservationDialogOpen(false);
+        }}
+        preSelectedIncomingStock={selectedStock ? {
+          id: selectedStock.id,
+          quality: selectedStock.quality,
+          color: selectedStock.color,
+          available_meters: selectedStock.expected_meters - selectedStock.received_meters - selectedStock.reserved_meters,
+          invoice_number: selectedStock.invoice_number,
+          supplier_name: selectedStock.suppliers.name
+        } : undefined}
       />
     </div>
   );

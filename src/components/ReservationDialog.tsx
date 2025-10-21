@@ -18,6 +18,14 @@ interface ReservationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  preSelectedIncomingStock?: {
+    id: string;
+    quality: string;
+    color: string;
+    available_meters: number;
+    invoice_number: string | null;
+    supplier_name: string;
+  };
 }
 
 interface ReservationLine {
@@ -63,7 +71,7 @@ interface IncomingItem {
   suppliers: { name: string };
 }
 
-export default function ReservationDialog({ open, onOpenChange, onSuccess }: ReservationDialogProps) {
+export default function ReservationDialog({ open, onOpenChange, onSuccess, preSelectedIncomingStock }: ReservationDialogProps) {
   const { logAction } = useAuditLog();
   const [loading, setLoading] = useState(false);
   const [scope, setScope] = useState<'INVENTORY' | 'INCOMING'>('INVENTORY');
@@ -83,6 +91,20 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess }: Res
     if (open) {
       fetchAvailableInventory();
       fetchAvailableIncoming();
+      
+      // If pre-selected incoming stock, switch to INCOMING tab and add it
+      if (preSelectedIncomingStock) {
+        setScope('INCOMING');
+        setSelectedLines([{
+          scope: 'INCOMING',
+          incoming_stock_id: preSelectedIncomingStock.id,
+          quality: preSelectedIncomingStock.quality,
+          color: preSelectedIncomingStock.color,
+          reserved_meters: 0, // User will need to update this
+          invoice_number: preSelectedIncomingStock.invoice_number || undefined,
+          supplier_name: preSelectedIncomingStock.supplier_name
+        }]);
+      }
     } else {
       // Reset form when dialog closes
       setCustomerName('');
@@ -92,7 +114,7 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess }: Res
       setSelectedLines([]);
       setScope('INVENTORY');
     }
-  }, [open]);
+  }, [open, preSelectedIncomingStock]);
 
   const fetchAvailableInventory = async () => {
     try {
