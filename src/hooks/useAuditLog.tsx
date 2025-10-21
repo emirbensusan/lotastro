@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const useAuditLog = () => {
   const logAction = async (
     action: 'CREATE' | 'UPDATE' | 'DELETE' | 'STATUS_CHANGE' | 'FULFILL' | 'APPROVE' | 'REJECT',
-    entityType: string,
+    entityType: 'field_edit_queue' | 'lot' | 'lot_queue' | 'order' | 'order_lot' | 'order_queue' | 'profile' | 'role_permission' | 'roll' | 'supplier' | 'incoming_stock',
     entityId: string,
     entityIdentifier: string,
     oldData?: any,

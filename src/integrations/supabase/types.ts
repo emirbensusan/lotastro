@@ -1097,6 +1097,7 @@ export type Database = {
         | "field_edit_queue"
         | "profile"
         | "role_permission"
+        | "incoming_stock"
       cancel_reason_type:
         | "no_payment"
         | "customer_canceled"
@@ -1254,6 +1255,7 @@ export const Constants = {
         "field_edit_queue",
         "profile",
         "role_permission",
+        "incoming_stock",
       ],
       cancel_reason_type: [
         "no_payment",

@@ -219,25 +219,37 @@ export default function GoodsReceipt() {
   };
 
   // Fetch lots for unreceiving
-  const fetchLotsForUnreceive = async (incomingStockId: string) => {
+  const fetchLotsForUnreceive = async (incomingStockId: string): Promise<any[]> => {
     try {
-      const { data: lots, error } = await supabase
-        .from('lots')
+      // Query lots via goods_in_receipts and goods_in_rows
+      const result: any = await supabase
+        .from('goods_in_rows')
         .select(`
-          id,
-          lot_number,
-          quality,
-          color,
-          meters,
-          roll_count,
-          entry_date,
-          status
+          lot_id,
+          lots!inner (
+            id,
+            lot_number,
+            quality,
+            color,
+            meters,
+            roll_count,
+            entry_date,
+            status
+          ),
+          goods_in_receipts!inner (
+            incoming_stock_id
+          )
         `)
-        .eq('incoming_stock_id', incomingStockId)
-        .eq('status', 'in_stock');
+        .eq('goods_in_receipts.incoming_stock_id', incomingStockId)
+        .eq('lots.status', 'in_stock');
+      
+      const { data, error } = result;
 
       if (error) throw error;
-      return lots || [];
+      
+      // Transform the data to extract just the lots
+      const lots = data?.map((row: any) => row.lots).filter(Boolean) || [];
+      return lots;
     } catch (error: any) {
       console.error('Error fetching lots:', error);
       toast({
@@ -343,9 +355,10 @@ export default function GoodsReceipt() {
     }
 
     if (selectedForDelete.reserved_meters > 0) {
+      const msg = t('cannotDeleteReserved') as string;
       toast({
         title: String(t('validationError')),
-        description: String(t('cannotDeleteReserved')).replace('{reserved}', selectedForDelete.reserved_meters.toString()),
+        description: msg.replace('{reserved}', selectedForDelete.reserved_meters.toString()),
         variant: 'destructive'
       });
       return;
