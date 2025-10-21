@@ -305,6 +305,9 @@ const translations = {
     
     // Permissions
     permissions: 'Permissions',
+    permReceiveIncoming: 'Receive Incoming Stock',
+    permUnreceiveIncoming: 'Unreceive Incoming Stock',
+    permDeleteIncoming: 'Delete Incoming Stock Entry',
     
     // Inventory
     allQualities: 'All Qualities',
@@ -338,9 +341,6 @@ const translations = {
     newEntry: 'New Entry',
     noIncomingStockFound: 'No incoming stock found',
     failedToFetchIncomingStock: 'Failed to fetch incoming stock',
-    confirmDeleteIncomingStock: 'Are you sure you want to delete this incoming stock?',
-    incomingStockDeletedSuccess: 'Incoming stock deleted successfully',
-    failedToDeleteIncomingStock: 'Failed to delete incoming stock',
     noPermissionIncomingStock: 'You do not have permission to view incoming stock',
     loadingEllipsis: 'Loading...',
     
@@ -876,6 +876,34 @@ const translations = {
     overdue: 'Overdue',
     pending: 'Pending',
     
+    // Goods Receipt - Unreceive and Delete functionality
+    unreceiveStock: 'Unreceive Stock',
+    deleteIncomingStock: 'Delete Entry',
+    deleteIncomingStockTitle: 'Delete Incoming Stock Entry',
+    deleteIncomingStockDesc: 'Delete incoming stock entry for {quality} - {color}',
+    deleteIncomingStockWarning: 'This will permanently remove this pending stock entry',
+    noStockReceived: 'No stock has been received yet',
+    stockPartiallyReceived: 'Warning: {received}m has already been received',
+    cannotDeleteReceived: 'Cannot delete: Stock has been partially or fully received. Please unreceive first.',
+    cannotDeleteReserved: 'Cannot delete: {reserved}m is reserved',
+    deleteIncomingStockButton: 'Delete Entry',
+    deleting: 'Deleting...',
+    incomingStockDeleted: 'Incoming stock entry deleted successfully',
+    deletedIncomingStockNote: 'Deleted incoming stock entry: {invoice} - {quality}/{color} ({meters}m expected)',
+    unreceiveStockTitle: 'Unreceive Stock',
+    unreceiveStockDesc: 'Unreceive goods receipt for {quality} - {color}',
+    selectLotsToUnreceive: 'Select Lots to Unreceive',
+    unreceivingWillDelete: 'Unreceiving will delete the selected lots, rolls, and receipt records',
+    cannotUnreceiveOrdered: 'Cannot unreceive: Rolls from this lot are in orders',
+    cannotUnreceiveReserved: 'Cannot unreceive: Rolls from this lot are reserved',
+    unreceiveButton: 'Unreceive Selected',
+    unreceiving: 'Unreceiving...',
+    stockUnreceivedSuccess: 'Stock unreceived successfully',
+    selectAtLeastOneLot: 'Please select at least one lot to unreceive',
+    lotsFromThisReceipt: 'Lots from this receipt',
+    selectAll: 'Select All',
+    noLotsFound: 'No lots found for this incoming stock entry',
+    
     // Admin Panel - Additional Keys
     fullName: 'Full Name',
     addNewUser: 'Add New User',
@@ -921,12 +949,16 @@ const translations = {
     actionManageRoles: 'Manage Roles',
     actionChangePermissions: 'Change Permissions',
     
-    // Inventory Actions
-    actionCreateLotEntries: 'Create LOT Entries',
+    // Inventory Management Actions
     actionViewInventory: 'View Inventory',
-    actionEditLotInfo: 'Edit LOT Info',
+    actionCreateLotEntries: 'Create LOT Entries',
+    actionEditLotInfo: 'Edit LOT Information',
     actionDeleteLotEntries: 'Delete LOT Entries',
     actionGenerateQrCodes: 'Generate QR Codes',
+    actionViewIncoming: 'View Incoming Stock',
+    actionReceiveIncoming: 'Receive Incoming Stock',
+    actionUnreceiveIncoming: 'Unreceive Incoming Stock',
+    actionDeleteIncoming: 'Delete Incoming Stock Entry',
     
     // Order Actions
     actionViewOrders: 'View Orders',

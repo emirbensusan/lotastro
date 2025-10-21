@@ -29,6 +29,9 @@ const permissions: Permission[] = [
   { categoryKey: 'categoryInventory', actionKey: 'actionEditLotInfo', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryInventory', actionKey: 'actionDeleteLotEntries', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
   { categoryKey: 'categoryInventory', actionKey: 'actionGenerateQrCodes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionReceiveIncoming', warehouse_staff: true, accounting: true, senior_manager: false, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionUnreceiveIncoming', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionDeleteIncoming', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
 
   // Order Management
   { categoryKey: 'categoryOrders', actionKey: 'actionViewOrders', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },

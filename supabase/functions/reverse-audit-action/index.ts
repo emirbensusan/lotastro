@@ -330,12 +330,30 @@ Deno.serve(async (req) => {
         break;
 
       case 'RESTORE':
-        const { error: restoreError } = await supabaseAdmin
-          .from(tableName)
-          .insert(auditLog.old_data);
-        
-        if (restoreError) {
-          return returnError(500, 'db_error', `Failed to restore to ${tableName}`, restoreError.message, 'restore_entity');
+        // Special handling for incoming_stock restoration
+        if (auditLog.entity_type === 'incoming_stock') {
+          const { error: restoreError } = await supabaseAdmin
+            .from('incoming_stock')
+            .insert({
+              ...auditLog.old_data,
+              id: auditLog.entity_id,
+              created_at: auditLog.old_data.created_at,
+              updated_at: new Date().toISOString()
+            });
+          
+          if (restoreError) {
+            return returnError(500, 'db_error', 'Failed to restore incoming_stock', restoreError.message, 'restore_entity');
+          }
+          
+          console.log(`[${correlationId}] Restored incoming_stock ${auditLog.entity_id}`);
+        } else {
+          const { error: restoreError } = await supabaseAdmin
+            .from(tableName)
+            .insert(auditLog.old_data);
+          
+          if (restoreError) {
+            return returnError(500, 'db_error', `Failed to restore to ${tableName}`, restoreError.message, 'restore_entity');
+          }
         }
         
         const { data: restoreAuditData, error: restoreAuditError } = await supabaseAdmin

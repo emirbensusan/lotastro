@@ -3,14 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/use-toast';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { ReceiveStockDialog } from '@/components/ReceiveStockDialog';
 import BatchReceiveDialog from '@/components/BatchReceiveDialog';
 import { 
@@ -23,7 +28,9 @@ import {
   Eye,
   TruckIcon,
   Timer,
-  AlertTriangle
+  AlertTriangle,
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 import { format, isToday, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -76,8 +83,19 @@ export default function GoodsReceipt() {
   const [batchMode, setBatchMode] = useState(false);
   const [selectedForBatch, setSelectedForBatch] = useState<Set<string>>(new Set());
   
+  // Unreceive & Delete dialogs
+  const [unreceiveDialogOpen, setUnreceiveDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedForUnreceive, setSelectedForUnreceive] = useState<IncomingStockWithSupplier | null>(null);
+  const [selectedForDelete, setSelectedForDelete] = useState<IncomingStockWithSupplier | null>(null);
+  const [unreceiveLots, setUnreceiveLots] = useState<any[]>([]);
+  const [selectedLotIds, setSelectedLotIds] = useState<Set<string>>(new Set());
+  const [deleteReason, setDeleteReason] = useState('');
+  const [processing, setProcessing] = useState(false);
+  
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
   const navigate = useNavigate();
   const { t } = useLanguage();
 
@@ -198,6 +216,205 @@ export default function GoodsReceipt() {
     } else {
       fetchReceiptHistory();
     }
+  };
+
+  // Fetch lots for unreceiving
+  const fetchLotsForUnreceive = async (incomingStockId: string) => {
+    try {
+      const { data: lots, error } = await supabase
+        .from('lots')
+        .select(`
+          id,
+          lot_number,
+          quality,
+          color,
+          meters,
+          roll_count,
+          entry_date,
+          status
+        `)
+        .eq('incoming_stock_id', incomingStockId)
+        .eq('status', 'in_stock');
+
+      if (error) throw error;
+      return lots || [];
+    } catch (error: any) {
+      console.error('Error fetching lots:', error);
+      toast({
+        title: String(t('error')),
+        description: 'Failed to load lots',
+        variant: 'destructive'
+      });
+      return [];
+    }
+  };
+
+  // Handle unreceive button click
+  const handleUnreceiveClick = async (item: IncomingStockWithSupplier) => {
+    const lots = await fetchLotsForUnreceive(item.id);
+    setUnreceiveLots(lots);
+    setSelectedForUnreceive(item);
+    setSelectedLotIds(new Set());
+    setUnreceiveDialogOpen(true);
+  };
+
+  // Handle unreceive submit
+  const handleUnreceiveSubmit = async () => {
+    if (selectedLotIds.size === 0) {
+      toast({
+        title: String(t('validationError')),
+        description: String(t('selectAtLeastOneLot')),
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      // For each selected lot, reverse its creation via the reverse-audit-action edge function
+      for (const lotId of selectedLotIds) {
+        // Find the CREATE audit entry for this lot
+        const { data: auditEntry, error: auditError } = await supabase
+          .from('audit_logs')
+          .select('id')
+          .eq('entity_type', 'lot')
+          .eq('entity_id', lotId)
+          .eq('action', 'CREATE')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (auditError || !auditEntry) {
+          throw new Error(`Could not find audit entry for lot ${lotId}`);
+        }
+
+        // Call the reverse-audit-action edge function
+        const { error: reverseError } = await supabase.functions.invoke('reverse-audit-action', {
+          body: {
+            audit_id: auditEntry.id,
+            reason: `Unreceived from Goods Receipt for incoming stock ${selectedForUnreceive?.invoice_number || selectedForUnreceive?.id}`
+          }
+        });
+
+        if (reverseError) {
+          throw reverseError;
+        }
+      }
+
+      toast({
+        description: String(t('stockUnreceivedSuccess'))
+      });
+
+      setUnreceiveDialogOpen(false);
+      setSelectedForUnreceive(null);
+      setSelectedLotIds(new Set());
+      refreshData();
+    } catch (error: any) {
+      console.error('Error unreceiving stock:', error);
+      toast({
+        title: String(t('error')),
+        description: error.message || 'Failed to unreceive stock',
+        variant: 'destructive'
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Handle delete button click
+  const handleDeleteClick = (item: IncomingStockWithSupplier) => {
+    setSelectedForDelete(item);
+    setDeleteReason('');
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle delete submit
+  const handleDeleteSubmit = async () => {
+    if (!selectedForDelete) return;
+
+    if (selectedForDelete.received_meters > 0) {
+      toast({
+        title: String(t('validationError')),
+        description: String(t('cannotDeleteReceived')),
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (selectedForDelete.reserved_meters > 0) {
+      toast({
+        title: String(t('validationError')),
+        description: String(t('cannotDeleteReserved')).replace('{reserved}', selectedForDelete.reserved_meters.toString()),
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!deleteReason.trim()) {
+      toast({
+        title: String(t('validationError')),
+        description: String(t('reasonForReversal')),
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      // Delete the incoming stock entry
+      const { error: deleteError } = await supabase
+        .from('incoming_stock')
+        .delete()
+        .eq('id', selectedForDelete.id);
+
+      if (deleteError) throw deleteError;
+
+      // Log audit action
+      await logAction(
+        'DELETE',
+        'incoming_stock',
+        selectedForDelete.id,
+        selectedForDelete.invoice_number || `${selectedForDelete.quality}-${selectedForDelete.color}`,
+        selectedForDelete,
+        null,
+        String(t('deletedIncomingStockNote'))
+          .replace('{invoice}', selectedForDelete.invoice_number || 'N/A')
+          .replace('{quality}', selectedForDelete.quality)
+          .replace('{color}', selectedForDelete.color)
+          .replace('{meters}', selectedForDelete.expected_meters.toString())
+          + ` | ${String(t('reason'))}: ${deleteReason}`
+      );
+
+      toast({
+        description: String(t('incomingStockDeleted'))
+      });
+
+      setDeleteDialogOpen(false);
+      setSelectedForDelete(null);
+      setDeleteReason('');
+      refreshData();
+    } catch (error: any) {
+      console.error('Error deleting incoming stock:', error);
+      toast({
+        title: String(t('error')),
+        description: error.message || 'Failed to delete incoming stock',
+        variant: 'destructive'
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const toggleLotSelection = (lotId: string) => {
+    const newSelection = new Set(selectedLotIds);
+    if (newSelection.has(lotId)) {
+      newSelection.delete(lotId);
+    } else {
+      newSelection.add(lotId);
+    }
+    setSelectedLotIds(newSelection);
   };
 
   // Calculate summary stats
@@ -446,7 +663,7 @@ export default function GoodsReceipt() {
                   </CardContent>
 
                   {!batchMode && (
-                    <CardFooter>
+                    <CardFooter className="flex flex-col gap-2">
                       <Button 
                         className="w-full"
                         onClick={(e) => {
@@ -457,6 +674,39 @@ export default function GoodsReceipt() {
                         <PackageCheck className="h-4 w-4 mr-2" />
                         {t('receiveStock')}
                       </Button>
+                      
+                      <div className="flex gap-2 w-full">
+                        {/* Unreceive button - only show if stock has been received and user has permission */}
+                        {item.received_meters > 0 && hasPermission('inventory', 'unreceiveincoming') && (
+                          <Button 
+                            variant="outline"
+                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnreceiveClick(item);
+                            }}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            {t('unreceiveStock')}
+                          </Button>
+                        )}
+                        
+                        {/* Delete button - only show if no stock received and user has permission */}
+                        {hasPermission('inventory', 'deleteincoming') && (
+                          <Button 
+                            variant="destructive"
+                            className="flex-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(item);
+                            }}
+                            disabled={item.reserved_meters > 0}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {t('deleteIncomingStock')}
+                          </Button>
+                        )}
+                      </div>
                     </CardFooter>
                   )}
                 </Card>
@@ -534,6 +784,192 @@ export default function GoodsReceipt() {
         selectedStock={pendingStock.filter(item => selectedForBatch.has(item.id))}
         onSuccess={refreshData}
       />
+
+      {/* Unreceive Stock Dialog */}
+      <Dialog open={unreceiveDialogOpen} onOpenChange={setUnreceiveDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{String(t('unreceiveStockTitle'))}</DialogTitle>
+            <DialogDescription>
+              {selectedForUnreceive && String(t('unreceiveStockDesc'))
+                .replace('{quality}', selectedForUnreceive.quality)
+                .replace('{color}', selectedForUnreceive.color)}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {String(t('unreceivingWillDelete'))}
+              </AlertDescription>
+            </Alert>
+
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <Label className="text-base font-semibold">{String(t('lotsFromThisReceipt'))}</Label>
+                {unreceiveLots.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedLotIds.size === unreceiveLots.length) {
+                        setSelectedLotIds(new Set());
+                      } else {
+                        setSelectedLotIds(new Set(unreceiveLots.map(l => l.id)));
+                      }
+                    }}
+                  >
+                    {selectedLotIds.size === unreceiveLots.length ? 'Deselect All' : String(t('selectAll'))}
+                  </Button>
+                )}
+              </div>
+
+              {unreceiveLots.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{String(t('noLotsFound'))}</p>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12"></TableHead>
+                        <TableHead>{String(t('lotNumber'))}</TableHead>
+                        <TableHead>{String(t('quality'))}</TableHead>
+                        <TableHead>{String(t('color'))}</TableHead>
+                        <TableHead className="text-right">{String(t('meters'))}</TableHead>
+                        <TableHead className="text-right">{String(t('rolls'))}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {unreceiveLots.map((lot) => (
+                        <TableRow 
+                          key={lot.id}
+                          className={cn(
+                            "cursor-pointer hover:bg-accent",
+                            selectedLotIds.has(lot.id) && "bg-accent"
+                          )}
+                          onClick={() => toggleLotSelection(lot.id)}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedLotIds.has(lot.id)}
+                              onCheckedChange={() => toggleLotSelection(lot.id)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{lot.lot_number}</TableCell>
+                          <TableCell>{lot.quality}</TableCell>
+                          <TableCell>{lot.color}</TableCell>
+                          <TableCell className="text-right">{lot.meters}m</TableCell>
+                          <TableCell className="text-right">{lot.roll_count}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setUnreceiveDialogOpen(false)}
+              disabled={processing}
+            >
+              {String(t('cancel'))}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleUnreceiveSubmit}
+              disabled={processing || selectedLotIds.size === 0}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              {processing ? String(t('unreceiving')) : String(t('unreceiveButton'))}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Incoming Stock Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{String(t('deleteIncomingStockTitle'))}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedForDelete && String(t('deleteIncomingStockDesc'))
+                .replace('{quality}', selectedForDelete.quality)
+                .replace('{color}', selectedForDelete.color)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4">
+            {selectedForDelete && (
+              <>
+                {selectedForDelete.received_meters > 0 && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      {String(t('cannotDeleteReceived'))}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {selectedForDelete.reserved_meters > 0 && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      {String(t('cannotDeleteReserved')).replace('{reserved}', selectedForDelete.reserved_meters.toString())}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {selectedForDelete.received_meters === 0 && selectedForDelete.reserved_meters === 0 && (
+                  <>
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        {String(t('deleteIncomingStockWarning'))}
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="deleteReason">{String(t('reasonForReversal'))} *</Label>
+                      <Textarea
+                        id="deleteReason"
+                        placeholder={String(t('enterReasonForReversal'))}
+                        value={deleteReason}
+                        onChange={(e) => setDeleteReason(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={processing}>
+              {String(t('cancel'))}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSubmit}
+              disabled={
+                processing || 
+                !selectedForDelete || 
+                selectedForDelete.received_meters > 0 || 
+                selectedForDelete.reserved_meters > 0 ||
+                !deleteReason.trim()
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {processing ? String(t('deleting')) : String(t('deleteIncomingStockButton'))}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

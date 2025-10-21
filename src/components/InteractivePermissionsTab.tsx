@@ -44,6 +44,8 @@ const defaultPermissions: Permission[] = [
   { categoryKey: 'categoryInventory', actionKey: 'actionGenerateQrCodes', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryInventory', actionKey: 'actionViewIncoming', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryInventory', actionKey: 'actionReceiveIncoming', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionUnreceiveIncoming', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionDeleteIncoming', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
 
   // Order Management
   { categoryKey: 'categoryOrders', actionKey: 'actionViewOrders', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
