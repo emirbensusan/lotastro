@@ -1073,6 +1073,36 @@ const translations = {
     noPermissionIncomingStock: 'Yoldaki envanteri görüntüleme izniniz yok',
     loadingEllipsis: 'Yükleniyor...',
     
+    // Goods Receipt - Unreceive/Delete functionality
+    unreceiveStock: 'Stoğa Alımı Geri Al',
+    unreceiveTitle: 'Stoğa Alımı Geri Al',
+    unreceiveDescription: 'Fatura {invoice} stoğa alımını geri al',
+    unreceiveInfo: 'Bu işlem bu faturadan stoğa alınan tüm lotları geri alacaktır',
+    lotsWillBeDeleted: '{count} lot silinecek ({quality}, {color}, {meters}m)',
+    unreceiveWarning: 'Bu işlem geri alınamaz. Lotlar silinecek ve yoldaki envanter güncellenecektir.',
+    unreceiveButton: 'Stoğa Alımı Geri Al',
+    unreceiving: 'Geri alınıyor...',
+    cannotUnreceiveReserved: 'Rezerve metrajı olan lotlar silinemez. Önce {reserved}m metraj rezervasyonunu iptal edin.',
+    unreceiveSuccess: 'Stoğa alım başarıyla geri alındı',
+    unreceiveFailed: 'Stoğa alım geri alınamadı',
+    noLotsToUnreceive: 'Geri alınacak lot bulunamadı',
+    deleteIncomingStockTitle: 'Yoldaki Envanter Kaydını Sil',
+    deleteIncomingStockDesc: 'Fatura {invoice} yoldaki envanter kaydını kalıcı olarak sil',
+    deleteIncomingWarning: 'Bu işlem geri alınamaz. Kayıt kalıcı olarak silinecektir.',
+    deleteIncomingButton: 'Yoldaki Envanteri Sil',
+    deleting: 'Siliniyor...',
+    deleteIncomingSuccess: 'Yoldaki envanter başarıyla silindi',
+    deleteIncomingFailed: 'Yoldaki envanter silinemedi',
+    cannotDeleteReceived: 'Kısmen veya tamamen alınmış yoldaki envanter silinemez. Önce stoğa alımı geri alın.',
+    cannotDeleteReserved: 'Rezerve metrajı olan yoldaki envanter silinemez. Önce {reserved}m metraj rezervasyonunu iptal edin.',
+    operationError: 'İşlem Hatası',
+    confirmDeletion: 'Silmeyi Onayla',
+    keepEntry: 'Kaydı Koru',
+    fetchLotsError: 'Lotlar yüklenemedi',
+    fetchReceiptsError: 'Alımlar yüklenemedi',
+    unreceiveNote: 'Fatura {invoice} için stoğa alım geri alındı - {lotCount} lot silindi ({meters}m)',
+    deleteIncomingNote: 'Yoldaki envanter kaydı silindi - Fatura {invoice}, {quality}, {meters}m',
+    
     // Reports
     reportsAndAnalytics: 'Raporlar ve Analitik',
     pickDateRange: 'Tarih aralığı seç',
@@ -1365,6 +1395,9 @@ const translations = {
     
     // Permissions
     permissions: 'İzinler',
+    permReceiveIncoming: 'Yoldaki Envanteri Al',
+    permUnreceiveIncoming: 'Yoldaki Envanteri Geri Al',
+    permDeleteIncoming: 'Yoldaki Envanter Kaydını Sil',
     
     // Audit Log
     auditLog: 'Denetim Kaydı',
