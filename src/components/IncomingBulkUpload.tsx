@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Download, Upload, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -45,6 +46,7 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const downloadTemplate = () => {
     const template = [
@@ -157,7 +159,7 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
         };
 
         // Validate
-        const error = validateItem(item, suppliers);
+    const error = validateItem(item, suppliers);
         if (error) {
           item.error = error;
         }
@@ -167,14 +169,14 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
 
       setUploadedItems(items);
       toast({
-        title: 'Success',
-        description: `Parsed ${items.length} items from file`
+        title: t('success') as string,
+        description: `${t('successParsedItems').toString().replace('{count}', items.length.toString())}`
       });
     } catch (error: any) {
       console.error('Upload error:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to parse file. Please check format.',
+        title: t('error') as string,
+        description: t('failedToParseFile') as string,
         variant: 'destructive'
       });
     } finally {
@@ -187,8 +189,8 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
 
     if (validItems.length === 0) {
       toast({
-        title: 'Error',
-        description: 'No valid items to upload',
+        title: t('error') as string,
+        description: t('noValidItems') as string,
         variant: 'destructive'
       });
       return;
@@ -224,8 +226,8 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: `Successfully uploaded ${validItems.length} incoming stock entries`
+        title: t('success') as string,
+        description: `${t('uploadedSuccessfully').toString().replace('{count}', validItems.length.toString())}`
       });
 
       onSuccess();
@@ -234,8 +236,8 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
     } catch (error: any) {
       console.error('Upload error:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to upload',
+        title: t('error') as string,
+        description: error.message || t('failedToParseFile') as string,
         variant: 'destructive'
       });
     } finally {
@@ -250,14 +252,14 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Bulk Upload Incoming Stock</DialogTitle>
+          <DialogTitle>{t('bulkUploadIncomingStock')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden">
           {/* Upload section */}
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <Label htmlFor="file-upload">Upload Excel/CSV File</Label>
+              <Label htmlFor="file-upload">{t('uploadExcelCsv')}</Label>
               <Input
                 id="file-upload"
                 type="file"
@@ -272,7 +274,7 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
               className="mt-6"
             >
               <Download className="w-4 h-4 mr-2" />
-              Template
+              {t('template')}
             </Button>
           </div>
 
@@ -282,7 +284,7 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
               <Alert>
                 <FileSpreadsheet className="w-4 h-4" />
                 <AlertDescription>
-                  Found {uploadedItems.length} items: {validItemsCount} valid, {errorItemsCount} with errors
+                  {t('foundItems').toString().replace('{total}', uploadedItems.length.toString()).replace('{valid}', validItemsCount.toString()).replace('{errors}', errorItemsCount.toString())}
                 </AlertDescription>
               </Alert>
 
@@ -290,13 +292,13 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Supplier</TableHead>
-                      <TableHead>Invoice #</TableHead>
-                      <TableHead>Invoice Date</TableHead>
-                      <TableHead>Quality</TableHead>
-                      <TableHead>Color</TableHead>
-                      <TableHead>Meters</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>{t('supplier')}</TableHead>
+                      <TableHead>{t('invoiceHash')}</TableHead>
+                      <TableHead>{t('invoiceDate')}</TableHead>
+                      <TableHead>{t('quality')}</TableHead>
+                      <TableHead>{t('color')}</TableHead>
+                      <TableHead>{t('meters')}</TableHead>
+                      <TableHead>{t('status')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -314,7 +316,7 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
                               {item.error}
                             </Badge>
                           ) : (
-                            <Badge variant="default">Valid</Badge>
+                            <Badge variant="default">{t('validStatus')}</Badge>
                           )}
                         </TableCell>
                       </TableRow>
@@ -328,7 +330,7 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           {uploadedItems.length > 0 && (
             <Button
@@ -336,7 +338,7 @@ export const IncomingBulkUpload: React.FC<IncomingBulkUploadProps> = ({
               disabled={validItemsCount === 0 || loading}
             >
               <Upload className="w-4 h-4 mr-2" />
-              Upload {validItemsCount} Items
+              {t('upload')} {validItemsCount} {t('items')}
             </Button>
           )}
         </div>
