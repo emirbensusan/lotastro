@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// Zod validation schema
+const PasswordChangeSchema = z.object({
+  userId: z.string().uuid('Invalid user ID format'),
+  newPassword: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be less than 128 characters')
+});
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -71,29 +80,29 @@ serve(async (req) => {
       )
     }
 
-    // Parse request body
-    const { userId, newPassword } = await req.json()
-
-    if (!userId || !newPassword) {
+    // Parse and validate request body
+    let parsedData;
+    try {
+      const body = await req.json();
+      parsedData = PasswordChangeSchema.parse(body);
+    } catch (error) {
+      console.error('Validation error:', error);
+      if (error instanceof z.ZodError) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Validation failed',
+            details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       return new Response(
-        JSON.stringify({ error: 'userId and newPassword are required' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Validate password requirements
-    if (newPassword.length < 8) {
-      return new Response(
-        JSON.stringify({ error: 'Password must be at least 8 characters long' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
+    const { userId, newPassword } = parsedData;
 
     // Log security event for audit trail
     await supabaseAdmin.rpc('log_security_event', {

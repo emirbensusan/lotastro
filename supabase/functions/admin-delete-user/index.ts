@@ -1,10 +1,18 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Zod validation schema
+const DeleteUserSchema = z.object({
+  userId: z.string().uuid('Invalid user ID format'),
+  force: z.boolean().optional().default(false),
+  reassignToUserId: z.string().uuid('Invalid reassign user ID format').optional()
+});
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -80,14 +88,29 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body
-    const { userId, force = false, reassignToUserId } = await req.json();
-    if (!userId) {
+    // Parse and validate request body
+    let parsedData;
+    try {
+      const body = await req.json();
+      parsedData = DeleteUserSchema.parse(body);
+    } catch (error) {
+      console.error('Validation error:', error);
+      if (error instanceof z.ZodError) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Validation failed',
+            details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+          }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
       return new Response(
-        JSON.stringify({ error: 'User ID is required' }),
+        JSON.stringify({ error: 'Invalid request body' }),
         { status: 400, headers: corsHeaders }
       );
     }
+
+    const { userId, force, reassignToUserId } = parsedData;
 
     console.log(`Admin ${user.email} attempting to delete user ${userId}`);
 

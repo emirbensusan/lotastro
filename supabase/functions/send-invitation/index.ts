@@ -1,15 +1,22 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface InvitationRequest {
-  email: string;
-  role: string;
-}
+// Zod validation schema
+const InvitationSchema = z.object({
+  email: z.string()
+    .email('Invalid email format')
+    .max(255, 'Email must be less than 255 characters')
+    .transform(val => val.toLowerCase().trim()),
+  role: z.enum(['admin', 'warehouse_staff', 'accounting', 'senior_manager'], {
+    errorMap: () => ({ message: 'Role must be one of: admin, warehouse_staff, accounting, senior_manager' })
+  })
+});
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -61,23 +68,32 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { email, role }: InvitationRequest = await req.json();
-
-    console.log(`Admin ${user.email} inviting:`, { email, role });
-
-    // Validate email format
-    if (!email || !email.includes('@')) {
+    // Parse and validate request body with Zod
+    let parsedData;
+    try {
+      const body = await req.json();
+      parsedData = InvitationSchema.parse(body);
+    } catch (error) {
+      console.error('Validation error:', error);
+      if (error instanceof z.ZodError) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Validation failed',
+            code: 'INVALID_INPUT',
+            details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       return new Response(
-        JSON.stringify({ 
-          error: 'Invalid email',
-          code: 'INVALID_EMAIL',
-          details: 'Please provide a valid email address'
-        }),
+        JSON.stringify({ error: 'Invalid request body', code: 'INVALID_INPUT' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const { email: normalizedEmail, role } = parsedData;
+
+    console.log(`Admin ${user.email} inviting:`, { email: normalizedEmail, role });
 
     // PRE-FLIGHT CHECK 1: Check if profile already exists
     const { data: existingProfile } = await supabase
