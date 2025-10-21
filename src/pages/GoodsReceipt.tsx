@@ -692,38 +692,36 @@ export default function GoodsReceipt() {
                         {t('receiveStock')}
                       </Button>
                       
-                      <div className="flex gap-2 w-full">
-                        {/* Unreceive button - only show if stock has been received and user has permission */}
-                        {item.received_meters > 0 && hasPermission('inventory', 'unreceiveincoming') && (
-                          <Button 
-                            variant="outline"
-                            className="flex-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUnreceiveClick(item);
-                            }}
-                          >
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            {t('unreceiveStock')}
-                          </Button>
-                        )}
-                        
-                        {/* Delete button - only show if no stock received and user has permission */}
-                        {hasPermission('inventory', 'deleteincoming') && (
-                          <Button 
-                            variant="destructive"
-                            className="flex-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(item);
-                            }}
-                            disabled={item.reserved_meters > 0}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            {t('deleteIncomingStock')}
-                          </Button>
-                        )}
-                      </div>
+                      {/* Unreceive button - only show if stock has been received and user has permission */}
+                      {item.received_meters > 0 && hasPermission('inventory', 'unreceiveincoming') && (
+                        <Button 
+                          variant="outline"
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnreceiveClick(item);
+                          }}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          {t('unreceiveStock')}
+                        </Button>
+                      )}
+                      
+                      {/* Delete button - only show if user has permission */}
+                      {hasPermission('inventory', 'deleteincoming') && (
+                        <Button 
+                          variant="destructive"
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(item);
+                          }}
+                          disabled={item.reserved_meters > 0}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {t('deleteIncomingStock')}
+                        </Button>
+                      )}
                     </CardFooter>
                   )}
                 </Card>
