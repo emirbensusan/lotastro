@@ -100,14 +100,18 @@ export default function GoodsReceipt() {
   const { t } = useLanguage();
 
   useEffect(() => {
-    if (hasPermission('inventory', 'receiveincoming')) {
-      if (viewMode === 'pending') {
-        fetchPendingStock();
+    if (!permissionsLoading) {
+      if (hasPermission('inventory', 'receiveincoming')) {
+        if (viewMode === 'pending') {
+          fetchPendingStock();
+        } else {
+          fetchReceiptHistory();
+        }
       } else {
-        fetchReceiptHistory();
+        setLoading(false);
       }
     }
-  }, [viewMode]);
+  }, [viewMode, permissionsLoading, hasPermission]);
 
   const fetchPendingStock = async () => {
     setLoading(true);
