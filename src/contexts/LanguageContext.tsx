@@ -847,6 +847,49 @@ const translations = {
     invitationLinkCopied: 'Invitation link copied to clipboard',
     notAuthorizedAccess: 'You are not authorized to access this page',
     
+    // Dashboard Statistics (additional)
+    totalLots: 'Total Lots',
+    totalMeters: 'Total Meters',
+    pendingReceipts: 'Pending Receipts',
+    totalOrders: 'Total Orders',
+    
+    // Lot Intake - Additional
+    singleLotEntry: 'Single LOT Entry',
+    bulkLotImport: 'Bulk LOT Import',
+    rollCount: 'Roll Count',
+    invoiceDate: 'Invoice Date',
+    productionDate: 'Production Date',
+    
+    // Incoming Stock - Enhanced
+    expectedStockOnTheWay: 'Expected stock on the way',
+    activeReservations: 'Active Reservations',
+    physicalPlusIncomingMinusReserved: 'Physical + Incoming - Reserved',
+    incoming: 'Incoming',
+    available: 'Available',
+    pendingShipments: 'Pending Shipments',
+    totalPendingMeters: 'Total Pending Meters',
+    expectedToday: 'Expected Today',
+    invoice: 'Invoice',
+    expected: 'Expected',
+    received: 'Received',
+    remaining: 'Remaining',
+    overdue: 'Overdue',
+    pending: 'Pending',
+    
+    // Admin Panel - Additional Keys
+    fullName: 'Full Name',
+    addNewUser: 'Add New User',
+    
+    // Role Labels (for PermissionsTab and Admin)
+    roleWarehouseStaff: 'Warehouse Staff',
+    roleDescWarehouseStaff: 'Handle inventory, QR codes, and order fulfillment',
+    roleAccounting: 'Accounting',
+    roleDescAccounting: 'Manage orders, incoming stock, and reservations',
+    roleSeniorManager: 'Senior Manager',
+    roleDescSeniorManager: 'Approve changes and access reports',
+    roleAdmin: 'Admin',
+    roleDescAdmin: 'Full system access and user management',
+    
     // Permissions Tab
     permissionsTitle: 'Role Permissions Matrix',
     resetToDefaults: 'Reset to Defaults',
@@ -1747,6 +1790,27 @@ const translations = {
     supplierDeletedSuccessfully: 'Tedarikçi başarıyla silindi.',
     failedToDeleteSupplier: 'Tedarikçi silinemedi. Mevcut lotlarla ilişkili olabilir.',
     notAuthorizedSuppliers: 'Tedarikçilere erişim yetkiniz yok.',
+    
+    // Lot Intake - Additional
+    singleLotEntry: 'Tek LOT Girişi',
+    bulkLotImport: 'Toplu LOT İçe Aktarma',
+    rollCount: 'Top Sayısı',
+    invoiceDate: 'Fatura Tarihi',
+    productionDate: 'Üretim Tarihi',
+    
+    // Admin Panel - Additional Keys
+    fullName: 'Ad Soyad',
+    addNewUser: 'Yeni Kullanıcı Ekle',
+    
+    // Role Labels (for PermissionsTab and Admin)
+    roleWarehouseStaff: 'Depo Personeli',
+    roleDescWarehouseStaff: 'Envanter, QR kodları ve sipariş karşılamayı yönetir',
+    roleAccounting: 'Muhasebe',
+    roleDescAccounting: 'Siparişleri, yoldaki stoğu ve rezervasyonları yönetir',
+    roleSeniorManager: 'Kıdemli Yönetici',
+    roleDescSeniorManager: 'Değişiklikleri onaylar ve raporlara erişir',
+    roleAdmin: 'Yönetici',
+    roleDescAdmin: 'Tam sistem erişimi ve kullanıcı yönetimi',
     
     // Admin Panel - User Management
     adminPanel: 'Yönetim Paneli',
