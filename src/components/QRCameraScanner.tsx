@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Camera, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import jsQR from "jsqr";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 
 interface QRCameraScannerProps {
@@ -18,6 +19,7 @@ export default function QRCameraScanner({
   onOpenChange,
   onQRCodeDetected
 }: QRCameraScannerProps) {
+  const { t } = useLanguage();
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -40,7 +42,7 @@ export default function QRCameraScanner({
       await startWebCamera();
     } catch (err) {
       console.error('Camera error:', err);
-      setError('Failed to access camera. Please check permissions.');
+      setError(t('cameraError') as string);
       setIsScanning(false);
     }
   };
@@ -89,7 +91,7 @@ export default function QRCameraScanner({
       onQRCodeDetected(code.data);
       stopScanning();
       onOpenChange(false);
-      toast.success('QR Code detected successfully!');
+      toast.success(t('qrCodeDetectedSuccess'));
     } else {
       // Continue scanning
       requestAnimationFrame(scanForQRCode);
@@ -122,10 +124,10 @@ export default function QRCameraScanner({
         if (code) {
           onQRCodeDetected(code.data);
           onOpenChange(false);
-          toast.success('QR Code detected from image!');
+          toast.success(t('qrCodeDetectedFromImage'));
           resolve();
         } else {
-          toast.error('No QR code found in image');
+          toast.error(t('noQrCodeFound'));
           reject(new Error('No QR code found'));
         }
       };
@@ -171,7 +173,7 @@ export default function QRCameraScanner({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Scan QR Code</DialogTitle>
+          <DialogTitle>{t('scanQrCode')}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
@@ -189,7 +191,7 @@ export default function QRCameraScanner({
                 size="lg"
               >
                 <Camera className="w-5 h-5 mr-2" />
-                Start Camera Scanning
+                {t('startCameraScanning')}
               </Button>
               
               <div className="text-center text-muted-foreground">or</div>
@@ -209,7 +211,7 @@ export default function QRCameraScanner({
                   size="lg"
                 >
                   <Upload className="w-5 h-5 mr-2" />
-                  Upload Image
+                  {t('uploadImage')}
                 </Button>
               </div>
             </div>
@@ -237,7 +239,7 @@ export default function QRCameraScanner({
               </div>
               
               <div className="text-center text-sm text-muted-foreground">
-                Position QR code within the scanning area
+                {t('positionQrCode')}
               </div>
             </div>
           )}

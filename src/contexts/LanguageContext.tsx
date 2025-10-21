@@ -240,6 +240,9 @@ const translations = {
     warehouseLocation: 'Warehouse Location',
     notes: 'Notes',
     addLot: 'Add Lot',
+    creatingLot: 'Creating Lot',
+    createLot: 'Create Lot',
+    lotCreatedSuccessMessage: 'Lot created successfully',
     
     // QR Scan Page
     qrCodeScanner: 'QR Code Scanner',
@@ -254,6 +257,10 @@ const translations = {
     quickQrEntry: 'Quick QR Entry',
     qrCodeScanned: 'QR Code Scanned',
     qrCodeGenerated: 'QR Code Generated',
+    qrCodeDetectedSuccess: 'QR Code detected successfully!',
+    qrCodeDetectedFromImage: 'QR Code detected from image!',
+    noQrCodeFound: 'No QR code found in image',
+    cameraError: 'Failed to access camera. Please check permissions.',
     generateQrDescription: 'Generate a new QR code for lot entry',
     printQrCode: 'Print QR Code',
     positionQrCode: 'Position QR code within the scanning area',
@@ -674,9 +681,6 @@ const translations = {
     toolsAndUtilities: 'Araçlar',
     reportsAndAdmin: 'Raporlar ve Yönetici',
     
-    // Orders Tab
-    reservations: 'Rezerve /Opsiyonlu Siparişler',
-    
     // Inventory Stats
     physicalLots: 'Fiziki Lot Sayısı',
     physicalMeters: 'Fiziksel Olarak Mevcut Metraj',
@@ -960,6 +964,9 @@ const translations = {
     warehouseLocation: 'Depo Konumu',
     notes: 'Notlar',
     addLot: 'Lot Ekle',
+    creatingLot: 'Lot Oluşturuluyor',
+    createLot: 'Lot Oluştur',
+    lotCreatedSuccessMessage: 'Lot başarıyla oluşturuldu',
     
     // QR Scan Page
     qrCodeScanner: 'QR Kod Tarayıcı',
@@ -974,6 +981,10 @@ const translations = {
     quickQrEntry: 'Hızlı QR Girişi',
     qrCodeScanned: 'QR Kod Tarandı',
     qrCodeGenerated: 'QR Kod Oluşturuldu',
+    qrCodeDetectedSuccess: 'QR Kod başarıyla algılandı!',
+    qrCodeDetectedFromImage: 'Görüntüden QR Kod algılandı!',
+    noQrCodeFound: 'Görüntüde QR kod bulunamadı',
+    cameraError: 'Kameraya erişilemedi. Lütfen izinleri kontrol edin.',
     generateQrDescription: 'Lot girişi için yeni QR kodu oluştur',
     printQrCode: 'QR Kodunu Yazdır',
     positionQrCode: 'QR kodunu tarama alanı içinde konumlandırın',
@@ -1333,6 +1344,7 @@ const translations = {
     requiresApprovalPermissions: 'Bu sayfayı görüntülemek için onay izinlerine ihtiyacınız var',
     approvals: 'Onaylar',
     auditLogs: 'Denetim Kayıtları',
+    reservations: 'Rezervasyonlar',
     canceled: 'İptal Edildi',
     released: 'Serbest Bırakıldı',
   },
