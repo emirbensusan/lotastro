@@ -54,11 +54,11 @@ const IncomingStock: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (hasPermission('inventory', 'viewincoming')) {
+    if (!permissionsLoading && hasPermission('inventory', 'viewincoming')) {
       fetchIncomingStock();
       fetchSuppliers();
     }
-  }, [hasPermission, statusFilter, supplierFilter]);
+  }, [permissionsLoading, statusFilter, supplierFilter]);
 
   const fetchIncomingStock = async () => {
     setLoading(true);
