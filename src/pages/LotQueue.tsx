@@ -86,7 +86,7 @@ const LotQueue = () => {
     if (!selectedLot || !completionData.supplierId || !completionData.invoiceNumber || !completionData.invoiceDate) {
       toast({
         title: t('validationError') as string,
-        description: "Please fill in all required fields",
+        description: t('fillRequiredFields') as string,
         variant: "destructive",
       });
       return;
@@ -129,7 +129,7 @@ const LotQueue = () => {
 
       toast({
         title: t('success') as string,
-        description: `LOT ${selectedLot.lot_number} moved to inventory successfully`,
+        description: `${t('lotMovedSuccess')}`.replace('LOT', `LOT ${selectedLot.lot_number}`),
       });
     } catch (error: any) {
       toast({
@@ -154,7 +154,7 @@ const LotQueue = () => {
       <Card>
         <CardContent className="p-6">
           <p className="text-center text-muted-foreground">
-            You don't have permission to access this page.
+            {t('noPermissionPage')}
           </p>
         </CardContent>
       </Card>
@@ -212,7 +212,7 @@ const LotQueue = () => {
                   </CardTitle>
                   <Badge variant="secondary">
                     <Clock className="mr-1 h-3 w-3" />
-                    Pending
+                    {t('pendingBadge')}
                   </Badge>
                 </div>
               </CardHeader>
@@ -278,7 +278,7 @@ const LotQueue = () => {
                             onValueChange={(value) => setCompletionData(prev => ({ ...prev, supplierId: value }))}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a supplier" />
+                              <SelectValue placeholder={t('selectSupplierPlaceholder') as string} />
                             </SelectTrigger>
                             <SelectContent>
                               {suppliers.map((supplier) => (
@@ -296,7 +296,7 @@ const LotQueue = () => {
                             id="invoiceNumber"
                             value={completionData.invoiceNumber}
                             onChange={(e) => setCompletionData(prev => ({ ...prev, invoiceNumber: e.target.value }))}
-                            placeholder="e.g., INV-2024-001"
+                            placeholder={t('invoiceNumberPlaceholder') as string}
                             required
                           />
                         </div>
@@ -328,7 +328,7 @@ const LotQueue = () => {
                             id="notes"
                             value={completionData.notes}
                             onChange={(e) => setCompletionData(prev => ({ ...prev, notes: e.target.value }))}
-                            placeholder="Additional notes..."
+                            placeholder={t('additionalNotesPlaceholder') as string}
                           />
                         </div>
                       </div>

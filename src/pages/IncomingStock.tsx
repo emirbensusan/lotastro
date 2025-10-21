@@ -91,7 +91,7 @@ const IncomingStock: React.FC = () => {
     } catch (error) {
       console.error('Error fetching incoming stock:', error);
       toast({
-        title: 'Error',
+        title: t('error') as string,
         description: t('failedToFetchIncomingStock'),
         variant: 'destructive'
       });

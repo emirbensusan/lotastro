@@ -658,6 +658,46 @@ const translations = {
     reservations: 'Reservations',
     canceled: 'Canceled',
     released: 'Released',
+    
+    // Dashboard Quick Actions - Accounting Role
+    receiveGoodsAction: 'Receive Goods',
+    receiveGoodsDesc: 'Process incoming shipments and update inventory',
+    goToGoodsReceipt: 'Go to Goods Receipt',
+    manageReservationsAction: 'Manage Reservations',
+    manageReservationsDesc: 'View and manage stock reservations',
+    goToReservations: 'Go to Reservations',
+    trackIncomingStockAction: 'Track Incoming Stock',
+    trackIncomingStockDesc: 'Monitor expected shipments and deliveries',
+    goToIncomingStock: 'Go to Incoming Stock',
+    
+    // Dashboard Quick Actions - Senior Manager Role
+    viewIncomingStockAction: 'View Incoming Stock',
+    viewIncomingStockDesc: 'Review expected inventory shipments',
+    
+    // Dashboard Quick Actions - Admin Role
+    manageSuppliers: 'Manage Suppliers',
+    addEditManageSupplier: 'Add, edit, and manage supplier information',
+    goToSuppliers: 'Go to Suppliers',
+    deleteLots: 'Delete Lots',
+    removeLotsFromSystem: 'Remove lots from the system',
+    goToInventory: 'Go to Inventory',
+    reprintQrCodes: 'Reprint QR Codes',
+    regenerateAndPrintQr: 'Regenerate and print QR codes for lots',
+    
+    // Lot Queue
+    lotQueueDescription: 'Complete lot information for pending entries',
+    pendingLots: 'Pending Lots',
+    allLotsCompleted: 'All lots have been completed and moved to inventory',
+    completeLotInfo: 'Complete Lot Information',
+    moveToInventory: 'Move to Inventory',
+    validationError: 'Validation Error',
+    fillRequiredFields: 'Please fill in all required fields',
+    lotMovedSuccess: 'LOT moved to inventory successfully',
+    noPermissionPage: 'You don\'t have permission to access this page.',
+    selectSupplierPlaceholder: 'Select a supplier',
+    invoiceNumberPlaceholder: 'e.g., INV-2024-001',
+    additionalNotesPlaceholder: 'Additional notes...',
+    pendingBadge: 'Pending',
   },
   tr: {
     // Navigation
@@ -1347,6 +1387,46 @@ const translations = {
     reservations: 'Rezervasyonlar',
     canceled: 'İptal Edildi',
     released: 'Serbest Bırakıldı',
+    
+    // Dashboard Quick Actions - Accounting Role
+    receiveGoodsAction: 'Mal Kabul',
+    receiveGoodsDesc: 'Gelen gönderileri işle ve envanteri güncelle',
+    goToGoodsReceipt: 'Mal Kabulüne Git',
+    manageReservationsAction: 'Rezervasyonları Yönet',
+    manageReservationsDesc: 'Stok rezervasyonlarını görüntüle ve yönet',
+    goToReservations: 'Rezervasyonlara Git',
+    trackIncomingStockAction: 'Yoldaki Envanteri Takip Et',
+    trackIncomingStockDesc: 'Beklenen gönderileri ve teslimatları izle',
+    goToIncomingStock: 'Yoldaki Envantere Git',
+    
+    // Dashboard Quick Actions - Senior Manager Role
+    viewIncomingStockAction: 'Yoldaki Envanteri Görüntüle',
+    viewIncomingStockDesc: 'Beklenen envanter gönderilerini incele',
+    
+    // Dashboard Quick Actions - Admin Role
+    manageSuppliers: 'Tedarikçileri Yönet',
+    addEditManageSupplier: 'Tedarikçi bilgilerini ekle, düzenle ve yönet',
+    goToSuppliers: 'Tedarikçilere Git',
+    deleteLots: 'Lotları Sil',
+    removeLotsFromSystem: 'Lotları sistemden kaldır',
+    goToInventory: 'Envantere Git',
+    reprintQrCodes: 'QR Kodlarını Yeniden Yazdır',
+    regenerateAndPrintQr: 'Lotlar için QR kodlarını yeniden oluştur ve yazdır',
+    
+    // Lot Queue
+    lotQueueDescription: 'Bekleyen girişler için lot bilgilerini tamamla',
+    pendingLots: 'Bekleyen Lotlar',
+    allLotsCompleted: 'Tüm lotlar tamamlandı ve envantere taşındı',
+    completeLotInfo: 'Lot Bilgilerini Tamamla',
+    moveToInventory: 'Envantere Taşı',
+    validationError: 'Doğrulama Hatası',
+    fillRequiredFields: 'Lütfen tüm gerekli alanları doldurun',
+    lotMovedSuccess: 'LOT envantere başarıyla taşındı',
+    noPermissionPage: 'Bu sayfaya erişim izniniz yok.',
+    selectSupplierPlaceholder: 'Bir tedarikçi seçin',
+    invoiceNumberPlaceholder: 'örn., INV-2024-001',
+    additionalNotesPlaceholder: 'Ek notlar...',
+    pendingBadge: 'Beklemede',
   },
 };
 
