@@ -336,11 +336,42 @@ const AuditLogs: React.FC = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Reversal failed:', error);
+        
+        // Try to parse structured error
+        let errorMessage = error.message || "Failed to reverse the action";
+        let errorDetails = "";
+        
+        try {
+          if (typeof error.message === 'string') {
+            const parsed = JSON.parse(error.message);
+            if (parsed.reason) {
+              errorMessage = parsed.reason;
+              errorDetails = parsed.details ? `\n\nDetails: ${parsed.details}` : "";
+              if (parsed.step) {
+                errorDetails += `\n\nFailed at: ${parsed.step}`;
+              }
+              if (parsed.correlation_id) {
+                errorDetails += `\n\nCorrelation ID: ${parsed.correlation_id}`;
+              }
+            }
+          }
+        } catch {
+          // Use default error message
+        }
+        
+        toast({
+          title: "Reversal Failed",
+          description: errorMessage + errorDetails,
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
         title: 'Success',
-        description: 'Action reversed successfully'
+        description: data?.message || 'Action reversed successfully'
       });
 
       setShowReversalDialog(false);
@@ -348,9 +379,10 @@ const AuditLogs: React.FC = () => {
       setSelectedLog(null);
       fetchAuditLogs();
     } catch (error: any) {
+      console.error('Reversal error:', error);
       toast({
-        title: 'Reversal Failed',
-        description: error.message,
+        title: 'Error',
+        description: 'An unexpected error occurred',
         variant: 'destructive'
       });
     } finally {
