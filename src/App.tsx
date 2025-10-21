@@ -32,6 +32,7 @@ import LotDetails from "./pages/LotDetails";
 import InviteAccept from "./pages/InviteAccept";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => (
           <AuthProvider>
             <ViewAsRoleProvider>
               <POCartProvider>
+                <ErrorBoundary>
             <Routes>
               <Route path="/auth" element={<Auth />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -164,6 +166,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <FloatingPOCart />
+                </ErrorBoundary>
               </POCartProvider>
             </ViewAsRoleProvider>
           </AuthProvider>
