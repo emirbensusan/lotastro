@@ -134,6 +134,24 @@ Deno.serve(async (req) => {
 
         if (entityCheck) {
           console.log(`[${correlationId}] INCONSISTENCY DETECTED: is_reversed=true but entity exists. Proceeding with reversal as repair.`);
+          
+          // Reset audit flags explicitly before proceeding with idempotent reversal
+          const { error: resetError } = await supabaseAdmin
+            .from('audit_logs')
+            .update({
+              is_reversed: false,
+              reversed_at: null,
+              reversed_by: null,
+              reversal_audit_id: null
+            })
+            .eq('id', audit_id);
+          
+          if (resetError) {
+            console.error(`[${correlationId}] Failed to reset audit flags:`, resetError);
+          } else {
+            console.log(`[${correlationId}] Reset audit flags for idempotent reversal`);
+          }
+          
           // Continue with reversal - don't return error
         } else {
           return returnError(400, 'cannot_reverse', validationReason, 'Action already reversed and entity does not exist.', 'check_reversibility');

@@ -307,16 +307,90 @@ export default function GoodsReceipt() {
     }
   };
 
-  // Handle unreceive button click
+  // Handle repair mismatch
+  const handleRepairMismatch = async (item: IncomingStockWithSupplier) => {
+    setProcessing(true);
+    try {
+      // Recalculate received_meters from goods_in_rows
+      const { data: rowsData, error: rowsError } = await supabase
+        .from('goods_in_rows')
+        .select('meters, goods_in_receipts!inner(incoming_stock_id)')
+        .eq('goods_in_receipts.incoming_stock_id', item.id);
+      
+      if (rowsError) throw rowsError;
+      
+      const actualMeters = rowsData?.reduce((sum, row) => sum + Number(row.meters), 0) || 0;
+      
+      // Determine status
+      let newStatus = 'pending_inbound';
+      if (actualMeters >= item.expected_meters) {
+        newStatus = 'fully_received';
+      } else if (actualMeters > 0) {
+        newStatus = 'partially_received';
+      }
+      
+      // Update incoming_stock
+      const { error: updateError } = await supabase
+        .from('incoming_stock')
+        .update({
+          received_meters: actualMeters,
+          status: newStatus
+        })
+        .eq('id', item.id);
+      
+      if (updateError) throw updateError;
+      
+      toast({
+        title: String(t('success')),
+        description: `Repaired: Updated received meters from ${item.received_meters}m to ${actualMeters}m`
+      });
+      
+      await refreshData();
+    } catch (error: any) {
+      console.error('Error repairing mismatch:', error);
+      toast({
+        title: String(t('error')),
+        description: error.message || 'Failed to repair mismatch',
+        variant: 'destructive'
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Handle unreceive button click - now with audit info
   const handleUnreceiveClick = async (item: IncomingStockWithSupplier) => {
     const lots = await fetchLotsForUnreceive(item.id);
-    setUnreceiveLots(lots);
+    
+    // Enrich lots with audit information
+    const lotsWithAudit = await Promise.all(
+      lots.map(async (lot) => {
+        const { data: audit } = await supabase
+          .from('audit_logs')
+          .select('id, is_reversed')
+          .eq('entity_type', 'lot')
+          .eq('entity_id', lot.id)
+          .eq('action', 'CREATE')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        return {
+          ...lot,
+          has_audit: !!audit,
+          audit_id: audit?.id,
+          is_reversed: audit?.is_reversed || false
+        };
+      })
+    );
+    
+    setUnreceiveLots(lotsWithAudit);
     setSelectedForUnreceive(item);
     setSelectedLotIds(new Set());
     setUnreceiveDialogOpen(true);
   };
 
-  // Handle unreceive submit
+  // Handle unreceive submit - smart logic for 3 cases
   const handleUnreceiveSubmit = async () => {
     if (selectedLotIds.size === 0) {
       toast({
@@ -330,36 +404,64 @@ export default function GoodsReceipt() {
     setProcessing(true);
 
     try {
-      // For each selected lot, reverse its creation via the reverse-audit-action edge function
+      // For each selected lot, handle based on audit state
       for (const lotId of selectedLotIds) {
-        // Find the CREATE audit entry for this lot
-        const { data: auditEntry, error: auditError } = await supabase
-          .from('audit_logs')
-          .select('id')
-          .eq('entity_type', 'lot')
-          .eq('entity_id', lotId)
-          .eq('action', 'CREATE')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (auditError || !auditEntry) {
-          throw new Error(`Could not find audit entry for lot ${lotId}`);
-        }
-
-        // Call the reverse-audit-action edge function
-        const { data: reverseData, error: reverseError } = await supabase.functions.invoke('reverse-audit-action', {
-          body: {
-            audit_id: auditEntry.id,
-            reason: `Unreceived from Goods Receipt for incoming stock ${selectedForUnreceive?.invoice_number || selectedForUnreceive?.id}`
+        const lot = unreceiveLots.find(l => l.id === lotId);
+        
+        if (!lot.has_audit) {
+          // Case 1: No audit - use direct_reversal
+          const { data: repairData, error: repairError } = await supabase.functions.invoke('repair-audit-inconsistencies', {
+            body: {
+              action: 'direct_reversal',
+              lot_id: lotId,
+              reason: `Unreceive - No CREATE audit found for lot ${lot.lot_number}`
+            }
+          });
+          
+          if (repairError) {
+            const errorMsg = repairData?.error || repairError.message || 'Unknown error';
+            throw new Error(`Failed to reverse lot ${lot.lot_number}: ${errorMsg}`);
           }
-        });
-
-        if (reverseError) {
-          // Try to extract error details from the response
-          const errorDetails = reverseData?.error || reverseError.message || 'Unknown error';
-          const errorReason = reverseData?.reason || '';
-          throw new Error(`${errorDetails}${errorReason ? `: ${errorReason}` : ''}`);
+        } else if (lot.is_reversed) {
+          // Case 2: Already reversed but data exists - reset then reverse
+          const { data: resetData, error: resetError } = await supabase.functions.invoke('repair-audit-inconsistencies', {
+            body: {
+              action: 'reset_reversed_flag',
+              audit_id: lot.audit_id,
+              reason: `Reset for re-reversal - lot ${lot.lot_number} data still exists`
+            }
+          });
+          
+          if (resetError) {
+            const errorMsg = resetData?.error || resetError.message || 'Unknown error';
+            throw new Error(`Failed to reset audit for lot ${lot.lot_number}: ${errorMsg}`);
+          }
+          
+          // Now reverse normally
+          const { data: reverseData, error: reverseError } = await supabase.functions.invoke('reverse-audit-action', {
+            body: {
+              audit_id: lot.audit_id,
+              reason: `Unreceived from Goods Receipt for incoming stock ${selectedForUnreceive?.invoice_number || selectedForUnreceive?.id}`
+            }
+          });
+          
+          if (reverseError) {
+            const errorMsg = reverseData?.error || reverseError.message || 'Unknown error';
+            throw new Error(`Failed to reverse lot ${lot.lot_number}: ${errorMsg}`);
+          }
+        } else {
+          // Case 3: Normal reversal
+          const { data: reverseData, error: reverseError } = await supabase.functions.invoke('reverse-audit-action', {
+            body: {
+              audit_id: lot.audit_id,
+              reason: `Unreceived from Goods Receipt for incoming stock ${selectedForUnreceive?.invoice_number || selectedForUnreceive?.id}`
+            }
+          });
+          
+          if (reverseError) {
+            const errorMsg = reverseData?.error || reverseError.message || 'Unknown error';
+            throw new Error(`Failed to reverse lot ${lot.lot_number}: ${errorMsg}`);
+          }
         }
       }
 
@@ -677,9 +779,11 @@ export default function GoodsReceipt() {
                             </Badge>
                           )}
                           {item.has_mismatch && (
-                            <Badge variant="destructive" className="text-xs">
-                              Data Mismatch
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="destructive" className="text-xs">
+                                Mismatch: {item.received_meters}m recorded vs {item.actual_received_meters}m actual
+                              </Badge>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -759,6 +863,22 @@ export default function GoodsReceipt() {
                         {t('receiveStock')}
                       </Button>
                       
+                      {/* Repair button - show if mismatch detected */}
+                      {item.has_mismatch && hasPermission('inventory', 'admin') && (
+                        <Button 
+                          variant="outline"
+                          className="w-full border-orange-500 text-orange-600 hover:bg-orange-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRepairMismatch(item);
+                          }}
+                          disabled={processing}
+                        >
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                          Repair Data Mismatch
+                        </Button>
+                      )}
+                      
                       {/* Unreceive button - only show if stock has been received and user has permission */}
                       {item.received_meters > 0 && hasPermission('inventory', 'unreceiveincoming') && (
                         <Button 
@@ -766,12 +886,8 @@ export default function GoodsReceipt() {
                           className="w-full"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (!item.has_reversed_receipt) {
-                              handleUnreceiveClick(item);
-                            }
+                            handleUnreceiveClick(item);
                           }}
-                          disabled={item.has_reversed_receipt}
-                          title={item.has_reversed_receipt ? 'This receipt has already been unreceived' : ''}
                         >
                           <RotateCcw className="h-4 w-4 mr-2" />
                           {t('unreceiveStock')}
@@ -943,7 +1059,21 @@ export default function GoodsReceipt() {
                               onClick={(e) => e.stopPropagation()}
                             />
                           </TableCell>
-                          <TableCell className="font-medium">{lot.lot_number}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{lot.lot_number}</span>
+                              {!lot.has_audit && (
+                                <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
+                                  No Audit
+                                </Badge>
+                              )}
+                              {lot.is_reversed && (
+                                <Badge variant="outline" className="text-xs text-red-600 border-red-600">
+                                  Flagged
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>{lot.quality}</TableCell>
                           <TableCell>{lot.color}</TableCell>
                           <TableCell className="text-right">{lot.meters}m</TableCell>

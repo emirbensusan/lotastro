@@ -252,12 +252,21 @@ export default function BatchReceiveDialog({
       throw new Error('Failed to create rolls: ' + rollsError.message);
     }
 
-    // Update incoming stock
+    // Update incoming stock with status
     const newReceivedMeters = item.received_meters + totalMeters;
+    let newStatus = 'pending_inbound';
+    
+    if (newReceivedMeters >= item.expected_meters) {
+      newStatus = 'fully_received';
+    } else if (newReceivedMeters > 0) {
+      newStatus = 'partially_received';
+    }
+    
     const { error: updateError } = await supabase
       .from('incoming_stock')
       .update({
-        received_meters: newReceivedMeters
+        received_meters: newReceivedMeters,
+        status: newStatus
       })
       .eq('id', item.id);
 

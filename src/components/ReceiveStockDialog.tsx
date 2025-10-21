@@ -226,12 +226,21 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
         throw new Error('Failed to create rolls: ' + rollsError.message);
       }
 
-      // Step 5: Update incoming stock
+      // Step 5: Update incoming stock with status
       const newReceivedMeters = incomingStock.received_meters + totalMeters;
+      let newStatus = 'pending_inbound';
+      
+      if (newReceivedMeters >= incomingStock.expected_meters) {
+        newStatus = 'fully_received';
+      } else if (newReceivedMeters > 0) {
+        newStatus = 'partially_received';
+      }
+      
       const { error: updateError } = await supabase
         .from('incoming_stock')
         .update({
-          received_meters: newReceivedMeters
+          received_meters: newReceivedMeters,
+          status: newStatus
         })
         .eq('id', incomingStock.id);
 
