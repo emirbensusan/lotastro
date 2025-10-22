@@ -267,6 +267,8 @@ export default function AIOrderInput() {
     setDraftLines([]);
     setEditingLine(null);
     setEditValues({});
+    setExtracting(false);
+    setLoading(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -289,11 +291,21 @@ export default function AIOrderInput() {
   return (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5" />
-          {t('aiOrder.title')}
-        </CardTitle>
-        <CardDescription>{t('aiOrder.description')}</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              {t('aiOrder.title')}
+            </CardTitle>
+            <CardDescription>{t('aiOrder.description')}</CardDescription>
+          </div>
+          {(draftId || pastedText || selectedFile) && (
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              <X className="h-4 w-4 mr-2" />
+              {t('aiOrder.startNew')}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {!draftId ? (
@@ -376,9 +388,6 @@ export default function AIOrderInput() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{t('aiOrder.previewTitle')}</h3>
-                <Button variant="outline" size="sm" onClick={handleReset}>
-                  {t('aiOrder.startNew')}
-                </Button>
               </div>
 
               <div className="border rounded-lg overflow-hidden">

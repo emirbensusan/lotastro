@@ -115,56 +115,64 @@ export function normalizeTurkish(text: string): string {
 
 /**
  * Parse meters expression with sum/multiply support
- * Handles: "10 MT", "10 + 20", "2x10", "10 + 2x5"
+ * Handles: "10 MT", "10 + 20", "2x10", "10 + 2x5", "2x10 MT 20"
+ * When an expression is found, ignores trailing standalone numbers (echo pattern)
  */
 export function parseMetersExpression(text: string): number | null {
+  const original = text;
   text = text.trim().toUpperCase();
   
-  // Simple meter extraction first
-  const simpleMatch = text.match(/(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d+))?\s*(?:MT|M|METRE|METER)?/i);
-  
-  // Check for sum/multiply expressions
+  // Check for sum/multiply expressions first
   const hasSumOrMultiply = /[\+\*xX]/.test(text);
   
-  if (!hasSumOrMultiply && simpleMatch) {
-    // Simple case: just a number
-    let wholeNumber = simpleMatch[1].replace(/\./g, '');
-    const decimal = simpleMatch[2] || '0';
-    const result = parseFloat(`${wholeNumber}.${decimal}`);
-    return isNaN(result) || result <= 0 ? null : result;
-  }
-  
-  // Parse complex expressions
-  let total = 0;
-  
-  // Handle multiplication (2x10, 2*10)
-  const multiplyMatches = text.matchAll(/(\d+(?:,\d+)?)\s*[xX\*]\s*(\d+(?:,\d+)?)/g);
-  for (const match of multiplyMatches) {
-    const a = parseFloat(match[1].replace(',', '.'));
-    const b = parseFloat(match[2].replace(',', '.'));
-    total += a * b;
-    // Remove from text to avoid double counting
-    text = text.replace(match[0], '');
-  }
-  
-  // Handle addition
-  const additionMatches = text.matchAll(/(\d+(?:,\d+)?)\s*\+\s*(\d+(?:,\d+)?)/g);
-  for (const match of additionMatches) {
-    const a = parseFloat(match[1].replace(',', '.'));
-    const b = parseFloat(match[2].replace(',', '.'));
-    total += a + b;
-    text = text.replace(match[0], '');
-  }
-  
-  // If no operations found, try simple number
-  if (total === 0) {
-    const numbers = text.match(/(\d+(?:,\d+)?)/g);
-    if (numbers && numbers.length > 0) {
-      total = parseFloat(numbers[0].replace(',', '.'));
+  if (hasSumOrMultiply) {
+    // Parse complex expressions
+    let total = 0;
+    let foundExpression = false;
+    
+    // Handle multiplication (2x10, 2*10)
+    const multiplyMatches = [...text.matchAll(/(\d+(?:[.,]\d+)?)\s*[xX\*]\s*(\d+(?:[.,]\d+)?)/g)];
+    for (const match of multiplyMatches) {
+      const a = parseFloat(match[1].replace(',', '.'));
+      const b = parseFloat(match[2].replace(',', '.'));
+      total += a * b;
+      foundExpression = true;
+      // Remove from text to avoid double counting
+      text = text.replace(match[0], ' ');
+    }
+    
+    // Handle addition (must be after removing multiplications)
+    const additionMatches = [...text.matchAll(/(\d+(?:[.,]\d+)?)\s*\+\s*(\d+(?:[.,]\d+)?)/g)];
+    for (const match of additionMatches) {
+      const a = parseFloat(match[1].replace(',', '.'));
+      const b = parseFloat(match[2].replace(',', '.'));
+      total += a + b;
+      foundExpression = true;
+      text = text.replace(match[0], ' ');
+    }
+    
+    // If we found an expression and got a valid total, return it
+    // (ignoring any trailing standalone numbers which are likely echoes)
+    if (foundExpression && total > 0) {
+      console.log(`[parseMetersExpression] "${original}" -> ${total} (expression found, ignoring trailing numbers)`);
+      return total;
     }
   }
   
-  return total > 0 ? total : null;
+  // Simple case: just extract first number
+  const simpleMatch = text.match(/(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d+))?\s*(?:MT|M|METRE|METER)?/i);
+  if (simpleMatch) {
+    let wholeNumber = simpleMatch[1].replace(/\./g, '');
+    const decimal = simpleMatch[2] || '0';
+    const result = parseFloat(`${wholeNumber}.${decimal}`);
+    if (!isNaN(result) && result > 0) {
+      console.log(`[parseMetersExpression] "${original}" -> ${result} (simple number)`);
+      return result;
+    }
+  }
+  
+  console.log(`[parseMetersExpression] "${original}" -> null (no valid number found)`);
+  return null;
 }
 
 /**
@@ -233,7 +241,9 @@ export function deterministicExtract(rawText: string): ParsedLine[] {
     
     const quality = extractQuality(line);
     const color = extractColor(line);
-    const meters = parseMeters(line);
+    const meters = parseMetersExpression(line);
+    
+    console.log(`[deterministicExtract] Line: "${line.substring(0, 50)}..." -> Q:${quality} C:${color} M:${meters}`);
     
     // Determine status
     let status: 'ok' | 'needs_review' | 'missing' = 'ok';
