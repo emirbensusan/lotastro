@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast, toast } from "@/hooks/use-toast";
-import { ArrowLeft, Package, Filter, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Package, Filter, ShoppingCart, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { format } from 'date-fns';
@@ -44,6 +44,7 @@ interface SelectedLot {
 
 const LotSelection = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { t } = useLanguage();
   const { addToCart, setIsCartOpen } = usePOCart();
@@ -57,6 +58,16 @@ const LotSelection = () => {
   const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentColorIndex, setCurrentColorIndex] = useState(0);
+  
+  // Track requested quantities from AI draft
+  const [requestedItems, setRequestedItems] = useState<Array<{
+    quality: string;
+    color: string;
+    meters: number;
+  }>>([]);
+  
+  // Track selected meters per quality+color
+  const [selectedMeters, setSelectedMeters] = useState<Map<string, number>>(new Map());
   
   // Filters
   const [dateFilter, setDateFilter] = useState('all');
@@ -136,6 +147,22 @@ const LotSelection = () => {
   useEffect(() => {
     applyFilters();
   }, [lots, dateFilter, supplierFilter, searchTerm]);
+
+  // Parse requested items from location state
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.fromAIDraft && state?.requestedItems) {
+      setRequestedItems(state.requestedItems);
+      
+      // Initialize selectedMeters map
+      const metersMap = new Map<string, number>();
+      state.requestedItems.forEach((item: any) => {
+        const key = `${item.quality}|${item.color}`;
+        metersMap.set(key, 0);
+      });
+      setSelectedMeters(metersMap);
+    }
+  }, [location.state]);
 
   const fetchLots = async () => {
     try {
@@ -219,7 +246,18 @@ const LotSelection = () => {
     setFilteredLots(filtered);
   };
 
-  const handleRollSelectionComplete = () => {
+  const handleRollSelectionComplete = (addedMeters?: number, quality?: string, color?: string) => {
+    // Update selectedMeters if meters were added
+    if (addedMeters && quality && color) {
+      const key = `${quality}|${color}`;
+      setSelectedMeters(prev => {
+        const updated = new Map(prev);
+        const current = updated.get(key) || 0;
+        updated.set(key, current + addedMeters);
+        return updated;
+      });
+    }
+
     // Move to next color if available
     if (currentColorIndex < colorArray.length - 1) {
       setCurrentColorIndex(currentColorIndex + 1);
@@ -229,6 +267,17 @@ const LotSelection = () => {
       setIsCartOpen(true);
     }
   };
+
+  // Check if can proceed to checkout
+  const canProceedToCheckout = useMemo(() => {
+    if (requestedItems.length === 0) return true; // No restrictions if not from AI draft
+    
+    return requestedItems.every(item => {
+      const key = `${item.quality}|${item.color}`;
+      const selected = selectedMeters.get(key) || 0;
+      return selected >= item.meters;
+    });
+  }, [requestedItems, selectedMeters]);
 
   const goBackToColors = () => {
     const normalizedQuality = encodeURIComponent(getCurrentQuality());
@@ -264,6 +313,62 @@ const LotSelection = () => {
 
   return (
     <div className="space-y-6">
+      {/* Requested Quantities Tracker */}
+      {requestedItems.length > 0 && (
+        <Card className="sticky top-0 z-10 bg-background shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              {t('aiOrder.requestedQuantities')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {requestedItems.map((item) => {
+                const key = `${item.quality}|${item.color}`;
+                const selected = selectedMeters.get(key) || 0;
+                const remaining = Math.max(0, item.meters - selected);
+                const isFulfilled = selected >= item.meters;
+                
+                return (
+                  <div key={key} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                    <div className="font-medium">
+                      <Badge variant="outline" className="mr-2">{item.quality}</Badge>
+                      <span>{item.color}</span>
+                    </div>
+                    <div className="flex gap-6 items-center text-sm">
+                      <span>{t('aiOrder.requested')}: <strong>{item.meters} m</strong></span>
+                      <span>{t('aiOrder.selected')}: <strong className={selected > 0 ? 'text-blue-600' : ''}>{selected} m</strong></span>
+                      <span className={isFulfilled ? 'text-green-600' : 'text-orange-600'}>
+                        {t('aiOrder.remaining')}: <strong>{remaining} m</strong>
+                      </span>
+                      {isFulfilled && <CheckCircle className="h-5 w-5 text-green-600" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Progress summary */}
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">
+                  {requestedItems.filter(item => {
+                    const key = `${item.quality}|${item.color}`;
+                    return (selectedMeters.get(key) || 0) >= item.meters;
+                  }).length} / {requestedItems.length} {t('aiOrder.itemsFulfilled')}
+                </span>
+                {canProceedToCheckout && (
+                  <Badge variant="default" className="bg-green-600">
+                    {t('aiOrder.allQuantitiesFulfilled')}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -420,9 +525,9 @@ const LotSelection = () => {
         return (
           <RollSelectionDialog
             isOpen={true}
-            onClose={() => {
+            onClose={(addedMeters?: number) => {
               setRollSelectionDialogLotId(null);
-              handleRollSelectionComplete();
+              handleRollSelectionComplete(addedMeters, lot.quality, colorArray[currentColorIndex].color);
             }}
             lotId={lot.id}
             lotNumber={lot.lot_number}

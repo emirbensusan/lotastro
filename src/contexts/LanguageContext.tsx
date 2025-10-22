@@ -150,6 +150,13 @@ const translations = {
       searchQuality: 'Search quality (min 3 chars)...',
       searchColor: 'Search color (min 3 chars)...',
       noResults: 'No results found',
+      itemsFulfilled: 'items fulfilled',
+      proceedToCheckout: 'Proceed to Checkout',
+      editPrompt: 'This line needs review. Click Save when done.',
+      editTip: {
+        title: 'How to edit extracted data',
+        description: 'Click the edit icon (✏️) on any row to modify quality, color, or meters. Use the search to find correct values from your database.'
+      }
     },
     
     // Reservation
@@ -1300,6 +1307,13 @@ const translations = {
       searchQuality: 'Kalite ara (min 3 karakter)...',
       searchColor: 'Renk ara (min 3 karakter)...',
       noResults: 'Sonuç bulunamadı',
+      itemsFulfilled: 'kalem tamamlandı',
+      proceedToCheckout: 'Ödemeye Geç',
+      editPrompt: 'Bu satır inceleme gerektiriyor. Bitirdiğinizde Kaydet\'e tıklayın.',
+      editTip: {
+        title: 'Çıkarılan verileri nasıl düzenlerim',
+        description: 'Herhangi bir satırda kalite, renk veya metre değiştirmek için düzenle simgesine (✏️) tıklayın. Veritabanınızdan doğru değerleri bulmak için aramayı kullanın.'
+      }
     },
     
     // Reservation

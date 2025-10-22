@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { FileText, Image, Upload, Sparkles, Trash2, CheckCircle, AlertCircle, Edit2, Save, X } from 'lucide-react';
+import { FileText, Image, Upload, Sparkles, Trash2, CheckCircle, AlertCircle, Edit2, Save, X, Info } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
@@ -243,14 +243,28 @@ export default function AIOrderInput() {
       const aggregated: AggregatedLine[] = data.aggregated;
       toast.success(t('aiOrder.draftConfirmed') as string);
 
-      // Navigate to lot selection with aggregated data
-      navigate('/lot-selection', { 
-        state: { 
-          fromAIDraft: true, 
-          draftId,
-          aggregatedLines: aggregated 
-        } 
-      });
+      // Navigate to lot selection with URL params for filtering
+      if (aggregated.length === 1) {
+        // Single quality+color: use simple params
+        const item = aggregated[0];
+        navigate(`/lot-selection?quality=${encodeURIComponent(item.quality)}&color=${encodeURIComponent(item.color)}`, {
+          state: {
+            fromAIDraft: true,
+            requestedItems: aggregated
+          }
+        });
+      } else {
+        // Multiple quality+color combinations: use colors param
+        const colorParams = aggregated
+          .map(item => `${encodeURIComponent(item.quality)}|${encodeURIComponent(item.color)}`)
+          .join(',');
+        navigate(`/lot-selection?colors=${colorParams}`, {
+          state: {
+            fromAIDraft: true,
+            requestedItems: aggregated
+          }
+        });
+      }
     } catch (error: any) {
       console.error('Error confirming draft:', error);
       toast.error(t('aiOrder.confirmFailed') as string + ': ' + error.message);
@@ -287,6 +301,17 @@ export default function AIOrderInput() {
   const canConfirm = draftLines.length > 0 && draftLines.every(l => 
     l.quality && l.color && l.meters && l.meters > 0 && l.extraction_status === 'ok'
   );
+
+  // Auto-open first needs_review row in edit mode
+  useEffect(() => {
+    if (draftLines.length > 0 && editingLine === null) {
+      const firstNeedsReview = draftLines.find(l => l.extraction_status === 'needs_review');
+      if (firstNeedsReview) {
+        handleEditLine(firstNeedsReview.line_no);
+        toast.info(t('aiOrder.editPrompt') as string, { duration: 5000 });
+      }
+    }
+  }, [draftLines]);
 
   return (
     <Card className="mb-6">
@@ -388,6 +413,15 @@ export default function AIOrderInput() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{t('aiOrder.previewTitle')}</h3>
+              </div>
+
+              {/* Edit Tip Banner */}
+              <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-2">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-900 dark:text-blue-100">
+                  <strong>{t('aiOrder.editTip.title')}</strong>
+                  <p className="mt-1">{t('aiOrder.editTip.description')}</p>
+                </div>
               </div>
 
               <div className="border rounded-lg overflow-hidden">

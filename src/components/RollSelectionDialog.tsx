@@ -18,7 +18,7 @@ interface Roll {
 
 interface RollSelectionDialogProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (addedMeters?: number) => void;
   lotId: string;
   lotNumber: string;
   quality: string;
@@ -193,6 +193,8 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
       selectedRollMeters: sampleMode ? [sampleMeters.toString()] : undefined,
     });
 
+    const addedMeters = getSelectedMeters();
+
     toast({
       title: String(t('addedToCart')),
       description: sampleMode 
@@ -202,11 +204,15 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
 
     setSelectedRollIds([]);
     setSampleMeters(0);
-    onClose();
+    onClose(addedMeters);
+  };
+
+  const handleDialogClose = () => {
+    onClose(); // Close without passing meters
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -309,7 +315,7 @@ export const RollSelectionDialog: React.FC<RollSelectionDialogProps> = ({
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={handleDialogClose}>
                 {t('cancel')}
               </Button>
               <Button 
