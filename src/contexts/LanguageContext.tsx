@@ -136,6 +136,8 @@ const translations = {
       reviewRequired: 'All lines must be reviewed and validated',
       draftConfirmed: 'Draft confirmed! Redirecting to lot selection...',
       confirmFailed: 'Failed to confirm draft',
+      status: 'Status',
+      actions: 'Actions',
     },
     
     // Reservation
@@ -1272,6 +1274,8 @@ const translations = {
       reviewRequired: 'Tüm satırlar gözden geçirilmeli ve doğrulanmalıdır',
       draftConfirmed: 'Taslak onaylandı! Lot seçimine yönlendiriliyor...',
       confirmFailed: 'Taslak onaylanamadı',
+      status: 'Durum',
+      actions: 'İşlemler',
     },
     
     // Reservation
@@ -2100,6 +2104,26 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   const [language, setLanguage] = useState<'en' | 'tr'>('en');
 
   const t = (key: string): string | string[] => {
+    // Try nested key resolution first (e.g., "aiOrder.title" -> translations[language].aiOrder.title)
+    if (key.includes('.')) {
+      const keys = key.split('.');
+      let value: any = translations[language];
+      
+      for (const k of keys) {
+        if (value && typeof value === 'object' && k in value) {
+          value = value[k];
+        } else {
+          value = undefined;
+          break;
+        }
+      }
+      
+      if (value !== undefined) {
+        return value;
+      }
+    }
+    
+    // Fallback to flat key lookup for backward compatibility
     const translation = translations[language][key];
     
     // Missing key detection
