@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage: {
+        Row: {
+          created_at: string
+          draft_id: string | null
+          id: number
+          tokens_in: number | null
+          tokens_out: number | null
+          used_vision: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          draft_id?: string | null
+          id?: number
+          tokens_in?: number | null
+          tokens_out?: number | null
+          used_vision?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          draft_id?: string | null
+          id?: number
+          tokens_in?: number | null
+          tokens_out?: number | null
+          used_vision?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "po_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: Database["public"]["Enums"]["audit_action_type"]
@@ -535,6 +570,86 @@ export type Database = {
           fulfilled_by?: string | null
           id?: string
           order_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      po_draft_lines: {
+        Row: {
+          color: string | null
+          created_at: string
+          draft_id: string
+          extraction_status: string
+          id: string
+          line_no: number
+          meters: number | null
+          quality: string | null
+          source_row: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          draft_id: string
+          extraction_status?: string
+          id?: string
+          line_no: number
+          meters?: number | null
+          quality?: string | null
+          source_row?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          draft_id?: string
+          extraction_status?: string
+          id?: string
+          line_no?: number
+          meters?: number | null
+          quality?: string | null
+          source_row?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_draft_lines_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "po_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      po_drafts: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          note: string | null
+          source_object_path: string | null
+          source_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          note?: string | null
+          source_object_path?: string | null
+          source_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string | null
+          source_object_path?: string | null
+          source_type?: string
+          status?: string
           updated_at?: string
         }
         Relationships: []
