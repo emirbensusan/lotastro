@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface LanguageContextType {
   language: 'en' | 'tr';
@@ -2101,7 +2101,17 @@ interface LanguageProviderProps {
 }
 
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
-  const [language, setLanguage] = useState<'en' | 'tr'>('en');
+  // Initialize from localStorage, fallback to 'en'
+  const [language, setLanguage] = useState<'en' | 'tr'>(() => {
+    const saved = localStorage.getItem('lotastro-language');
+    return (saved === 'en' || saved === 'tr') ? saved : 'en';
+  });
+
+  // Persist to localStorage whenever language changes
+  useEffect(() => {
+    localStorage.setItem('lotastro-language', language);
+    document.documentElement.lang = language;
+  }, [language]);
 
   const t = (key: string): string | string[] => {
     // Try nested key resolution first (e.g., "aiOrder.title" -> translations[language].aiOrder.title)
