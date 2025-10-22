@@ -14,3 +14,12 @@ verify_jwt = true
 
 [functions.send-invitation]
 verify_jwt = true
+
+[functions.extract-order]
+verify_jwt = true
+
+[functions.confirm-draft]
+verify_jwt = true
+
+[functions.cleanup-old-drafts]
+verify_jwt = false
