@@ -24,6 +24,7 @@ import ReservationCancelDialog from '@/components/ReservationCancelDialog';
 import ReservationConvertDialog from '@/components/ReservationConvertDialog';
 import ReservationReleaseDialog from '@/components/ReservationReleaseDialog';
 import ReservationExport from '@/components/ReservationExport';
+import AIOrderInput from '@/components/AIOrderInput';
 
 import InventoryPivotTable from '@/components/InventoryPivotTable';
 import { InlineEditableField } from '@/components/InlineEditableField';
@@ -679,7 +680,10 @@ const Orders = () => {
         </TabsList>
 
         <TabsContent value="orders">
-      <Card>
+          {/* AI Order Input */}
+          {canCreateOrders && <AIOrderInput />}
+          
+          <Card>
         <CardHeader>
           <CardTitle>{t('allOrders')}</CardTitle>
           <CardDescription>
