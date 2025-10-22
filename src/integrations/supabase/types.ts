@@ -690,6 +690,82 @@ export type Database = {
         }
         Relationships: []
       }
+      qualities: {
+        Row: {
+          aliases: string[] | null
+          code: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          aliases?: string[] | null
+          code: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          aliases?: string[] | null
+          code?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      quality_aliases: {
+        Row: {
+          alias: string
+          created_at: string | null
+          quality_code: string
+        }
+        Insert: {
+          alias: string
+          created_at?: string | null
+          quality_code: string
+        }
+        Update: {
+          alias?: string
+          created_at?: string | null
+          quality_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_aliases_quality_code_fkey"
+            columns: ["quality_code"]
+            isOneToOne: false
+            referencedRelation: "qualities"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      quality_colors: {
+        Row: {
+          color_code: string | null
+          color_label: string
+          created_at: string | null
+          quality_code: string
+        }
+        Insert: {
+          color_code?: string | null
+          color_label: string
+          created_at?: string | null
+          quality_code: string
+        }
+        Update: {
+          color_code?: string | null
+          color_label?: string
+          created_at?: string | null
+          quality_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_colors_quality_code_fkey"
+            columns: ["quality_code"]
+            isOneToOne: false
+            referencedRelation: "qualities"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       reservation_lines: {
         Row: {
           color: string
@@ -1020,16 +1096,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_reverse_action: {
-        Args:
-          | { p_audit_id: string }
-          | { p_audit_id: string; p_bypass_auth_check?: boolean }
-        Returns: {
-          can_reverse: boolean
-          reason: string
-          reversal_strategy: string
-        }[]
-      }
+      can_reverse_action:
+        | {
+            Args: { p_audit_id: string; p_bypass_auth_check?: boolean }
+            Returns: {
+              can_reverse: boolean
+              reason: string
+              reversal_strategy: string
+            }[]
+          }
+        | {
+            Args: { p_audit_id: string }
+            Returns: {
+              can_reverse: boolean
+              reason: string
+              reversal_strategy: string
+            }[]
+          }
       check_user_dependencies: {
         Args: { target_user_id: string }
         Returns: {
@@ -1037,24 +1120,15 @@ export type Database = {
           table_name: string
         }[]
       }
-      generate_order_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_reservation_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_available_rolls_count: {
-        Args: { p_lot_id: string }
-        Returns: number
-      }
+      generate_order_number: { Args: never; Returns: string }
+      generate_reservation_number: { Args: never; Returns: string }
+      get_available_rolls_count: { Args: { p_lot_id: string }; Returns: number }
       get_available_rolls_meters: {
         Args: { p_lot_id: string }
         Returns: number
       }
       get_dashboard_stats: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active_reservations_count: number
           oldest_lot_days: number
@@ -1068,7 +1142,7 @@ export type Database = {
         }[]
       }
       get_incoming_reserved_stock_summary: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           color: string
           customer_name: string
@@ -1081,7 +1155,7 @@ export type Database = {
         }[]
       }
       get_incoming_stock_summary: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           color: string
           expected_meters: number
@@ -1096,7 +1170,7 @@ export type Database = {
         }[]
       }
       get_inventory_pivot_summary: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           available_meters: number
           color: string
@@ -1112,7 +1186,7 @@ export type Database = {
         }[]
       }
       get_inventory_stats_summary: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           total_lots: number
           total_meters: number
@@ -1120,7 +1194,7 @@ export type Database = {
         }[]
       }
       get_inventory_with_reservations: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           available_meters: number
           color: string
@@ -1142,7 +1216,7 @@ export type Database = {
         }[]
       }
       get_reservations_summary: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_by_name: string
           customer_name: string
@@ -1187,10 +1261,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      normalize_quality: {
-        Args: { quality_input: string }
-        Returns: string
-      }
+      normalize_quality: { Args: { quality_input: string }; Returns: string }
     }
     Enums: {
       audit_action_type:

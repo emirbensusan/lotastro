@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { FileText, Image, Upload, Sparkles, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { FileText, Image, Upload, Sparkles, Trash2, CheckCircle, AlertCircle, Edit2, Save, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import { AutocompleteInput } from '@/components/AutocompleteInput';
 
 interface DraftLine {
   line_no: number;
@@ -20,6 +21,12 @@ interface DraftLine {
   meters: number | null;
   source_row: string;
   extraction_status: 'ok' | 'needs_review' | 'missing';
+  resolution_source?: 'deterministic' | 'llm';
+  conflict_info?: {
+    detected_label: string;
+    detected_code: string;
+    possible_qualities: string[];
+  };
 }
 
 interface AggregatedLine {
@@ -392,24 +399,39 @@ export default function AIOrderInput() {
                         <TableCell>{line.line_no}</TableCell>
                         <TableCell>
                           {editingLine === line.line_no ? (
-                            <Input
+                            <AutocompleteInput
+                              type="quality"
                               value={editValues.quality || ''}
-                              onChange={(e) => setEditValues(prev => ({ ...prev, quality: e.target.value }))}
+                              onChange={(value) => setEditValues(prev => ({ ...prev, quality: value }))}
                               className="w-full"
                             />
                           ) : (
-                            line.quality || <span className="text-muted-foreground">-</span>
+                            <div className="flex items-center gap-2">
+                              {line.quality || <span className="text-muted-foreground">-</span>}
+                              {import.meta.env.DEV && line.resolution_source && (
+                                <span className="text-xs text-muted-foreground">({line.resolution_source})</span>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>
                           {editingLine === line.line_no ? (
-                            <Input
+                            <AutocompleteInput
+                              type="color"
                               value={editValues.color || ''}
-                              onChange={(e) => setEditValues(prev => ({ ...prev, color: e.target.value }))}
+                              onChange={(value) => setEditValues(prev => ({ ...prev, color: value }))}
+                              quality={editValues.quality || undefined}
                               className="w-full"
                             />
                           ) : (
-                            line.color || <span className="text-muted-foreground">-</span>
+                            <div>
+                              {line.color || <span className="text-muted-foreground">-</span>}
+                              {line.conflict_info && (
+                                <div className="text-xs text-amber-600 mt-1">
+                                  {t('aiOrder.conflictWarning')}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>
@@ -434,16 +456,16 @@ export default function AIOrderInput() {
                                 setEditValues({});
                               }}>{t('cancel')}</Button>
                             </div>
-                          ) : (
-                            <div className="flex gap-2 justify-end">
-                              <Button size="sm" variant="outline" onClick={() => handleEditLine(line.line_no)}>
-                                {t('edit')}
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleDeleteLine(line.line_no)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
+                           ) : (
+                             <div className="flex gap-2 justify-end">
+                               <Button size="sm" variant="outline" onClick={() => handleEditLine(line.line_no)}>
+                                 <Edit2 className="h-4 w-4" />
+                               </Button>
+                               <Button size="sm" variant="ghost" onClick={() => handleDeleteLine(line.line_no)}>
+                                 <Trash2 className="h-4 w-4" />
+                               </Button>
+                             </div>
+                           )}
                         </TableCell>
                       </TableRow>
                     ))}

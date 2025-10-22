@@ -45,6 +45,15 @@ export const colorsDict: Record<string, string> = {
   "pink": "PINK",
   "mor": "PURPLE",
   "purple": "PURPLE",
+  // Additional TR colors
+  "haki": "KHAKI",
+  "hakı": "KHAKI",
+  "khaki": "KHAKI",
+  "fume": "SMOKED",
+  "fumé": "SMOKED",
+  "smoked": "SMOKED",
+  "kul": "ASH",
+  "ash": "ASH",
 };
 
 // Quality patterns (regex-based recognition)
@@ -57,17 +66,32 @@ export const qualityPatterns = [
   /\b([A-ZŞÇİÖÜ]{2,}\s?\d{2,})\b/,  // Brand + series pattern
 ];
 
-// Interface for parsed line
+// Enhanced interfaces
 export interface ParsedLine {
   quality: string | null;
   color: string | null;
   meters: number | null;
   source_row: string;
   extraction_status: 'ok' | 'needs_review' | 'missing';
+  resolution_source?: 'deterministic' | 'llm';
+  conflict_info?: {
+    detected_label: string;
+    detected_code: string;
+    possible_qualities: string[];
+  };
 }
 
+export interface DBValidationContext {
+  qualities: Record<string, { code: string; aliases: string[] }>;
+  colorsByQuality: Record<string, Array<{ label: string; code: string | null }>>;
+  colorCodeToQualities: Record<string, string[]>;
+}
+
+// Noise tokens to remove
+const noiseTokens = /\b(ASTAR|%100|TWILL|VISCOSE|VISKOS|GRUP|GROUP|PONGE|PLAIN)\b/gi;
+
 /**
- * Normalize Turkish characters and case
+ * Normalize Turkish characters and case, remove noise
  */
 export function normalizeTurkish(text: string): string {
   return text
@@ -83,30 +107,64 @@ export function normalizeTurkish(text: string): string {
     .replace(/ö/g, 'o')
     .replace(/Ç/g, 'C')
     .replace(/ç/g, 'c')
+    .replace(noiseTokens, '') // Remove noise
+    .replace(/\s+/g, ' ') // Collapse spaces
+    .trim()
     .toUpperCase();
 }
 
 /**
- * Parse meters from Turkish format
- * Handles: "1.720 MT", "1720 MT", "10,5 mt", "500", etc.
+ * Parse meters expression with sum/multiply support
+ * Handles: "10 MT", "10 + 20", "2x10", "10 + 2x5"
  */
-export function parseMeters(text: string): number | null {
-  // Remove extra whitespace
-  text = text.trim();
+export function parseMetersExpression(text: string): number | null {
+  text = text.trim().toUpperCase();
   
-  // Match patterns like: 1.720 MT, 1720 MT, 10,5 mt, 500 m, etc.
-  const meterRegex = /(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d+))?\s*(?:mt|m|metre|meter)?\b/i;
-  const match = text.match(meterRegex);
+  // Simple meter extraction first
+  const simpleMatch = text.match(/(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d+))?\s*(?:MT|M|METRE|METER)?/i);
   
-  if (!match) return null;
+  // Check for sum/multiply expressions
+  const hasSumOrMultiply = /[\+\*xX]/.test(text);
   
-  let wholeNumber = match[1].replace(/\./g, ''); // Remove thousands separator
-  const decimal = match[2] || '0';
+  if (!hasSumOrMultiply && simpleMatch) {
+    // Simple case: just a number
+    let wholeNumber = simpleMatch[1].replace(/\./g, '');
+    const decimal = simpleMatch[2] || '0';
+    const result = parseFloat(`${wholeNumber}.${decimal}`);
+    return isNaN(result) || result <= 0 ? null : result;
+  }
   
-  // Convert to number
-  const result = parseFloat(`${wholeNumber}.${decimal}`);
+  // Parse complex expressions
+  let total = 0;
   
-  return isNaN(result) ? null : result;
+  // Handle multiplication (2x10, 2*10)
+  const multiplyMatches = text.matchAll(/(\d+(?:,\d+)?)\s*[xX\*]\s*(\d+(?:,\d+)?)/g);
+  for (const match of multiplyMatches) {
+    const a = parseFloat(match[1].replace(',', '.'));
+    const b = parseFloat(match[2].replace(',', '.'));
+    total += a * b;
+    // Remove from text to avoid double counting
+    text = text.replace(match[0], '');
+  }
+  
+  // Handle addition
+  const additionMatches = text.matchAll(/(\d+(?:,\d+)?)\s*\+\s*(\d+(?:,\d+)?)/g);
+  for (const match of additionMatches) {
+    const a = parseFloat(match[1].replace(',', '.'));
+    const b = parseFloat(match[2].replace(',', '.'));
+    total += a + b;
+    text = text.replace(match[0], '');
+  }
+  
+  // If no operations found, try simple number
+  if (total === 0) {
+    const numbers = text.match(/(\d+(?:,\d+)?)/g);
+    if (numbers && numbers.length > 0) {
+      total = parseFloat(numbers[0].replace(',', '.'));
+    }
+  }
+  
+  return total > 0 ? total : null;
 }
 
 /**

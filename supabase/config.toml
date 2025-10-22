@@ -23,3 +23,18 @@ verify_jwt = true
 
 [functions.cleanup-old-drafts]
 verify_jwt = false
+
+[functions.validate-extraction]
+verify_jwt = true
+
+[functions.autocomplete-qualities]
+verify_jwt = true
+
+[functions.autocomplete-colors]
+verify_jwt = true
+
+[functions.reverse-audit-action]
+verify_jwt = true
+
+[functions.repair-audit-inconsistencies]
+verify_jwt = true
