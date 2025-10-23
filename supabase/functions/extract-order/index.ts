@@ -160,19 +160,25 @@ Deno.serve(async (req) => {
     }
 
     console.log('[extract-order] Loading DB validation context...');
+    console.log(`[extract-order] Raw text preview (first 100 chars): "${rawText.substring(0, 100)}..."`);
     
     // Load DB context for validation
     let dbContext;
     try {
       const { data: validationData, error: dbError } = await supabase.functions.invoke('validate-extraction');
       if (dbError) {
-        console.warn('[extract-order] Could not load DB context:', dbError);
+        console.warn('[extract-order] ⚠️  Could not load DB context:', dbError);
+        console.warn('[extract-order] Extraction will proceed without DB validation');
+      } else if (!validationData || !validationData.qualities) {
+        console.warn('[extract-order] ⚠️  DB context returned invalid structure');
       } else {
         dbContext = validationData;
-        console.log('[extract-order] DB context loaded:', Object.keys(dbContext.qualities).length, 'qualities');
+        const qualityCount = Object.keys(dbContext.qualities).length;
+        const colorCount = Object.keys(dbContext.colorsByQuality).reduce((sum, q) => sum + dbContext.colorsByQuality[q].length, 0);
+        console.log(`[extract-order] ✓ DB context loaded: ${qualityCount} qualities, ${colorCount} colors`);
       }
     } catch (dbErr) {
-      console.warn('[extract-order] DB context load failed:', dbErr);
+      console.warn('[extract-order] ⚠️  DB context load exception:', dbErr);
     }
     
     console.log('[extract-order] Starting deterministic extraction');

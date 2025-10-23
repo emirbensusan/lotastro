@@ -29,20 +29,27 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
+    // Search by color_label OR color_code (case-insensitive)
     let queryBuilder = supabaseClient
       .from('quality_colors')
-      .select('quality_code, color_label, color_code')
-      .ilike('color_label', `%${query}%`)
-      .limit(10);
+      .select('quality_code, color_label, color_code');
 
     // If quality specified, filter by it
     if (qualityCode) {
       queryBuilder = queryBuilder.eq('quality_code', qualityCode);
     }
 
-    const { data, error } = await queryBuilder;
-
+    // Execute query and filter in code (since Supabase doesn't support OR on ilike easily)
+    const { data: allData, error } = await queryBuilder.limit(100);
+    
     if (error) throw error;
+
+    // Filter by color_label OR color_code
+    const normalizedQuery = query.toUpperCase();
+    const data = allData?.filter(c => 
+      c.color_label.toUpperCase().includes(normalizedQuery) ||
+      (c.color_code && c.color_code.toUpperCase().includes(normalizedQuery))
+    ).slice(0, 10) || [];
 
     console.log(`Autocomplete colors: query="${query}" quality="${qualityCode || 'all'}" returned ${data?.length || 0} results`);
 

@@ -28,18 +28,24 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
-    // Search by code (case-insensitive LIKE)
-    const { data, error } = await supabaseClient
+    // Search by code or aliases (case-insensitive LIKE)
+    const { data: qualityData, error } = await supabaseClient
       .from('qualities')
       .select('code, aliases')
-      .ilike('code', `%${query}%`)
-      .limit(10);
+      .limit(50); // Get more results to filter by aliases
 
     if (error) throw error;
 
-    console.log(`Autocomplete qualities: query="${query}" returned ${data?.length || 0} results`);
+    // Filter results: match code OR any alias
+    const normalizedQuery = query.toUpperCase();
+    const filtered = qualityData?.filter(q => 
+      q.code.toUpperCase().includes(normalizedQuery) ||
+      q.aliases?.some((alias: string) => alias.toUpperCase().includes(normalizedQuery))
+    ).slice(0, 10) || [];
 
-    return new Response(JSON.stringify(data || []), {
+    console.log(`Autocomplete qualities: query="${query}" returned ${filtered.length} results`);
+
+    return new Response(JSON.stringify(filtered), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error: any) {

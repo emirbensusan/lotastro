@@ -117,38 +117,47 @@ export function normalizeTurkish(text: string): string {
  * Parse meters expression with sum/multiply support
  * Handles: "10 MT", "10 + 20", "2x10", "10 + 2x5", "2x10 MT 20"
  * When an expression is found, ignores trailing standalone numbers (echo pattern)
+ * CRITICAL: Remove color code tokens (E235, 1463, etc.) before parsing to avoid confusion
  */
 export function parseMetersExpression(text: string): number | null {
   const original = text;
   text = text.trim().toUpperCase();
   
+  // CRITICAL FIX: Remove color code tokens before meters extraction
+  // Color codes like E235, 1463 should not be confused with meters
+  const textWithoutColorCodes = text.replace(/\b[A-Z]?\d{3,4}\b/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  console.log(`[parseMetersExpression] Original: "${original}"`);
+  console.log(`[parseMetersExpression] After removing color codes: "${textWithoutColorCodes}"`);
+  
   // Check for sum/multiply expressions first
-  const hasSumOrMultiply = /[\+\*xX]/.test(text);
+  const hasSumOrMultiply = /[\+\*xX]/.test(textWithoutColorCodes);
   
   if (hasSumOrMultiply) {
     // Parse complex expressions
     let total = 0;
     let foundExpression = false;
+    let workingText = textWithoutColorCodes;
     
     // Handle multiplication (2x10, 2*10)
-    const multiplyMatches = [...text.matchAll(/(\d+(?:[.,]\d+)?)\s*[xX\*]\s*(\d+(?:[.,]\d+)?)/g)];
+    const multiplyMatches = [...workingText.matchAll(/(\d+(?:[.,]\d+)?)\s*[xX\*]\s*(\d+(?:[.,]\d+)?)/g)];
     for (const match of multiplyMatches) {
       const a = parseFloat(match[1].replace(',', '.'));
       const b = parseFloat(match[2].replace(',', '.'));
       total += a * b;
       foundExpression = true;
       // Remove from text to avoid double counting
-      text = text.replace(match[0], ' ');
+      workingText = workingText.replace(match[0], ' ');
     }
     
     // Handle addition (must be after removing multiplications)
-    const additionMatches = [...text.matchAll(/(\d+(?:[.,]\d+)?)\s*\+\s*(\d+(?:[.,]\d+)?)/g)];
+    const additionMatches = [...workingText.matchAll(/(\d+(?:[.,]\d+)?)\s*\+\s*(\d+(?:[.,]\d+)?)/g)];
     for (const match of additionMatches) {
       const a = parseFloat(match[1].replace(',', '.'));
       const b = parseFloat(match[2].replace(',', '.'));
       total += a + b;
       foundExpression = true;
-      text = text.replace(match[0], ' ');
+      workingText = workingText.replace(match[0], ' ');
     }
     
     // If we found an expression and got a valid total, return it
@@ -159,14 +168,23 @@ export function parseMetersExpression(text: string): number | null {
     }
   }
   
-  // Simple case: just extract first number
-  const simpleMatch = text.match(/(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d+))?\s*(?:MT|M|METRE|METER)?/i);
-  if (simpleMatch) {
-    let wholeNumber = simpleMatch[1].replace(/\./g, '');
-    const decimal = simpleMatch[2] || '0';
-    const result = parseFloat(`${wholeNumber}.${decimal}`);
+  // Prefer numbers explicitly followed by unit (MT|M|METRE|METER)
+  const unitMatch = textWithoutColorCodes.match(/(\d+(?:[.,]\d+)?)\s*(?:MT|M|METRE|METER)\b/i);
+  if (unitMatch) {
+    const result = parseFloat(unitMatch[1].replace(',', '.'));
     if (!isNaN(result) && result > 0) {
-      console.log(`[parseMetersExpression] "${original}" -> ${result} (simple number)`);
+      console.log(`[parseMetersExpression] "${original}" -> ${result} (with unit)`);
+      return result;
+    }
+  }
+  
+  // Fallback: extract last standalone number
+  const allNumbers = [...textWithoutColorCodes.matchAll(/\b(\d+(?:[.,]\d+)?)\b/g)];
+  if (allNumbers.length > 0) {
+    const lastMatch = allNumbers[allNumbers.length - 1];
+    const result = parseFloat(lastMatch[1].replace(',', '.'));
+    if (!isNaN(result) && result > 0) {
+      console.log(`[parseMetersExpression] "${original}" -> ${result} (last number)`);
       return result;
     }
   }
@@ -267,6 +285,25 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
     let conflictInfo: ParsedLine['conflict_info'] | undefined;
     
     console.log(`[deterministicExtract] Line: "${line.substring(0, 50)}..." -> Q:${quality} C:${color} M:${meters}`);
+    
+    // CRITICAL FIX: If quality looks like a color code (E235, 1463, etc.), it's likely misclassified
+    // Check if quality matches color code pattern and set to null to enable color-only inference
+    if (quality && /^[A-Z]?\d{3,4}$/.test(quality)) {
+      console.log(`[deterministicExtract] Quality ${quality} looks like a color code, checking DB...`);
+      
+      // If it's not a valid quality in DB, treat it as null
+      if (dbContext) {
+        const qualityValid = !!dbContext.qualities[quality] || 
+          Object.values(dbContext.qualities).some(q => 
+            q.aliases.some(a => a.toUpperCase() === quality.toUpperCase())
+          );
+        
+        if (!qualityValid) {
+          console.log(`[deterministicExtract] ${quality} not found as quality in DB, treating as null`);
+          quality = null;
+        }
+      }
+    }
     
     // Color-only inference: if no quality but color code detected
     if (!quality && color && dbContext) {
