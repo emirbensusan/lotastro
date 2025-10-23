@@ -198,10 +198,10 @@ export function extractQuality(text: string): string | null {
 export function extractColor(text: string): string | null {
   const normalized = normalizeTurkish(text.toLowerCase());
   
-  // First, check for numeric color codes (e.g., 1463, 1522)
-  const numericColorMatch = text.match(/\b(\d{4})\b/);
+  // First, check for numeric color codes (e.g., 1463, 1522, E235)
+  const numericColorMatch = text.match(/\b([A-Z]?\d{3,4})\b/);
   if (numericColorMatch) {
-    return numericColorMatch[1];
+    return numericColorMatch[1].toUpperCase();
   }
   
   // Check dictionary for known colors
@@ -225,10 +225,31 @@ export function extractColor(text: string): string | null {
 }
 
 /**
- * Deterministic extraction from raw text
+ * Infer quality from color code when unique
+ */
+export function inferQualityFromColorCode(
+  colorCode: string,
+  dbContext: DBValidationContext
+): { quality: string | null; ambiguous: boolean; candidates: string[] } {
+  const candidates = dbContext.colorCodeToQualities[colorCode.toUpperCase()] || [];
+  
+  if (candidates.length === 0) {
+    return { quality: null, ambiguous: false, candidates: [] };
+  }
+  
+  if (candidates.length === 1) {
+    return { quality: candidates[0], ambiguous: false, candidates };
+  }
+  
+  // Multiple qualities have this color code - ambiguous
+  return { quality: null, ambiguous: true, candidates };
+}
+
+/**
+ * Deterministic extraction from raw text with DB validation
  * Returns array of parsed lines with quality, color, meters
  */
-export function deterministicExtract(rawText: string): ParsedLine[] {
+export function deterministicExtract(rawText: string, dbContext?: DBValidationContext): ParsedLine[] {
   const lines = rawText.split('\n').filter(line => line.trim().length > 0);
   const results: ParsedLine[] = [];
   
@@ -239,14 +260,63 @@ export function deterministicExtract(rawText: string): ParsedLine[] {
     // Skip lines that look like headers
     if (/^(sira|no|kalite|quality|renk|color|metre|meter)/i.test(line.trim())) continue;
     
-    const quality = extractQuality(line);
-    const color = extractColor(line);
+    let quality = extractQuality(line);
+    let color = extractColor(line);
     const meters = parseMetersExpression(line);
+    let needsReview = false;
+    let conflictInfo: ParsedLine['conflict_info'] | undefined;
     
     console.log(`[deterministicExtract] Line: "${line.substring(0, 50)}..." -> Q:${quality} C:${color} M:${meters}`);
     
+    // Color-only inference: if no quality but color code detected
+    if (!quality && color && dbContext) {
+      const inferResult = inferQualityFromColorCode(color, dbContext);
+      
+      if (inferResult.quality) {
+        // Unique match - use it
+        quality = inferResult.quality;
+        console.log(`[deterministicExtract] Inferred quality ${quality} from color code ${color}`);
+      } else if (inferResult.ambiguous) {
+        // Ambiguous - mark for review
+        needsReview = true;
+        conflictInfo = {
+          detected_label: '',
+          detected_code: color,
+          possible_qualities: inferResult.candidates
+        };
+        console.log(`[deterministicExtract] Ambiguous color code ${color}, candidates:`, inferResult.candidates);
+      }
+    }
+    
+    // Validate quality against DB
+    if (quality && dbContext) {
+      const qualityValid = !!dbContext.qualities[quality] || 
+        Object.values(dbContext.qualities).some(q => 
+          q.aliases.some(a => a.toUpperCase() === quality?.toUpperCase())
+        );
+      
+      if (!qualityValid) {
+        console.warn(`[deterministicExtract] Quality ${quality} not found in DB`);
+        needsReview = true;
+      }
+    }
+    
+    // Validate color against quality
+    if (quality && color && dbContext) {
+      const qualityColors = dbContext.colorsByQuality[quality] || [];
+      const colorValid = qualityColors.some(c => 
+        c.label.toUpperCase() === color?.toUpperCase() || 
+        (c.code && c.code.toUpperCase() === color?.toUpperCase())
+      );
+      
+      if (!colorValid) {
+        console.warn(`[deterministicExtract] Color ${color} not found for quality ${quality}`);
+        needsReview = true;
+      }
+    }
+    
     // Determine status
-    let status: 'ok' | 'needs_review' | 'missing' = 'ok';
+    let status: 'ok' | 'needs_review' | 'missing' = needsReview ? 'needs_review' : 'ok';
     if (!quality || !color || !meters) {
       status = 'needs_review';
     }
@@ -262,6 +332,8 @@ export function deterministicExtract(rawText: string): ParsedLine[] {
         meters,
         source_row: line.trim().substring(0, 200), // Limit source row length
         extraction_status: status,
+        resolution_source: 'deterministic',
+        conflict_info: conflictInfo
       });
     }
   }

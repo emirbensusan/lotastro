@@ -159,10 +159,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log('[extract-order] Loading DB validation context...');
+    
+    // Load DB context for validation
+    let dbContext;
+    try {
+      const { data: validationData, error: dbError } = await supabase.functions.invoke('validate-extraction');
+      if (dbError) {
+        console.warn('[extract-order] Could not load DB context:', dbError);
+      } else {
+        dbContext = validationData;
+        console.log('[extract-order] DB context loaded:', Object.keys(dbContext.qualities).length, 'qualities');
+      }
+    } catch (dbErr) {
+      console.warn('[extract-order] DB context load failed:', dbErr);
+    }
+    
     console.log('[extract-order] Starting deterministic extraction');
     
-    // Step 1: Deterministic extraction
-    let rows = deterministicExtract(rawText);
+    // Step 1: Deterministic extraction with DB validation
+    let rows = deterministicExtract(rawText, dbContext);
     console.log('[extract-order] Deterministic extraction found', rows.length, 'rows');
 
     // Step 2: LLM extraction for ambiguous rows
@@ -172,15 +188,21 @@ Deno.serve(async (req) => {
     if (needsHelp.length > 0) {
       console.log('[extract-order] Using LLM for ambiguous rows');
       
+      const dbQualitiesHint = dbContext 
+        ? `\nMevcut Kalite Kodları: ${Object.keys(dbContext.qualities).slice(0, 20).join(', ')}` 
+        : '';
+      
       const llmPrompt = `Görevin: Aşağıdaki sipariş metinlerinden kalite, renk ve metre bilgilerini çıkarmak.
 
 KURALLAR:
-- Yalnızca şu alanları döndür: quality, color, meters, source_row, extraction_status
+- Yalnızca VERİTABANINDA BULUNAN değerleri kullan${dbQualitiesHint}
 - Kesin değilsen: o alanı null bırak ve extraction_status='needs_review'
-- Hayal ürün/renk üretme
+- HAYALİNDEKİ ürün/renk ÜRETME
 - Metre birimini sayıya çevir (ör. '1.720 MT' → 1720, '10,5 mt' → 10.5)
-- Renk kodları (1463, 1522 gibi) sayısal ise olduğu gibi döndür
-- Quality kodları: V710, V-710, SU200, KDB02 gibi
+- Metre ifadelerinde toplama/çarpma varsa hesapla (2x10 → 20, 10+5 → 15)
+- Kalite eki var ise koru (P777W, V710-T)
+- Renkte tire/slash var ise koru (IVORY-, IVORY/BLACK2)
+- Renk kodları (1463, 1522, E235 gibi) olduğu gibi döndür
 
 METİN:
 ${rawText}

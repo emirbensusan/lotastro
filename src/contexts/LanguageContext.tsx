@@ -153,6 +153,11 @@ const translations = {
       itemsFulfilled: 'items fulfilled',
       proceedToCheckout: 'Proceed to Checkout',
       editPrompt: 'This line needs review. Click Save when done.',
+      requestedQuantity: 'Requested',
+      itemProgress: 'Item',
+      nextItem: 'Next Item',
+      allItemsFulfilled: 'All items fulfilled!',
+      selectRemainingQuantity: 'Please select remaining quantity',
       editTip: {
         title: 'How to edit extracted data',
         description: 'Click the edit icon (✏️) on any row to modify quality, color, or meters. Use the search to find correct values from your database.'
@@ -1310,6 +1315,11 @@ const translations = {
       itemsFulfilled: 'kalem tamamlandı',
       proceedToCheckout: 'Ödemeye Geç',
       editPrompt: 'Bu satır inceleme gerektiriyor. Bitirdiğinizde Kaydet\'e tıklayın.',
+      requestedQuantity: 'İstenen',
+      itemProgress: 'Kalem',
+      nextItem: 'Sonraki Kalem',
+      allItemsFulfilled: 'Tüm kalemler tamamlandı!',
+      selectRemainingQuantity: 'Lütfen kalan miktarı seçin',
       editTip: {
         title: 'Çıkarılan verileri nasıl düzenlerim',
         description: 'Herhangi bir satırda kalite, renk veya metre değiştirmek için düzenle simgesine (✏️) tıklayın. Veritabanınızdan doğru değerleri bulmak için aramayı kullanın.'

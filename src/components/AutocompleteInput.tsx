@@ -38,18 +38,26 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     setLoading(true);
     try {
       const functionName = type === 'quality' ? 'autocomplete-qualities' : 'autocomplete-colors';
-      const params: Record<string, string> = { query };
+      const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`);
+      url.searchParams.set('query', query);
       
       if (type === 'color' && quality) {
-        params.quality = quality;
+        url.searchParams.set('quality', quality);
       }
 
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: params
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Content-Type': 'application/json'
+        }
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
+      const data = await response.json();
       setSuggestions(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(`Error fetching ${type} suggestions:`, error);
@@ -126,11 +134,14 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
                     ) : (
                       <div className="flex flex-col">
                         <span>{item.color_label}</span>
-                        {item.color_code && (
+                        {item.color_code && !quality && (
+                          <span className="text-xs text-muted-foreground">{item.color_label} ({item.color_code}) — {item.quality_code}</span>
+                        )}
+                        {item.color_code && quality && (
                           <span className="text-xs text-muted-foreground">Code: {item.color_code}</span>
                         )}
-                        {!quality && (
-                          <span className="text-xs text-muted-foreground">Quality: {item.quality_code}</span>
+                        {!item.color_code && !quality && (
+                          <span className="text-xs text-muted-foreground">{item.color_label} — {item.quality_code}</span>
                         )}
                       </div>
                     )}

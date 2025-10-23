@@ -154,6 +154,29 @@ export default function AIOrderInput() {
   const handleSaveEdit = async () => {
     if (editingLine === null || !draftId) return;
 
+    // Validate quality+color combination if both are present
+    if (editValues.quality && editValues.color) {
+      try {
+        const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-extraction');
+        
+        if (!validationError && validationData) {
+          const { colorsByQuality } = validationData;
+          const qualityColors = colorsByQuality[editValues.quality] || [];
+          const isValidColor = qualityColors.some((c: any) => 
+            c.label.toUpperCase() === editValues.color?.toUpperCase() ||
+            (c.code && c.code.toUpperCase() === editValues.color?.toUpperCase())
+          );
+          
+          if (!isValidColor) {
+            toast.error(`Color "${editValues.color}" does not exist for quality "${editValues.quality}". Please select a valid color or update the database.`);
+            return;
+          }
+        }
+      } catch (validationErr) {
+        console.warn('Validation check failed, proceeding anyway:', validationErr);
+      }
+    }
+
     const updatedLines = draftLines.map(line => {
       if (line.line_no === editingLine) {
         const updated = { ...line, ...editValues };
@@ -241,30 +264,21 @@ export default function AIOrderInput() {
       }
 
       const aggregated: AggregatedLine[] = data.aggregated;
+      
+      // Sort by meters descending (highest first)
+      aggregated.sort((a, b) => b.meters - a.meters);
+      
       toast.success(t('aiOrder.draftConfirmed') as string);
 
-      // Navigate to lot selection with URL params for filtering
-      if (aggregated.length === 1) {
-        // Single quality+color: use simple params
-        const item = aggregated[0];
-        navigate(`/lot-selection?quality=${encodeURIComponent(item.quality)}&color=${encodeURIComponent(item.color)}`, {
-          state: {
-            fromAIDraft: true,
-            requestedItems: aggregated
-          }
-        });
-      } else {
-        // Multiple quality+color combinations: use colors param
-        const colorParams = aggregated
-          .map(item => `${encodeURIComponent(item.quality)}|${encodeURIComponent(item.color)}`)
-          .join(',');
-        navigate(`/lot-selection?colors=${colorParams}`, {
-          state: {
-            fromAIDraft: true,
-            requestedItems: aggregated
-          }
-        });
-      }
+      // Navigate directly to inventory page with first item
+      const firstItem = aggregated[0];
+      navigate(`/inventory/${encodeURIComponent(firstItem.quality)}/${encodeURIComponent(firstItem.color)}`, {
+        state: {
+          fromAIDraft: true,
+          requestedItems: aggregated,
+          currentIndex: 0
+        }
+      });
     } catch (error: any) {
       console.error('Error confirming draft:', error);
       toast.error(t('aiOrder.confirmFailed') as string + ': ' + error.message);
@@ -284,6 +298,17 @@ export default function AIOrderInput() {
     setExtracting(false);
     setLoading(false);
   };
+  
+  // Auto-open first needs_review row
+  useEffect(() => {
+    if (draftLines.length > 0 && editingLine === null) {
+      const firstNeedsReview = draftLines.find(l => l.extraction_status === 'needs_review');
+      if (firstNeedsReview) {
+        handleEditLine(firstNeedsReview.line_no);
+        toast.info(t('aiOrder.editPrompt') as string, { duration: 5000 });
+      }
+    }
+  }, [draftLines]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {

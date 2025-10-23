@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { InlineEditableField } from '@/components/InlineEditableField';
 import { RollSelectionDialog } from '@/components/RollSelectionDialog';
-import { ArrowLeft, Plus, Package, Calendar, Filter } from 'lucide-react';
+import { ArrowLeft, Plus, Package, Calendar, Filter, CheckCircle } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -49,6 +49,12 @@ const LotDetails = () => {
   const [entryDateFilter, setEntryDateFilter] = useState('');
   const [ageFilter, setAgeFilter] = useState('');
   const [qualityVariants, setQualityVariants] = useState<QualityVariant[]>([]);
+  
+  // AI Draft tracking
+  const [requestedItems, setRequestedItems] = useState<Array<{quality: string; color: string; meters: number}>>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedMeters, setSelectedMeters] = useState(0);
+  
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { addToCart } = usePOCart();
@@ -68,6 +74,16 @@ const LotDetails = () => {
       fetchLotDetails();
     }
   }, [normalizedQuality, color]);
+  
+  // Parse AI draft state
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.fromAIDraft && state?.requestedItems) {
+      setRequestedItems(state.requestedItems);
+      setCurrentIndex(state.currentIndex || 0);
+      setSelectedMeters(0); // Reset for new item
+    }
+  }, [location.state]);
 
   const formatRollBreakdown = (rolls: { meters: number; position: number }[]): string => {
     if (!rolls || rolls.length === 0) return '';
@@ -198,6 +214,37 @@ const LotDetails = () => {
     setSelectedLot(lot);
     setIsRollDialogOpen(true);
   };
+  
+  const handleRollSelectionComplete = (addedMeters?: number) => {
+    if (addedMeters && requestedItems.length > 0) {
+      setSelectedMeters(prev => prev + addedMeters);
+    }
+    setIsRollDialogOpen(false);
+    setSelectedLot(null);
+  };
+  
+  const handleNextItem = () => {
+    if (currentIndex < requestedItems.length - 1) {
+      const nextItem = requestedItems[currentIndex + 1];
+      navigate(`/inventory/${encodeURIComponent(nextItem.quality)}/${encodeURIComponent(nextItem.color)}`, {
+        state: {
+          fromAIDraft: true,
+          requestedItems,
+          currentIndex: currentIndex + 1
+        }
+      });
+    } else {
+      // All items completed
+      toast({
+        title: t('aiOrder.allItemsFulfilled') as string,
+        variant: 'default'
+      });
+      navigate('/orders');
+    }
+  };
+  
+  const currentItem = requestedItems[currentIndex];
+  const canProceed = !currentItem || selectedMeters >= currentItem.meters;
 
   const handleAddAllToCart = () => {
     // For "Add All", we'll open dialog for first lot as example
@@ -349,6 +396,41 @@ const LotDetails = () => {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+
+      {/* AI Draft Requested Quantities Tracker */}
+      {currentItem && (
+        <Card className="sticky top-0 z-10 bg-background shadow-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-lg">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                <span>{t('aiOrder.requestedQuantity')}: {currentItem.meters}m</span>
+              </div>
+              <div className="flex items-center gap-4 text-sm font-normal">
+                <span className="text-blue-600">{t('aiOrder.selected')}: {selectedMeters}m</span>
+                <span className={canProceed ? "text-green-600" : "text-orange-600"}>
+                  {t('aiOrder.remaining')}: {Math.max(0, currentItem.meters - selectedMeters)}m
+                </span>
+                {canProceed && <CheckCircle className="h-5 w-5 text-green-600" />}
+              </div>
+            </CardTitle>
+          </CardHeader>
+          {requestedItems.length > 1 && (
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {t('aiOrder.itemProgress')}: {currentIndex + 1} / {requestedItems.length}
+                </span>
+                {canProceed && currentIndex < requestedItems.length - 1 && (
+                  <Button size="sm" onClick={handleNextItem}>
+                    {t('aiOrder.nextItem')} ({requestedItems[currentIndex + 1].quality} {requestedItems[currentIndex + 1].color})
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -560,10 +642,7 @@ const LotDetails = () => {
       {selectedLot && (
         <RollSelectionDialog
           isOpen={isRollDialogOpen}
-          onClose={() => {
-            setIsRollDialogOpen(false);
-            setSelectedLot(null);
-          }}
+          onClose={handleRollSelectionComplete}
           lotId={selectedLot.id}
           lotNumber={selectedLot.lot_number}
           quality={selectedLot.quality}
