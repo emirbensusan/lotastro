@@ -38,41 +38,44 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
     setLoading(true);
     try {
-      const functionName = type === 'quality' ? 'autocomplete-qualities' : 'autocomplete-colors';
-      const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`);
-      url.searchParams.set('query', query);
-      
+      const body: any = { query };
       if (type === 'color' && quality) {
-        url.searchParams.set('quality', quality);
+        body.quality = quality;
       }
 
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'Content-Type': 'application/json'
-        }
+      const { data, error } = await supabase.functions.invoke(`autocomplete-${type}s`, {
+        body
       });
 
-      if (!response.ok) {
-        const statusText = response.statusText || 'Unknown error';
-        if (response.status === 429) {
-          toast.error('Rate limit exceeded. Please try again later.');
-        } else if (response.status === 402) {
-          toast.error('Payment required. Please add credits to your workspace.');
-        } else if (response.status >= 500) {
-          toast.error(`Autocomplete temporarily unavailable (${response.status}). Please retry.`);
+      if (error) {
+        // Handle specific error cases
+        if (error.message?.includes('401') || error.message?.includes('403')) {
+          toast.error("Session expired. Please sign in again.");
+          setSuggestions([]);
+          return;
         }
-        console.error(`Autocomplete ${type} error:`, response.status, statusText);
-        setSuggestions([]);
-        return;
+        if (error.message?.includes('429')) {
+          toast.error("Rate limit exceeded. Please try again later.");
+          setSuggestions([]);
+          return;
+        }
+        if (error.message?.includes('402')) {
+          toast.error("Payment required. Please check your billing settings.");
+          setSuggestions([]);
+          return;
+        }
+        if (error.message?.includes('5')) {
+          toast.error("Autocomplete temporarily unavailable. Please retry.");
+          setSuggestions([]);
+          return;
+        }
+        throw error;
       }
 
-      const data = await response.json();
       setSuggestions(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(`Error fetching ${type} suggestions:`, error);
-      toast.error(`Failed to fetch ${type} suggestions. Please try again.`);
+      console.error(`Autocomplete ${type} error:`, error);
+      toast.error(`Failed to load ${type} suggestions. Please try again.`);
       setSuggestions([]);
     } finally {
       setLoading(false);
@@ -113,7 +116,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   }, []);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Input
           value={value}
@@ -122,7 +125,11 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           className={className}
         />
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent 
+        className="w-full p-0" 
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <Command>
           <CommandList>
             {loading && (

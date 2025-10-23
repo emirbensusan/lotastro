@@ -12,9 +12,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const query = url.searchParams.get('query') || '';
-    const qualityCode = url.searchParams.get('quality');
+    // Support both GET and POST
+    let query = '';
+    let qualityCode: string | null = null;
+    
+    if (req.method === 'POST') {
+      const body = await req.json();
+      query = body.query || '';
+      qualityCode = body.quality || null;
+    } else {
+      const url = new URL(req.url);
+      query = url.searchParams.get('query') || '';
+      qualityCode = url.searchParams.get('quality');
+    }
 
     console.log(`[autocomplete-colors] Query: "${query}", Quality: "${qualityCode || 'all'}"`);
 

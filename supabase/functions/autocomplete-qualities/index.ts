@@ -12,8 +12,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const query = url.searchParams.get('query') || '';
+    // Support both GET and POST
+    let query = '';
+    if (req.method === 'POST') {
+      const body = await req.json();
+      query = body.query || '';
+    } else {
+      const url = new URL(req.url);
+      query = url.searchParams.get('query') || '';
+    }
 
     console.log(`[autocomplete-qualities] Query: "${query}"`);
 
