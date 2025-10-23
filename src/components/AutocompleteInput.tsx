@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface AutocompleteInputProps {
   type: 'quality' | 'color';
@@ -54,13 +55,24 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const statusText = response.statusText || 'Unknown error';
+        if (response.status === 429) {
+          toast.error('Rate limit exceeded. Please try again later.');
+        } else if (response.status === 402) {
+          toast.error('Payment required. Please add credits to your workspace.');
+        } else if (response.status >= 500) {
+          toast.error(`Autocomplete temporarily unavailable (${response.status}). Please retry.`);
+        }
+        console.error(`Autocomplete ${type} error:`, response.status, statusText);
+        setSuggestions([]);
+        return;
       }
 
       const data = await response.json();
       setSuggestions(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(`Error fetching ${type} suggestions:`, error);
+      toast.error(`Failed to fetch ${type} suggestions. Please try again.`);
       setSuggestions([]);
     } finally {
       setLoading(false);
@@ -133,15 +145,19 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
                       <span className="font-mono">{item.code}</span>
                     ) : (
                       <div className="flex flex-col">
-                        <span>{item.color_label}</span>
-                        {item.color_code && !quality && (
-                          <span className="text-xs text-muted-foreground">{item.color_label} ({item.color_code}) — {item.quality_code}</span>
+                        <span className="font-medium">{item.color_label}</span>
+                        {!quality && item.color_code && item.quality_code && (
+                          <span className="text-xs text-muted-foreground">
+                            {item.color_label} ({item.color_code}) — {item.quality_code}
+                          </span>
                         )}
-                        {item.color_code && quality && (
+                        {!quality && !item.color_code && item.quality_code && (
+                          <span className="text-xs text-muted-foreground">
+                            {item.color_label} — {item.quality_code}
+                          </span>
+                        )}
+                        {quality && item.color_code && (
                           <span className="text-xs text-muted-foreground">Code: {item.color_code}</span>
-                        )}
-                        {!item.color_code && !quality && (
-                          <span className="text-xs text-muted-foreground">{item.color_label} — {item.quality_code}</span>
                         )}
                       </div>
                     )}

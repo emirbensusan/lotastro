@@ -15,17 +15,20 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const query = url.searchParams.get('query') || '';
 
+    console.log(`[autocomplete-qualities] Query: "${query}"`);
+
     // Minimum 3 characters required
     if (query.length < 3) {
+      console.log(`[autocomplete-qualities] Query too short, returning empty`);
       return new Response(JSON.stringify([]), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
+    // Use SERVICE_ROLE key to bypass RLS (read-only queries)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
     // Search by code or aliases (case-insensitive LIKE)
@@ -43,7 +46,7 @@ Deno.serve(async (req) => {
       q.aliases?.some((alias: string) => alias.toUpperCase().includes(normalizedQuery))
     ).slice(0, 10) || [];
 
-    console.log(`Autocomplete qualities: query="${query}" returned ${filtered.length} results`);
+    console.log(`[autocomplete-qualities] Returned ${filtered.length} results for "${query}"`);
 
     return new Response(JSON.stringify(filtered), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

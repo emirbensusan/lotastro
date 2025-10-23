@@ -16,17 +16,20 @@ Deno.serve(async (req) => {
     const query = url.searchParams.get('query') || '';
     const qualityCode = url.searchParams.get('quality');
 
+    console.log(`[autocomplete-colors] Query: "${query}", Quality: "${qualityCode || 'all'}"`);
+
     // Minimum 3 characters required
     if (query.length < 3) {
+      console.log(`[autocomplete-colors] Query too short, returning empty`);
       return new Response(JSON.stringify([]), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
+    // Use SERVICE_ROLE key to bypass RLS (read-only queries)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
     // Search by color_label OR color_code (case-insensitive)
@@ -51,7 +54,7 @@ Deno.serve(async (req) => {
       (c.color_code && c.color_code.toUpperCase().includes(normalizedQuery))
     ).slice(0, 10) || [];
 
-    console.log(`Autocomplete colors: query="${query}" quality="${qualityCode || 'all'}" returned ${data?.length || 0} results`);
+    console.log(`[autocomplete-colors] Returned ${data?.length || 0} results for "${query}", quality="${qualityCode || 'all'}"`);
 
     return new Response(JSON.stringify(data || []), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

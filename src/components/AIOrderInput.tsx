@@ -168,7 +168,19 @@ export default function AIOrderInput() {
           );
           
           if (!isValidColor) {
-            toast.error(`Color "${editValues.color}" does not exist for quality "${editValues.quality}". Please select a valid color or update the database.`);
+            toast.error(
+              `Color "${editValues.color}" does not exist for quality "${editValues.quality}". ` +
+              `Please go to Admin → Quality Management to create this color first, then try again.`,
+              { duration: 8000 }
+            );
+            // Keep status as needs_review
+            const updatedLines = draftLines.map(line => {
+              if (line.line_no === editingLine) {
+                return { ...line, ...editValues, extraction_status: 'needs_review' as const };
+              }
+              return line;
+            });
+            setDraftLines(updatedLines);
             return;
           }
         }

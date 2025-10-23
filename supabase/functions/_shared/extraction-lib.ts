@@ -120,14 +120,16 @@ export function normalizeTurkish(text: string): string {
  * CRITICAL: Remove color code tokens (E235, 1463, etc.) before parsing to avoid confusion
  */
 export function parseMetersExpression(text: string): number | null {
-  const original = text;
-  text = text.trim().toUpperCase();
+  if (!text || typeof text !== 'string') return null;
   
-  // CRITICAL FIX: Remove color code tokens before meters extraction
-  // Color codes like E235, 1463 should not be confused with meters
-  const textWithoutColorCodes = text.replace(/\b[A-Z]?\d{3,4}\b/g, ' ').replace(/\s+/g, ' ').trim();
+  const original = text;
+  const normalized = normalizeTurkish(text);
   
   console.log(`[parseMetersExpression] Original: "${original}"`);
+  
+  // CRITICAL: Remove color code tokens FIRST (e.g., E235, 1653, V710) to prevent misinterpretation
+  const colorCodePattern = /\b[A-Z]?\d{3,4}\b/g;
+  const textWithoutColorCodes = normalized.replace(colorCodePattern, '').replace(/\s+/g, ' ').trim();
   console.log(`[parseMetersExpression] After removing color codes: "${textWithoutColorCodes}"`);
   
   // Check for sum/multiply expressions first
@@ -284,14 +286,11 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
     let needsReview = false;
     let conflictInfo: ParsedLine['conflict_info'] | undefined;
     
-    console.log(`[deterministicExtract] Line: "${line.substring(0, 50)}..." -> Q:${quality} C:${color} M:${meters}`);
-    
-    // CRITICAL FIX: If quality looks like a color code (E235, 1463, etc.), it's likely misclassified
-    // Check if quality matches color code pattern and set to null to enable color-only inference
+    // CRITICAL: If extracted "quality" looks like a color code (e.g., E235), validate against DB
     if (quality && /^[A-Z]?\d{3,4}$/.test(quality)) {
       console.log(`[deterministicExtract] Quality ${quality} looks like a color code, checking DB...`);
       
-      // If it's not a valid quality in DB, treat it as null
+      // If it's not a valid quality in DB, treat it as null to enable color-only inference
       if (dbContext) {
         const qualityValid = !!dbContext.qualities[quality] || 
           Object.values(dbContext.qualities).some(q => 
@@ -300,28 +299,33 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
         
         if (!qualityValid) {
           console.log(`[deterministicExtract] ${quality} not found as quality in DB, treating as null`);
-          quality = null;
+          quality = null; // Not a valid quality - likely a color code misidentified
+        } else {
+          console.log(`[deterministicExtract] ${quality} confirmed as valid quality in DB`);
         }
       }
     }
     
-    // Color-only inference: if no quality but color code detected
+    // Color-only inference: if no quality but color code detected, try inferring from DB
     if (!quality && color && dbContext) {
+      console.log(`[deterministicExtract] No quality, attempting inference from color: ${color}`);
       const inferResult = inferQualityFromColorCode(color, dbContext);
       
       if (inferResult.quality) {
         // Unique match - use it
         quality = inferResult.quality;
-        console.log(`[deterministicExtract] Inferred quality ${quality} from color code ${color}`);
+        console.log(`[deterministicExtract] Inferred unique quality from color ${color}: ${quality}`);
       } else if (inferResult.ambiguous) {
-        // Ambiguous - mark for review
+        // Ambiguous - mark for review with candidates
         needsReview = true;
         conflictInfo = {
           detected_label: '',
           detected_code: color,
           possible_qualities: inferResult.candidates
         };
-        console.log(`[deterministicExtract] Ambiguous color code ${color}, candidates:`, inferResult.candidates);
+        console.log(`[deterministicExtract] Ambiguous color code ${color}, candidates: ${inferResult.candidates.join(', ')}`);
+      } else {
+        console.log(`[deterministicExtract] No quality inference possible for color ${color}`);
       }
     }
     
@@ -347,7 +351,7 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
       );
       
       if (!colorValid) {
-        console.warn(`[deterministicExtract] Color ${color} not found for quality ${quality}`);
+        console.log(`[deterministicExtract] Invalid Q+C combo: ${quality} + ${color}`);
         needsReview = true;
       }
     }
@@ -360,6 +364,12 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
     if (!quality && !color && !meters) {
       status = 'missing';
     }
+    
+    // Final state log for debugging
+    console.log(
+      `[deterministicExtract] Line: "${line.substring(0, 20)}..." -> ` +
+      `Q:${quality || 'null'} C:${color || 'null'} M:${meters || 'null'} Status:${status}`
+    );
     
     // Only add lines that have at least one field
     if (quality || color || meters) {
