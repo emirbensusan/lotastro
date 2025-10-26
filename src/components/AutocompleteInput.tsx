@@ -43,8 +43,26 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         body.quality = quality;
       }
 
+      // 🔍 PHASE 1: Log before invoke
+      console.debug('[AutocompleteInput] Invoking:', {
+        type,
+        query,
+        quality: type === 'color' ? quality : undefined,
+        timestamp: new Date().toISOString(),
+        functionName: `autocomplete-${type}s`
+      });
+
       const { data, error } = await supabase.functions.invoke(`autocomplete-${type}s`, {
         body
+      });
+
+      // 🔍 PHASE 1: Log after invoke
+      console.debug('[AutocompleteInput] Response:', {
+        type,
+        dataLength: data?.length ?? 0,
+        hasError: !!error,
+        errorMessage: error?.message,
+        timestamp: new Date().toISOString()
       });
 
       if (error) {
