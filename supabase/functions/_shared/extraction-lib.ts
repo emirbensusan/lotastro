@@ -127,8 +127,9 @@ export function parseMetersExpression(text: string): number | null {
   
   console.log(`[parseMetersExpression] Original: "${original}"`);
   
-  // CRITICAL: Remove color code tokens FIRST (e.g., E235, 1653, V710) to prevent misinterpretation
-  const colorCodePattern = /\b[A-Z]?\d{3,4}\b/g;
+  // CRITICAL: Remove color code tokens FIRST (e.g., E235, V710, P203) to prevent misinterpretation
+  // Pattern requires at least ONE letter prefix, so plain numbers like "200" are preserved
+  const colorCodePattern = /\b[A-Z][A-Z]?\d{2,4}\b/g;
   const textWithoutColorCodes = normalized.replace(colorCodePattern, '').replace(/\s+/g, ' ').trim();
   console.log(`[parseMetersExpression] After removing color codes: "${textWithoutColorCodes}"`);
   
