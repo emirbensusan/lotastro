@@ -410,18 +410,38 @@ export function mergeDeterministicAndLLM(
       continue;
     }
     
+    // Track which fields came from LLM
+    const usedLLMQuality = !det.quality && llm.quality;
+    const usedLLMColor = !det.color && llm.color;
+    const usedLLMMeters = !det.meters && llm.meters;
+    
+    const finalQuality = det.quality || llm.quality;
+    const finalColor = det.color || llm.color;
+    const finalMeters = det.meters || llm.meters;
+    
+    const finalStatus = (finalQuality && finalColor && finalMeters) ? 'ok' : 'needs_review';
+    
+    // Log LLM contribution
+    if (usedLLMQuality || usedLLMColor || usedLLMMeters) {
+      const llmFields = [];
+      if (usedLLMQuality) llmFields.push(`Q:${llm.quality}`);
+      if (usedLLMColor) llmFields.push(`C:${llm.color}`);
+      if (usedLLMMeters) llmFields.push(`M:${llm.meters}`);
+      
+      console.log(
+        `[mergeDeterministicAndLLM] Line ${i + 1}: LLM filled [${llmFields.join(', ')}] -> ` +
+        `FINAL Q:${finalQuality || 'null'} C:${finalColor || 'null'} M:${finalMeters || 'null'} Status:${finalStatus}`
+      );
+    }
+    
     // Use LLM values if deterministic extraction failed
     merged.push({
-      quality: det.quality || llm.quality,
-      color: det.color || llm.color,
-      meters: det.meters || llm.meters,
+      quality: finalQuality,
+      color: finalColor,
+      meters: finalMeters,
       source_row: det.source_row,
-      extraction_status: 
-        (det.quality || llm.quality) && 
-        (det.color || llm.color) && 
-        (det.meters || llm.meters)
-          ? 'ok'
-          : 'needs_review',
+      extraction_status: finalStatus,
+      resolution_source: (usedLLMQuality || usedLLMColor || usedLLMMeters) ? 'llm' : 'deterministic',
     });
   }
   

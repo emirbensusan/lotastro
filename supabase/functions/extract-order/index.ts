@@ -244,7 +244,13 @@ Beklenen JSON (array döndür):
           if (jsonMatch) {
             const llmRows: ParsedLine[] = JSON.parse(jsonMatch[0]);
             console.log('[extract-order] LLM extracted', llmRows.length, 'rows');
+            
+            const beforeMerge = rows.filter(r => r.extraction_status === 'ok').length;
             rows = mergeDeterministicAndLLM(rows, llmRows);
+            const afterMerge = rows.filter(r => r.extraction_status === 'ok').length;
+            const llmContributed = rows.filter(r => r.resolution_source === 'llm').length;
+            
+            console.log(`[extract-order] Merge complete: ${beforeMerge} → ${afterMerge} OK rows, LLM contributed to ${llmContributed} rows`);
           }
         } else {
           console.warn('[extract-order] LLM extraction failed, using deterministic only');
