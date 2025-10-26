@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -25,6 +26,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   className
 }) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -68,7 +70,13 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       if (error) {
         // Handle specific error cases
         if (error.message?.includes('401') || error.message?.includes('403')) {
-          toast.error("Session expired. Please sign in again.");
+          toast.error("Session expired. Redirecting to login...");
+          setSuggestions([]);
+          setTimeout(() => navigate('/auth?redirect=/orders'), 1500);
+          return;
+        }
+        if (error.message?.includes('404')) {
+          toast.error("Autocomplete function not found. Please contact support.");
           setSuggestions([]);
           return;
         }
@@ -144,11 +152,15 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         />
       </PopoverTrigger>
       <PopoverContent 
-        className="w-full p-0" 
+        className="w-full p-0 max-h-72 overflow-auto" 
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Command>
+          <CommandInput 
+            placeholder={placeholder || (type === 'quality' ? t('aiOrder.searchQuality') : t('aiOrder.searchColor')) as string}
+            className="h-9"
+          />
           <CommandList>
             {loading && (
               <div className="flex items-center justify-center p-4">
