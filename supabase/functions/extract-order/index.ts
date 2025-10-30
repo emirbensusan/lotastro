@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2MB
-const MAX_LINES = 20;
+const MAX_LINES = 100; // PHASE 1H: Increased from 20 to support long order lists
 
 interface ExtractRequest {
   pasteText?: string;
@@ -198,24 +198,52 @@ Deno.serve(async (req) => {
         ? `\nMevcut Kalite Kodları: ${Object.keys(dbContext.qualities).slice(0, 20).join(', ')}` 
         : '';
       
+      // PHASE 1G: Enhanced LLM prompt with few-shot examples
       const llmPrompt = `Görevin: Aşağıdaki sipariş metinlerinden kalite, renk ve metre bilgilerini çıkarmak.
 
 KURALLAR:
 - Yalnızca VERİTABANINDA BULUNAN değerleri kullan${dbQualitiesHint}
 - Kesin değilsen: o alanı null bırak ve extraction_status='needs_review'
 - HAYALİNDEKİ ürün/renk ÜRETME
-- Metre birimini sayıya çevir (ör. '1.720 MT' → 1720, '10,5 mt' → 10.5)
-- Metre ifadelerinde toplama/çarpma varsa hesapla (2x10 → 20, 10+5 → 15)
-- Kalite eki var ise koru (P777W, V710-T)
-- Renkte tire/slash var ise koru (IVORY-, IVORY/BLACK2)
-- Renk kodları (1463, 1522, E235 gibi) olduğu gibi döndür
+- Türkçe sayı formatlarını tanı: "110,000 Metre" → 110000, "1.720 MT" → 1720, "10,5 mt" → 10.5
+- Metre ifadelerinde toplama/çarpma hesapla (2x10 → 20, 10+5 → 15)
+- Kalite eki var ise koru (P777W, V710-T, VC710)
+- Renk kodları (E123, 130414, 40046 gibi) olduğu gibi döndür
+- Başlık altındaki maddelerde kaliteyi başlıktan al
 
-METİN:
+ÖRNEKler:
+
+Örnek 1 - Basit E### kodları:
+"753074 E123 1160MT"
+→ {"quality":"P200","color":"E123","meters":1160,"source_row":"753074 E123 1160MT","extraction_status":"ok"}
+
+Örnek 2 - Başlık + maddeler:
+"Toray Taffeta P200
+• Cafe creme 40046 = 80 mt
+• Portwine 29 = 80 mt"
+→ [
+  {"quality":"P200","color":"40046","meters":80,"source_row":"• Cafe creme 40046 = 80 mt","extraction_status":"ok"},
+  {"quality":"P200","color":"29","meters":80,"source_row":"• Portwine 29 = 80 mt","extraction_status":"ok"}
+]
+
+Örnek 3 - V710 ailesi:
+"V710 SPRİNG GREEN 130414 – 2 MT"
+→ {"quality":"V710","color":"130414","meters":2,"source_row":"V710 SPRİNG GREEN 130414 – 2 MT","extraction_status":"ok"}
+
+Örnek 4 - Türkçe formatlar:
+"110,000 Metre"
+→ {"quality":null,"color":null,"meters":110000,"source_row":"110,000 Metre","extraction_status":"needs_review"}
+
+Örnek 5 - Gürültü (yoksay):
+"model için 40mt Merhaba" → YOK SAY (selamlama)
+"1,65 EUR" → YOK SAY (fiyat)
+
+ŞİMDİ AYIKLA:
 ${rawText}
 
-Beklenen JSON (array döndür):
+SADECE JSON array döndür (açıklama yok):
 [
-  {"quality":"V710","color":"LOVAT","meters":10,"source_row":"...","extraction_status":"ok"},
+  {"quality":"...","color":"...","meters":...,"source_row":"...","extraction_status":"ok"},
   ...
 ]`;
 
