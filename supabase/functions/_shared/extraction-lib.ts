@@ -1,6 +1,20 @@
 // Shared extraction library for AI order extraction
 
-// PHASE 1D: Expanded Color normalization dictionary (Turkish + English)
+// PHASE 1B: Intent Types
+export type IntentType = 
+  | 'order' 
+  | 'sample_request' 
+  | 'stock_inquiry' 
+  | 'reservation' 
+  | 'price_request' 
+  | 'update' 
+  | 'shipping' 
+  | 'approval' 
+  | 'noise';
+
+export type QuantityUnit = 'MT' | 'KG' | 'TOP' | 'A4' | 'PIECE';
+
+// PHASE 3B: Expanded Color normalization dictionary (Turkish + English)
 export const colorsDict: Record<string, string> = {
   // Basic colors
   "bej": "BEIGE",
@@ -55,6 +69,9 @@ export const colorsDict: Record<string, string> = {
   "pembe": "PINK",
   "pink": "PINK",
   "fade pink": "FADE PINK",
+  "light pink": "LIGHT PINK",
+  "baby pink": "BABY PINK",
+  "soft pink": "SOFT PINK",
   "mor": "PURPLE",
   "purple": "PURPLE",
   "plum": "PLUM",
@@ -65,6 +82,7 @@ export const colorsDict: Record<string, string> = {
   "hakı": "KHAKI",
   "khaki": "KHAKI",
   "yorkshire khaki": "YORKSHIRE KHAKI",
+  "dull khaki": "DULL KHAKI",
   "fume": "SMOKED",
   "fumé": "SMOKED",
   "smoked": "SMOKED",
@@ -76,11 +94,15 @@ export const colorsDict: Record<string, string> = {
   "koyu kahve": "DARK BROWN",
   "dark chocolate": "DARK CHOCOLATE",
   "chocolate": "CHOCOLATE",
+  "bitter chocolate": "BITTER CHOCOLATE",
   "çikolata": "CHOCOLATE",
   "york brown": "YORK BROWN",
   "bark": "BARK",
   "tobacco": "TOBACCO",
   "tabacco": "TOBACCO",
+  "dark walnut": "DARK WALNUT",
+  "walnut": "WALNUT",
+  "cold brown": "COLD BROWN",
   
   // Creams and off-whites
   "cream": "CREAM",
@@ -91,12 +113,17 @@ export const colorsDict: Record<string, string> = {
   "winter white": "WINTER WHITE",
   "new cream": "NEW CREAM",
   "off white": "OFF WHITE",
+  "fresh cream": "FRESH CREAM",
   
-  // Greys
+  // Greys and metals
   "charcoal": "CHARCOAL",
   "pewter": "PEWTER",
+  "dark grey": "DARK GREY",
+  "graphite": "GRAPHITE",
+  "antrasit": "ANTHRACITE",
+  "anthracite": "ANTHRACITE",
   
-  // Other specific colors
+  // Specific named colors
   "champagne": "CHAMPAGNE",
   "şampanya": "CHAMPAGNE",
   "mustang": "MUSTANG",
@@ -130,20 +157,52 @@ export const colorsDict: Record<string, string> = {
   "spruce": "SPRUCE",
   "dark beige": "DARK BEIGE",
   "koyu bej": "DARK BEIGE",
-  "dark walnut": "DARK WALNUT",
-  "walnut": "WALNUT",
   "dark bottle": "DARK BOTTLE",
   "deep black": "DEEP BLACK",
+  "vanilla ice": "VANILLA ICE",
+  "dark green": "DARK GREEN",
+  "royal navy": "ROYAL NAVY",
+  "nouget": "NOUGET",
+  "gravel": "GRAVEL",
+  "scarlet": "SCARLET",
+  "rifle": "RIFLE",
+  "beetroot": "BEETROOT",
+  "prune": "PRUNE",
+  "steel": "STEEL",
+  "midnight": "MIDNIGHT",
+  "nordic": "NORDIC",
+  "nordman": "NORDMAN",
+  "bronze": "BRONZE",
+  "donkey": "DONKEY",
+  "mango": "MANGO",
+  "damson": "DAMSON",
+  "roebuck": "ROEBUCK",
+  "barley": "BARLEY",
+  "capuccino": "CAPUCCINO",
+  "pistache": "PISTACHE",
+  "wispa": "WISPA",
+  "royal": "ROYAL",
+  "conifer": "CONIFER",
+  "fawn": "FAWN",
+  "worstead": "WORSTEAD",
+  "stone": "STONE",
+  "skoni": "SKONI",
+  "webber": "WEBBER",
+  "desert": "DESERT",
+  "stucco": "STUCCO",
+  "haze": "HAZE",
+  "bistre": "BISTRE",
+  "apricot": "APRICOT",
 };
 
-// PHASE 1C: Expanded Quality patterns (regex-based recognition)
+// PHASE 1D: Expanded Quality patterns (regex-based recognition)
 export const qualityPatterns = [
   // V family: V710, VC710, V1744, V935, VC1125F, V6218
-  /\b(VC?\d{3,5}[A-Z]?)\b/i,
+  /\bVC?(\d{3,5}[A-Z]?)\b/i,
   // SU family: SU203, SU755, SU910, SU200.029
-  /\b(SU\s?\d{3,4}[A-Z]?)\b/i,
-  // P family: P200, P203, P755, P777, P777W, P002, P508
-  /\b(P\d{3,4}[A-Z]?)\b/i,
+  /\bSU\s?(\d{3,4}[A-Z]?)\b/i,
+  // P family: P200, P203, P755, P777, P777W, P002, P508, P910, P845, P840, P672
+  /\bP(\d{3,4}[A-Z]?)\b/i,
   // A family: A311, A800, A900
   /\b(A\d{3,4})\b/i,
   // K family: K600
