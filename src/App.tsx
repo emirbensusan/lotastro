@@ -20,6 +20,7 @@ import Admin from "./pages/Admin";
 import Approvals from "./pages/Approvals";
 import AuditLogs from "./pages/AuditLogs";
 import Suppliers from "./pages/Suppliers";
+import ExtractionTest from "./pages/ExtractionTest";
 import IncomingStock from "./pages/IncomingStock";
 import GoodsReceipt from "./pages/GoodsReceipt";
 import ResetPassword from "./pages/ResetPassword";
@@ -69,7 +70,8 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/invite" element={<InviteAccept />} />
+              <Route path="/invite" element={<InviteAccept />} />
+              <Route path="/admin/extraction-test" element={<ExtractionTest />} />
               <Route path="/" element={
                 <ProtectedRoute>
                   <Dashboard />
