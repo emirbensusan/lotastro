@@ -577,37 +577,73 @@ export type Database = {
       po_draft_lines: {
         Row: {
           color: string | null
+          confidence_score: number | null
           created_at: string
+          customer_name: string | null
+          delivery_notes: string | null
           draft_id: string
           extraction_status: string
           id: string
+          intent_type: string | null
+          is_firm_order: boolean | null
+          is_option_or_blocked: boolean | null
+          is_sample: boolean | null
           line_no: number
           meters: number | null
+          price_currency: string | null
+          price_value: number | null
           quality: string | null
+          quantity_unit: string | null
+          reference_numbers: string | null
+          resolution_source: string | null
           source_row: string | null
           updated_at: string
         }
         Insert: {
           color?: string | null
+          confidence_score?: number | null
           created_at?: string
+          customer_name?: string | null
+          delivery_notes?: string | null
           draft_id: string
           extraction_status?: string
           id?: string
+          intent_type?: string | null
+          is_firm_order?: boolean | null
+          is_option_or_blocked?: boolean | null
+          is_sample?: boolean | null
           line_no: number
           meters?: number | null
+          price_currency?: string | null
+          price_value?: number | null
           quality?: string | null
+          quantity_unit?: string | null
+          reference_numbers?: string | null
+          resolution_source?: string | null
           source_row?: string | null
           updated_at?: string
         }
         Update: {
           color?: string | null
+          confidence_score?: number | null
           created_at?: string
+          customer_name?: string | null
+          delivery_notes?: string | null
           draft_id?: string
           extraction_status?: string
           id?: string
+          intent_type?: string | null
+          is_firm_order?: boolean | null
+          is_option_or_blocked?: boolean | null
+          is_sample?: boolean | null
           line_no?: number
           meters?: number | null
+          price_currency?: string | null
+          price_value?: number | null
           quality?: string | null
+          quantity_unit?: string | null
+          reference_numbers?: string | null
+          resolution_source?: string | null
           source_row?: string | null
           updated_at?: string
         }

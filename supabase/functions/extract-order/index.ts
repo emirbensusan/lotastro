@@ -187,55 +187,74 @@ Deno.serve(async (req) => {
     let rows = deterministicExtract(rawText, dbContext);
     console.log('[extract-order] Deterministic extraction found', rows.length, 'rows');
 
-    // Step 2: LLM extraction for ambiguous rows
-    const needsHelp = rows.filter(r => r.extraction_status !== 'ok');
-    console.log('[extract-order] Rows needing LLM help:', needsHelp.length);
+    // PHASE 4B: Selective LLM calling - only for low confidence lines
+    const needsLLM = rows.filter(r => 
+      (r.confidence_score ?? 0) < 0.8 && 
+      r.intent_type !== 'noise' && 
+      r.extraction_status === 'needs_review'
+    );
+    console.log('[extract-order] Rows needing LLM help:', needsLLM.length, 'out of', rows.length);
 
-    if (needsHelp.length > 0) {
-      console.log('[extract-order] Using LLM for ambiguous rows');
+    if (needsLLM.length > 0) {
+      console.log('[extract-order] Using LLM for low-confidence rows');
       
       const dbQualitiesHint = dbContext 
-        ? `\nMevcut Kalite Kodları: ${Object.keys(dbContext.qualities).slice(0, 20).join(', ')}` 
+        ? `\nKnown Quality Codes: ${Object.keys(dbContext.qualities).slice(0, 30).join(', ')}` 
         : '';
       
-      // PHASE 1G: Enhanced LLM prompt with few-shot examples
-      const llmPrompt = `Görevin: Aşağıdaki sipariş metinlerinden kalite, renk ve metre bilgilerini çıkarmak.
+      // PHASE 4A: Intent-aware LLM prompt with classification
+      const llmPrompt = `You are extracting textile/lining orders from Turkish/English mixed customer emails.
 
-KURALLAR:
-- Yalnızca VERİTABANINDA BULUNAN değerleri kullan${dbQualitiesHint}
-- Kesin değilsen: o alanı null bırak ve extraction_status='needs_review'
-- HAYALİNDEKİ ürün/renk ÜRETME
-- Türkçe sayı formatlarını tanı: "110,000 Metre" → 110000, "1.720 MT" → 1720, "10,5 mt" → 10.5
-- Metre ifadelerinde toplama/çarpma hesapla (2x10 → 20, 10+5 → 15)
-- Kalite eki var ise koru (P777W, V710-T, VC710)
-- Renk kodları (E123, 130414, 40046 gibi) olduğu gibi döndür
-- Başlık altındaki maddelerde kaliteyi başlıktan al
+INTENT TYPES (classify each line):
+- 'order': Firm order with quality+color+meters (sevk, sipariş, işleme alır mısınız)
+- 'sample_request': Sample/numune request (numune, A4 parça, kartela)
+- 'stock_inquiry': Stock availability question (stok var mı, mevcut mu, hazırda)
+- 'reservation': Reservation/blocking (opsiyon, bloke, RF)
+- 'update': Order correction (eksik, revize, arttırıyorum, yerine)
+- 'approval': Color approval (okeylendi, onaylanmıştır)
+- 'shipping': Delivery instruction (sevk edebilir misiniz, nakliye, adrese)
+- 'price_request': Price/proforma request (proforma, fiyat + quality+color)
+- 'noise': Greetings, unstructured text (merhaba, iyi çalışmalar, EUR/USD alone)
 
-ÖRNEKler:
+RULES:
+- Only use values from database${dbQualitiesHint}
+- If uncertain: leave field null and set extraction_status='needs_review'
+- DO NOT invent products/colors
+- Turkish number formats: "110,000 Metre" → 110000, "1.720 MT" → 1720, "10,5 mt" → 10.5
+- Calculate expressions: 2x10 → 20, 10+5 → 15
+- Preserve quality suffixes (P777W, V710F, VC710)
+- Return color codes as-is (E123, 130414, 40046)
+- Inherit quality from headers for bullet lists
+- For sample_request: look for "A4" → quantity_unit='A4', quantity_value=1
+- For stock_inquiry: is_firm_order=false
+- For reservation: is_option_or_blocked=true
+- Skip 'noise' intent entirely
 
-Örnek 1 - Basit E### kodları:
+EXAMPLES:
+
+Example 1 - Firm order:
 "753074 E123 1160MT"
-→ {"quality":"P200","color":"E123","meters":1160,"source_row":"753074 E123 1160MT","extraction_status":"ok"}
+→ {"intent_type":"order","quality":"P200","color":"E123","meters":1160,"quantity_unit":"MT","is_firm_order":true,"confidence_score":0.95,"extraction_status":"ok"}
 
-Örnek 2 - Başlık + maddeler:
+Example 2 - Grouped orders:
 "Toray Taffeta P200
 • Cafe creme 40046 = 80 mt
 • Portwine 29 = 80 mt"
 → [
-  {"quality":"P200","color":"40046","meters":80,"source_row":"• Cafe creme 40046 = 80 mt","extraction_status":"ok"},
-  {"quality":"P200","color":"29","meters":80,"source_row":"• Portwine 29 = 80 mt","extraction_status":"ok"}
+  {"intent_type":"order","quality":"P200","color":"40046","meters":80,"quantity_unit":"MT","is_firm_order":true,"confidence_score":0.9,"extraction_status":"ok"},
+  {"intent_type":"order","quality":"P200","color":"29","meters":80,"quantity_unit":"MT","is_firm_order":true,"confidence_score":0.9,"extraction_status":"ok"}
 ]
 
-Örnek 3 - V710 ailesi:
-"V710 SPRİNG GREEN 130414 – 2 MT"
-→ {"quality":"V710","color":"130414","meters":2,"source_row":"V710 SPRİNG GREEN 130414 – 2 MT","extraction_status":"ok"}
+Example 3 - Sample request:
+"VARSA P777 PLUM 376 A4"
+→ {"intent_type":"sample_request","quality":"P777","color":"376","meters":null,"quantity_value":1,"quantity_unit":"A4","is_sample":true,"confidence_score":0.85,"extraction_status":"ok"}
 
-Örnek 4 - Türkçe formatlar:
-"110,000 Metre"
-→ {"quality":null,"color":null,"meters":110000,"source_row":"110,000 Metre","extraction_status":"needs_review"}
+Example 4 - Stock inquiry:
+"V710 AUBERGINE 130402 STOK VARMI"
+→ {"intent_type":"stock_inquiry","quality":"V710","color":"130402","meters":null,"is_firm_order":false,"confidence_score":0.9,"extraction_status":"ok"}
 
-Örnek 5 - Gürültü (yoksay):
-"model için 40mt Merhaba" → YOK SAY (selamlama)
+Example 5 - Noise (ignore):
+"Merhaba İyi çalışmalar" → SKIP (noise intent)
 "1,65 EUR" → YOK SAY (fiyat)
 
 ŞİMDİ AYIKLA:
@@ -248,6 +267,7 @@ SADECE JSON array döndür (açıklama yok):
 ]`;
 
       try {
+        const inputLines = needsLLM.map(r => r.source_row).join('\n');
         const llmResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -257,10 +277,13 @@ SADECE JSON array döndür (açıklama yok):
           body: JSON.stringify({
             model: 'google/gemini-2.5-flash',
             messages: [
-              { role: 'system', content: 'Sen bir sipariş veri çıkarma asistanısın. Sadece JSON döndür.' },
-              { role: 'user', content: llmPrompt },
-            ],
-          }),
+              {
+                role: 'user',
+                content: llmPrompt + '\n\nLINES TO EXTRACT:\n' + inputLines + 
+                  '\n\nReturn a JSON array (one element per line). Response must be pure JSON only (no explanation).'
+              }
+            ]
+          })
         });
 
         if (llmResponse.ok) {

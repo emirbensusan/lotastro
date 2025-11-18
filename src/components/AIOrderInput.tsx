@@ -21,7 +21,15 @@ interface DraftLine {
   meters: number | null;
   source_row: string;
   extraction_status: 'ok' | 'needs_review' | 'missing';
-  resolution_source?: 'deterministic' | 'llm';
+  resolution_source?: 'deterministic' | 'llm' | 'hybrid';
+  intent_type?: string;
+  quantity_unit?: string;
+  confidence_score?: number;
+  is_firm_order?: boolean;
+  is_sample?: boolean;
+  is_option_or_blocked?: boolean;
+  customer_name?: string;
+  reference_numbers?: string;
   conflict_info?: {
     detected_label: string;
     detected_code: string;
@@ -322,6 +330,21 @@ export default function AIOrderInput() {
     }
   }, [draftLines]);
 
+  const getIntentBadge = (intent?: string) => {
+    const colors: Record<string, string> = {
+      order: 'bg-green-500 hover:bg-green-600',
+      sample_request: 'bg-blue-500 hover:bg-blue-600',
+      stock_inquiry: 'bg-yellow-500 hover:bg-yellow-600',
+      reservation: 'bg-purple-500 hover:bg-purple-600',
+      update: 'bg-orange-500 hover:bg-orange-600',
+      approval: 'bg-teal-500 hover:bg-teal-600',
+      shipping: 'bg-cyan-500 hover:bg-cyan-600',
+      price_request: 'bg-pink-500 hover:bg-pink-600',
+      noise: 'bg-gray-400 hover:bg-gray-500',
+    };
+    return <Badge className={colors[intent || ''] || 'bg-gray-400'}>{intent || 'unknown'}</Badge>;
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'ok':
@@ -474,9 +497,10 @@ export default function AIOrderInput() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {draftLines.map((line) => (
-                      <TableRow key={line.line_no}>
-                        <TableCell>{line.line_no}</TableCell>
+                  {draftLines.map((line) => (
+                    <TableRow key={line.line_no}>
+                      <TableCell>{line.line_no}</TableCell>
+                      <TableCell>{getIntentBadge(line.intent_type)}</TableCell>
                         <TableCell>
                           {editingLine === line.line_no ? (
                             <AutocompleteInput
