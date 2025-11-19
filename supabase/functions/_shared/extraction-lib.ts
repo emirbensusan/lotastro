@@ -184,6 +184,10 @@ export const colorsDict: Record<string, string> = {
   "royal": "ROYAL",
   "conifer": "CONIFER",
   "fawn": "FAWN",
+  "banana": "BANANA",
+  "cafe": "CAFE",
+  "cafe cream": "CAFE CREAM",
+  "cream": "CREAM",
   "worstead": "WORSTEAD",
   "stone": "STONE",
   "skoni": "SKONI",
@@ -706,25 +710,32 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
         console.log(`[deterministicExtract] Inherited quality "${quality}" from context (bullet=${isBullet}, afterHeader=${isFirstLineAfterHeader})`);
       }
       
-      // PHASE 4: CRITICAL - Validate quality AFTER header detection and inheritance
-      // This prevents header lines from being incorrectly nullified
-      // If extracted "quality" looks like a color code (e.g., E235), validate against DB
-      if (quality && /^[A-Z]?\d{3,4}$/.test(quality)) {
-        console.log(`[deterministicExtract] Quality ${quality} looks like a color code, checking DB...`);
+      // PHASE 7: Trust pattern-matched qualities, only validate ambiguous ones
+      // If quality matches ANY qualityPattern, trust it without DB validation
+      if (quality) {
+        const matchesPattern = qualityPatterns.some(pattern => pattern.test(quality));
         
-        // If it's not a valid quality in DB, treat it as null to enable color-only inference
-        if (dbContext) {
-          const qualityValid = !!dbContext.qualities[quality] || 
-            Object.values(dbContext.qualities).some(q => 
-              q.aliases.some(a => a.toUpperCase() === quality.toUpperCase())
-            );
+        if (matchesPattern) {
+          console.log(`[deterministicExtract] Quality ${quality} matches pattern - trusted without DB validation`);
+        } else if (/^[A-Z]?\d{3,4}$/.test(quality)) {
+          // Only validate ambiguous numeric codes that didn't match any pattern
+          console.log(`[deterministicExtract] Quality ${quality} is ambiguous numeric code, checking DB...`);
           
-          if (!qualityValid) {
-            console.log(`[deterministicExtract] ${quality} not found as quality in DB, treating as null`);
-            quality = null; // Not a valid quality - likely a color code misidentified
-          } else {
-            console.log(`[deterministicExtract] ${quality} confirmed as valid quality in DB`);
+          if (dbContext) {
+            const qualityValid = !!dbContext.qualities[quality] || 
+              Object.values(dbContext.qualities).some(q => 
+                q.aliases.some(a => a.toUpperCase() === quality.toUpperCase())
+              );
+            
+            if (!qualityValid) {
+              console.log(`[deterministicExtract] ${quality} not found as quality in DB, treating as null`);
+              quality = null; // Not a valid quality - likely a color code misidentified
+            } else {
+              console.log(`[deterministicExtract] ${quality} confirmed as valid quality in DB`);
+            }
           }
+        } else {
+          console.log(`[deterministicExtract] Quality ${quality} has letter prefix - trusted`);
         }
       }
       
