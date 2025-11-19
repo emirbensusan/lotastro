@@ -619,9 +619,9 @@ function inferIntentType(line: string): IntentType {
   }
   
   // Noise indicators (greetings, confirmations, questions)
+  // STEP 1: Removed short line filter to allow standalone quality codes like "A800"
   if (/\b(MERHABA|HELLO|GUNAYDIN|GÜNAYDIN|IYI\s*GUNLER|İYI\s*GÜNLER|TESEKKUR|TEŞEKKÜR|THANK|SELAM|SELAMLAR)\b/i.test(line) ||
-      /\b(ONAYLANMISTIR|ONAYLANMIŞTIR|HAZIRLAYIN|BAKALIM|RICA|EDERIM)\b/i.test(line) ||
-      line.trim().length < 10) {
+      /\b(ONAYLANMISTIR|ONAYLANMIŞTIR|HAZIRLAYIN|BAKALIM|RICA|EDERIM)\b/i.test(line)) {
     return 'noise';
   }
   
