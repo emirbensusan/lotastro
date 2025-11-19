@@ -204,8 +204,8 @@ export const qualityPatterns = [
   /\b(?:Acetate\s+(?:Tafetta|Twill))\s+(A\d{3,4})\b/i,
   /\b(?:Ponge|Pongee)\s+(P\d{3,4}[A-Z]?)\b/i,
   /\b(?:Strech|Stretch)\s+(?:Twill|Ponge|Pongee)\s+(P\d{3,4}[A-Z]?)\b/i,
-  // PHASE 4: E-code pattern (e.g., "POLYESTER E-123" or just "E-123" treated as color code for inference)
-  /\b(?:POLYESTER\s+)?E[\-\s]?(\d{3,4})\b/i,
+  // PHASE 4: E-code pattern (e.g., "POLYESTER E-123" or just "E-123")
+  /\b(?:POLYESTER\s+)?(E[\-\s]?\d{3,4})\b/i,
   
   // V family: V710, VC710, V1744, V935, VC1125F, V6218
   /\b(VC?\d{3,5}[A-Z]?)\b/i,
