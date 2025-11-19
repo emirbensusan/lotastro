@@ -197,6 +197,14 @@ export const colorsDict: Record<string, string> = {
 
 // PHASE 1D: Expanded Quality patterns (regex-based recognition)
 export const qualityPatterns = [
+  // Quality families with descriptors (MUST be first for priority matching)
+  /\b(?:Polyester\s+(?:Twill|Strech|Stretch|Diagonal|Tafetta|Japon))\s+(P\d{3,4}[A-Z]?)\b/i,
+  /\b(?:Viscose\s+(?:Twill|Vual))\s+(V\d{3,4}[A-Z]?)\b/i,
+  /\b(?:Toray\s+Tafetta)\s+(P\d{3,4}[A-Z]?|E-?\d{3})\b/i,
+  /\b(?:Acetate\s+(?:Tafetta|Twill))\s+(A\d{3,4})\b/i,
+  /\b(?:Ponge|Pongee)\s+(P\d{3,4}[A-Z]?)\b/i,
+  /\b(?:Strech|Stretch)\s+(?:Twill|Ponge|Pongee)\s+(P\d{3,4}[A-Z]?)\b/i,
+  
   // V family: V710, VC710, V1744, V935, VC1125F, V6218
   /\bVC?(\d{3,5}[A-Z]?)\b/i,
   // SU family: SU203, SU755, SU910, SU200.029
@@ -234,8 +242,8 @@ export interface DBValidationContext {
   colorCodeToQualities: Record<string, string[]>;
 }
 
-// Noise tokens to remove
-const noiseTokens = /\b(ASTAR|%100|TWILL|VISCOSE|VISKOS|GRUP|GROUP|PONGE|PLAIN)\b/gi;
+// Noise tokens to remove (removed PONGE as it's a fabric type descriptor)
+const noiseTokens = /\b(ASTAR|%100|TWILL|VISCOSE|VISKOS|GRUP|GROUP|PLAIN)\b/gi;
 
 /**
  * Normalize Turkish characters and case, remove noise
@@ -491,14 +499,24 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
     }
     
     let quality = extractQuality(line);
+    console.log(`[deterministicExtract] Line ${i}: "${trimmed.substring(0, 60)}" -> quality="${quality}"`);
+    
     let color = extractColor(line);
     const meters = parseMetersExpression(line);
     let needsReview = false;
     let conflictInfo: ParsedLine['conflict_info'] | undefined;
     
     // PHASE 1E: Context-aware grouping logic
-    // Detect if this line is a quality header (has quality, no meters, short line)
-    const isHeader = quality && !meters && trimmed.length < 50 && !/[•\-–:=]/.test(trimmed.substring(0, 5));
+    // Improved header detection: quality present AND (no meters OR short line with no color OR line ends with quality)
+    const hasOnlyQualityAndDescriptor = quality && (
+      !meters || 
+      (trimmed.length < 30 && !color) ||
+      (quality && trimmed.endsWith(quality))
+    );
+    
+    const isHeader = hasOnlyQualityAndDescriptor && 
+                     !/[•\-–:=]/.test(trimmed.substring(0, 5)) &&
+                     i < lines.length - 1; // Must have a line after it
     
     if (isHeader) {
       // This is a header line, set context for subsequent lines
