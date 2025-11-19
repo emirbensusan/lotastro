@@ -107,11 +107,19 @@ Deno.serve(async (req) => {
         extractionStatus: r.extraction_status,
         resolutionSource: r.resolution_source,
         deliveryNotes: r.delivery_notes,
+        conflictInfo: r.conflict_info,
       })),
       dbContext: dbContext ? {
         qualityCount: Object.keys(dbContext.qualities || {}).length,
         colorCount: Object.values(dbContext.colorsByQuality || {}).reduce((sum: number, colors: any) => sum + colors.length, 0),
+        sampleQualities: Object.keys(dbContext.qualities || {}).slice(0, 10),
       } : null,
+      summary: {
+        totalExtracted: extractedRows.length,
+        okCount: statusCounts.ok || 0,
+        needsReviewCount: statusCounts.needs_review || 0,
+        successRate: Math.round(((statusCounts.ok || 0) / extractedRows.length) * 100),
+      }
     };
 
     return new Response(
