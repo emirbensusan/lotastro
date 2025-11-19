@@ -542,6 +542,49 @@ function splitMultiQualityLine(line: string): string[] {
 }
 
 /**
+ * Infer intent type from line content
+ * Returns: 'order' | 'sample_request' | 'stock_inquiry' | 'reservation' | 'price_request' | 'shipping' | 'noise'
+ */
+function inferIntentType(line: string): IntentType {
+  const upper = line.toUpperCase();
+  
+  // Sample request indicators
+  if (/\b(VARSA|VARMIS?|NUMUNE|SAMPLE|A4|ORNEK|ÖRNEK)\b/i.test(line)) {
+    return 'sample_request';
+  }
+  
+  // Stock inquiry indicators
+  if (/\b(STOK\s*VAR\s*MI|STOKTA\s*VAR\s*MI|MEVCUT\s*MU|AVAILABLE|IN\s*STOCK)\b/i.test(line)) {
+    return 'stock_inquiry';
+  }
+  
+  // Reservation indicators
+  if (/\b(REZERVE|RESERVE|AYIR|BLOCK|HOLD|BLOKE)\b/i.test(line)) {
+    return 'reservation';
+  }
+  
+  // Price request indicators
+  if (/\b(FIYAT|PRICE|QUOTE|TEKLIF|EUR|USD|TL|\$|€|EURO|DOLAR)\b/i.test(line)) {
+    return 'price_request';
+  }
+  
+  // Shipping/delivery indicators
+  if (/\b(SEVK|TESLIMAT|DELIVERY|SHIP|KARGO|TESLİMAT)\b/i.test(line)) {
+    return 'shipping';
+  }
+  
+  // Noise indicators (greetings, confirmations, questions)
+  if (/\b(MERHABA|HELLO|GUNAYDIN|GÜNAYDIN|IYI\s*GUNLER|İYI\s*GÜNLER|TESEKKUR|TEŞEKKÜR|THANK|SELAM|SELAMLAR)\b/i.test(line) ||
+      /\b(ONAYLANMISTIR|ONAYLANMIŞTIR|HAZIRLAYIN|BAKALIM|RICA|EDERIM)\b/i.test(line) ||
+      line.trim().length < 10) {
+    return 'noise';
+  }
+  
+  // Default: order
+  return 'order';
+}
+
+/**
  * PHASE 1E & 1F: Deterministic extraction with context-aware grouping and noise filtering
  * Returns array of parsed lines with quality, color, meters
  */
