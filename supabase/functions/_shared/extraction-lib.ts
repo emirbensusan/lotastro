@@ -647,7 +647,7 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
     const trimmed = line.trim();
     
     // Skip very short lines
-    if (trimmed.length < 5) continue;
+    if (trimmed.length < 3) continue;  // Allow 3+ char lines (A800=4, A311=4, P777=4)
     
     // Skip header lines
     if (/^(sira|no|kalite|quality|renk|color|metre|meter|fiş|tarih|cari)/i.test(trimmed)) continue;
