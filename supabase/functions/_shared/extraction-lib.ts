@@ -453,7 +453,7 @@ export function extractColor(text: string, excludeQuality?: string): string | nu
         const afterColorName = workingText.substring(colorNameIndex + key.length);
         
         // STEP 2: Extract adjacent code with strict lookahead (4-6 digits, NOT followed by meter units)
-        const adjacentCodeMatch = afterColorName.match(/^\s*[\-–:=]?\s*(\d{4,6})(?!\s*(?:MT|M\b|METRE|METER))/i);
+        const adjacentCodeMatch = afterColorName.match(/^\s*[\-–:=]*\s*(\d{4,6})(?!\s*(?:MT|M\b|METRE|METER))/i);
         
         if (adjacentCodeMatch) {
           const code = adjacentCodeMatch[1];
@@ -646,8 +646,19 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
     const line = lines[i];
     const trimmed = line.trim();
     
+    // Special case: standalone quality codes (A800, A311, P777, etc.)
+    if (trimmed.length >= 3 && trimmed.length <= 6 && /^[A-Z]+\d{3,4}$/.test(trimmed)) {
+      const quality = extractQuality(trimmed);
+      if (quality) {
+        currentQuality = quality;
+        prevHeaderIndex = i;
+        console.log(`[deterministicExtract] Standalone quality header: "${quality}"`);
+        continue;
+      }
+    }
+    
     // Skip very short lines
-    if (trimmed.length < 3) continue;  // Allow 3+ char lines (A800=4, A311=4, P777=4)
+    if (trimmed.length < 5) continue;
     
     // Skip header lines
     if (/^(sira|no|kalite|quality|renk|color|metre|meter|fiş|tarih|cari)/i.test(trimmed)) continue;
