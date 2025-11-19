@@ -418,40 +418,10 @@ export function extractQuality(text: string): string | null {
 export function extractColor(text: string, excludeQuality?: string): string | null {
   if (!text) return null;
   
-  const originalText = text;
-  const originalUpper = originalText.toUpperCase();
-  
-  // PHASE 1A: Check dictionary FIRST before removing quality (preserves compound names like "CHOCOLATE 4364")
   console.log(`[extractColor] Input: "${text}"`);
   
-  const normalized = normalizeTurkish(originalText.toLowerCase());
-  
-  for (const [key, value] of Object.entries(colorsDict)) {
-    const keyNorm = key.toLowerCase();
-    if (normalized.includes(keyNorm)) {
-      console.log(`[extractColor] Dictionary match: "${key}" → "${value}"`);
-      
-      // PHASE 1B: Calculate adjacent code position from normalized text where we found the match
-      const colorNameIndex = normalized.indexOf(keyNorm);
-      const afterColorName = originalUpper.substring(colorNameIndex + key.length);
-      
-      // PHASE 1C: Improved adjacent code pattern - require 4-6 digits, exclude meter units
-      const adjacentCodeMatch = afterColorName.match(/^\s*[\-–:]?\s*(\d{4,6})(?!\s*(?:MT|M|METRE))/i);
-      
-      if (adjacentCodeMatch) {
-        const code = adjacentCodeMatch[1];
-        const result = `${value} ${code}`;
-        console.log(`[extractColor] Dictionary + adjacent code: "${result}"`);
-        return result;
-      }
-      
-      console.log(`[extractColor] Dictionary only: "${value}"`);
-      return value;
-    }
-  }
-  
-  // Now remove quality code to isolate remaining color information
-  let workingText = originalText;
+  // STEP 2: Remove quality codes FIRST to create clean working text
+  let workingText = text;
   if (excludeQuality) {
     const escapedQuality = excludeQuality.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     workingText = workingText.replace(new RegExp(`\\b${escapedQuality}\\b`, 'gi'), '');
@@ -466,26 +436,43 @@ export function extractColor(text: string, excludeQuality?: string): string | nu
   
   console.log(`[extractColor] Working text after quality removal: "${workingText}"`);
   
-  // PHASE 1C: Check for numeric color codes (4-6 digits only)
-  const numericColorMatch = workingText.match(/\b([E]?\d{4,6})\b/);
+  // STEP 2: Check dictionary FIRST on clean working text
+  const normalized = normalizeTurkish(workingText.toLowerCase());
+  
+  for (const [key, value] of Object.entries(colorsDict)) {
+    const keyNorm = key.toLowerCase();
+    if (normalized.includes(keyNorm)) {
+      console.log(`[extractColor] Dictionary match: "${key}" → "${value}"`);
+      
+      // STEP 2: Find position in ORIGINAL working text (case-insensitive)
+      const upperWorking = workingText.toUpperCase();
+      const upperKey = key.toUpperCase();
+      const colorNameIndex = upperWorking.indexOf(upperKey);
+      
+      if (colorNameIndex !== -1) {
+        const afterColorName = workingText.substring(colorNameIndex + key.length);
+        
+        // STEP 2: Extract adjacent code with strict lookahead (4-6 digits, NOT followed by meter units)
+        const adjacentCodeMatch = afterColorName.match(/^\s*[\-–:=]?\s*(\d{4,6})(?!\s*(?:MT|M\b|METRE|METER))/i);
+        
+        if (adjacentCodeMatch) {
+          const code = adjacentCodeMatch[1];
+          const result = `${value} ${code}`;
+          console.log(`[extractColor] Dictionary + adjacent code: "${result}"`);
+          return result;
+        }
+      }
+      
+      console.log(`[extractColor] Dictionary only: "${value}"`);
+      return value;
+    }
+  }
+  
+  // STEP 2: Fallback to numeric code extraction (4-6 digits, strict lookahead)
+  const numericColorMatch = workingText.match(/\b(\d{4,6})(?!\s*(?:MT|M\b|METRE|METER))/i);
   if (numericColorMatch) {
-    const candidate = numericColorMatch[1].toUpperCase();
-    console.log(`[extractColor] Numeric code candidate: "${candidate}"`);
-    
-    // Skip if it matches quality code patterns
-    const isQualityPattern = /^[PVAK]\d{3,4}[A-Z]?$|^SU\s?\d{3,4}[A-Z]?$|^E[\-\s]?\d{3,4}$/.test(candidate);
-    if (isQualityPattern) {
-      console.log(`[extractColor] Code "${candidate}" is a quality pattern, excluding`);
-      return null;
-    }
-    
-    // Skip if this is the excluded quality code
-    if (excludeQuality && candidate === excludeQuality) {
-      console.log(`[extractColor] Code "${candidate}" matches excludeQuality, excluding`);
-      return null;
-    }
-    
-    console.log(`[extractColor] Valid numeric color code: "${candidate}"`);
+    const candidate = numericColorMatch[1];
+    console.log(`[extractColor] Numeric code found: "${candidate}"`);
     return candidate;
   }
   
