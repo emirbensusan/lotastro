@@ -206,11 +206,11 @@ export const qualityPatterns = [
   /\b(?:Strech|Stretch)\s+(?:Twill|Ponge|Pongee)\s+(P\d{3,4}[A-Z]?)\b/i,
   
   // V family: V710, VC710, V1744, V935, VC1125F, V6218
-  /\bVC?(\d{3,5}[A-Z]?)\b/i,
+  /\b(VC?\d{3,5}[A-Z]?)\b/i,
   // SU family: SU203, SU755, SU910, SU200.029
-  /\bSU\s?(\d{3,4}[A-Z]?)\b/i,
+  /\b(SU\s?\d{3,4}[A-Z]?)\b/i,
   // P family: P200, P203, P755, P777, P777W, P002, P508, P910, P845, P840, P672
-  /\bP(\d{3,4}[A-Z]?)\b/i,
+  /\b(P\d{3,4}[A-Z]?)\b/i,
   // A family: A311, A800, A900
   /\b(A\d{3,4})\b/i,
   // K family: K600
@@ -481,6 +481,7 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
   
   // PHASE 1E: Context-aware grouping state
   let currentQuality: string | null = null;
+  let prevHeaderIndex = -1; // Track last header line index
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -521,15 +522,18 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
     if (isHeader) {
       // This is a header line, set context for subsequent lines
       currentQuality = quality;
+      prevHeaderIndex = i; // Track header position
       console.log(`[deterministicExtract] Quality header detected: "${quality}"`);
       continue; // Don't add header as a data row
     }
     
     // If line starts with bullet/dash and no quality extracted, inherit currentQuality
     const isBullet = /^[\s]*[•\-–:=]/.test(trimmed);
-    if (isBullet && !quality && currentQuality) {
+    const isFirstLineAfterHeader = (i === prevHeaderIndex + 1) && !quality && currentQuality;
+    
+    if ((isBullet || isFirstLineAfterHeader) && !quality && currentQuality) {
       quality = currentQuality;
-      console.log(`[deterministicExtract] Inherited quality "${quality}" from context for bullet line`);
+      console.log(`[deterministicExtract] Inherited quality "${quality}" from context (bullet=${isBullet}, afterHeader=${isFirstLineAfterHeader})`);
     }
     
     // Reset context on section breaks (empty conceptual break or long ID lines)
