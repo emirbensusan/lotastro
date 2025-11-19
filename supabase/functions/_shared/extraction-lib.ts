@@ -441,10 +441,23 @@ export function extractColor(text: string, excludeQuality?: string): string | nu
   }
   
   // Check for numeric color codes ONLY (excluding quality patterns)
-  // Use negative lookbehind to avoid matching quality prefixes P, V, A, K, SU
-  const numericColorMatch = workingText.match(/\b(?<!P|V|A|K|SU\s?)([E]?\d{4,6})\b/);
+  // Use explicit validation instead of negative lookbehind for compatibility
+  const numericColorMatch = workingText.match(/\b([E]?\d{4,6})\b/);
   if (numericColorMatch) {
-    return numericColorMatch[1].toUpperCase();
+    const candidate = numericColorMatch[1].toUpperCase();
+    
+    // Skip if it matches quality code patterns (P777, V710, A800, K123, SU910, etc.)
+    const isQualityPattern = /^[PVAK]\d{3,4}[A-Z]?$|^SU\s?\d{3,4}[A-Z]?$|^E[\-\s]?\d{3,4}$/.test(candidate);
+    if (isQualityPattern) {
+      return null;
+    }
+    
+    // Skip if this is the excluded quality code
+    if (excludeQuality && candidate === excludeQuality) {
+      return null;
+    }
+    
+    return candidate;
   }
   
   // Try to find any color-like word from dictionary
