@@ -682,15 +682,10 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
       let needsReview = false;
       let conflictInfo: ParsedLine['conflict_info'] | undefined;
       
-      // PHASE 2: Header detection BEFORE validation
-      // Improved header detection: quality present AND (no meters OR short line with no color OR line ends with quality)
-      const hasOnlyQualityAndDescriptor = quality && (
-        !meters || 
-        (processTrimmed.length < 30 && !color) ||
-        (quality && processTrimmed.endsWith(quality))
-      );
-      
-      const isHeader = hasOnlyQualityAndDescriptor && 
+      // PHASE 2A: Header detection BEFORE validation
+      // Headers are ONLY lines with quality but NO meters and NO color
+      // Lines with meters are NEVER headers (e.g., "POLYESTER E-123 - 1440m" is NOT a header)
+      const isHeader = quality && !meters && !color && 
                        !/[•\-–:=]/.test(processTrimmed.substring(0, 5)) &&
                        i < lines.length - 1; // Must have a line after it
       
