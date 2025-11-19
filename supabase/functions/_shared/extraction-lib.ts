@@ -197,13 +197,15 @@ export const colorsDict: Record<string, string> = {
 
 // PHASE 1D: Expanded Quality patterns (regex-based recognition)
 export const qualityPatterns = [
-  // Quality families with descriptors (MUST be first for priority matching)
+  // Descriptor-based patterns (e.g., "Polyester Twill P777", "Viscose Vual V710")
   /\b(?:Polyester\s+(?:Twill|Strech|Stretch|Diagonal|Tafetta|Japon))\s+(P\d{3,4}[A-Z]?)\b/i,
   /\b(?:Viscose\s+(?:Twill|Vual))\s+(V\d{3,4}[A-Z]?)\b/i,
   /\b(?:Toray\s+Tafetta)\s+(P\d{3,4}[A-Z]?|E-?\d{3})\b/i,
   /\b(?:Acetate\s+(?:Tafetta|Twill))\s+(A\d{3,4})\b/i,
   /\b(?:Ponge|Pongee)\s+(P\d{3,4}[A-Z]?)\b/i,
   /\b(?:Strech|Stretch)\s+(?:Twill|Ponge|Pongee)\s+(P\d{3,4}[A-Z]?)\b/i,
+  // PHASE 4: E-code pattern (e.g., "POLYESTER E-123" or just "E-123" treated as color code for inference)
+  /\b(?:POLYESTER\s+)?E[\-\s]?(\d{3,4})\b/i,
   
   // V family: V710, VC710, V1744, V935, VC1125F, V6218
   /\b(VC?\d{3,5}[A-Z]?)\b/i,
@@ -406,24 +408,46 @@ export function extractQuality(text: string): string | null {
 
 /**
  * Extract and normalize color from text
+ * @param text - The text to extract color from
+ * @param excludeQuality - Optional quality code to exclude from matching (prevents quality being extracted as color)
  */
-export function extractColor(text: string): string | null {
-  const normalized = normalizeTurkish(text.toLowerCase());
+export function extractColor(text: string, excludeQuality?: string): string | null {
+  let workingText = text;
   
-  // First, check for numeric color codes (e.g., 1463, 1522, E235)
-  const numericColorMatch = text.match(/\b([A-Z]?\d{3,4})\b/);
-  if (numericColorMatch) {
-    return numericColorMatch[1].toUpperCase();
+  // Remove the quality code from text if provided to prevent it being extracted as color
+  if (excludeQuality) {
+    workingText = workingText.replace(new RegExp(`\\b${excludeQuality}\\b`, 'gi'), '');
   }
   
-  // Check dictionary for known colors
+  const normalized = normalizeTurkish(workingText.toLowerCase());
+  const originalUpper = workingText.toUpperCase();
+  
+  // Check dictionary for known colors FIRST (before numeric codes)
   for (const [key, value] of Object.entries(colorsDict)) {
-    if (normalized.includes(key.toLowerCase())) {
+    const keyNorm = key.toLowerCase();
+    if (normalized.includes(keyNorm)) {
+      // Look for adjacent numeric code after the color name
+      const colorNameIndex = normalized.indexOf(keyNorm);
+      const afterColorName = originalUpper.substring(colorNameIndex + key.length);
+      const adjacentCodeMatch = afterColorName.match(/^\s*[\-–]?\s*(\d{3,6})/);
+      
+      if (adjacentCodeMatch) {
+        // Return color name + code (e.g., "CHOCOLATE 4364")
+        return `${value} ${adjacentCodeMatch[1]}`;
+      }
+      
       return value;
     }
   }
   
-  // Try to find any color-like word
+  // Check for numeric color codes ONLY (excluding quality patterns)
+  // Use negative lookbehind to avoid matching quality prefixes P, V, A, K, SU
+  const numericColorMatch = workingText.match(/\b(?<!P|V|A|K|SU\s?)([E]?\d{4,6})\b/);
+  if (numericColorMatch) {
+    return numericColorMatch[1].toUpperCase();
+  }
+  
+  // Try to find any color-like word from dictionary
   const colorWords = normalized.match(/\b([a-z]{3,})\b/g);
   if (colorWords) {
     for (const word of colorWords) {
@@ -443,7 +467,10 @@ export function inferQualityFromColorCode(
   colorCode: string,
   dbContext: DBValidationContext
 ): { quality: string | null; ambiguous: boolean; candidates: string[] } {
-  const candidates = dbContext.colorCodeToQualities[colorCode.toUpperCase()] || [];
+  // Clean color code - might have color name prefix (e.g., "CHOCOLATE 4364" -> "4364")
+  const cleanCode = colorCode.replace(/^[A-Z\s]+\s+(\d+)$/, '$1').trim();
+  
+  const candidates = dbContext.colorCodeToQualities[cleanCode.toUpperCase()] || [];
   
   if (candidates.length === 0) {
     return { quality: null, ambiguous: false, candidates: [] };
@@ -455,6 +482,63 @@ export function inferQualityFromColorCode(
   
   // Multiple qualities have this color code - ambiguous
   return { quality: null, ambiguous: true, candidates };
+}
+
+/**
+ * Split lines containing multiple quality codes into separate lines
+ * Example: "P777 – BLACK & V710 - BLACK" -> ["P777 – BLACK", "V710 - BLACK"]
+ */
+function splitMultiQualityLine(line: string): string[] {
+  // Look for multiple quality codes with separators (&, +, ,)
+  const qualityMatches = Array.from(line.matchAll(/\b([PVAK]\d{3,4}[A-Z]?|VC?\d{3,5}[A-Z]?|SU\s?\d{3,4}[A-Z]?)\b/gi));
+  
+  if (qualityMatches.length <= 1) {
+    return [line];
+  }
+  
+  console.log(`[splitMultiQualityLine] Found ${qualityMatches.length} qualities in line: "${line.substring(0, 60)}..."`);
+  
+  // Check if line has quality separators (&, +, comma)
+  const hasSeparators = /[&+,]/.test(line);
+  
+  if (!hasSeparators) {
+    // No separators - don't split (might be color codes, not multiple orders)
+    return [line];
+  }
+  
+  const splitLines: string[] = [];
+  const qualities = qualityMatches.map(m => m[1]);
+  
+  // Split line by separators and assign each quality to its segment
+  const segments = line.split(/\s*[&+,]\s*/);
+  
+  for (let i = 0; i < qualities.length && i < segments.length; i++) {
+    const quality = qualities[i];
+    const segment = i < segments.length ? segments[i] : segments[segments.length - 1];
+    
+    // Remove other qualities from this segment
+    let cleanSegment = segment;
+    qualities.forEach(otherQ => {
+      if (otherQ !== quality) {
+        cleanSegment = cleanSegment.replace(new RegExp(`\\b${otherQ}\\b`, 'gi'), '');
+      }
+    });
+    
+    cleanSegment = cleanSegment.replace(/\s+/g, ' ').trim();
+    
+    // If segment is too short after cleaning, use the shared text for all
+    if (cleanSegment.length < 5) {
+      // Extract shared text (colors, meters) and prepend quality
+      const sharedText = line.replace(/\b([PVAK]\d{3,4}[A-Z]?|VC?\d{3,5}[A-Z]?|SU\s?\d{3,4}[A-Z]?)\b/gi, '').replace(/[&+,]/g, '').trim();
+      splitLines.push(`${quality} ${sharedText}`);
+    } else {
+      splitLines.push(cleanSegment);
+    }
+  }
+  
+  console.log(`[splitMultiQualityLine] Split into ${splitLines.length} lines:`, splitLines.map(l => l.substring(0, 40)));
+  
+  return splitLines;
 }
 
 /**
@@ -499,67 +583,75 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
       continue;
     }
     
-    let quality = extractQuality(line);
-    console.log(`[deterministicExtract] Line ${i}: "${trimmed.substring(0, 60)}" -> quality="${quality}"`);
+    // PHASE 3: Check if line contains multiple quality codes and split if needed
+    const splitLines = splitMultiQualityLine(line);
     
-    let color = extractColor(line);
-    const meters = parseMetersExpression(line);
-    let needsReview = false;
-    let conflictInfo: ParsedLine['conflict_info'] | undefined;
-    
-    // PHASE 1E: Context-aware grouping logic
-    // Improved header detection: quality present AND (no meters OR short line with no color OR line ends with quality)
-    const hasOnlyQualityAndDescriptor = quality && (
-      !meters || 
-      (trimmed.length < 30 && !color) ||
-      (quality && trimmed.endsWith(quality))
-    );
-    
-    const isHeader = hasOnlyQualityAndDescriptor && 
-                     !/[•\-–:=]/.test(trimmed.substring(0, 5)) &&
-                     i < lines.length - 1; // Must have a line after it
-    
-    if (isHeader) {
-      // This is a header line, set context for subsequent lines
-      currentQuality = quality;
-      prevHeaderIndex = i; // Track header position
-      console.log(`[deterministicExtract] Quality header detected: "${quality}"`);
-      continue; // Don't add header as a data row
-    }
-    
-    // If line starts with bullet/dash and no quality extracted, inherit currentQuality
-    const isBullet = /^[\s]*[•\-–:=]/.test(trimmed);
-    const isFirstLineAfterHeader = (i === prevHeaderIndex + 1) && !quality && currentQuality;
-    
-    if ((isBullet || isFirstLineAfterHeader) && !quality && currentQuality) {
-      quality = currentQuality;
-      console.log(`[deterministicExtract] Inherited quality "${quality}" from context (bullet=${isBullet}, afterHeader=${isFirstLineAfterHeader})`);
-    }
-    
-    // Reset context on section breaks (empty conceptual break or long ID lines)
-    if (!quality && !color && !meters) {
-      currentQuality = null;
-    }
-    
-    // CRITICAL: If extracted "quality" looks like a color code (e.g., E235), validate against DB
-    if (quality && /^[A-Z]?\d{3,4}$/.test(quality)) {
-      console.log(`[deterministicExtract] Quality ${quality} looks like a color code, checking DB...`);
+    for (const processLine of splitLines) {
+      const processTrimmed = processLine.trim();
       
-      // If it's not a valid quality in DB, treat it as null to enable color-only inference
-      if (dbContext) {
-        const qualityValid = !!dbContext.qualities[quality] || 
-          Object.values(dbContext.qualities).some(q => 
-            q.aliases.some(a => a.toUpperCase() === quality.toUpperCase())
-          );
+      let quality = extractQuality(processLine);
+      console.log(`[deterministicExtract] Line ${i + 1}: "${processTrimmed.substring(0, 60)}" -> quality="${quality}"`);
+      
+      // Extract color AFTER quality, passing quality to prevent it being extracted as color
+      let color = extractColor(processLine, quality || undefined);
+      const meters = parseMetersExpression(processLine);
+      let needsReview = false;
+      let conflictInfo: ParsedLine['conflict_info'] | undefined;
+      
+      // PHASE 2: Header detection BEFORE validation
+      // Improved header detection: quality present AND (no meters OR short line with no color OR line ends with quality)
+      const hasOnlyQualityAndDescriptor = quality && (
+        !meters || 
+        (processTrimmed.length < 30 && !color) ||
+        (quality && processTrimmed.endsWith(quality))
+      );
+      
+      const isHeader = hasOnlyQualityAndDescriptor && 
+                       !/[•\-–:=]/.test(processTrimmed.substring(0, 5)) &&
+                       i < lines.length - 1; // Must have a line after it
+      
+      if (isHeader) {
+        // This is a header line, set context for subsequent lines
+        currentQuality = quality;
+        prevHeaderIndex = i; // Track header position
+        console.log(`[deterministicExtract] Quality header detected: "${quality}"`);
+        continue; // Don't add header as a data row
+      }
+      
+      // If line starts with bullet/dash and no quality extracted, inherit currentQuality
+      const isBullet = /^[\s]*[•\-–:=]/.test(processTrimmed);
+      const isFirstLineAfterHeader = (i === prevHeaderIndex + 1) && !quality && currentQuality;
+      
+      if ((isBullet || isFirstLineAfterHeader) && !quality && currentQuality) {
+        quality = currentQuality;
+        console.log(`[deterministicExtract] Inherited quality "${quality}" from context (bullet=${isBullet}, afterHeader=${isFirstLineAfterHeader})`);
+      }
+      
+      // Reset context on section breaks (empty conceptual break or long ID lines)
+      if (!quality && !color && !meters) {
+        currentQuality = null;
+      }
+      
+      // PHASE 2: CRITICAL - Validate quality AFTER header detection
+      // If extracted "quality" looks like a color code (e.g., E235), validate against DB
+      if (quality && /^[A-Z]?\d{3,4}$/.test(quality)) {
+        console.log(`[deterministicExtract] Quality ${quality} looks like a color code, checking DB...`);
         
-        if (!qualityValid) {
-          console.log(`[deterministicExtract] ${quality} not found as quality in DB, treating as null`);
-          quality = null; // Not a valid quality - likely a color code misidentified
-        } else {
-          console.log(`[deterministicExtract] ${quality} confirmed as valid quality in DB`);
+        // If it's not a valid quality in DB, treat it as null to enable color-only inference
+        if (dbContext) {
+          const qualityValid = !!dbContext.qualities[quality] || 
+            Object.values(dbContext.qualities).some(q => 
+              q.aliases.some(a => a.toUpperCase() === quality.toUpperCase())
+            );
+          
+          if (!qualityValid) {
+            console.log(`[deterministicExtract] ${quality} not found as quality in DB, treating as null`);
+            quality = null; // Not a valid quality - likely a color code misidentified
+          } else {
+            console.log(`[deterministicExtract] ${quality} confirmed as valid quality in DB`);
+          }
         }
       }
-    }
     
     // Color-only inference: if no quality but color code detected, try inferring from DB
     if (!quality && color && dbContext) {
@@ -597,45 +689,53 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
       }
     }
     
-    // Validate color against quality
-    if (quality && color && dbContext) {
-      const qualityColors = dbContext.colorsByQuality[quality] || [];
-      const colorValid = qualityColors.some(c => 
-        c.label.toUpperCase() === color?.toUpperCase() || 
-        (c.code && c.code.toUpperCase() === color?.toUpperCase())
-      );
-      
-      if (!colorValid) {
-        console.log(`[deterministicExtract] Invalid Q+C combo: ${quality} + ${color}`);
-        needsReview = true;
+      // Validate color against quality
+      if (quality && color && dbContext) {
+        const validColors = dbContext.colorsByQuality[quality] || [];
+        const colorValid = validColors.some(c => 
+          c.label === color || 
+          c.code === color ||
+          (color.includes(c.label) && color.includes(c.code))
+        );
+        
+        if (!colorValid) {
+          console.log(`[deterministicExtract] Invalid Q+C combo: ${quality} + ${color}`);
+          needsReview = true;
+        }
       }
-    }
-    
-    // Determine status
-    let status: 'ok' | 'needs_review' | 'missing' = needsReview ? 'needs_review' : 'ok';
-    if (!quality || !color || !meters) {
-      status = 'needs_review';
-    }
-    if (!quality && !color && !meters) {
-      status = 'missing';
-    }
-    
-    // Final state log for debugging
-    console.log(
-      `[deterministicExtract] Line: "${line.substring(0, 20)}..." -> ` +
-      `Q:${quality || 'null'} C:${color || 'null'} M:${meters || 'null'} Status:${status}`
-    );
-    
-    // Only add lines that have at least one field
-    if (quality || color || meters) {
+      
+      // Skip if no actionable data
+      if (!quality && !color && !meters) continue;
+      
+      const intentType = inferIntentType(processLine);
+      
+      let extractionStatus: 'ok' | 'needs_review' | 'blocked';
+      let confidenceScore = 1.0;
+      
+      if (!quality || !color || !meters) {
+        extractionStatus = 'needs_review';
+        confidenceScore = 0.5;
+      } else if (needsReview) {
+        extractionStatus = 'needs_review';
+        confidenceScore = 0.7;
+      } else {
+        extractionStatus = 'ok';
+        confidenceScore = 0.95;
+      }
+      
+      console.log(`[deterministicExtract] Line: "${processTrimmed.substring(0, 30)}..." -> Q:${quality} C:${color} M:${meters} Status:${extractionStatus}`);
+      
       results.push({
+        source_row: processLine,
         quality,
         color,
         meters,
-        source_row: line.trim().substring(0, 200), // Limit source row length
-        extraction_status: status,
+        extraction_status: extractionStatus,
+        confidence_score: confidenceScore,
         resolution_source: 'deterministic',
-        conflict_info: conflictInfo
+        intent_type: intentType,
+        quantity_unit: 'MT',
+        conflict_info: conflictInfo,
       });
     }
   }
