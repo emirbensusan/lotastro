@@ -683,12 +683,8 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
         console.log(`[deterministicExtract] Inherited quality "${quality}" from context (bullet=${isBullet}, afterHeader=${isFirstLineAfterHeader})`);
       }
       
-      // Reset context on section breaks (empty conceptual break or long ID lines)
-      if (!quality && !color && !meters) {
-        currentQuality = null;
-      }
-      
-      // PHASE 2: CRITICAL - Validate quality AFTER header detection
+      // PHASE 4: CRITICAL - Validate quality AFTER header detection and inheritance
+      // This prevents header lines from being incorrectly nullified
       // If extracted "quality" looks like a color code (e.g., E235), validate against DB
       if (quality && /^[A-Z]?\d{3,4}$/.test(quality)) {
         console.log(`[deterministicExtract] Quality ${quality} looks like a color code, checking DB...`);
@@ -707,6 +703,12 @@ export function deterministicExtract(rawText: string, dbContext?: DBValidationCo
             console.log(`[deterministicExtract] ${quality} confirmed as valid quality in DB`);
           }
         }
+      }
+      
+      // Reset context on section breaks (empty conceptual break or long ID lines)
+      // This happens AFTER validation to use the corrected quality value
+      if (!quality && !color && !meters) {
+        currentQuality = null;
       }
     
     // Color-only inference: if no quality but color code detected, try inferring from DB
