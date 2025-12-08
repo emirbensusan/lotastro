@@ -1182,7 +1182,28 @@ const translations = {
         uploadFailed: 'Failed to upload manufacturing orders',
         noValidItems: 'No valid items to upload',
         failedToParseFile: 'Failed to parse file'
-      }
+      },
+      // Flat keys for direct access
+      fetchError: 'Failed to fetch manufacturing orders',
+      noPermission: 'You do not have permission to view manufacturing orders',
+      createNew: 'Create Manufacturing Order',
+      ordersNotCompleted: 'orders not completed',
+      meters: 'meters',
+      ordersList: 'Manufacturing Orders List',
+      fillRequiredFields: 'Please fill in all required fields',
+      shippedAndIncomingCreated: 'Order marked as shipped and incoming stock created',
+      updateSuccess: 'Manufacturing order updated successfully',
+      createSuccess: 'Manufacturing order created successfully',
+      saveError: 'Failed to save manufacturing order',
+      selectSupplier: 'Select a supplier',
+      supplierConfirmation: 'Supplier Confirmation Number',
+      supplierConfirmationPlaceholder: 'e.g., SC-2024-001',
+      pricePerMeter: 'Price per Meter',
+      isCustomerOrder: 'Is this a customer order?',
+      isCustomerOrderDesc: 'Enable if this order is for a specific customer',
+      customerNamePlaceholder: 'Enter customer name',
+      agreedDate: 'Customer Agreed Date',
+      notesPlaceholder: 'Additional notes or status updates...'
     },
     
     // Email Settings
@@ -2425,7 +2446,28 @@ const translations = {
         uploadFailed: 'Üretim siparişleri yüklenemedi',
         noValidItems: 'Yüklenecek geçerli öğe yok',
         failedToParseFile: 'Dosya ayrıştırılamadı'
-      }
+      },
+      // Flat keys for direct access
+      fetchError: 'Üretim siparişleri yüklenemedi',
+      noPermission: 'Üretim siparişlerini görüntüleme izniniz yok',
+      createNew: 'Üretim Siparişi Oluştur',
+      ordersNotCompleted: 'tamamlanmamış sipariş',
+      meters: 'metre',
+      ordersList: 'Üretim Siparişleri Listesi',
+      fillRequiredFields: 'Lütfen tüm zorunlu alanları doldurun',
+      shippedAndIncomingCreated: 'Sipariş gönderildi olarak işaretlendi ve yoldaki stok oluşturuldu',
+      updateSuccess: 'Üretim siparişi başarıyla güncellendi',
+      createSuccess: 'Üretim siparişi başarıyla oluşturuldu',
+      saveError: 'Üretim siparişi kaydedilemedi',
+      selectSupplier: 'Tedarikçi seçin',
+      supplierConfirmation: 'Tedarikçi Onay Numarası',
+      supplierConfirmationPlaceholder: 'örn: SC-2024-001',
+      pricePerMeter: 'Metre Başı Fiyat',
+      isCustomerOrder: 'Bu bir müşteri siparişi mi?',
+      isCustomerOrderDesc: 'Belirli bir müşteri için sipariş ise etkinleştirin',
+      customerNamePlaceholder: 'Müşteri adı girin',
+      agreedDate: 'Müşteri ile Anlaşılan Tarih',
+      notesPlaceholder: 'Ek notlar veya durum güncellemeleri...'
     },
     
     // Email Settings
