@@ -55,7 +55,7 @@ const EmailTemplatesTab: React.FC = () => {
       console.error('Error fetching templates:', error);
       toast({
         title: t('error') as string,
-        description: t('settings.fetchTemplatesError') as string,
+        description: 'Failed to fetch email templates',
         variant: 'destructive'
       });
     } finally {
@@ -89,7 +89,7 @@ const EmailTemplatesTab: React.FC = () => {
 
       toast({
         title: t('success') as string,
-        description: t('settings.templateSaved') as string,
+        description: t('emailSettings.templateUpdated') as string,
       });
 
       fetchTemplates();
@@ -98,7 +98,7 @@ const EmailTemplatesTab: React.FC = () => {
       console.error('Error saving template:', error);
       toast({
         title: t('error') as string,
-        description: t('settings.saveTemplateError') as string,
+        description: t('emailSettings.templateUpdateFailed') as string,
         variant: 'destructive'
       });
     } finally {
@@ -125,9 +125,9 @@ const EmailTemplatesTab: React.FC = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Mail className="h-5 w-5" />
-          {t('settings.emailTemplates')}
+          {t('emailSettings.emailTemplates')}
         </CardTitle>
-        <CardDescription>{t('settings.emailTemplatesDesc')}</CardDescription>
+        <CardDescription>Manage email templates for reminders and notifications</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -140,9 +140,9 @@ const EmailTemplatesTab: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('settings.templateName')}</TableHead>
-                <TableHead>{t('settings.templateKey')}</TableHead>
-                <TableHead>{t('settings.variables')}</TableHead>
+                <TableHead>{t('emailSettings.templateName')}</TableHead>
+                <TableHead>{t('emailSettings.templateKey')}</TableHead>
+                <TableHead>{t('emailSettings.variables')}</TableHead>
                 <TableHead>{t('status')}</TableHead>
                 <TableHead>{t('actions')}</TableHead>
               </TableRow>
@@ -189,17 +189,16 @@ const EmailTemplatesTab: React.FC = () => {
         )}
       </CardContent>
 
-      {/* Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t('settings.editTemplate')}</DialogTitle>
+            <DialogTitle>{t('emailSettings.editTemplate')}</DialogTitle>
           </DialogHeader>
 
           {editingTemplate && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>{t('settings.templateName')}</Label>
+                <Label>{t('emailSettings.templateName')}</Label>
                 <Input
                   value={editingTemplate.name}
                   onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
@@ -207,7 +206,7 @@ const EmailTemplatesTab: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>{t('settings.availableVariables')}</Label>
+                <Label>{t('emailSettings.variables')}</Label>
                 <div className="flex flex-wrap gap-1 p-2 bg-muted rounded">
                   {editingTemplate.variables?.map((v) => (
                     <Badge key={v} variant="secondary" className="text-xs">
@@ -219,20 +218,20 @@ const EmailTemplatesTab: React.FC = () => {
 
               <Tabs value={editLanguage} onValueChange={(v) => setEditLanguage(v as 'en' | 'tr')}>
                 <TabsList>
-                  <TabsTrigger value="en">🇺🇸 English</TabsTrigger>
-                  <TabsTrigger value="tr">🇹🇷 Türkçe</TabsTrigger>
+                  <TabsTrigger value="en">🇺🇸 {t('emailSettings.english')}</TabsTrigger>
+                  <TabsTrigger value="tr">🇹🇷 {t('emailSettings.turkish')}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="en" className="space-y-4">
                   <div className="space-y-2">
-                    <Label>{t('settings.subject')}</Label>
+                    <Label>{t('emailSettings.subjectEn')}</Label>
                     <Input
                       value={editingTemplate.subject_en}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, subject_en: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('settings.body')}</Label>
+                    <Label>{t('emailSettings.bodyEn')}</Label>
                     <Textarea
                       value={editingTemplate.body_en}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, body_en: e.target.value })}
@@ -244,14 +243,14 @@ const EmailTemplatesTab: React.FC = () => {
 
                 <TabsContent value="tr" className="space-y-4">
                   <div className="space-y-2">
-                    <Label>{t('settings.subject')}</Label>
+                    <Label>{t('emailSettings.subjectTr')}</Label>
                     <Input
                       value={editingTemplate.subject_tr}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, subject_tr: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('settings.body')}</Label>
+                    <Label>{t('emailSettings.bodyTr')}</Label>
                     <Textarea
                       value={editingTemplate.body_tr}
                       onChange={(e) => setEditingTemplate({ ...editingTemplate, body_tr: e.target.value })}

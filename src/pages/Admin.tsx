@@ -15,6 +15,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
+import EmailTemplatesTab from '@/components/EmailTemplatesTab';
+import ReminderSettingsTab from '@/components/ReminderSettingsTab';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -580,9 +582,11 @@ const Admin: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="users">{t('userManagement')}</TabsTrigger>
           <TabsTrigger value="permissions">{t('permissions')}</TabsTrigger>
+          <TabsTrigger value="emailTemplates">{t('emailSettings.emailTemplates')}</TabsTrigger>
+          <TabsTrigger value="reminderSettings">{t('emailSettings.reminderSettings')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -1020,6 +1024,14 @@ const Admin: React.FC = () => {
 
         <TabsContent value="permissions" className="space-y-6">
           <InteractivePermissionsTab />
+        </TabsContent>
+
+        <TabsContent value="emailTemplates" className="space-y-6">
+          <EmailTemplatesTab />
+        </TabsContent>
+
+        <TabsContent value="reminderSettings" className="space-y-6">
+          <ReminderSettingsTab />
         </TabsContent>
       </Tabs>
 
