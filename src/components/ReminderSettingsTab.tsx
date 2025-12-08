@@ -137,7 +137,7 @@ const ReminderSettingsTab: React.FC = () => {
     if (!editSenderEmail.includes('@')) {
       toast({
         title: t('error') as string,
-        description: 'Invalid email address',
+        description: t('emailSettings.invalidEmail') as string,
         variant: 'destructive'
       });
       return;
@@ -155,13 +155,13 @@ const ReminderSettingsTab: React.FC = () => {
       setSenderDialogOpen(false);
       toast({
         title: t('success') as string,
-        description: 'Sender configuration saved successfully.',
+        description: t('emailSettings.senderSaved') as string,
       });
     } catch (error) {
       console.error('Error saving sender settings:', error);
       toast({
         title: t('error') as string,
-        description: 'Failed to save sender configuration.',
+        description: t('emailSettings.senderSaveFailed') as string,
         variant: 'destructive'
       });
     } finally {
@@ -224,10 +224,10 @@ const ReminderSettingsTab: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" />
-            {t('emailSettings.senderConfiguration') || 'Sender Configuration'}
+            {t('emailSettings.senderConfiguration')}
           </CardTitle>
           <CardDescription>
-            {t('emailSettings.senderDescription') || 'Configure the email address used to send notifications'}
+            {t('emailSettings.senderDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -235,23 +235,23 @@ const ReminderSettingsTab: React.FC = () => {
             <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-muted-foreground">Sender Name:</Label>
+                  <Label className="text-sm text-muted-foreground">{t('emailSettings.senderNameLabel')}</Label>
                   <span className="font-medium">{settings.email_sender.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm text-muted-foreground">Email:</Label>
+                  <Label className="text-sm text-muted-foreground">{t('emailSettings.emailLabel')}</Label>
                   <span className="font-mono text-sm">{maskEmail(settings.email_sender.email)}</span>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={openSenderDialog}>
                 <Pencil className="h-4 w-4 mr-1" />
-                Edit
+                {t('edit')}
               </Button>
             </div>
             <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
               <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground">
-                {t('emailSettings.senderWarning') || 'The sender email must be verified in Resend. If you change domains, update this setting and verify the new domain at resend.com/domains.'}
+                {t('emailSettings.senderWarning')}
               </p>
             </div>
           </div>
@@ -262,11 +262,11 @@ const ReminderSettingsTab: React.FC = () => {
       <Dialog open={senderDialogOpen} onOpenChange={setSenderDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('emailSettings.editSender') || 'Edit Email Sender'}</DialogTitle>
+            <DialogTitle>{t('emailSettings.editSender')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="senderName">{t('emailSettings.senderName') || 'Sender Name'}</Label>
+              <Label htmlFor="senderName">{t('emailSettings.senderName')}</Label>
               <Input
                 id="senderName"
                 value={editSenderName}
@@ -274,11 +274,11 @@ const ReminderSettingsTab: React.FC = () => {
                 placeholder="LotAstro"
               />
               <p className="text-xs text-muted-foreground">
-                This name appears in the "From" field of emails
+                {t('emailSettings.senderNameHint')}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="senderEmail">{t('emailSettings.senderEmail') || 'Sender Email'}</Label>
+              <Label htmlFor="senderEmail">{t('emailSettings.senderEmail')}</Label>
               <Input
                 id="senderEmail"
                 type="email"
@@ -287,17 +287,17 @@ const ReminderSettingsTab: React.FC = () => {
                 placeholder="info@lotastro.com"
               />
               <p className="text-xs text-muted-foreground">
-                Must be a verified email address in Resend
+                {t('emailSettings.senderEmailHint')}
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSenderDialogOpen(false)} disabled={savingSender}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button onClick={saveSenderSettings} disabled={savingSender}>
               {savingSender && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save
+              {t('save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -310,7 +310,7 @@ const ReminderSettingsTab: React.FC = () => {
             <Bell className="h-5 w-5" />
             {t('emailSettings.reminderDays')}
           </CardTitle>
-          <CardDescription>Configure how many days before ETA to send reminders</CardDescription>
+          <CardDescription>{t('emailSettings.reminderDaysDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -321,12 +321,12 @@ const ReminderSettingsTab: React.FC = () => {
                 className="cursor-pointer text-sm px-3 py-1"
                 onClick={() => toggleReminderDay(day)}
               >
-                {day} days before
+                {day} {t('emailSettings.daysBefore')}
               </Badge>
             ))}
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            Selected: {settings.mo_reminder_days.days.join(', ')} days before ETA
+            {(t('emailSettings.selectedDaysBefore') as string).replace('{days}', settings.mo_reminder_days.days.join(', '))}
           </p>
         </CardContent>
       </Card>
@@ -338,7 +338,7 @@ const ReminderSettingsTab: React.FC = () => {
             <Clock className="h-5 w-5" />
             {t('emailSettings.reminderSchedule')}
           </CardTitle>
-          <CardDescription>Configure when reminder emails are sent</CardDescription>
+          <CardDescription>{t('emailSettings.reminderScheduleDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -392,7 +392,7 @@ const ReminderSettingsTab: React.FC = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>{t('settings.timezone')}</Label>
+              <Label>{t('emailSettings.timezone')}</Label>
               <Input
                 value={settings.mo_reminder_schedule.timezone}
                 onChange={(e) => setSettings({
@@ -412,14 +412,14 @@ const ReminderSettingsTab: React.FC = () => {
             <Mail className="h-5 w-5" />
             {t('emailSettings.recipients')}
           </CardTitle>
-          <CardDescription>Email addresses that will receive reminder notifications</CardDescription>
+          <CardDescription>{t('emailSettings.recipientsDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex gap-2">
               <Input
                 type="email"
-                placeholder="Enter email address"
+                placeholder={t('emailSettings.enterEmailPlaceholder') as string}
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addEmail()}
@@ -444,7 +444,7 @@ const ReminderSettingsTab: React.FC = () => {
                 </Badge>
               ))}
               {settings.mo_reminder_recipients.emails.length === 0 && (
-                <span className="text-sm text-muted-foreground">No recipients configured</span>
+                <span className="text-sm text-muted-foreground">{t('emailSettings.noRecipientsConfigured')}</span>
               )}
             </div>
           </div>
@@ -455,12 +455,12 @@ const ReminderSettingsTab: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>{t('emailSettings.overdueEscalation')}</CardTitle>
-          <CardDescription>Configure how overdue orders are escalated</CardDescription>
+          <CardDescription>{t('emailSettings.overdueEscalationDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="space-y-2">
-              <Label>Daily reminders for first X days</Label>
+              <Label>{t('emailSettings.dailyRemindersLabel')}</Label>
               <Input
                 type="number"
                 min="1"
