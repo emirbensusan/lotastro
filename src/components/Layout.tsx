@@ -29,7 +29,8 @@ import {
   Timer,
   History,
   TruckIcon,
-  PackageCheck
+  PackageCheck,
+  Factory
 } from 'lucide-react';
 import { 
   Sidebar,
@@ -90,6 +91,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { path: '/lot-queue', label: String(t('lotQueue')), icon: Timer, permission: { category: 'inventory', action: 'createlotentries' } },
         { path: '/inventory', label: String(t('inventory')), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' } },
         { path: '/incoming-stock', label: String(t('incomingStockLabel')), icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
+        { path: '/manufacturing-orders', label: String(t('mo.title')), icon: Factory, permission: { category: 'inventory', action: 'viewincoming' } },
         { path: '/goods-receipt', label: String(t('goodsReceipt')), icon: PackageCheck, permission: { category: 'inventory', action: 'receiveincoming' } },
       ]
     },
