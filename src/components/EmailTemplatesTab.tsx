@@ -43,8 +43,8 @@ interface EmailTemplate {
   is_active: boolean;
   is_system: boolean;
   version: number;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface TemplateUsage {
@@ -100,13 +100,27 @@ const EmailTemplatesTab: React.FC = () => {
 
       if (error) throw error;
       
-      const templatesData = (data || []).map(t => ({
-        ...t,
-        variables_meta: t.variables_meta || [],
+      const templatesData: EmailTemplate[] = (data || []).map(t => ({
+        id: t.id,
+        template_key: t.template_key,
+        name: t.name,
         category: t.category || 'system',
+        subject_en: t.subject_en,
+        subject_tr: t.subject_tr,
+        body_en: t.body_en,
+        body_tr: t.body_tr,
+        default_subject_en: t.default_subject_en,
+        default_subject_tr: t.default_subject_tr,
+        default_body_en: t.default_body_en,
+        default_body_tr: t.default_body_tr,
+        variables: t.variables || [],
+        variables_meta: (Array.isArray(t.variables_meta) ? t.variables_meta : []) as unknown as VariableMeta[],
+        is_active: t.is_active ?? true,
         is_system: t.is_system ?? false,
-        version: t.version || 1
-      })) as EmailTemplate[];
+        version: t.version || 1,
+        created_at: t.created_at,
+        updated_at: t.updated_at,
+      }));
       
       setTemplates(templatesData);
       
