@@ -162,7 +162,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const isCollapsed = state === "collapsed";
     
     return (
-      <Sidebar collapsible="icon" className="flex flex-col mt-16 h-[calc(100vh-4rem)]">
+      <Sidebar collapsible="icon" className="flex flex-col mt-12 h-[calc(100vh-3rem)]">
         <SidebarContent>
           {permissionsLoading ? (
             <div className="flex items-center justify-center p-4">
@@ -177,7 +177,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </SidebarGroupLabel>
                 )}
                 <SidebarGroupContent>
-                  <SidebarMenu className="space-y-1">
+                  <SidebarMenu>
                     {group.items.map((item) => {
                       const Icon = item.icon;
                       const active = location.pathname === item.path;
@@ -187,7 +187,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           <SidebarMenuButton
                             onClick={() => navigate(item.path)}
                             isActive={active}
-                            className="flex items-center justify-start h-10"
+                            size="sm"
+                            className="flex items-center justify-start"
                             tooltip={isCollapsed ? item.label : undefined}
                           >
                             <Icon className="h-4 w-4 flex-shrink-0" />
@@ -248,8 +249,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="min-h-screen bg-background flex w-full">
         {/* Top Navigation */}
         <header className="fixed top-0 left-0 right-0 z-50 border-b bg-card">
-          <div className="flex h-16 items-center justify-between px-4 md:px-6">
-            <div className="flex items-center space-x-4">
+          <div className="flex h-12 items-center justify-between px-3 md:px-4">
+            <div className="flex items-center space-x-2">
               {/* Desktop Sidebar Toggle */}
               <SidebarTrigger className="hidden md:block" />
               
@@ -381,7 +382,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </header>
 
-        <div className="flex w-full pt-16">
+        <div className="flex w-full pt-12">
           {/* Desktop Sidebar */}
           <div className="hidden md:block">
             <AppSidebar />
