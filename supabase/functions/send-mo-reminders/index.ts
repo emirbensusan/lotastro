@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.0";
+import { Resend } from "npm:resend@4.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,13 +29,6 @@ interface EmailTemplate {
   is_active: boolean;
 }
 
-interface EmailSettings {
-  mo_reminder_days: { days: number[] };
-  mo_reminder_schedule: { day_of_week: number; hour: number; minute: number; timezone: string };
-  mo_reminder_recipients: { emails: string[] };
-  mo_overdue_escalation: { daily_count: number; then_weekly: boolean };
-}
-
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -46,7 +40,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY is not configured');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const resend = new Resend(resendApiKey);
 
     // Fetch settings
     const { data: settingsData, error: settingsError } = await supabase
@@ -151,6 +152,7 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     const emailsSent: string[] = [];
+    const emailErrors: string[] = [];
 
     // Send reminders for upcoming orders
     if (ordersToRemind.length > 0 && templateMap.mo_reminder) {
@@ -160,11 +162,25 @@ const handler = async (req: Request): Promise<Response> => {
         const subject = replaceVariables(template.subject_en, order);
         const body = replaceVariables(template.body_en, order);
 
-        console.log(`Would send reminder for ${order.mo_number} to ${recipients.join(', ')}`);
-        emailsSent.push(`Reminder: ${order.mo_number}`);
-        
-        // Here you would integrate with Supabase Auth email or another email service
-        // For now, we log the reminder
+        try {
+          const { error: emailError } = await resend.emails.send({
+            from: 'LotAstro <onboarding@resend.dev>',
+            to: recipients,
+            subject: subject,
+            html: body,
+          });
+
+          if (emailError) {
+            console.error(`Failed to send reminder for ${order.mo_number}:`, emailError);
+            emailErrors.push(`${order.mo_number}: ${emailError.message}`);
+          } else {
+            console.log(`Sent reminder for ${order.mo_number} to ${recipients.join(', ')}`);
+            emailsSent.push(`Reminder: ${order.mo_number}`);
+          }
+        } catch (err: any) {
+          console.error(`Error sending reminder for ${order.mo_number}:`, err);
+          emailErrors.push(`${order.mo_number}: ${err.message}`);
+        }
       }
     }
 
@@ -179,8 +195,25 @@ const handler = async (req: Request): Promise<Response> => {
         const subject = replaceVariables(template.subject_en, order, overdueDays);
         const body = replaceVariables(template.body_en, order, overdueDays);
 
-        console.log(`Would send overdue notice for ${order.mo_number} (${overdueDays} days overdue)`);
-        emailsSent.push(`Overdue: ${order.mo_number} (${overdueDays}d)`);
+        try {
+          const { error: emailError } = await resend.emails.send({
+            from: 'LotAstro <onboarding@resend.dev>',
+            to: recipients,
+            subject: subject,
+            html: body,
+          });
+
+          if (emailError) {
+            console.error(`Failed to send overdue notice for ${order.mo_number}:`, emailError);
+            emailErrors.push(`${order.mo_number}: ${emailError.message}`);
+          } else {
+            console.log(`Sent overdue notice for ${order.mo_number} (${overdueDays} days overdue)`);
+            emailsSent.push(`Overdue: ${order.mo_number} (${overdueDays}d)`);
+          }
+        } catch (err: any) {
+          console.error(`Error sending overdue notice for ${order.mo_number}:`, err);
+          emailErrors.push(`${order.mo_number}: ${err.message}`);
+        }
       }
     }
 
@@ -199,14 +232,92 @@ const handler = async (req: Request): Promise<Response> => {
         return eta >= today && eta <= nextWeek;
       }) || [];
 
-      console.log(`Weekly summary: ${dueThisWeek.length} due this week, ${overdueOrders.length} overdue`);
-      emailsSent.push(`Weekly summary generated`);
+      // Build summary HTML
+      const summaryHtml = `
+        <h2>Weekly Manufacturing Orders Summary</h2>
+        <p><strong>Date:</strong> ${today.toISOString().split('T')[0]}</p>
+        <h3>Due This Week: ${dueThisWeek.length} orders</h3>
+        ${dueThisWeek.length > 0 ? `
+          <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+            <tr style="background-color: #f0f0f0;">
+              <th>MO Number</th>
+              <th>Supplier</th>
+              <th>Quality</th>
+              <th>Color</th>
+              <th>Meters</th>
+              <th>ETA</th>
+              <th>Status</th>
+            </tr>
+            ${dueThisWeek.map((o: any) => `
+              <tr>
+                <td>${o.mo_number}</td>
+                <td>${o.suppliers?.name || 'Unknown'}</td>
+                <td>${o.quality}</td>
+                <td>${o.color}</td>
+                <td>${o.ordered_meters.toLocaleString()}</td>
+                <td>${o.expected_completion_date}</td>
+                <td>${o.status}</td>
+              </tr>
+            `).join('')}
+          </table>
+        ` : '<p>No orders due this week.</p>'}
+        <h3>Overdue Orders: ${overdueOrders.length}</h3>
+        ${overdueOrders.length > 0 ? `
+          <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+            <tr style="background-color: #ffcccc;">
+              <th>MO Number</th>
+              <th>Supplier</th>
+              <th>Quality</th>
+              <th>Color</th>
+              <th>Meters</th>
+              <th>ETA</th>
+              <th>Days Overdue</th>
+            </tr>
+            ${overdueOrders.map((o) => {
+              const eta = new Date(o.expected_completion_date!);
+              const overdueDays = Math.ceil((today.getTime() - eta.getTime()) / (1000 * 60 * 60 * 24));
+              return `
+                <tr>
+                  <td>${o.mo_number}</td>
+                  <td>${o.supplier_name}</td>
+                  <td>${o.quality}</td>
+                  <td>${o.color}</td>
+                  <td>${o.ordered_meters.toLocaleString()}</td>
+                  <td>${o.expected_completion_date}</td>
+                  <td style="color: red; font-weight: bold;">${overdueDays}</td>
+                </tr>
+              `;
+            }).join('')}
+          </table>
+        ` : '<p>No overdue orders.</p>'}
+      `;
+
+      try {
+        const { error: summaryError } = await resend.emails.send({
+          from: 'LotAstro <onboarding@resend.dev>',
+          to: recipients,
+          subject: `Weekly MO Summary - ${today.toISOString().split('T')[0]}`,
+          html: summaryHtml,
+        });
+
+        if (summaryError) {
+          console.error('Failed to send weekly summary:', summaryError);
+          emailErrors.push(`Weekly summary: ${summaryError.message}`);
+        } else {
+          console.log(`Weekly summary sent to ${recipients.join(', ')}`);
+          emailsSent.push('Weekly summary');
+        }
+      } catch (err: any) {
+        console.error('Error sending weekly summary:', err);
+        emailErrors.push(`Weekly summary: ${err.message}`);
+      }
     }
 
     return new Response(JSON.stringify({
       success: true,
       message: `Processed ${ordersToRemind.length} reminders, ${overdueOrders.length} overdue notices`,
       emailsSent,
+      emailErrors: emailErrors.length > 0 ? emailErrors : undefined,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
