@@ -1,42 +1,90 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Edit, Save, Loader2, Mail } from 'lucide-react';
+import { Edit, Mail, Plus, Copy, Search, Clock, AlertTriangle } from 'lucide-react';
+import EmailTemplateEditor from '@/components/email/EmailTemplateEditor';
+import VersionHistoryDrawer from '@/components/email/VersionHistoryDrawer';
+import SendTestEmailDialog from '@/components/email/SendTestEmailDialog';
+import CreateTemplateDialog from '@/components/email/CreateTemplateDialog';
+import DeactivateConfirmDialog from '@/components/email/DeactivateConfirmDialog';
+
+interface VariableMeta {
+  name: string;
+  description: string;
+  example: string;
+  required: boolean;
+}
 
 interface EmailTemplate {
   id: string;
   template_key: string;
   name: string;
+  category: string;
   subject_en: string;
   subject_tr: string;
   body_en: string;
   body_tr: string;
+  default_subject_en: string | null;
+  default_subject_tr: string | null;
+  default_body_en: string | null;
+  default_body_tr: string | null;
   variables: string[];
+  variables_meta: VariableMeta[];
   is_active: boolean;
+  is_system: boolean;
+  version: number;
   created_at: string;
   updated_at: string;
 }
+
+interface TemplateUsage {
+  id: string;
+  usage_type: string;
+  usage_name: string;
+  schedule: string | null;
+}
+
+const CATEGORIES = [
+  { value: 'all', label: 'All Categories' },
+  { value: 'manufacturing_orders', label: 'Manufacturing Orders' },
+  { value: 'reservations', label: 'Reservations' },
+  { value: 'deliveries', label: 'Deliveries' },
+  { value: 'system', label: 'System Alerts' },
+];
 
 const EmailTemplatesTab: React.FC = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [usages, setUsages] = useState<Record<string, TemplateUsage[]>>({});
   const [loading, setLoading] = useState(true);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [originalTemplate, setOriginalTemplate] = useState<EmailTemplate | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editLanguage, setEditLanguage] = useState<'en' | 'tr'>('en');
+  const [sendingTest, setSendingTest] = useState(false);
+  
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  
+  // Dialog states
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [testEmailOpen, setTestEmailOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [duplicateTemplate, setDuplicateTemplate] = useState<EmailTemplate | null>(null);
+  const [deactivateConfirmOpen, setDeactivateConfirmOpen] = useState(false);
+  const [templateToDeactivate, setTemplateToDeactivate] = useState<EmailTemplate | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -47,10 +95,32 @@ const EmailTemplatesTab: React.FC = () => {
       const { data, error } = await supabase
         .from('email_templates')
         .select('*')
-        .order('name');
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
 
       if (error) throw error;
-      setTemplates(data || []);
+      
+      const templatesData = (data || []).map(t => ({
+        ...t,
+        variables_meta: t.variables_meta || [],
+        category: t.category || 'system',
+        is_system: t.is_system ?? false,
+        version: t.version || 1
+      })) as EmailTemplate[];
+      
+      setTemplates(templatesData);
+      
+      // Fetch usages for all templates
+      const { data: usageData } = await supabase
+        .from('email_template_usage')
+        .select('*');
+      
+      const usageMap: Record<string, TemplateUsage[]> = {};
+      usageData?.forEach((u: any) => {
+        if (!usageMap[u.template_id]) usageMap[u.template_id] = [];
+        usageMap[u.template_id].push(u);
+      });
+      setUsages(usageMap);
     } catch (error) {
       console.error('Error fetching templates:', error);
       toast({
@@ -65,23 +135,53 @@ const EmailTemplatesTab: React.FC = () => {
 
   const handleEdit = (template: EmailTemplate) => {
     setEditingTemplate({ ...template });
+    setOriginalTemplate({ ...template });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!editingTemplate) return;
 
+    // Validation
+    if (!editingTemplate.subject_en.trim() || !editingTemplate.subject_tr.trim() ||
+        !editingTemplate.body_en.trim() || !editingTemplate.body_tr.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Subject and body are required in both languages',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setSaving(true);
     try {
+      const { data: user } = await supabase.auth.getUser();
+      
+      // Save version history first
+      if (originalTemplate) {
+        await supabase.from('email_template_versions').insert({
+          template_id: editingTemplate.id,
+          version: editingTemplate.version,
+          subject_en: originalTemplate.subject_en,
+          subject_tr: originalTemplate.subject_tr,
+          body_en: originalTemplate.body_en,
+          body_tr: originalTemplate.body_tr,
+          changed_by: user.user?.id,
+        });
+      }
+
+      // Update the template
       const { error } = await supabase
         .from('email_templates')
         .update({
           name: editingTemplate.name,
+          category: editingTemplate.category,
           subject_en: editingTemplate.subject_en,
           subject_tr: editingTemplate.subject_tr,
           body_en: editingTemplate.body_en,
           body_tr: editingTemplate.body_tr,
           is_active: editingTemplate.is_active,
+          version: editingTemplate.version + 1,
         })
         .eq('id', editingTemplate.id);
 
@@ -89,7 +189,7 @@ const EmailTemplatesTab: React.FC = () => {
 
       toast({
         title: t('success') as string,
-        description: t('emailSettings.templateUpdated') as string,
+        description: 'Template saved successfully',
       });
 
       fetchTemplates();
@@ -98,7 +198,7 @@ const EmailTemplatesTab: React.FC = () => {
       console.error('Error saving template:', error);
       toast({
         title: t('error') as string,
-        description: t('emailSettings.templateUpdateFailed') as string,
+        description: 'Failed to save template',
         variant: 'destructive'
       });
     } finally {
@@ -106,30 +206,139 @@ const EmailTemplatesTab: React.FC = () => {
     }
   };
 
+  const handleReset = () => {
+    if (!editingTemplate || !editingTemplate.default_body_en) return;
+    
+    setEditingTemplate({
+      ...editingTemplate,
+      subject_en: editingTemplate.default_subject_en || editingTemplate.subject_en,
+      subject_tr: editingTemplate.default_subject_tr || editingTemplate.subject_tr,
+      body_en: editingTemplate.default_body_en || editingTemplate.body_en,
+      body_tr: editingTemplate.default_body_tr || editingTemplate.body_tr,
+    });
+    
+    toast({ title: 'Reset to default', description: 'Template content restored to original' });
+  };
+
+  const handleRollback = (version: any) => {
+    if (!editingTemplate) return;
+    
+    setEditingTemplate({
+      ...editingTemplate,
+      subject_en: version.subject_en,
+      subject_tr: version.subject_tr,
+      body_en: version.body_en,
+      body_tr: version.body_tr,
+    });
+    
+    toast({ title: 'Version restored', description: `Restored to version ${version.version}` });
+  };
+
   const toggleActive = async (template: EmailTemplate) => {
+    if (template.is_active) {
+      // Show confirmation when deactivating
+      setTemplateToDeactivate(template);
+      setDeactivateConfirmOpen(true);
+    } else {
+      // Activate directly
+      await updateActiveStatus(template, true);
+    }
+  };
+
+  const updateActiveStatus = async (template: EmailTemplate, newStatus: boolean) => {
     try {
       const { error } = await supabase
         .from('email_templates')
-        .update({ is_active: !template.is_active })
+        .update({ is_active: newStatus })
         .eq('id', template.id);
 
       if (error) throw error;
       fetchTemplates();
+      toast({ 
+        title: newStatus ? 'Template Activated' : 'Template Deactivated',
+        description: `"${template.name}" is now ${newStatus ? 'active' : 'inactive'}`
+      });
     } catch (error) {
       console.error('Error toggling template:', error);
     }
   };
 
+  const handleDuplicate = (template: EmailTemplate) => {
+    setDuplicateTemplate(template);
+    setCreateOpen(true);
+  };
+
+  const hasChanges = editingTemplate && originalTemplate && (
+    editingTemplate.name !== originalTemplate.name ||
+    editingTemplate.subject_en !== originalTemplate.subject_en ||
+    editingTemplate.subject_tr !== originalTemplate.subject_tr ||
+    editingTemplate.body_en !== originalTemplate.body_en ||
+    editingTemplate.body_tr !== originalTemplate.body_tr ||
+    editingTemplate.is_active !== originalTemplate.is_active
+  );
+
+  const handleCloseDialog = () => {
+    if (hasChanges) {
+      if (!confirm('You have unsaved changes. Are you sure you want to close?')) return;
+    }
+    setDialogOpen(false);
+    setEditingTemplate(null);
+    setOriginalTemplate(null);
+  };
+
+  // Filter templates
+  const filteredTemplates = templates.filter(t => {
+    const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         t.template_key.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const getCategoryLabel = (category: string) => {
+    return CATEGORIES.find(c => c.value === category)?.label || category;
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="h-5 w-5" />
-          {t('emailSettings.emailTemplates')}
-        </CardTitle>
-        <CardDescription>Manage email templates for reminders and notifications</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Email Templates
+            </CardTitle>
+            <CardDescription>Manage email templates for reminders and notifications</CardDescription>
+          </div>
+          <Button onClick={() => { setDuplicateTemplate(null); setCreateOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Template
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
+        {/* Filters */}
+        <div className="flex gap-4 mb-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search templates..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by category" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map(cat => (
+                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {loading ? (
           <div className="space-y-2">
             {[...Array(3)].map((_, i) => (
@@ -140,47 +349,78 @@ const EmailTemplatesTab: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('emailSettings.templateName')}</TableHead>
-                <TableHead>{t('emailSettings.templateKey')}</TableHead>
-                <TableHead>{t('emailSettings.variables')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
-                <TableHead>{t('actions')}</TableHead>
+                <TableHead>Template</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Used By</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {templates.map((template) => (
-                <TableRow key={template.id}>
-                  <TableCell className="font-medium">{template.name}</TableCell>
+              {filteredTemplates.map((template) => (
+                <TableRow key={template.id} className={!template.is_active ? 'opacity-60' : ''}>
                   <TableCell>
-                    <code className="text-xs bg-muted px-2 py-1 rounded">
-                      {template.template_key}
-                    </code>
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        {template.name}
+                        {template.is_system && <Badge variant="secondary" className="text-xs">System</Badge>}
+                      </div>
+                      <code className="text-xs text-muted-foreground">{template.template_key}</code>
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {template.variables?.slice(0, 3).map((v) => (
-                        <Badge key={v} variant="outline" className="text-xs">
-                          {`{${v}}`}
-                        </Badge>
-                      ))}
-                      {template.variables?.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{template.variables.length - 3}
+                    <Badge variant="outline">{getCategoryLabel(template.category)}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <TooltipProvider>
+                      {usages[template.id]?.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {usages[template.id].slice(0, 2).map(u => (
+                            <Tooltip key={u.id}>
+                              <TooltipTrigger>
+                                <Badge variant="secondary" className="text-xs">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {u.usage_name}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{u.schedule || 'Automated'}</TooltipContent>
+                            </Tooltip>
+                          ))}
+                          {usages[template.id].length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{usages[template.id].length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Not used</span>
+                      )}
+                    </TooltipProvider>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={template.is_active}
+                        onCheckedChange={() => toggleActive(template)}
+                      />
+                      {!template.is_active && (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Inactive
                         </Badge>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Switch
-                      checked={template.is_active}
-                      onCheckedChange={() => toggleActive(template)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(template)}>
-                      <Edit className="h-3 w-3 mr-1" />
-                      {t('edit')}
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(template)}>
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(template)}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -189,92 +429,68 @@ const EmailTemplatesTab: React.FC = () => {
         )}
       </CardContent>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t('emailSettings.editTemplate')}</DialogTitle>
-          </DialogHeader>
-
+      {/* Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={handleCloseDialog}>
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
           {editingTemplate && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>{t('emailSettings.templateName')}</Label>
-                <Input
-                  value={editingTemplate.name}
-                  onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t('emailSettings.variables')}</Label>
-                <div className="flex flex-wrap gap-1 p-2 bg-muted rounded">
-                  {editingTemplate.variables?.map((v) => (
-                    <Badge key={v} variant="secondary" className="text-xs">
-                      {`{${v}}`}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <Tabs value={editLanguage} onValueChange={(v) => setEditLanguage(v as 'en' | 'tr')}>
-                <TabsList>
-                  <TabsTrigger value="en">🇺🇸 {t('emailSettings.english')}</TabsTrigger>
-                  <TabsTrigger value="tr">🇹🇷 {t('emailSettings.turkish')}</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="en" className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>{t('emailSettings.subjectEn')}</Label>
-                    <Input
-                      value={editingTemplate.subject_en}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, subject_en: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t('emailSettings.bodyEn')}</Label>
-                    <Textarea
-                      value={editingTemplate.body_en}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, body_en: e.target.value })}
-                      rows={10}
-                      className="font-mono text-sm"
-                    />
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="tr" className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>{t('emailSettings.subjectTr')}</Label>
-                    <Input
-                      value={editingTemplate.subject_tr}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, subject_tr: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t('emailSettings.bodyTr')}</Label>
-                    <Textarea
-                      value={editingTemplate.body_tr}
-                      onChange={(e) => setEditingTemplate({ ...editingTemplate, body_tr: e.target.value })}
-                      rows={10}
-                      className="font-mono text-sm"
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  {t('cancel')}
-                </Button>
-                <Button onClick={handleSave} disabled={saving}>
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  <Save className="h-4 w-4 mr-2" />
-                  {t('save')}
-                </Button>
-              </div>
-            </div>
+            <EmailTemplateEditor
+              template={editingTemplate}
+              onChange={setEditingTemplate}
+              onSave={handleSave}
+              onSendTest={() => setTestEmailOpen(true)}
+              onReset={handleReset}
+              onViewHistory={() => setHistoryOpen(true)}
+              saving={saving}
+              sendingTest={sendingTest}
+              hasChanges={hasChanges || false}
+            />
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Version History */}
+      {editingTemplate && (
+        <VersionHistoryDrawer
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          templateId={editingTemplate.id}
+          currentVersion={editingTemplate.version}
+          onRollback={handleRollback}
+        />
+      )}
+
+      {/* Send Test Email */}
+      {editingTemplate && (
+        <SendTestEmailDialog
+          open={testEmailOpen}
+          onOpenChange={setTestEmailOpen}
+          templateId={editingTemplate.id}
+          templateName={editingTemplate.name}
+        />
+      )}
+
+      {/* Create/Duplicate Template */}
+      <CreateTemplateDialog
+        open={createOpen}
+        onOpenChange={(open) => { setCreateOpen(open); if (!open) setDuplicateTemplate(null); }}
+        onCreated={fetchTemplates}
+        duplicateFrom={duplicateTemplate}
+      />
+
+      {/* Deactivate Confirmation */}
+      {templateToDeactivate && (
+        <DeactivateConfirmDialog
+          open={deactivateConfirmOpen}
+          onOpenChange={setDeactivateConfirmOpen}
+          templateId={templateToDeactivate.id}
+          templateName={templateToDeactivate.name}
+          onConfirm={() => {
+            updateActiveStatus(templateToDeactivate, false);
+            setDeactivateConfirmOpen(false);
+            setTemplateToDeactivate(null);
+          }}
+        />
+      )}
     </Card>
   );
 };

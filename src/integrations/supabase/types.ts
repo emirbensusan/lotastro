@@ -144,45 +144,154 @@ export type Database = {
         }
         Relationships: []
       }
+      email_template_usage: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          schedule: string | null
+          template_id: string
+          usage_name: string
+          usage_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          schedule?: string | null
+          template_id: string
+          usage_name: string
+          usage_type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          schedule?: string | null
+          template_id?: string
+          usage_name?: string
+          usage_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_template_usage_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_template_versions: {
+        Row: {
+          body_en: string
+          body_tr: string
+          change_reason: string | null
+          changed_by: string
+          created_at: string
+          id: string
+          subject_en: string
+          subject_tr: string
+          template_id: string
+          version: number
+        }
+        Insert: {
+          body_en: string
+          body_tr: string
+          change_reason?: string | null
+          changed_by: string
+          created_at?: string
+          id?: string
+          subject_en: string
+          subject_tr: string
+          template_id: string
+          version: number
+        }
+        Update: {
+          body_en?: string
+          body_tr?: string
+          change_reason?: string | null
+          changed_by?: string
+          created_at?: string
+          id?: string
+          subject_en?: string
+          subject_tr?: string
+          template_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           body_en: string
           body_tr: string
+          category: string | null
           created_at: string
+          default_body_en: string | null
+          default_body_tr: string | null
+          default_subject_en: string | null
+          default_subject_tr: string | null
           id: string
           is_active: boolean | null
+          is_system: boolean | null
           name: string
           subject_en: string
           subject_tr: string
           template_key: string
           updated_at: string
           variables: string[] | null
+          variables_meta: Json | null
+          version: number | null
         }
         Insert: {
           body_en: string
           body_tr: string
+          category?: string | null
           created_at?: string
+          default_body_en?: string | null
+          default_body_tr?: string | null
+          default_subject_en?: string | null
+          default_subject_tr?: string | null
           id?: string
           is_active?: boolean | null
+          is_system?: boolean | null
           name: string
           subject_en: string
           subject_tr: string
           template_key: string
           updated_at?: string
           variables?: string[] | null
+          variables_meta?: Json | null
+          version?: number | null
         }
         Update: {
           body_en?: string
           body_tr?: string
+          category?: string | null
           created_at?: string
+          default_body_en?: string | null
+          default_body_tr?: string | null
+          default_subject_en?: string | null
+          default_subject_tr?: string | null
           id?: string
           is_active?: boolean | null
+          is_system?: boolean | null
           name?: string
           subject_en?: string
           subject_tr?: string
           template_key?: string
           updated_at?: string
           variables?: string[] | null
+          variables_meta?: Json | null
+          version?: number | null
         }
         Relationships: []
       }
