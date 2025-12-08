@@ -38,3 +38,6 @@ verify_jwt = true
 
 [functions.repair-audit-inconsistencies]
 verify_jwt = true
+
+[functions.send-mo-reminders]
+verify_jwt = false
