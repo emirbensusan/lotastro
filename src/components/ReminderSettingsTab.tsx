@@ -94,13 +94,13 @@ const ReminderSettingsTab: React.FC = () => {
 
       toast({
         title: t('success') as string,
-        description: t('settings.saved') as string,
+        description: t('emailSettings.settingsSaved') as string,
       });
     } catch (error) {
       console.error('Error saving settings:', error);
       toast({
         title: t('error') as string,
-        description: t('settings.saveError') as string,
+        description: t('emailSettings.settingsSaveFailed') as string,
         variant: 'destructive'
       });
     } finally {
@@ -163,9 +163,9 @@ const ReminderSettingsTab: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
-            {t('settings.reminderDays')}
+            {t('emailSettings.reminderDays')}
           </CardTitle>
-          <CardDescription>{t('settings.reminderDaysDesc')}</CardDescription>
+          <CardDescription>Configure how many days before ETA to send reminders</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -176,12 +176,12 @@ const ReminderSettingsTab: React.FC = () => {
                 className="cursor-pointer text-sm px-3 py-1"
                 onClick={() => toggleReminderDay(day)}
               >
-                {day} {t('settings.daysBeforeEta')}
+                {day} days before
               </Badge>
             ))}
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            {t('settings.selectedDays')}: {settings.mo_reminder_days.days.join(', ')} {t('settings.daysBeforeEta')}
+            Selected: {settings.mo_reminder_days.days.join(', ')} days before ETA
           </p>
         </CardContent>
       </Card>
@@ -191,14 +191,14 @@ const ReminderSettingsTab: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            {t('settings.reminderSchedule')}
+            {t('emailSettings.reminderSchedule')}
           </CardTitle>
-          <CardDescription>{t('settings.reminderScheduleDesc')}</CardDescription>
+          <CardDescription>Configure when reminder emails are sent</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>{t('settings.dayOfWeek')}</Label>
+              <Label>{t('emailSettings.dayOfWeek')}</Label>
               <Select
                 value={String(settings.mo_reminder_schedule.day_of_week)}
                 onValueChange={(v) => setSettings({
@@ -212,14 +212,14 @@ const ReminderSettingsTab: React.FC = () => {
                 <SelectContent>
                   {DAYS_OF_WEEK.map((day) => (
                     <SelectItem key={day.value} value={String(day.value)}>
-                      {day.label}
+                      {t(`emailSettings.${day.label.toLowerCase()}`) || day.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>{t('settings.time')}</Label>
+              <Label>{t('emailSettings.timeOfDay')}</Label>
               <div className="flex gap-2">
                 <Input
                   type="number"
@@ -265,23 +265,23 @@ const ReminderSettingsTab: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            {t('settings.reminderRecipients')}
+            {t('emailSettings.recipients')}
           </CardTitle>
-          <CardDescription>{t('settings.reminderRecipientsDesc')}</CardDescription>
+          <CardDescription>Email addresses that will receive reminder notifications</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex gap-2">
               <Input
                 type="email"
-                placeholder={t('settings.enterEmail') as string}
+                placeholder="Enter email address"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addEmail()}
               />
               <Button onClick={addEmail} variant="outline">
                 <Plus className="h-4 w-4 mr-1" />
-                {t('settings.add')}
+                {t('emailSettings.addEmail')}
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -299,7 +299,7 @@ const ReminderSettingsTab: React.FC = () => {
                 </Badge>
               ))}
               {settings.mo_reminder_recipients.emails.length === 0 && (
-                <span className="text-sm text-muted-foreground">{t('settings.noRecipients')}</span>
+                <span className="text-sm text-muted-foreground">No recipients configured</span>
               )}
             </div>
           </div>
@@ -309,13 +309,13 @@ const ReminderSettingsTab: React.FC = () => {
       {/* Overdue Escalation */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('settings.overdueEscalation')}</CardTitle>
-          <CardDescription>{t('settings.overdueEscalationDesc')}</CardDescription>
+          <CardTitle>{t('emailSettings.overdueEscalation')}</CardTitle>
+          <CardDescription>Configure how overdue orders are escalated</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="space-y-2">
-              <Label>{t('settings.dailyRemindersCount')}</Label>
+              <Label>Daily reminders for first X days</Label>
               <Input
                 type="number"
                 min="1"
@@ -329,7 +329,7 @@ const ReminderSettingsTab: React.FC = () => {
               />
             </div>
             <p className="text-sm text-muted-foreground pt-6">
-              {t('settings.thenWeekly')}
+              {t('emailSettings.dailyForDays')}
             </p>
           </div>
         </CardContent>
@@ -340,7 +340,7 @@ const ReminderSettingsTab: React.FC = () => {
         <Button onClick={handleSave} disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           <Save className="h-4 w-4 mr-2" />
-          {t('settings.saveAll')}
+          {t('emailSettings.saveAll')}
         </Button>
       </div>
     </div>
