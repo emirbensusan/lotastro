@@ -26,21 +26,21 @@ const ResetPassword = () => {
     
     if (!accessToken || type !== 'recovery') {
       toast({
-        title: 'Invalid Reset Link',
-        description: 'The password reset link is invalid or has expired.',
+        title: t('invalidResetLink') as string,
+        description: t('resetLinkExpired') as string,
         variant: 'destructive',
       });
       navigate('/auth');
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, t]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
       toast({
-        title: 'Password Mismatch',
-        description: 'Passwords do not match. Please try again.',
+        title: t('passwordMismatch') as string,
+        description: t('passwordsMustMatch') as string,
         variant: 'destructive',
       });
       return;
@@ -48,8 +48,8 @@ const ResetPassword = () => {
 
     if (password.length < 6) {
       toast({
-        title: 'Password Too Short',
-        description: 'Password must be at least 6 characters long.',
+        title: t('passwordTooShort') as string,
+        description: t('passwordMinLength') as string,
         variant: 'destructive',
       });
       return;
@@ -65,16 +65,16 @@ const ResetPassword = () => {
       if (error) throw error;
 
       toast({
-        title: 'Password Updated',
-        description: 'Your password has been successfully updated. You can now sign in.',
+        title: t('passwordUpdated') as string,
+        description: t('passwordUpdatedSuccess') as string,
       });
 
       // Redirect to auth page
       navigate('/auth');
     } catch (error: any) {
       toast({
-        title: 'Reset Failed',
-        description: error.message || 'Failed to update password. Please try again.',
+        title: t('resetFailed') as string,
+        description: error.message || (t('resetFailedDescription') as string),
         variant: 'destructive',
       });
     } finally {
@@ -88,20 +88,20 @@ const ResetPassword = () => {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">{t('resetPassword')}</CardTitle>
           <CardDescription>
-            Enter your new password below
+            {t('enterNewPasswordBelow')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
+              <Label htmlFor="password">{t('newPassword')}</Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter new password"
+                  placeholder={t('enterNewPasswordPlaceholder') as string}
                   required
                   minLength={6}
                 />
@@ -122,14 +122,14 @@ const ResetPassword = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Label htmlFor="confirmPassword">{t('confirmNewPassword')}</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
+                  placeholder={t('confirmNewPasswordPlaceholder') as string}
                   required
                   minLength={6}
                 />
@@ -153,10 +153,10 @@ const ResetPassword = () => {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating Password...
+                  {t('updatingPassword')}
                 </>
               ) : (
-                'Update Password'
+                t('updatePassword')
               )}
             </Button>
           </form>
@@ -167,7 +167,7 @@ const ResetPassword = () => {
               onClick={() => navigate('/auth')}
               className="text-sm"
             >
-              Back to Sign In
+              {t('backToSignIn')}
             </Button>
           </div>
         </CardContent>
