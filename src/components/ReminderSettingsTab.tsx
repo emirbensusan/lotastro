@@ -5,17 +5,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/hooks/useAuth';
-import { Save, Loader2, Bell, Clock, Mail, X, Plus } from 'lucide-react';
+import { Save, Loader2, Bell, Clock, Mail, X, Plus, Send, Pencil, AlertTriangle } from 'lucide-react';
 
 interface EmailSettings {
   mo_reminder_days: { days: number[] };
   mo_reminder_schedule: { day_of_week: number; hour: number; minute: number; timezone: string };
   mo_reminder_recipients: { emails: string[] };
   mo_overdue_escalation: { daily_count: number; then_weekly: boolean };
+  email_sender: { name: string; email: string };
 }
 
 const DAYS_OF_WEEK = [
@@ -28,6 +30,17 @@ const DAYS_OF_WEEK = [
   { value: 6, label: 'Saturday' },
 ];
 
+const maskEmail = (email: string): string => {
+  if (!email || !email.includes('@')) return '***';
+  const [local, domain] = email.split('@');
+  const maskedLocal = local.length <= 2 ? local[0] + '***' : local.slice(0, 2) + '***';
+  const domainParts = domain.split('.');
+  const maskedDomain = domainParts[0].length <= 3 
+    ? domainParts[0][0] + '***' 
+    : domainParts[0].slice(0, 3) + '***';
+  return `${maskedLocal}@${maskedDomain}.${domainParts.slice(1).join('.')}`;
+};
+
 const ReminderSettingsTab: React.FC = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -35,12 +48,16 @@ const ReminderSettingsTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [senderDialogOpen, setSenderDialogOpen] = useState(false);
+  const [editSenderName, setEditSenderName] = useState('');
+  const [editSenderEmail, setEditSenderEmail] = useState('');
 
   const [settings, setSettings] = useState<EmailSettings>({
     mo_reminder_days: { days: [7, 3] },
     mo_reminder_schedule: { day_of_week: 4, hour: 17, minute: 0, timezone: 'Europe/Istanbul' },
     mo_reminder_recipients: { emails: [] },
     mo_overdue_escalation: { daily_count: 3, then_weekly: true },
+    email_sender: { name: 'LotAstro', email: 'info@lotastro.com' },
   });
 
   useEffect(() => {
@@ -90,6 +107,7 @@ const ReminderSettingsTab: React.FC = () => {
         saveSetting('mo_reminder_schedule', settings.mo_reminder_schedule),
         saveSetting('mo_reminder_recipients', settings.mo_reminder_recipients),
         saveSetting('mo_overdue_escalation', settings.mo_overdue_escalation),
+        saveSetting('email_sender', settings.email_sender),
       ]);
 
       toast({
@@ -106,6 +124,32 @@ const ReminderSettingsTab: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const openSenderDialog = () => {
+    setEditSenderName(settings.email_sender.name);
+    setEditSenderEmail(settings.email_sender.email);
+    setSenderDialogOpen(true);
+  };
+
+  const saveSenderSettings = () => {
+    if (!editSenderEmail.includes('@')) {
+      toast({
+        title: t('error') as string,
+        description: 'Invalid email address',
+        variant: 'destructive'
+      });
+      return;
+    }
+    setSettings({
+      ...settings,
+      email_sender: { name: editSenderName, email: editSenderEmail }
+    });
+    setSenderDialogOpen(false);
+    toast({
+      title: t('success') as string,
+      description: 'Sender updated. Click "Save All Settings" to persist changes.',
+    });
   };
 
   const addEmail = () => {
@@ -158,6 +202,89 @@ const ReminderSettingsTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Sender Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            {t('emailSettings.senderConfiguration') || 'Sender Configuration'}
+          </CardTitle>
+          <CardDescription>
+            {t('emailSettings.senderDescription') || 'Configure the email address used to send notifications'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Sender Name:</Label>
+                  <span className="font-medium">{settings.email_sender.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Email:</Label>
+                  <span className="font-mono text-sm">{maskEmail(settings.email_sender.email)}</span>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={openSenderDialog}>
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            </div>
+            <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                {t('emailSettings.senderWarning') || 'The sender email must be verified in Resend. If you change domains, update this setting and verify the new domain at resend.com/domains.'}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sender Edit Dialog */}
+      <Dialog open={senderDialogOpen} onOpenChange={setSenderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('emailSettings.editSender') || 'Edit Email Sender'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="senderName">{t('emailSettings.senderName') || 'Sender Name'}</Label>
+              <Input
+                id="senderName"
+                value={editSenderName}
+                onChange={(e) => setEditSenderName(e.target.value)}
+                placeholder="LotAstro"
+              />
+              <p className="text-xs text-muted-foreground">
+                This name appears in the "From" field of emails
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="senderEmail">{t('emailSettings.senderEmail') || 'Sender Email'}</Label>
+              <Input
+                id="senderEmail"
+                type="email"
+                value={editSenderEmail}
+                onChange={(e) => setEditSenderEmail(e.target.value)}
+                placeholder="info@lotastro.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                Must be a verified email address in Resend
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSenderDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveSenderSettings}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Reminder Days */}
       <Card>
         <CardHeader>

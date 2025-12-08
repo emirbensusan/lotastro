@@ -63,6 +63,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     const reminderDays = settings.mo_reminder_days?.days || [7, 3];
     const recipients = settings.mo_reminder_recipients?.emails || [];
+    
+    // Get sender configuration
+    const senderName = settings.email_sender?.name || 'LotAstro';
+    const senderEmail = settings.email_sender?.email || 'info@lotastro.com';
+    const fromAddress = `${senderName} <${senderEmail}>`;
 
     if (recipients.length === 0) {
       console.log('No recipients configured, skipping reminders');
@@ -164,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         try {
           const { error: emailError } = await resend.emails.send({
-            from: 'LotAstro <onboarding@resend.dev>',
+            from: fromAddress,
             to: recipients,
             subject: subject,
             html: body,
@@ -197,7 +202,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         try {
           const { error: emailError } = await resend.emails.send({
-            from: 'LotAstro <onboarding@resend.dev>',
+            from: fromAddress,
             to: recipients,
             subject: subject,
             html: body,
@@ -294,7 +299,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         const { error: summaryError } = await resend.emails.send({
-          from: 'LotAstro <onboarding@resend.dev>',
+          from: fromAddress,
           to: recipients,
           subject: `Weekly MO Summary - ${today.toISOString().split('T')[0]}`,
           html: summaryHtml,

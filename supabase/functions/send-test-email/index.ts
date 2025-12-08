@@ -100,6 +100,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Fetch email sender setting
+    const { data: senderSetting } = await supabase
+      .from('email_settings')
+      .select('setting_value')
+      .eq('setting_key', 'email_sender')
+      .single();
+
+    const senderName = senderSetting?.setting_value?.name || 'LotAstro';
+    const senderEmail = senderSetting?.setting_value?.email || 'info@lotastro.com';
+    const fromAddress = `${senderName} <${senderEmail}>`;
+
     // Get subject and body based on language
     const subject = language === 'tr' ? template.subject_tr : template.subject_en;
     const body = language === 'tr' ? template.body_tr : template.body_en;
@@ -148,11 +159,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     finalBody = testNotice + finalBody;
 
-    console.log(`Sending test email to ${recipientEmail} using template ${template.name}`);
+    console.log(`Sending test email to ${recipientEmail} using template ${template.name} from ${fromAddress}`);
 
     // Send the test email
     const { data: emailResult, error: emailError } = await resend.emails.send({
-      from: 'LotAstro <onboarding@resend.dev>',
+      from: fromAddress,
       to: [recipientEmail],
       subject: `[TEST] ${finalSubject}`,
       html: finalBody,
