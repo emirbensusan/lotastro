@@ -47,6 +47,7 @@ const ReminderSettingsTab: React.FC = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingSender, setSavingSender] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [senderDialogOpen, setSenderDialogOpen] = useState(false);
   const [editSenderName, setEditSenderName] = useState('');
@@ -132,7 +133,7 @@ const ReminderSettingsTab: React.FC = () => {
     setSenderDialogOpen(true);
   };
 
-  const saveSenderSettings = () => {
+  const saveSenderSettings = async () => {
     if (!editSenderEmail.includes('@')) {
       toast({
         title: t('error') as string,
@@ -141,15 +142,31 @@ const ReminderSettingsTab: React.FC = () => {
       });
       return;
     }
-    setSettings({
-      ...settings,
-      email_sender: { name: editSenderName, email: editSenderEmail }
-    });
-    setSenderDialogOpen(false);
-    toast({
-      title: t('success') as string,
-      description: 'Sender updated. Click "Save All Settings" to persist changes.',
-    });
+    
+    setSavingSender(true);
+    try {
+      const newSenderValue = { name: editSenderName, email: editSenderEmail };
+      await saveSetting('email_sender', newSenderValue);
+      
+      setSettings({
+        ...settings,
+        email_sender: newSenderValue
+      });
+      setSenderDialogOpen(false);
+      toast({
+        title: t('success') as string,
+        description: 'Sender configuration saved successfully.',
+      });
+    } catch (error) {
+      console.error('Error saving sender settings:', error);
+      toast({
+        title: t('error') as string,
+        description: 'Failed to save sender configuration.',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingSender(false);
+    }
   };
 
   const addEmail = () => {
@@ -275,10 +292,11 @@ const ReminderSettingsTab: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSenderDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setSenderDialogOpen(false)} disabled={savingSender}>
               Cancel
             </Button>
-            <Button onClick={saveSenderSettings}>
+            <Button onClick={saveSenderSettings} disabled={savingSender}>
+              {savingSender && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save
             </Button>
           </DialogFooter>
