@@ -117,6 +117,75 @@ export type Database = {
           },
         ]
       }
+      email_settings: {
+        Row: {
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          body_en: string
+          body_tr: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject_en: string
+          subject_tr: string
+          template_key: string
+          updated_at: string
+          variables: string[] | null
+        }
+        Insert: {
+          body_en: string
+          body_tr: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject_en: string
+          subject_tr: string
+          template_key: string
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Update: {
+          body_en?: string
+          body_tr?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject_en?: string
+          subject_tr?: string
+          template_key?: string
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Relationships: []
+      }
       field_edit_queue: {
         Row: {
           approved_at: string | null
@@ -436,6 +505,141 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manufacturing_orders: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string
+          currency: string | null
+          customer_agreed_date: string | null
+          customer_name: string | null
+          expected_completion_date: string | null
+          id: string
+          incoming_stock_id: string | null
+          is_customer_order: boolean | null
+          mo_number: string
+          notes: string | null
+          order_date: string
+          ordered_meters: number
+          price_per_meter: number | null
+          quality: string
+          reservation_id: string | null
+          status: string
+          supplier_confirmation_number: string | null
+          supplier_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          created_by: string
+          currency?: string | null
+          customer_agreed_date?: string | null
+          customer_name?: string | null
+          expected_completion_date?: string | null
+          id?: string
+          incoming_stock_id?: string | null
+          is_customer_order?: boolean | null
+          mo_number?: string
+          notes?: string | null
+          order_date?: string
+          ordered_meters: number
+          price_per_meter?: number | null
+          quality: string
+          reservation_id?: string | null
+          status?: string
+          supplier_confirmation_number?: string | null
+          supplier_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string
+          currency?: string | null
+          customer_agreed_date?: string | null
+          customer_name?: string | null
+          expected_completion_date?: string | null
+          id?: string
+          incoming_stock_id?: string | null
+          is_customer_order?: boolean | null
+          mo_number?: string
+          notes?: string | null
+          order_date?: string
+          ordered_meters?: number
+          price_per_meter?: number | null
+          quality?: string
+          reservation_id?: string | null
+          status?: string
+          supplier_confirmation_number?: string | null
+          supplier_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manufacturing_orders_incoming_stock_id_fkey"
+            columns: ["incoming_stock_id"]
+            isOneToOne: false
+            referencedRelation: "incoming_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manufacturing_orders_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manufacturing_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mo_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          id: string
+          manufacturing_order_id: string
+          new_status: string
+          notes: string | null
+          old_status: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          id?: string
+          manufacturing_order_id: string
+          new_status: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          manufacturing_order_id?: string
+          new_status?: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mo_status_history_manufacturing_order_id_fkey"
+            columns: ["manufacturing_order_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturing_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1156,6 +1360,7 @@ export type Database = {
           table_name: string
         }[]
       }
+      generate_mo_number: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       generate_reservation_number: { Args: never; Returns: string }
       get_available_rolls_count: { Args: { p_lot_id: string }; Returns: number }
