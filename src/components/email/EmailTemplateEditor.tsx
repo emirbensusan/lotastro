@@ -45,6 +45,8 @@ interface EmailTemplate {
   is_active: boolean;
   is_system: boolean;
   version: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface EmailTemplateEditorProps {
