@@ -117,6 +117,51 @@ export type Database = {
           },
         ]
       }
+      demand_history: {
+        Row: {
+          amount: number
+          color_code: string
+          created_at: string
+          created_by: string | null
+          demand_date: string
+          document_status: string
+          id: string
+          import_batch_id: string | null
+          import_row_number: number | null
+          quality_code: string
+          source: string
+          unit: string
+        }
+        Insert: {
+          amount: number
+          color_code: string
+          created_at?: string
+          created_by?: string | null
+          demand_date: string
+          document_status: string
+          id?: string
+          import_batch_id?: string | null
+          import_row_number?: number | null
+          quality_code: string
+          source?: string
+          unit: string
+        }
+        Update: {
+          amount?: number
+          color_code?: string
+          created_at?: string
+          created_by?: string | null
+          demand_date?: string
+          document_status?: string
+          id?: string
+          import_batch_id?: string | null
+          import_row_number?: number | null
+          quality_code?: string
+          source?: string
+          unit?: string
+        }
+        Relationships: []
+      }
       email_settings: {
         Row: {
           description: string | null
@@ -343,6 +388,356 @@ export type Database = {
           submitted_by?: string
           table_name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      forecast_alerts: {
+        Row: {
+          alert_type: string
+          color_code: string
+          coverage_months: number | null
+          created_at: string
+          current_stock: number
+          forecasted_demand: number
+          id: string
+          is_resolved: boolean
+          previous_alert_id: string | null
+          projected_stockout_days: number | null
+          quality_code: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          run_id: string
+          severity: string
+          unit: string
+        }
+        Insert: {
+          alert_type: string
+          color_code: string
+          coverage_months?: number | null
+          created_at?: string
+          current_stock: number
+          forecasted_demand: number
+          id?: string
+          is_resolved?: boolean
+          previous_alert_id?: string | null
+          projected_stockout_days?: number | null
+          quality_code: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id: string
+          severity: string
+          unit: string
+        }
+        Update: {
+          alert_type?: string
+          color_code?: string
+          coverage_months?: number | null
+          created_at?: string
+          current_stock?: number
+          forecasted_demand?: number
+          id?: string
+          is_resolved?: boolean
+          previous_alert_id?: string | null
+          projected_stockout_days?: number | null
+          quality_code?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id?: string
+          severity?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecast_alerts_previous_alert_id_fkey"
+            columns: ["previous_alert_id"]
+            isOneToOne: false
+            referencedRelation: "forecast_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forecast_alerts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "forecast_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forecast_results: {
+        Row: {
+          color_code: string
+          created_at: string
+          forecast_amount: number
+          historical_avg: number | null
+          id: string
+          period_end: string
+          period_start: string
+          quality_code: string
+          run_id: string
+          scenario: string
+          trend_factor: number | null
+          unit: string
+          weighted_avg: number | null
+        }
+        Insert: {
+          color_code: string
+          created_at?: string
+          forecast_amount: number
+          historical_avg?: number | null
+          id?: string
+          period_end: string
+          period_start: string
+          quality_code: string
+          run_id: string
+          scenario: string
+          trend_factor?: number | null
+          unit: string
+          weighted_avg?: number | null
+        }
+        Update: {
+          color_code?: string
+          created_at?: string
+          forecast_amount?: number
+          historical_avg?: number | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          quality_code?: string
+          run_id?: string
+          scenario?: string
+          trend_factor?: number | null
+          unit?: string
+          weighted_avg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecast_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "forecast_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forecast_runs: {
+        Row: {
+          affected_qualities: Json | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          processed_combinations: number | null
+          run_type: string
+          scheduled_at: string | null
+          started_at: string
+          status: string
+          total_combinations: number | null
+          triggered_by: string | null
+        }
+        Insert: {
+          affected_qualities?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          processed_combinations?: number | null
+          run_type: string
+          scheduled_at?: string | null
+          started_at?: string
+          status?: string
+          total_combinations?: number | null
+          triggered_by?: string | null
+        }
+        Update: {
+          affected_qualities?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          processed_combinations?: number | null
+          run_type?: string
+          scheduled_at?: string | null
+          started_at?: string
+          status?: string
+          total_combinations?: number | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
+      forecast_settings_audit_log: {
+        Row: {
+          change_reason: string | null
+          changed_at: string
+          changed_by: string
+          color_code: string | null
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          parameter_name: string
+          quality_code: string | null
+          scope: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by: string
+          color_code?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          parameter_name: string
+          quality_code?: string | null
+          scope: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by?: string
+          color_code?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          parameter_name?: string
+          quality_code?: string | null
+          scope?: string
+        }
+        Relationships: []
+      }
+      forecast_settings_global: {
+        Row: {
+          created_at: string
+          default_safety_stock_mode: string
+          default_safety_stock_weeks: number
+          demand_statuses: Json
+          email_digest_day: number
+          email_digest_enabled: boolean
+          email_digest_hour: number
+          email_digest_recipients: Json
+          forecast_horizon_months: number
+          history_window_months: number
+          id: string
+          min_order_zero_history: number
+          normalization_type: string
+          outlier_percentile: number
+          override_row_tint_color: string
+          overstock_alert_months: number
+          permissions: Json
+          scenario_parameters: Json
+          stockout_alert_days: number
+          time_bucket: string
+          updated_at: string
+          updated_by: string | null
+          weekly_schedule_day: number
+          weekly_schedule_enabled: boolean
+          weekly_schedule_hour: number
+          weekly_schedule_timezone: string
+          weighting_method: string
+        }
+        Insert: {
+          created_at?: string
+          default_safety_stock_mode?: string
+          default_safety_stock_weeks?: number
+          demand_statuses?: Json
+          email_digest_day?: number
+          email_digest_enabled?: boolean
+          email_digest_hour?: number
+          email_digest_recipients?: Json
+          forecast_horizon_months?: number
+          history_window_months?: number
+          id?: string
+          min_order_zero_history?: number
+          normalization_type?: string
+          outlier_percentile?: number
+          override_row_tint_color?: string
+          overstock_alert_months?: number
+          permissions?: Json
+          scenario_parameters?: Json
+          stockout_alert_days?: number
+          time_bucket?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekly_schedule_day?: number
+          weekly_schedule_enabled?: boolean
+          weekly_schedule_hour?: number
+          weekly_schedule_timezone?: string
+          weighting_method?: string
+        }
+        Update: {
+          created_at?: string
+          default_safety_stock_mode?: string
+          default_safety_stock_weeks?: number
+          demand_statuses?: Json
+          email_digest_day?: number
+          email_digest_enabled?: boolean
+          email_digest_hour?: number
+          email_digest_recipients?: Json
+          forecast_horizon_months?: number
+          history_window_months?: number
+          id?: string
+          min_order_zero_history?: number
+          normalization_type?: string
+          outlier_percentile?: number
+          override_row_tint_color?: string
+          overstock_alert_months?: number
+          permissions?: Json
+          scenario_parameters?: Json
+          stockout_alert_days?: number
+          time_bucket?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekly_schedule_day?: number
+          weekly_schedule_enabled?: boolean
+          weekly_schedule_hour?: number
+          weekly_schedule_timezone?: string
+          weighting_method?: string
+        }
+        Relationships: []
+      }
+      forecast_settings_per_quality: {
+        Row: {
+          color_code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_time_days: number | null
+          min_recommended_order: number | null
+          quality_code: string
+          safety_stock_mode: string | null
+          safety_stock_weeks: number | null
+          target_coverage_weeks: number | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          color_code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_time_days?: number | null
+          min_recommended_order?: number | null
+          quality_code: string
+          safety_stock_mode?: string | null
+          safety_stock_weeks?: number | null
+          target_coverage_weeks?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          color_code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_time_days?: number | null
+          min_recommended_order?: number | null
+          quality_code?: string
+          safety_stock_mode?: string | null
+          safety_stock_weeks?: number | null
+          target_coverage_weeks?: number | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -633,7 +1028,7 @@ export type Database = {
           mo_number: string
           notes: string | null
           order_date: string
-          ordered_meters: number
+          ordered_amount: number
           price_per_meter: number | null
           quality: string
           reservation_id: string | null
@@ -657,7 +1052,7 @@ export type Database = {
           mo_number?: string
           notes?: string | null
           order_date?: string
-          ordered_meters: number
+          ordered_amount: number
           price_per_meter?: number | null
           quality: string
           reservation_id?: string | null
@@ -681,7 +1076,7 @@ export type Database = {
           mo_number?: string
           notes?: string | null
           order_date?: string
-          ordered_meters?: number
+          ordered_amount?: number
           price_per_meter?: number | null
           quality?: string
           reservation_id?: string | null
@@ -1039,23 +1434,115 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_recommendations: {
+        Row: {
+          aggressive_recommendation: number
+          available_stock: number
+          color_code: string
+          conservative_recommendation: number
+          created_at: string
+          forecasted_lead_time_demand: number
+          has_quality_override: boolean
+          id: string
+          in_production_stock: number
+          incoming_stock: number
+          last_order_date: string | null
+          lead_time_days: number
+          normal_recommendation: number
+          notes: string | null
+          past_12m_demand: number
+          quality_code: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          run_id: string
+          safety_stock_value: number
+          status: string
+          target_coverage_weeks: number
+          total_stock_position: number
+          unit: string
+        }
+        Insert: {
+          aggressive_recommendation?: number
+          available_stock?: number
+          color_code: string
+          conservative_recommendation?: number
+          created_at?: string
+          forecasted_lead_time_demand?: number
+          has_quality_override?: boolean
+          id?: string
+          in_production_stock?: number
+          incoming_stock?: number
+          last_order_date?: string | null
+          lead_time_days: number
+          normal_recommendation?: number
+          notes?: string | null
+          past_12m_demand?: number
+          quality_code: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          run_id: string
+          safety_stock_value?: number
+          status?: string
+          target_coverage_weeks?: number
+          total_stock_position?: number
+          unit: string
+        }
+        Update: {
+          aggressive_recommendation?: number
+          available_stock?: number
+          color_code?: string
+          conservative_recommendation?: number
+          created_at?: string
+          forecasted_lead_time_demand?: number
+          has_quality_override?: boolean
+          id?: string
+          in_production_stock?: number
+          incoming_stock?: number
+          last_order_date?: string | null
+          lead_time_days?: number
+          normal_recommendation?: number
+          notes?: string | null
+          past_12m_demand?: number
+          quality_code?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          run_id?: string
+          safety_stock_value?: number
+          status?: string
+          target_coverage_weeks?: number
+          total_stock_position?: number
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_recommendations_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "forecast_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       qualities: {
         Row: {
           aliases: string[] | null
           code: string
           created_at: string | null
+          unit: string
           updated_at: string | null
         }
         Insert: {
           aliases?: string[] | null
           code: string
           created_at?: string | null
+          unit?: string
           updated_at?: string | null
         }
         Update: {
           aliases?: string[] | null
           code?: string
           created_at?: string | null
+          unit?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -1344,18 +1831,21 @@ export type Database = {
       suppliers: {
         Row: {
           created_at: string
+          default_lead_time_days: number | null
           id: string
           name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          default_lead_time_days?: number | null
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          default_lead_time_days?: number | null
           id?: string
           name?: string
           updated_at?: string

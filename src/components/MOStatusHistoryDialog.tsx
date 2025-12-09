@@ -10,7 +10,7 @@ interface ManufacturingOrder {
   mo_number: string;
   quality: string;
   color: string;
-  ordered_meters: number;
+  ordered_amount: number;
 }
 
 interface StatusHistoryEntry {
@@ -86,7 +86,7 @@ const MOStatusHistoryDialog: React.FC<Props> = ({ open, onOpenChange, order }) =
             {t('mo.statusHistory')}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            {order.mo_number} - {order.quality} {order.color} ({order.ordered_meters}m)
+            {order.mo_number} - {order.quality} {order.color} ({order.ordered_amount}m)
           </p>
         </DialogHeader>
 
