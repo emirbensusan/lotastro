@@ -50,6 +50,10 @@ const QualityDetails = () => {
   const isSampleMode = orderMode === 'sample' || orderMode === 'multi-sample';
   const isMultiMode = orderMode === 'multi' || orderMode === 'multi-sample';
   
+  // Get pending qualities for sequential multi-quality flow
+  const pendingQualitiesParam = searchParams.get('pendingQualities');
+  const pendingQualities = pendingQualitiesParam ? pendingQualitiesParam.split(',').map(q => decodeURIComponent(q)) : [];
+  
   const [qualityColors, setQualityColors] = useState<QualityColorData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedColors, setSelectedColors] = useState<Set<string>>(new Set());
@@ -209,10 +213,11 @@ const QualityDetails = () => {
       return;
     }
 
-    // Navigate to lot selection with multiple colors, preserving mode
+    // Navigate to lot selection with multiple colors, preserving mode and pending qualities
     const colorParams = Array.from(selectedColors).join(',');
     const modeParam = orderMode ? `&mode=${orderMode}` : '';
-    navigate(`/lot-selection?quality=${encodeURIComponent(normalizedQuality!)}&colors=${encodeURIComponent(colorParams)}${modeParam}`);
+    const pendingParam = pendingQualities.length > 0 ? `&pendingQualities=${encodeURIComponent(pendingQualities.join(','))}` : '';
+    navigate(`/lot-selection?quality=${encodeURIComponent(normalizedQuality!)}&colors=${encodeURIComponent(colorParams)}${modeParam}${pendingParam}`);
   };
 
   const handleClearCart = () => {
@@ -321,6 +326,31 @@ const QualityDetails = () => {
 
   return (
     <div className="space-y-6">
+      {/* Progress Banner for Multi-Quality Sequential Flow */}
+      {isMultiMode && pendingQualities.length > 0 && (
+        <Card className="border-2 border-primary bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Badge variant="default" className="bg-purple-500">
+                  {t('processingQuality')}: {normalizedQuality}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  (1 {t('of')} {pendingQualities.length + 1})
+                </span>
+              </div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">{t('nextQuality')}: </span>
+                <span className="font-medium">{pendingQualities[0]}</span>
+                {pendingQualities.length > 1 && (
+                  <span className="text-muted-foreground"> (+{pendingQualities.length - 1} {t('more')})</span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
