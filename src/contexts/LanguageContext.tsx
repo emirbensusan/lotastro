@@ -93,6 +93,37 @@ const translations = {
     uiSettingsDesc: 'Customize how forecast data is displayed',
     overrideRowTint: 'Override Row Tint',
     overrideRowTintDesc: 'Background color for rows with quality-specific overrides',
+    
+    // Common - Additional keys
+    filters: 'Filters',
+    dateRange: 'Date Range',
+    searchLots: 'Search lots...',
+    allDates: 'All Dates',
+    today: 'Today',
+    lastWeek: 'Last Week',
+    lastMonth: 'Last Month',
+    clearFilters: 'Clear Filters',
+    availableLots: 'Available Lots',
+    select: 'Select',
+    type: 'Type',
+    backToColorSelection: 'Back to Colors',
+    selectLots: 'Select Lots',
+    templateDownloaded: 'Template downloaded',
+    lotCreated: 'Lot Created',
+    failedToCreateLot: 'Failed to create lot',
+    sampleRollSelection: 'Sample Roll Selection',
+    sampleModeInstructions: 'Select one roll and specify sample meters',
+    sampleMetersLabel: 'Sample Meters (max: {max})',
+    enterSampleMeters: 'Enter sample meters',
+    addSampleButton: 'Add Sample ({meters}m)',
+    addSelectedToCart: 'Add Selected to Cart',
+    selectedMeters: 'Selected Meters',
+    sampleMeters: 'Sample Meters',
+    selectedCount: 'selected',
+    addedToCart: 'Added to cart',
+    noPermission: 'You do not have permission to view this page',
+    more: 'more',
+    createdBy: 'Created By',
 
     // Auth
     email: 'Email',
@@ -1620,7 +1651,12 @@ const translations = {
       saturday: 'Saturday',
       
       // Import data permission
-      importData: 'Import Data'
+      importData: 'Import Data',
+      
+      // Forecast run status messages
+      runStarted: 'Forecast calculation started',
+      runFailed: 'Forecast run failed',
+      runCompleted: 'Forecast calculation completed'
     },
   },
   tr: {
@@ -1817,6 +1853,37 @@ const translations = {
     uiSettingsDesc: 'Tahmin verilerinin nasıl görüntüleneceğini özelleştirin',
     overrideRowTint: 'Geçersiz Kılma Satır Rengi',
     overrideRowTintDesc: 'Kalite bazlı geçersiz kılmalar içeren satırların arka plan rengi',
+    
+    // Common - Additional keys
+    filters: 'Filtreler',
+    dateRange: 'Tarih Aralığı',
+    searchLots: 'Lot ara...',
+    allDates: 'Tüm Tarihler',
+    today: 'Bugün',
+    lastWeek: 'Son Hafta',
+    lastMonth: 'Son Ay',
+    clearFilters: 'Filtreleri Temizle',
+    availableLots: 'Mevcut Lotlar',
+    select: 'Seç',
+    type: 'Tip',
+    backToColorSelection: 'Renklere Dön',
+    selectLots: 'Lot Seç',
+    templateDownloaded: 'Şablon indirildi',
+    lotCreated: 'Lot Oluşturuldu',
+    failedToCreateLot: 'Lot oluşturulamadı',
+    sampleRollSelection: 'Numune Top Seçimi',
+    sampleModeInstructions: 'Bir top seçin ve numune metrajını belirtin',
+    sampleMetersLabel: 'Numune Metraj (maks: {max})',
+    enterSampleMeters: 'Numune metrajı girin',
+    addSampleButton: 'Numune Ekle ({meters}m)',
+    addSelectedToCart: 'Seçilenleri Sepete Ekle',
+    selectedMeters: 'Seçilen Metraj',
+    sampleMeters: 'Numune Metraj',
+    selectedCount: 'seçili',
+    addedToCart: 'Sepete eklendi',
+    noPermission: 'Bu sayfayı görüntüleme izniniz yok',
+    more: 'daha fazla',
+    createdBy: 'Oluşturan',
 
     // Auth
     email: 'E-posta',
@@ -3263,7 +3330,12 @@ const translations = {
       saturday: 'Cumartesi',
       
       // Import data permission
-      importData: 'Veri Yükle'
+      importData: 'Veri Yükle',
+      
+      // Forecast run status messages
+      runStarted: 'Tahmin hesaplaması başlatıldı',
+      runFailed: 'Tahmin çalışması başarısız',
+      runCompleted: 'Tahmin hesaplaması tamamlandı'
     },
   },
 };
