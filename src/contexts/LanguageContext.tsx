@@ -12,7 +12,7 @@ const translations = {
   en: {
     // Navigation
     dashboard: 'Dashboard',
-    lotIntake: 'LOT Intake',
+    lotIntake: 'Lot Intake',
     inventory: 'Inventory',
     orders: 'Orders',
     qrScan: 'QR Scan',
@@ -437,7 +437,7 @@ const translations = {
     partiallyFulfilled: 'Partially Fulfilled',
     intakeQuality: 'Quality',
     intakeColor: 'Color',
-    lotIntakeNumber: 'LOT Number',
+    lotIntakeNumber: 'Lot Number',
     
     // Order Queue
     orderQueueManagement: 'Order Queue Management',
@@ -708,7 +708,7 @@ const translations = {
     shipmentsAwaitingGoodsReceipt: 'Shipments awaiting goods receipt',
     generateQrCodes: 'Generate QR Codes',
     generateQrCodesDesc: 'Create new lot entries with QR codes',
-    goToLotIntake: 'Go to LOT Intake',
+    goToLotIntake: 'Go to Lot Intake',
     scanQrCodes: 'Scan QR Codes',
     scanQrCodesDesc: 'Scan existing QR codes for lot management',
     goToQrScanner: 'Go to QR Scanner',
@@ -855,7 +855,7 @@ const translations = {
     pendingBadge: 'Pending',
     
     // Lot Intake - Single Entry
-    newLotEntry: 'New LOT Entry',
+    newLotEntry: 'New Lot Entry',
     singleEntryDescription: 'Create a single lot entry with QR code generation',
     intakeSupplier: 'Supplier',
     optionalFields: 'Optional Fields (recommended)',
@@ -1009,8 +1009,8 @@ const translations = {
     totalOrders: 'Total Orders',
     
     // Lot Intake - Additional
-    singleLotEntry: 'Single LOT Entry',
-    bulkLotImport: 'Bulk LOT Import',
+    singleLotEntry: 'Single Lot Entry',
+    bulkLotImport: 'Bulk Lot Import',
     rollCount: 'Roll Count',
     invoiceDate: 'Invoice Date',
     productionDate: 'Production Date',
@@ -1626,7 +1626,7 @@ const translations = {
   tr: {
     // Navigation
     dashboard: 'Panel',
-    lotIntake: 'LOT Girişi',
+    lotIntake: 'Lot Girişi',
     inventory: 'Envanter',
     orders: 'Siparişler',
     qrScan: 'QR Tarama',
@@ -2400,7 +2400,7 @@ const translations = {
     shipmentsAwaitingGoodsReceipt: 'Mal kabul bekleyen gönderiler',
     generateQrCodes: 'QR Kodları Oluştur',
     generateQrCodesDesc: 'QR kodlu yeni lot girişleri oluştur',
-    goToLotIntake: 'LOT Girişine Git',
+    goToLotIntake: 'Lot Girişine Git',
     scanQrCodes: 'QR Kodlarını Tara',
     scanQrCodesDesc: 'Lot yönetimi için mevcut QR kodlarını tara',
     goToQrScanner: 'QR Tarayıcıya Git',
@@ -2547,7 +2547,7 @@ const translations = {
     pendingBadge: 'Beklemede',
     
     // Lot Intake - Single Entry
-    newLotEntry: 'Yeni LOT Girişi',
+    newLotEntry: 'Yeni Lot Girişi',
     singleEntryDescription: 'QR kod oluşturma ile tek lot girişi oluşturun',
     intakeSupplier: 'Tedarikçi',
     optionalFields: 'İsteğe Bağlı Alanlar (önerilen)',
@@ -2647,8 +2647,8 @@ const translations = {
     notAuthorizedSuppliers: 'Tedarikçilere erişim yetkiniz yok.',
     
     // Lot Intake - Additional
-    singleLotEntry: 'Tek LOT Girişi',
-    bulkLotImport: 'Toplu LOT İçe Aktarma',
+    singleLotEntry: 'Tek Lot Girişi',
+    bulkLotImport: 'Toplu Lot İçe Aktarma',
     rollCount: 'Top Sayısı',
     invoiceDate: 'Fatura Tarihi',
     productionDate: 'Üretim Tarihi',

@@ -132,7 +132,7 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
             </style>
           </head>
           <body>
-            <h2>LOT ${generatedQR.lot_number}</h2>
+            <h2>Lot ${generatedQR.lot_number}</h2>
             <div class="lot-info">Quality: ${generatedQR.quality}</div>
             <div class="lot-info">Color: ${generatedQR.color}</div>
             <div class="lot-info">Meters: ${generatedQR.meters}</div>
@@ -140,7 +140,7 @@ const QuickQREntry: React.FC<QuickQREntryProps> = ({ onClose }) => {
             <div class="lot-info">Location: ${generatedQR.warehouse_location}</div>
             <div class="qr-container">
               <div id="qrcode"></div>
-              <p>Scan to view LOT details</p>
+              <p>Scan to view Lot details</p>
               <p style="font-size: 10px; word-break: break-all;">${generatedQR.qr_code_url}</p>
             </div>
           </body>
