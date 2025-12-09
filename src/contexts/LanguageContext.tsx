@@ -1455,6 +1455,7 @@ const translations = {
       days: 'days',
       weeks: 'weeks',
       months: 'months',
+      month: 'month',
       
       // Common
       refresh: 'Refresh',
@@ -1463,7 +1464,105 @@ const translations = {
       loadingData: 'Loading data...',
       fetchError: 'Failed to load data',
       noPermission: 'You do not have permission to access this feature',
-      readOnlyMode: 'Read-only mode - you cannot modify settings'
+      readOnlyMode: 'Read-only mode - you cannot modify settings',
+      fetchSettingsError: 'Failed to fetch settings',
+      saveError: 'Failed to save settings',
+      
+      // Additional Missing Keys - Main Page
+      purchaseRecommendations: 'Purchase Recommendations',
+      noRecommendations: 'No purchase recommendations available',
+      warnings: 'Warnings',
+      runStatus: 'Run Status',
+      noRuns: 'No forecast runs yet',
+      currentStock: 'Current Stock',
+      incoming: 'Incoming',
+      inProduction: 'In Production',
+      demand12m: 'Demand (12M)',
+      
+      // Additional Missing Keys - Global Settings
+      forecastParameters: 'Forecast Parameters',
+      forecastParametersDesc: 'Configure the core forecasting algorithm parameters',
+      normalization: 'Normalization',
+      capOutliers: 'Cap Outliers',
+      movingAverage: 'Moving Average',
+      safetyStockDesc: 'Configure safety stock calculation method and defaults',
+      weeksOfCoverage: 'Weeks of Coverage',
+      minimumUnits: 'Minimum Units',
+      minPerColor: 'Minimum Per Color',
+      defaultSafetyStock: 'Default Safety Stock',
+      alertThresholds: 'Alert Thresholds',
+      alertThresholdsDesc: 'Configure when alerts are triggered for stock issues',
+      scheduleSettings: 'Schedule Settings',
+      scheduleSettingsDesc: 'Configure automatic forecast runs and notifications',
+      weeklyForecastRun: 'Weekly Forecast Run',
+      weeklyForecastRunDesc: 'Automatically run forecast on a weekly schedule',
+      emailDigestDesc: 'Send summary email with forecast highlights',
+      
+      // Additional Missing Keys - Per-Quality Overrides
+      perQualityOverridesDesc: 'Set custom parameters for specific quality and color combinations',
+      overrideRowsWillBeTinted: 'Rows with overrides will be tinted in the forecast table',
+      noOverridesYet: 'No per-quality overrides configured yet',
+      leadTimeDays: 'Lead Time (Days)',
+      safetyStockWeeksLabel: 'Safety Stock (Weeks)',
+      minOrder: 'Min Order',
+      qualityColorRequired: 'Quality and color are required',
+      confirmDeleteOverride: 'Are you sure you want to delete this override?',
+      fixedWeeks: 'Fixed Weeks',
+      percentage: 'Percentage',
+      
+      // Additional Missing Keys - Permissions
+      permissionsConfiguration: 'Permissions Configuration',
+      permissionsConfigurationDesc: 'Control which roles can access forecast features',
+      'perm.view_forecasts': 'View Forecasts',
+      'perm.run_forecasts': 'Run Forecasts',
+      'perm.modify_settings': 'Modify Settings',
+      'perm.import_data': 'Import Historical Data',
+      adminAlwaysHasAccess: 'Admin role always has full access',
+      permissionsSaved: 'Permissions saved successfully',
+      
+      // Additional Missing Keys - Audit Log
+      auditLog: 'Audit Log',
+      auditLogDesc: 'Track all changes made to forecast settings',
+      
+      // Additional Missing Keys - Detail Drawer
+      leadTimeDemand: 'Lead Time Demand',
+      byPeriod: 'By Period',
+      addNotes: 'Add Notes',
+      
+      // Additional Missing Keys - Import Modal
+      importHistoricalData: 'Import Historical Data',
+      requiredColumns: 'Required Columns',
+      downloadTemplate: 'Download Template',
+      processing: 'Processing...',
+      imported: 'Imported',
+      errorDetails: 'Error Details',
+      invalidFileType: 'Invalid file type',
+      fileTooLarge: 'File too large (max 20MB)',
+      rowsImported: 'rows imported',
+      
+      // Common keys used across forecast
+      useGlobalDefault: 'Use Global Default',
+      searchChanges: 'Search changes...',
+      allScopes: 'All Scopes',
+      global: 'Global',
+      perQuality: 'Per Quality',
+      timestamp: 'Timestamp',
+      qualityColorLabel: 'Quality / Color',
+      showingPage: 'Showing page',
+      changeFile: 'Change File',
+      row: 'Row',
+      
+      // Day names
+      sunday: 'Sunday',
+      monday: 'Monday',
+      tuesday: 'Tuesday',
+      wednesday: 'Wednesday',
+      thursday: 'Thursday',
+      friday: 'Friday',
+      saturday: 'Saturday',
+      
+      // Import data permission
+      importData: 'Import Data'
     },
   },
   tr: {
@@ -2941,6 +3040,7 @@ const translations = {
       days: 'gün',
       weeks: 'hafta',
       months: 'ay',
+      month: 'ay',
       
       // Common
       refresh: 'Yenile',
@@ -2949,7 +3049,105 @@ const translations = {
       loadingData: 'Veriler yükleniyor...',
       fetchError: 'Veriler yüklenemedi',
       noPermission: 'Bu özelliğe erişim izniniz yok',
-      readOnlyMode: 'Salt okunur mod - ayarları değiştiremezsiniz'
+      readOnlyMode: 'Salt okunur mod - ayarları değiştiremezsiniz',
+      fetchSettingsError: 'Ayarlar getirilemedi',
+      saveError: 'Ayarlar kaydedilemedi',
+      
+      // Additional Missing Keys - Main Page
+      purchaseRecommendations: 'Satın Alma Önerileri',
+      noRecommendations: 'Satın alma önerisi bulunamadı',
+      warnings: 'Uyarılar',
+      runStatus: 'Çalışma Durumu',
+      noRuns: 'Henüz tahmin çalıştırılmadı',
+      currentStock: 'Mevcut Stok',
+      incoming: 'Yolda',
+      inProduction: 'Üretimde',
+      demand12m: 'Talep (12A)',
+      
+      // Additional Missing Keys - Global Settings
+      forecastParameters: 'Tahmin Parametreleri',
+      forecastParametersDesc: 'Temel tahmin algoritması parametrelerini yapılandırın',
+      normalization: 'Normalizasyon',
+      capOutliers: 'Aykırı Değerleri Sınırla',
+      movingAverage: 'Hareketli Ortalama',
+      safetyStockDesc: 'Emniyet stoğu hesaplama yöntemini ve varsayılanları yapılandırın',
+      weeksOfCoverage: 'Haftalık Kapsam',
+      minimumUnits: 'Minimum Birim',
+      minPerColor: 'Renk Başına Minimum',
+      defaultSafetyStock: 'Varsayılan Emniyet Stoğu',
+      alertThresholds: 'Uyarı Eşikleri',
+      alertThresholdsDesc: 'Stok sorunları için uyarıların ne zaman tetikleneceğini yapılandırın',
+      scheduleSettings: 'Zamanlama Ayarları',
+      scheduleSettingsDesc: 'Otomatik tahmin çalıştırma ve bildirimleri yapılandırın',
+      weeklyForecastRun: 'Haftalık Tahmin Çalıştırma',
+      weeklyForecastRunDesc: 'Tahmini haftalık programda otomatik çalıştır',
+      emailDigestDesc: 'Tahmin özetleriyle özet e-posta gönder',
+      
+      // Additional Missing Keys - Per-Quality Overrides
+      perQualityOverridesDesc: 'Belirli kalite ve renk kombinasyonları için özel parametreler ayarlayın',
+      overrideRowsWillBeTinted: 'Geçersiz kılmalı satırlar tahmin tablosunda renklendirilecek',
+      noOverridesYet: 'Henüz kalite bazlı geçersiz kılma yapılandırılmadı',
+      leadTimeDays: 'Tedarik Süresi (Gün)',
+      safetyStockWeeksLabel: 'Emniyet Stoğu (Hafta)',
+      minOrder: 'Min Sipariş',
+      qualityColorRequired: 'Kalite ve renk gereklidir',
+      confirmDeleteOverride: 'Bu geçersiz kılmayı silmek istediğinizden emin misiniz?',
+      fixedWeeks: 'Sabit Hafta',
+      percentage: 'Yüzde',
+      
+      // Additional Missing Keys - Permissions
+      permissionsConfiguration: 'İzin Yapılandırması',
+      permissionsConfigurationDesc: 'Hangi rollerin tahmin özelliklerine erişebileceğini kontrol edin',
+      'perm.view_forecasts': 'Tahminleri Görüntüle',
+      'perm.run_forecasts': 'Tahminleri Çalıştır',
+      'perm.modify_settings': 'Ayarları Değiştir',
+      'perm.import_data': 'Geçmiş Veri Yükle',
+      adminAlwaysHasAccess: 'Admin rolü her zaman tam erişime sahiptir',
+      permissionsSaved: 'İzinler başarıyla kaydedildi',
+      
+      // Additional Missing Keys - Audit Log
+      auditLog: 'Denetim Günlüğü',
+      auditLogDesc: 'Tahmin ayarlarında yapılan tüm değişiklikleri takip edin',
+      
+      // Additional Missing Keys - Detail Drawer
+      leadTimeDemand: 'Tedarik Süresi Talebi',
+      byPeriod: 'Dönem Bazlı',
+      addNotes: 'Not Ekle',
+      
+      // Additional Missing Keys - Import Modal
+      importHistoricalData: 'Geçmiş Veri Yükle',
+      requiredColumns: 'Gerekli Sütunlar',
+      downloadTemplate: 'Şablon İndir',
+      processing: 'İşleniyor...',
+      imported: 'İçe Aktarıldı',
+      errorDetails: 'Hata Detayları',
+      invalidFileType: 'Geçersiz dosya türü',
+      fileTooLarge: 'Dosya çok büyük (maks 20MB)',
+      rowsImported: 'satır içe aktarıldı',
+      
+      // Common keys used across forecast
+      useGlobalDefault: 'Genel Varsayılanı Kullan',
+      searchChanges: 'Değişiklikleri ara...',
+      allScopes: 'Tüm Kapsamlar',
+      global: 'Genel',
+      perQuality: 'Kalite Bazlı',
+      timestamp: 'Zaman Damgası',
+      qualityColorLabel: 'Kalite / Renk',
+      showingPage: 'Sayfa gösteriliyor',
+      changeFile: 'Dosya Değiştir',
+      row: 'Satır',
+      
+      // Day names
+      sunday: 'Pazar',
+      monday: 'Pazartesi',
+      tuesday: 'Salı',
+      wednesday: 'Çarşamba',
+      thursday: 'Perşembe',
+      friday: 'Cuma',
+      saturday: 'Cumartesi',
+      
+      // Import data permission
+      importData: 'Veri Yükle'
     },
   },
 };
