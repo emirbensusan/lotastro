@@ -153,7 +153,7 @@ const MOBulkUpload: React.FC<Props> = ({ open, onOpenChange, suppliers, onSucces
         supplier_id: item.supplier_id,
         quality: item.quality,
         color: item.color,
-        ordered_meters: item.ordered_meters,
+        ordered_amount: item.ordered_meters,
         expected_completion_date: item.expected_completion_date || null,
         is_customer_order: !!item.customer_name,
         customer_name: item.customer_name || null,

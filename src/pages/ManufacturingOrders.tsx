@@ -20,7 +20,7 @@ interface ManufacturingOrder {
   supplier_id: string;
   quality: string;
   color: string;
-  ordered_meters: number;
+  ordered_amount: number;
   order_date: string;
   expected_completion_date: string | null;
   supplier_confirmation_number: string | null;
@@ -126,7 +126,7 @@ const ManufacturingOrders: React.FC = () => {
     const activeOrders = orders.filter(o => !['SHIPPED', 'CANCELLED'].includes(o.status));
     const inProductionMeters = orders
       .filter(o => ['CONFIRMED', 'IN_PRODUCTION'].includes(o.status))
-      .reduce((sum, o) => sum + o.ordered_meters, 0);
+      .reduce((sum, o) => sum + o.ordered_amount, 0);
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -148,9 +148,9 @@ const ManufacturingOrders: React.FC = () => {
       inProductionMeters,
       activeOrdersCount: activeOrders.length,
       dueIn7DaysCount: dueIn7Days.length,
-      dueIn7DaysMeters: dueIn7Days.reduce((sum, o) => sum + o.ordered_meters, 0),
+      dueIn7DaysMeters: dueIn7Days.reduce((sum, o) => sum + o.ordered_amount, 0),
       overdueCount: overdueOrders.length,
-      overdueMeters: overdueOrders.reduce((sum, o) => sum + o.ordered_meters, 0),
+      overdueMeters: overdueOrders.reduce((sum, o) => sum + o.ordered_amount, 0),
     };
   };
 
@@ -412,7 +412,7 @@ const ManufacturingOrders: React.FC = () => {
                       <TableCell>{order.suppliers?.name || '-'}</TableCell>
                       <TableCell>{order.quality}</TableCell>
                       <TableCell>{order.color}</TableCell>
-                      <TableCell className="text-right">{order.ordered_meters.toLocaleString()}m</TableCell>
+                      <TableCell className="text-right">{order.ordered_amount.toLocaleString()}m</TableCell>
                       <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
                       <TableCell>
                         {order.expected_completion_date 

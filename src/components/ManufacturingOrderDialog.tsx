@@ -18,7 +18,7 @@ interface ManufacturingOrder {
   supplier_id: string;
   quality: string;
   color: string;
-  ordered_meters: number;
+  ordered_amount: number;
   order_date: string;
   expected_completion_date: string | null;
   supplier_confirmation_number: string | null;
@@ -76,7 +76,7 @@ const ManufacturingOrderDialog: React.FC<Props> = ({
         supplier_id: editingOrder.supplier_id,
         quality: editingOrder.quality,
         color: editingOrder.color,
-        ordered_meters: editingOrder.ordered_meters.toString(),
+        ordered_meters: editingOrder.ordered_amount.toString(),
         expected_completion_date: editingOrder.expected_completion_date || '',
         supplier_confirmation_number: editingOrder.supplier_confirmation_number || '',
         price_per_meter: editingOrder.price_per_meter?.toString() || '',
@@ -124,7 +124,7 @@ const ManufacturingOrderDialog: React.FC<Props> = ({
         supplier_id: formData.supplier_id,
         quality: formData.quality.toUpperCase(),
         color: formData.color.toUpperCase(),
-        ordered_meters: parseFloat(formData.ordered_meters),
+        ordered_amount: parseFloat(formData.ordered_meters),
         expected_completion_date: formData.expected_completion_date || null,
         supplier_confirmation_number: formData.supplier_confirmation_number || null,
         price_per_meter: formData.price_per_meter ? parseFloat(formData.price_per_meter) : null,
