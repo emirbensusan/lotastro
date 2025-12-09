@@ -2,41 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Settings, 
   Sliders, 
-  Users, 
   History, 
-  Save, 
   Loader2,
-  AlertCircle,
-  CheckCircle,
   Info
 } from 'lucide-react';
 import ForecastGlobalSettings from '@/components/forecast/ForecastGlobalSettings';
 import ForecastPerQualityOverrides from '@/components/forecast/ForecastPerQualityOverrides';
-import ForecastPermissionsTab from '@/components/forecast/ForecastPermissionsTab';
 import ForecastAuditLog from '@/components/forecast/ForecastAuditLog';
 
 const ForecastSettings: React.FC = () => {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const { user } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<any>(null);
@@ -79,11 +63,8 @@ const ForecastSettings: React.FC = () => {
     );
   }
 
-  const canModifySettings = hasPermission('forecasting', 'modifysettings') || 
-    (settings?.permissions?.modify_settings || []).includes('admin');
-  const canViewSettings = hasPermission('forecasting', 'viewforecasts') || 
-    (settings?.permissions?.view_forecasts || []).includes('admin') ||
-    (settings?.permissions?.view_forecasts || []).includes('senior_manager');
+  const canModifySettings = hasPermission('forecasting', 'modifyforecastsettings');
+  const canViewSettings = hasPermission('forecasting', 'viewforecasts');
 
   if (!canViewSettings) {
     return (
@@ -123,7 +104,7 @@ const ForecastSettings: React.FC = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="global" className="flex items-center gap-2">
             <Sliders className="h-4 w-4" />
             {t('forecast.globalSettings') || 'Global Settings'}
@@ -131,10 +112,6 @@ const ForecastSettings: React.FC = () => {
           <TabsTrigger value="overrides" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             {t('forecast.perQualityOverrides') || 'Per-Quality Overrides'}
-          </TabsTrigger>
-          <TabsTrigger value="permissions" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            {t('permissions') || 'Permissions'}
           </TabsTrigger>
           <TabsTrigger value="audit" className="flex items-center gap-2">
             <History className="h-4 w-4" />
@@ -154,15 +131,6 @@ const ForecastSettings: React.FC = () => {
         <TabsContent value="overrides">
           <ForecastPerQualityOverrides 
             globalSettings={settings}
-            readOnly={!canModifySettings}
-          />
-        </TabsContent>
-
-        <TabsContent value="permissions">
-          <ForecastPermissionsTab 
-            settings={settings}
-            onSettingsChange={setSettings}
-            onRefresh={fetchSettings}
             readOnly={!canModifySettings}
           />
         </TabsContent>
