@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -130,7 +129,6 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
       };
 
       if (editingOverride) {
-        // Log audit
         await supabase.from('forecast_settings_audit_log').insert([{
           changed_by: user?.id || '',
           scope: 'per_quality' as const,
@@ -154,7 +152,6 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
 
         if (error) throw error;
 
-        // Log audit
         await supabase.from('forecast_settings_audit_log').insert([{
           changed_by: user?.id || '',
           scope: 'per_quality' as const,
@@ -189,7 +186,6 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
     }
 
     try {
-      // Log audit
       await supabase.from('forecast_settings_audit_log').insert([{
         changed_by: user?.id || '',
         scope: 'per_quality' as const,
@@ -248,18 +244,16 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={t('searchQualityColor') || 'Search quality or color...'}
+            placeholder={String(t('searchQualityColor') || 'Search quality or color...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
           />
         </div>
 
-        {/* Info about tinting */}
         <div 
           className="flex items-center gap-2 p-3 rounded-lg text-sm"
           style={{ backgroundColor: tintColor }}
@@ -268,7 +262,6 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
           {t('forecast.overrideRowsWillBeTinted') || 'Rows with overrides will be highlighted with this color in the forecast grid.'}
         </div>
 
-        {/* Table */}
         {loading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -282,32 +275,6 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
             <TableHeader>
               <TableRow>
                 <TableHead>{t('quality') || 'Quality'}</TableHead>
-                <TableHead>{t('color') || 'Color'}</TableHead>
-                <TableHead className="text-right">{t('forecast.leadTimeDays') || 'Lead Time (days)'}</TableHead>
-                <TableHead className="text-right">{t('forecast.safetyStockWeeks') || 'Safety Stock (weeks)'}</TableHead>
-                <TableHead className="text-right">{t('forecast.targetCoverage') || 'Target Coverage (weeks)'}</TableHead>
-                <TableHead className="text-right">{t('forecast.minOrder') || 'Min Order'}</TableHead>
-                <TableHead>{t('actions') || 'Actions'}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOverrides.map((override) => {
-                const bgStyle = { backgroundColor: tintColor };
-                return (
-                <TableRow key={override.id} style={bgStyle}>
-                  <TableCell className="font-medium">{override.quality_code}</TableCell>
-                  <TableCell>{override.color_code}</TableCell>
-                  <TableCell className="text-right">
-                    {override.lead_time_days !== null ? String(override.lead_time_days) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {override.safety_stock_weeks !== null ? String(override.safety_stock_weeks) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {override.target_coverage_weeks !== null ? String(override.target_coverage_weeks) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {override.min_recommended_order !== null ? String(override.min_recommended_order) : '—'}
                 <TableHead>{t('color') || 'Color'}</TableHead>
                 <TableHead className="text-right">{t('forecast.leadTimeDays') || 'Lead Time (days)'}</TableHead>
                 <TableHead className="text-right">{t('forecast.safetyStockWeeks') || 'Safety Stock (weeks)'}</TableHead>
@@ -351,7 +318,6 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
           </Table>
         )}
 
-        {/* Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -433,12 +399,11 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
                   onValueChange={(v) => setFormData(prev => ({ ...prev, safety_stock_mode: v }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={t('useDefault') || 'Use default'} />
+                    <SelectValue placeholder={t('useGlobalDefault') || 'Use global default'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="weeks">{t('forecast.weeksOfCoverage') || 'Weeks of Coverage'}</SelectItem>
-                    <SelectItem value="min_units">{t('forecast.minimumUnits') || 'Minimum Units'}</SelectItem>
-                    <SelectItem value="min_per_color">{t('forecast.minPerColor') || 'Minimum per Color'}</SelectItem>
+                    <SelectItem value="fixed_weeks">{t('forecast.fixedWeeks') || 'Fixed Weeks'}</SelectItem>
+                    <SelectItem value="percentage">{t('forecast.percentage') || 'Percentage of Demand'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
