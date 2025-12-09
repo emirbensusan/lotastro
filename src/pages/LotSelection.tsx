@@ -58,6 +58,10 @@ const LotSelection = () => {
   const isMultiMode = orderMode === 'multi' || orderMode === 'multi-sample';
   const isSampleMode = orderMode === 'sample' || orderMode === 'multi-sample';
   
+  // Get pending qualities for sequential multi-quality flow
+  const pendingQualitiesParam = searchParams.get('pendingQualities');
+  const pendingQualities = pendingQualitiesParam ? pendingQualitiesParam.split(',').map(q => decodeURIComponent(q)) : [];
+  
   // State declarations - must come first before functions that reference them
   const [lots, setLots] = useState<Lot[]>([]);
   const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
@@ -270,8 +274,21 @@ const LotSelection = () => {
     if (currentColorIndex < colorArray.length - 1) {
       setCurrentColorIndex(currentColorIndex + 1);
       setLoading(true);
+    } else if (isMultiMode && pendingQualities.length > 0) {
+      // Navigate to next quality in the sequence
+      const nextQuality = pendingQualities[0];
+      const remainingQualities = pendingQualities.slice(1);
+      const modeParam = orderMode ? `?mode=${orderMode}` : '?';
+      const pendingParam = remainingQualities.length > 0 ? `&pendingQualities=${encodeURIComponent(remainingQualities.join(','))}` : '';
+      
+      toast({
+        title: String(t('movingToNextQuality')),
+        description: `${t('nextQuality')}: ${nextQuality}`,
+      });
+      
+      navigate(`/inventory/${encodeURIComponent(nextQuality)}${modeParam}${pendingParam}`);
     } else if (isMultiMode) {
-      // In multi-mode, don't auto-open cart - show prompt to continue or checkout
+      // All qualities processed - show prompt
       setShowMultiModePrompt(true);
     } else {
       // Single mode - show cart

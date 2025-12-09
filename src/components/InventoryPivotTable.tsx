@@ -477,8 +477,19 @@ const InventoryPivotTable = () => {
     }
     
     const selectedQualityNames = Array.from(selectedQualitiesForBulk);
-    const modeParam = orderMode ? `&mode=${orderMode}` : '';
-    navigate(`/bulk-selection?qualities=${encodeURIComponent(selectedQualityNames.join(','))}${modeParam}`);
+    const modeParam = orderMode ? `?mode=${orderMode}` : '';
+    
+    // For multi-mode: Navigate to first quality's QualityDetails with pending qualities
+    if (isMultiMode && selectedQualityNames.length >= 2) {
+      const firstQuality = selectedQualityNames[0];
+      const pendingQualities = selectedQualityNames.slice(1);
+      const pendingParam = `&pendingQualities=${encodeURIComponent(pendingQualities.join(','))}`;
+      navigate(`/inventory/${encodeURIComponent(firstQuality)}${modeParam}${pendingParam}`);
+    } else {
+      // Single mode or fallback: go to BulkSelection
+      const modeQueryParam = orderMode ? `&mode=${orderMode}` : '';
+      navigate(`/bulk-selection?qualities=${encodeURIComponent(selectedQualityNames.join(','))}${modeQueryParam}`);
+    }
   };
 
   const toggleBulkSelectionMode = () => {

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -20,7 +21,8 @@ import {
   Calendar,
   Building2,
   Package,
-  FileText
+  FileText,
+  AlertTriangle
 } from 'lucide-react';
 
 const FloatingPOCart = () => {
@@ -48,6 +50,23 @@ const FloatingPOCart = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get('mode');
   };
+
+  // Get order mode label and color for badge
+  const getOrderModeInfo = () => {
+    const mode = getCurrentMode();
+    switch (mode) {
+      case 'single': return { label: t('standardOrder'), color: 'bg-blue-500' };
+      case 'multi': return { label: t('multiQualityOrder'), color: 'bg-purple-500' };
+      case 'sample': return { label: t('sampleOrder'), color: 'bg-green-500' };
+      case 'multi-sample': return { label: t('multipleSamples'), color: 'bg-orange-500' };
+      default: return null;
+    }
+  };
+
+  const mode = getCurrentMode();
+  const isMultiMode = mode === 'multi' || mode === 'multi-sample';
+  const uniqueCombos = getUniqueQualityColors();
+  const orderModeInfo = getOrderModeInfo();
 
   const handleCreatePO = () => {
     const mode = getCurrentMode();
@@ -115,6 +134,11 @@ const FloatingPOCart = () => {
                 <div className="flex items-center space-x-2">
                   <ShoppingCart className="h-5 w-5" />
                   <span>{t('poCart')}</span>
+                  {orderModeInfo && (
+                    <Badge className={`${orderModeInfo.color} text-white text-xs`}>
+                      {orderModeInfo.label}
+                    </Badge>
+                  )}
                 </div>
                 <Button variant="ghost" size="sm" onClick={clearCart}>
                   <X className="h-4 w-4" />
@@ -124,6 +148,16 @@ const FloatingPOCart = () => {
             </SheetHeader>
 
             <div className="mt-6 space-y-4">
+              {/* Multi-mode warning if insufficient quality/color combinations */}
+              {isMultiMode && uniqueCombos.size < 2 && (
+                <Alert className="border-amber-200 bg-amber-50">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800 text-sm">
+                    {t('multiOrderMinimumWarning')}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Cart Summary */}
               <Card>
                 <CardContent className="pt-4">

@@ -97,6 +97,26 @@ const translations = {
     // Common - Additional keys
     filters: 'Filters',
     dateRange: 'Date Range',
+    
+    // Missing common keys (avoiding duplicates)
+    selected: 'Selected',
+    availableColors: 'Available Colors',
+    lotCount: 'Lot Count',
+    backToInventory: 'Back to Inventory',
+    actionAdd: 'Add',
+    addAllToCart: 'Add All to Cart',
+    standard: 'Standard',
+    
+    // Sequential multi-quality flow
+    qualitiesRemaining: 'Qualities Remaining',
+    processingQuality: 'Processing Quality',
+    nextQuality: 'Next Quality',
+    movingToNextQuality: 'Moving to next quality...',
+    allSelectedItemsProcessed: 'All selected items processed',
+    addMoreOrCheckout: 'Add more items or proceed to checkout',
+    multiOrderMinimumWarning: 'Multi-quality orders require at least 2 different quality/color combinations. Add more items to proceed.',
+    orderTypeBadge: 'Order Type',
+    multiOrderIncomplete: 'Incomplete multi-quality order',
     searchLots: 'Search lots...',
     allDates: 'All Dates',
     today: 'Today',
@@ -1917,6 +1937,27 @@ const translations = {
     // Common - Additional keys
     filters: 'Filtreler',
     dateRange: 'Tarih Aralığı',
+    
+    // Missing common keys (avoiding duplicates - selectAll and rollsLabel exist elsewhere)
+    selected: 'Seçili',
+    availableColors: 'Mevcut Renkler',
+    lotCount: 'Lot Sayısı',
+    backToInventory: 'Envantere Dön',
+    actionAdd: 'Ekle',
+    addAllToCart: 'Tümünü Sepete Ekle',
+    standard: 'Standart',
+    
+    // Sequential multi-quality flow
+    qualitiesRemaining: 'Kalan Kaliteler',
+    processingQuality: 'İşlenen Kalite',
+    nextQuality: 'Sonraki Kalite',
+    movingToNextQuality: 'Sonraki kaliteye geçiliyor...',
+    allSelectedItemsProcessed: 'Tüm seçili öğeler işlendi',
+    addMoreOrCheckout: 'Daha fazla öğe ekleyin veya kasaya ilerleyin',
+    multiOrderMinimumWarning: 'Çoklu kalite siparişleri en az 2 farklı kalite/renk kombinasyonu gerektirir. Devam etmek için daha fazla öğe ekleyin.',
+    orderTypeBadge: 'Sipariş Türü',
+    multiOrderIncomplete: 'Eksik çoklu kalite siparişi',
+    
     searchLots: 'Lot ara...',
     allDates: 'Tüm Tarihler',
     today: 'Bugün',
