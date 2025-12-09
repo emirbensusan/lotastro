@@ -1937,7 +1937,7 @@ export type Database = {
     Functions: {
       can_reverse_action:
         | {
-            Args: { p_audit_id: string; p_bypass_auth_check?: boolean }
+            Args: { p_audit_id: string }
             Returns: {
               can_reverse: boolean
               reason: string
@@ -1945,7 +1945,7 @@ export type Database = {
             }[]
           }
         | {
-            Args: { p_audit_id: string }
+            Args: { p_audit_id: string; p_bypass_auth_check?: boolean }
             Returns: {
               can_reverse: boolean
               reason: string
