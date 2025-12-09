@@ -1379,6 +1379,7 @@ const translations = {
       
       // Actions
       runForecast: 'Run Forecast',
+      runNow: 'Run Now',
       runningForecast: 'Running...',
       exportCsv: 'Export CSV',
       importHistory: 'Import History',
@@ -3017,6 +3018,7 @@ const translations = {
       
       // Actions
       runForecast: 'Tahmini Çalıştır',
+      runNow: 'Şimdi Çalıştır',
       runningForecast: 'Çalışıyor...',
       exportCsv: 'CSV Dışa Aktar',
       importHistory: 'Geçmiş Yükle',
