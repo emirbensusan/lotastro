@@ -39,6 +39,7 @@ const BulkSelection = () => {
   const [qualityFilter, setQualityFilter] = useState('');
 
   const qualitiesParam = searchParams.get('qualities');
+  const modeParam = searchParams.get('mode');
   const selectedQualities = qualitiesParam ? qualitiesParam.split(',') : [];
 
   useEffect(() => {
@@ -153,7 +154,8 @@ const BulkSelection = () => {
     console.log('Navigating to lot selection with colors:', colorParams);
     console.log('Selected colors:', selectedColors);
     
-    navigate(`/lot-selection?colors=${colorParams}`);
+    const modeQueryParam = modeParam ? `&mode=${modeParam}` : '';
+    navigate(`/lot-selection?colors=${colorParams}${modeQueryParam}`);
   };
 
   // Filter and sort data for display (exact same logic as inventory page)

@@ -251,6 +251,9 @@ const LotSelection = () => {
     setFilteredLots(filtered);
   };
 
+  // Track if all colors for current quality are done (for multi-mode prompt)
+  const [showMultiModePrompt, setShowMultiModePrompt] = useState(false);
+
   const handleRollSelectionComplete = (addedMeters?: number, quality?: string, color?: string) => {
     // Update selectedMeters if meters were added
     if (addedMeters && quality && color) {
@@ -267,8 +270,11 @@ const LotSelection = () => {
     if (currentColorIndex < colorArray.length - 1) {
       setCurrentColorIndex(currentColorIndex + 1);
       setLoading(true);
+    } else if (isMultiMode) {
+      // In multi-mode, don't auto-open cart - show prompt to continue or checkout
+      setShowMultiModePrompt(true);
     } else {
-      // All colors processed, show cart
+      // Single mode - show cart
       setIsCartOpen(true);
     }
   };
@@ -523,6 +529,35 @@ const LotSelection = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Multi-Mode Continue Prompt */}
+      {showMultiModePrompt && isMultiMode && (
+        <Card className="border-2 border-primary bg-primary/5">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="font-semibold text-lg">{t('qualitySelectionComplete')}</h3>
+                <p className="text-muted-foreground">{t('continueToNextQualityPrompt')}</p>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => {
+                  setShowMultiModePrompt(false);
+                  continueShopping();
+                }}>
+                  {t('continueToNextSelection')}
+                </Button>
+                <Button onClick={() => {
+                  setShowMultiModePrompt(false);
+                  setIsCartOpen(true);
+                }}>
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  {t('viewCart')}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Roll Selection Dialog */}
       {rollSelectionDialogLotId && (() => {

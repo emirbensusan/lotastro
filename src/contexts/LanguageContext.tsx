@@ -1050,6 +1050,25 @@ const translations = {
     selectMultiQualityInstruction: 'Select 2 or more qualities for your multi-quality order, then click "Proceed to Color Selection"',
     selectMultiSampleInstruction: 'Select 2 or more qualities for your multiple samples order, then click "Proceed to Color Selection"',
     
+    // Order Print Dialog
+    orderSummary: 'Order Summary',
+    warehouseOrderSummary: 'Warehouse Order Summary',
+    orderNumber: 'Order Number',
+    orderDate: 'Order Date',
+    lineType: 'Line Type',
+    rollMeters: 'Roll Meters',
+    prepared: 'Prepared',
+    signatures: 'Signatures',
+    preparedBy: 'Prepared By',
+    checkedBy: 'Checked By',
+    
+    // Multi-mode flow
+    selectionComplete: 'Selection Complete',
+    continueOrCheckout: 'You can continue selecting from other qualities or proceed to checkout',
+    qualitySelectionComplete: 'Quality Selection Complete',
+    continueToNextQualityPrompt: 'Continue to select from another quality or review your cart',
+    viewCart: 'View Cart',
+    
     // Lot Intake - Additional
     singleLotEntry: 'Single Lot Entry',
     bulkLotImport: 'Bulk Lot Import',
@@ -1802,6 +1821,25 @@ const translations = {
     selectSampleQualityInstruction: 'Numune siparişiniz için bir kalite seçin',
     selectMultiQualityInstruction: 'Çoklu kalite siparişiniz için 2 veya daha fazla kalite seçin, ardından "Renk Seçimine Geç" butonuna tıklayın',
     selectMultiSampleInstruction: 'Çoklu numune siparişiniz için 2 veya daha fazla kalite seçin, ardından "Renk Seçimine Geç" butonuna tıklayın',
+    
+    // Order Print Dialog
+    orderSummary: 'Sipariş Özeti',
+    warehouseOrderSummary: 'Depo Sipariş Özeti',
+    orderNumber: 'Sipariş Numarası',
+    orderDate: 'Sipariş Tarihi',
+    lineType: 'Satır Türü',
+    rollMeters: 'Rulo Metre',
+    prepared: 'Hazırlandı',
+    signatures: 'İmzalar',
+    preparedBy: 'Hazırlayan',
+    checkedBy: 'Kontrol Eden',
+    
+    // Multi-mode flow
+    selectionComplete: 'Seçim Tamamlandı',
+    continueOrCheckout: 'Diğer kalitelerden seçime devam edebilir veya kasaya geçebilirsiniz',
+    qualitySelectionComplete: 'Kalite Seçimi Tamamlandı',
+    continueToNextQualityPrompt: 'Başka bir kaliteden seçime devam edin veya sepetinizi inceleyin',
+    viewCart: 'Sepeti Görüntüle',
     totalRolls: 'Toplam Top sayısı',
     totalQualities: 'Toplam Kaliteler',
     lotsByQuality: 'Kalite bazında Lot sayısı',
