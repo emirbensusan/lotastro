@@ -6,7 +6,22 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 5
-const TOAST_REMOVE_DELAY = 10000
+
+// Get toast duration from localStorage or use default (20 seconds)
+const getToastDuration = () => {
+  try {
+    const settings = localStorage.getItem('app_settings');
+    if (settings) {
+      const parsed = JSON.parse(settings);
+      return parsed.toast_duration || 20000;
+    }
+  } catch (e) {
+    // Ignore parse errors
+  }
+  return 20000; // Default 20 seconds
+};
+
+const TOAST_REMOVE_DELAY = getToastDuration()
 
 type ToasterToast = ToastProps & {
   id: string
@@ -160,6 +175,11 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  // Auto-dismiss after configured duration
+  setTimeout(() => {
+    dismiss()
+  }, getToastDuration())
 
   return {
     id: id,
