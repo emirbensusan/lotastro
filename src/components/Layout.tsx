@@ -195,7 +195,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             tooltip={isCollapsed ? item.label : undefined}
                           >
                             <Icon className="h-4 w-4 flex-shrink-0" />
-                            <span className={isCollapsed ? "sr-only" : "ml-2 font-bold"}>{item.label}</span>
+                            <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
@@ -237,7 +237,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   }}
                 >
                   <Icon className="h-4 w-4 mr-2" />
-                  <span className="font-bold">{item.label}</span>
+                  {item.label}
                 </Button>
               );
             })}
