@@ -53,6 +53,11 @@ const LotSelection = () => {
   const color = searchParams.get('color') || '';
   const colors = searchParams.get('colors'); // For multi-color selection
   
+  // Get order mode from URL
+  const orderMode = searchParams.get('mode'); // 'multi', 'multi-sample', 'sample', or null
+  const isMultiMode = orderMode === 'multi' || orderMode === 'multi-sample';
+  const isSampleMode = orderMode === 'sample' || orderMode === 'multi-sample';
+  
   // State declarations - must come first before functions that reference them
   const [lots, setLots] = useState<Lot[]>([]);
   const [filteredLots, setFilteredLots] = useState<Lot[]>([]);
@@ -281,11 +286,13 @@ const LotSelection = () => {
 
   const goBackToColors = () => {
     const normalizedQuality = encodeURIComponent(getCurrentQuality());
-    navigate(`/inventory/${normalizedQuality}`);
+    const modeParam = orderMode ? `?mode=${orderMode}` : '';
+    navigate(`/inventory/${normalizedQuality}${modeParam}`);
   };
 
   const continueShopping = () => {
-    navigate('/inventory');
+    const modeParam = orderMode ? `?mode=${orderMode}` : '';
+    navigate(`/inventory${modeParam}`);
   };
 
   if (loading) {

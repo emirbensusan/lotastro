@@ -44,9 +44,11 @@ const QualityDetails = () => {
   // Get the effective role (viewAsRole takes precedence)
   const getEffectiveRole = () => viewAsRole || profile?.role;
   
-  // Check if we're in sample mode
+  // Check order mode from URL
   const searchParams = new URLSearchParams(location.search);
-  const isSampleMode = searchParams.get('mode') === 'sample';
+  const orderMode = searchParams.get('mode'); // 'sample', 'multi', 'multi-sample', or null
+  const isSampleMode = orderMode === 'sample' || orderMode === 'multi-sample';
+  const isMultiMode = orderMode === 'multi' || orderMode === 'multi-sample';
   
   const [qualityColors, setQualityColors] = useState<QualityColorData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,19 +162,13 @@ const QualityDetails = () => {
   };
 
   const navigateToLotDetails = (color: string) => {
-    if (isSampleMode) {
-      navigate(`/inventory/${encodeURIComponent(normalizedQuality!)}/${encodeURIComponent(color)}?mode=sample`);
-    } else {
-      navigate(`/inventory/${encodeURIComponent(normalizedQuality!)}/${encodeURIComponent(color)}`);
-    }
+    const modeParam = orderMode ? `?mode=${orderMode}` : '';
+    navigate(`/inventory/${encodeURIComponent(normalizedQuality!)}/${encodeURIComponent(color)}${modeParam}`);
   };
 
   const navigateBack = () => {
-    if (isSampleMode) {
-      navigate('/inventory?mode=sample');
-    } else {
-      navigate('/inventory');
-    }
+    const modeParam = orderMode ? `?mode=${orderMode}` : '';
+    navigate(`/inventory${modeParam}`);
   };
 
   const handleColorSelection = (color: string) => {
@@ -213,9 +209,10 @@ const QualityDetails = () => {
       return;
     }
 
-    // Navigate to lot selection with multiple colors
+    // Navigate to lot selection with multiple colors, preserving mode
     const colorParams = Array.from(selectedColors).join(',');
-    navigate(`/lot-selection?quality=${encodeURIComponent(normalizedQuality!)}&colors=${encodeURIComponent(colorParams)}`);
+    const modeParam = orderMode ? `&mode=${orderMode}` : '';
+    navigate(`/lot-selection?quality=${encodeURIComponent(normalizedQuality!)}&colors=${encodeURIComponent(colorParams)}${modeParam}`);
   };
 
   const handleClearCart = () => {

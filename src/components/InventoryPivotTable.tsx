@@ -56,9 +56,11 @@ const InventoryPivotTable = () => {
   // Get the effective role (viewAsRole takes precedence)
   const getEffectiveRole = () => viewAsRole || profile?.role;
   
-  // Check if we're in sample mode
+  // Check order mode from URL
   const searchParams = new URLSearchParams(location.search);
-  const isSampleMode = searchParams.get('mode') === 'sample';
+  const orderMode = searchParams.get('mode'); // 'sample', 'multi', 'multi-sample', or null
+  const isSampleMode = orderMode === 'sample' || orderMode === 'multi-sample';
+  const isMultiMode = orderMode === 'multi' || orderMode === 'multi-sample';
   
   const [pivotData, setPivotData] = useState<AggregatedQuality[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
@@ -171,12 +173,9 @@ const InventoryPivotTable = () => {
   };
 
   const navigateToQualityDetails = (normalizedQuality: string) => {
-    if (isSampleMode) {
-      // In sample mode, navigate to quality selection but keep sample mode
-      navigate(`/inventory/${encodeURIComponent(normalizedQuality)}?mode=sample`);
-    } else {
-      navigate(`/inventory/${encodeURIComponent(normalizedQuality)}`);
-    }
+    // Preserve the order mode when navigating to quality details
+    const modeParam = orderMode ? `?mode=${orderMode}` : '';
+    navigate(`/inventory/${encodeURIComponent(normalizedQuality)}${modeParam}`);
   };
 
   const navigateToLotDetails = (quality: string, color: string) => {
