@@ -129,6 +129,7 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
       };
 
       if (editingOverride) {
+        // Log to forecast_settings_audit_log (existing)
         await supabase.from('forecast_settings_audit_log').insert([{
           changed_by: user?.id || '',
           scope: 'per_quality' as const,
@@ -139,6 +140,17 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
           new_value: JSON.parse(JSON.stringify(payload)),
         }]);
 
+        // Also log to main audit_logs table
+        await supabase.rpc('log_audit_action', {
+          p_action: 'UPDATE',
+          p_entity_type: 'forecast_settings',
+          p_entity_id: editingOverride.id,
+          p_entity_identifier: `${payload.quality_code} / ${payload.color_code}`,
+          p_old_data: { scope: 'per_quality', quality_code: payload.quality_code, color_code: payload.color_code, ...editingOverride },
+          p_new_data: { scope: 'per_quality', quality_code: payload.quality_code, color_code: payload.color_code, ...payload },
+          p_notes: `Updated per-quality override for ${payload.quality_code} / ${payload.color_code}`
+        });
+
         const { error } = await supabase
           .from('forecast_settings_per_quality')
           .update(payload)
@@ -146,12 +158,15 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { data: insertedData, error } = await supabase
           .from('forecast_settings_per_quality')
-          .insert({ ...payload, created_by: user?.id });
+          .insert({ ...payload, created_by: user?.id })
+          .select()
+          .single();
 
         if (error) throw error;
 
+        // Log to forecast_settings_audit_log (existing)
         await supabase.from('forecast_settings_audit_log').insert([{
           changed_by: user?.id || '',
           scope: 'per_quality' as const,
@@ -160,6 +175,18 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
           parameter_name: 'override_create',
           new_value: JSON.parse(JSON.stringify(payload)),
         }]);
+
+        // Also log to main audit_logs table
+        if (insertedData) {
+          await supabase.rpc('log_audit_action', {
+            p_action: 'CREATE',
+            p_entity_type: 'forecast_settings',
+            p_entity_id: insertedData.id,
+            p_entity_identifier: `${payload.quality_code} / ${payload.color_code}`,
+            p_new_data: { scope: 'per_quality', quality_code: payload.quality_code, color_code: payload.color_code, ...payload },
+            p_notes: `Created per-quality override for ${payload.quality_code} / ${payload.color_code}`
+          });
+        }
       }
 
       toast({
@@ -186,6 +213,7 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
     }
 
     try {
+      // Log to forecast_settings_audit_log (existing)
       await supabase.from('forecast_settings_audit_log').insert([{
         changed_by: user?.id || '',
         scope: 'per_quality' as const,
@@ -194,6 +222,16 @@ const ForecastPerQualityOverrides: React.FC<Props> = ({ globalSettings, readOnly
         parameter_name: 'override_delete',
         old_value: JSON.parse(JSON.stringify(override)),
       }]);
+
+      // Also log to main audit_logs table
+      await supabase.rpc('log_audit_action', {
+        p_action: 'DELETE',
+        p_entity_type: 'forecast_settings',
+        p_entity_id: override.id,
+        p_entity_identifier: `${override.quality_code} / ${override.color_code}`,
+        p_old_data: { scope: 'per_quality', quality_code: override.quality_code, color_code: override.color_code, ...override },
+        p_notes: `Deleted per-quality override for ${override.quality_code} / ${override.color_code}`
+      });
 
       const { error } = await supabase
         .from('forecast_settings_per_quality')

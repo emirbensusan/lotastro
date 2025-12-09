@@ -64,12 +64,24 @@ const ForecastGlobalSettings: React.FC<Props> = ({ settings, onSettingsChange, o
         );
 
         for (const field of changedFields) {
+          // Log to forecast_settings_audit_log (existing)
           await supabase.from('forecast_settings_audit_log').insert({
             changed_by: user?.id,
             scope: 'global',
             parameter_name: field,
             old_value: settings[field],
             new_value: updates[field],
+          });
+
+          // Also log to main audit_logs table
+          await supabase.rpc('log_audit_action', {
+            p_action: 'UPDATE',
+            p_entity_type: 'forecast_settings',
+            p_entity_id: settings.id,
+            p_entity_identifier: `Global: ${field}`,
+            p_old_data: { scope: 'global', parameter_name: field, value: settings[field] },
+            p_new_data: { scope: 'global', parameter_name: field, value: updates[field] },
+            p_notes: `Updated global forecast setting: ${field}`
           });
         }
 
@@ -80,11 +92,25 @@ const ForecastGlobalSettings: React.FC<Props> = ({ settings, onSettingsChange, o
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { data: insertedData, error } = await supabase
           .from('forecast_settings_global')
-          .insert(updates);
+          .insert(updates)
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Log creation to main audit_logs
+        if (insertedData) {
+          await supabase.rpc('log_audit_action', {
+            p_action: 'CREATE',
+            p_entity_type: 'forecast_settings',
+            p_entity_id: insertedData.id,
+            p_entity_identifier: 'Global Settings',
+            p_new_data: { scope: 'global', settings: updates },
+            p_notes: 'Created global forecast settings'
+          });
+        }
       }
 
       toast({

@@ -2124,6 +2124,7 @@ export type Database = {
         | "profile"
         | "role_permission"
         | "incoming_stock"
+        | "forecast_settings"
       cancel_reason_type:
         | "no_payment"
         | "customer_canceled"
@@ -2282,6 +2283,7 @@ export const Constants = {
         "profile",
         "role_permission",
         "incoming_stock",
+        "forecast_settings",
       ],
       cancel_reason_type: [
         "no_payment",

@@ -127,6 +127,19 @@ const formatProfileDetails = (data: any, t: (key: string) => string | string[]):
   return details;
 };
 
+const formatForecastSettingsDetails = (data: any, t: (key: string) => string | string[]): string[] => {
+  if (!data) return [];
+  
+  const details: string[] = [];
+  
+  if (data.scope) details.push(`${t('scope') || 'Scope'}: ${data.scope}`);
+  if (data.quality_code) details.push(`${t('quality') || 'Quality'}: ${data.quality_code}`);
+  if (data.color_code) details.push(`${t('color') || 'Color'}: ${data.color_code}`);
+  if (data.parameter_name) details.push(`${t('parameter') || 'Parameter'}: ${data.parameter_name}`);
+  
+  return details;
+};
+
 const formatEntityDetails = (entityType: string, data: any, t: (key: string) => string | string[]): string[] => {
   switch (entityType) {
     case 'order':
@@ -140,6 +153,8 @@ const formatEntityDetails = (entityType: string, data: any, t: (key: string) => 
       return formatSupplierDetails(data, t);
     case 'profile':
       return formatProfileDetails(data, t);
+    case 'forecast_settings':
+      return formatForecastSettingsDetails(data, t);
     default:
       return [String(t('detailsNotAvailable'))];
   }
@@ -174,6 +189,7 @@ const ENTITY_KEYS: Record<string, string> = {
   'order_queue': 'orderQueue',
   'field_edit_queue': 'fieldEditQueue',
   'role_permission': 'rolePermission',
+  'forecast_settings': 'forecastSettingsEntity',
 };
 
 // Helper component to show reversal reason
@@ -460,6 +476,7 @@ const AuditLogs: React.FC = () => {
                 <SelectItem value="order">{String(t('ordersEntity'))}</SelectItem>
                 <SelectItem value="roll">{String(t('rollsEntity'))}</SelectItem>
                 <SelectItem value="supplier">{String(t('suppliersEntity'))}</SelectItem>
+                <SelectItem value="forecast_settings">{String(t('forecastSettingsEntity'))}</SelectItem>
               </SelectContent>
             </Select>
 
