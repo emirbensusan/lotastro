@@ -118,7 +118,7 @@ const LotIntake = () => {
       // Generate QR code URL
       const qrCodeUrl = generateQRCodeUrl(formData.lotNumber);
 
-      // Insert LOT into database
+      // Insert Lot into database
       const { data, error } = await supabase
         .from('lots')
         .insert({
@@ -142,7 +142,7 @@ const LotIntake = () => {
 
       if (error) {
         if (error.code === '23505') { // Unique constraint violation
-          throw new Error('LOT number already exists. Please use a different LOT number.');
+          throw new Error('Lot number already exists. Please use a different Lot number.');
         }
         throw error;
       }
@@ -176,7 +176,7 @@ const LotIntake = () => {
 
       toast({
         title: t('lotCreated') as string,
-        description: `LOT ${formData.lotNumber} has been added to inventory`,
+        description: `Lot ${formData.lotNumber} has been added to inventory`,
       });
 
       // Reset form
@@ -214,7 +214,7 @@ const LotIntake = () => {
       printWindow.document.write(`
         <html>
           <head>
-            <title>QR Code - LOT ${createdLot.lot_number}</title>
+            <title>QR Code - Lot ${createdLot.lot_number}</title>
             <style>
               body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
               .qr-container { margin: 20px 0; }
@@ -222,13 +222,13 @@ const LotIntake = () => {
             </style>
           </head>
           <body>
-            <h2>LOT ${createdLot.lot_number}</h2>
+            <h2>Lot ${createdLot.lot_number}</h2>
             <div class="lot-info">Quality: ${createdLot.quality}</div>
             <div class="lot-info">Color: ${createdLot.color}</div>
             <div class="lot-info">Meters: ${createdLot.meters}</div>
             <div class="qr-container">
               <div id="qrcode"></div>
-              <p>Scan to view LOT details</p>
+              <p>Scan to view Lot details</p>
               <p style="font-size: 10px; word-break: break-all;">${createdLot.qr_code_url}</p>
             </div>
           </body>
@@ -444,7 +444,7 @@ const LotIntake = () => {
 
         <TabsContent value="single">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Single LOT Entry Form */}
+            {/* Single Lot Entry Form */}
             <Card>
               <CardHeader>
                 <CardTitle>{t('newLotEntry')}</CardTitle>
@@ -509,7 +509,7 @@ const LotIntake = () => {
                   id="lotNumber"
                   value={formData.lotNumber}
                   onChange={(e) => handleInputChange('lotNumber', e.target.value)}
-                  placeholder="e.g., LOT001, WH-2024-001"
+                  placeholder="e.g., Lot001, WH-2024-001"
                   required
                 />
               </div>
@@ -624,7 +624,7 @@ const LotIntake = () => {
                     {t('qrCodeGenerated')}
                   </CardTitle>
                   <CardDescription>
-                    LOT {createdLot.lot_number} {t('lotCreatedSuccessMessage')}
+                    Lot {createdLot.lot_number} {t('lotCreatedSuccessMessage')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
