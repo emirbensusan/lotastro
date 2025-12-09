@@ -1093,6 +1093,7 @@ const translations = {
     categoryQrDocuments: 'QR Code & Document Management',
     categoryApprovals: 'Approvals (Change Requests)',
     categoryAuditLogs: 'Audit Logs',
+    categoryForecasting: 'Forecasting',
     
     // User Management Actions
     actionViewUsers: 'View Users',
@@ -1146,6 +1147,12 @@ const translations = {
     actionViewOwnLogs: 'View Own Logs',
     actionViewAllLogs: 'View All Logs',
     actionReverseActions: 'Reverse Actions',
+    
+    // Forecasting Actions
+    actionViewForecasts: 'View Forecasts',
+    actionRunForecasts: 'Run Forecasts',
+    actionModifyForecastSettings: 'Modify Forecast Settings',
+    actionImportForecastData: 'Import Historical Data',
     
     // Manufacturing Orders
     manufacturingOrders: 'Manufacturing Orders',
@@ -2728,6 +2735,7 @@ const translations = {
     categoryQrDocuments: 'QR Kod ve Belge Yönetimi',
     categoryApprovals: 'Onaylar (Değişiklik Talepleri)',
     categoryAuditLogs: 'Denetim Kayıtları',
+    categoryForecasting: 'Talep Tahmini',
     
     // User Management Actions
     actionViewUsers: 'Kullanıcıları Görüntüle',
@@ -2777,6 +2785,12 @@ const translations = {
     actionViewOwnLogs: 'Kendi Kayıtlarını Görüntüle',
     actionViewAllLogs: 'Tüm Kayıtları Görüntüle',
     actionReverseActions: 'İşlemleri Geri Al',
+    
+    // Forecasting Actions
+    actionViewForecasts: 'Tahminleri Görüntüle',
+    actionRunForecasts: 'Tahmin Çalıştır',
+    actionModifyForecastSettings: 'Tahmin Ayarlarını Değiştir',
+    actionImportForecastData: 'Geçmiş Verileri İçe Aktar',
     
     // Manufacturing Orders
     manufacturingOrders: 'Üretim Siparişleri',

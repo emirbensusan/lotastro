@@ -80,6 +80,12 @@ const defaultPermissions: Permission[] = [
   { categoryKey: 'categoryAuditLogs', actionKey: 'actionViewOwnLogs', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryAuditLogs', actionKey: 'actionViewAllLogs', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
   { categoryKey: 'categoryAuditLogs', actionKey: 'actionReverseActions', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+
+  // Forecasting
+  { categoryKey: 'categoryForecasting', actionKey: 'actionViewForecasts', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+  { categoryKey: 'categoryForecasting', actionKey: 'actionRunForecasts', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+  { categoryKey: 'categoryForecasting', actionKey: 'actionModifyForecastSettings', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryForecasting', actionKey: 'actionImportForecastData', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
 ];
 
 const getRoleColor = (role: string) => {
