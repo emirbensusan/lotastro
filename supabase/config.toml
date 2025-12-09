@@ -44,3 +44,6 @@ verify_jwt = true
 
 [functions.send-mo-reminders]
 verify_jwt = false
+
+[functions.forecast-engine]
+verify_jwt = true
