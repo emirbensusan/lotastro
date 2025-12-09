@@ -32,6 +32,8 @@ import QualityDetails from "./pages/QualityDetails";
 import LotDetails from "./pages/LotDetails";
 import InviteAccept from "./pages/InviteAccept";
 import ManufacturingOrders from "./pages/ManufacturingOrders";
+import Forecast from "./pages/Forecast";
+import ForecastSettings from "./pages/ForecastSettings";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -148,6 +150,16 @@ const App = () => (
               <Route path="/manufacturing-orders" element={
                 <ProtectedRoute>
                   <ManufacturingOrders />
+                </ProtectedRoute>
+              } />
+              <Route path="/forecast" element={
+                <ProtectedRoute>
+                  <Forecast />
+                </ProtectedRoute>
+              } />
+              <Route path="/forecast-settings" element={
+                <ProtectedRoute>
+                  <ForecastSettings />
                 </ProtectedRoute>
               } />
               <Route path="/goods-receipt" element={

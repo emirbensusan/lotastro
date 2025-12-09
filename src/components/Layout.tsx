@@ -30,7 +30,8 @@ import {
   History,
   TruckIcon,
   PackageCheck,
-  Factory
+  Factory,
+  TrendingUp
 } from 'lucide-react';
 import { 
   Sidebar,
@@ -92,6 +93,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { path: '/inventory', label: String(t('inventory')), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' } },
         { path: '/incoming-stock', label: String(t('incomingStockLabel')), icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
         { path: '/manufacturing-orders', label: String(t('mo.title')), icon: Factory, permission: { category: 'inventory', action: 'viewincoming' } },
+        { path: '/forecast', label: String(t('forecast.title') || 'Forecast'), icon: TrendingUp, permission: { category: 'forecasting', action: 'viewforecasts' } },
         { path: '/goods-receipt', label: String(t('goodsReceipt')), icon: PackageCheck, permission: { category: 'inventory', action: 'receiveincoming' } },
       ]
     },
