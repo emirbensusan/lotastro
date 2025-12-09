@@ -1038,6 +1038,8 @@ const translations = {
     totalMeters: 'Total Meters',
     pendingReceipts: 'Pending Receipts',
     totalOrders: 'Total Orders',
+    inProduction: 'In Production',
+    metersBeingManufactured: 'meters being manufactured',
     
     // Lot Intake - Additional
     singleLotEntry: 'Single Lot Entry',
@@ -1780,6 +1782,8 @@ const translations = {
     totalLots: 'Lot Sayısı',
     totalOrders: 'Sipariş Sayısı',
     totalMeters: 'Toplam Metraj',
+    inProduction: 'Üretimde',
+    metersBeingManufactured: 'metre üretiliyor',
     totalRolls: 'Toplam Top sayısı',
     totalQualities: 'Toplam Kaliteler',
     lotsByQuality: 'Kalite bazında Lot sayısı',

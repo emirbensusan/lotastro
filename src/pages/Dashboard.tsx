@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Package, Truck, AlertTriangle, TrendingUp, TruckIcon, Lock, PackageCheck, Calendar } from 'lucide-react';
+import { Package, Truck, AlertTriangle, TrendingUp, TruckIcon, Lock, PackageCheck, Calendar, Factory } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface DashboardStats {
@@ -20,6 +20,7 @@ interface DashboardStats {
   reservedMeters: number;
   activeReservations: number;
   pendingReceipts: number;
+  metersInProduction: number;
 }
 
 const Dashboard = () => {
@@ -38,6 +39,7 @@ const Dashboard = () => {
     reservedMeters: 0,
     activeReservations: 0,
     pendingReceipts: 0,
+    metersInProduction: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -69,6 +71,14 @@ const Dashboard = () => {
         .select('*', { count: 'exact', head: true })
         .in('status', ['pending_inbound', 'partially_received']);
 
+      // Get meters in production from manufacturing orders (not shipped/cancelled)
+      const { data: moData } = await supabase
+        .from('manufacturing_orders')
+        .select('ordered_amount')
+        .not('status', 'in', '("SHIPPED","CANCELLED")');
+
+      const metersInProduction = moData?.reduce((sum, mo) => sum + Number(mo.ordered_amount || 0), 0) || 0;
+
       const inStockLots = Number(data?.total_in_stock_lots || 0);
       const outOfStockLots = Number(data?.total_out_of_stock_lots || 0);
       const totalRolls = Number(data?.total_rolls || 0);
@@ -89,6 +99,7 @@ const Dashboard = () => {
         reservedMeters,
         activeReservations,
         pendingReceipts: pendingReceiptCount,
+        metersInProduction,
       });
 
       setStats({
@@ -103,6 +114,7 @@ const Dashboard = () => {
         reservedMeters,
         activeReservations,
         pendingReceipts: pendingReceiptCount || 0,
+        metersInProduction,
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -155,6 +167,14 @@ const Dashboard = () => {
       icon: Lock,
       color: 'text-amber-600',
       link: '/orders?tab=reservations',
+    },
+    {
+      title: t('inProduction'),
+      value: `${stats.metersInProduction.toLocaleString()}m`,
+      description: t('metersBeingManufactured'),
+      icon: Factory,
+      color: 'text-indigo-600',
+      link: '/manufacturing-orders',
     },
     {
       title: t('pendingReceipts'),
