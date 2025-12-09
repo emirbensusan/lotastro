@@ -1268,6 +1268,203 @@ const translations = {
       dailyRemindersLabel: 'Daily reminders for first X days',
       timezone: 'Timezone'
     },
+    
+    // Forecast Module
+    forecast: {
+      // Navigation & Page Titles
+      title: 'Demand Forecast',
+      settings: 'Forecast Settings',
+      settingsDescription: 'Configure forecasting parameters, per-quality overrides, and permissions',
+      
+      // Summary Cards
+      reorderNeeded: 'Reorder Needed',
+      outOf: 'out of',
+      items: 'items',
+      criticalAlerts: 'Critical Alerts',
+      needAttention: 'need attention',
+      totalStockPosition: 'Total Stock Position',
+      acrossAllItems: 'across all items',
+      lastRun: 'Last Run',
+      noRunsYet: 'No forecast runs yet',
+      running: 'Running...',
+      
+      // Alerts Section
+      activeAlerts: 'Active Alerts',
+      alertStockout: 'Stockout Risk',
+      alertOverstock: 'Overstock Alert',
+      noActiveAlerts: 'No active alerts',
+      daysUntilStockout: 'days until stockout',
+      monthsCoverage: 'months coverage',
+      
+      // Filters
+      allStatuses: 'All Statuses',
+      statusPending: 'Pending',
+      statusReviewed: 'Reviewed',
+      statusOrdered: 'Ordered',
+      searchPlaceholder: 'Search quality or color...',
+      scenario: 'Scenario',
+      conservative: 'Conservative',
+      normal: 'Normal',
+      aggressive: 'Aggressive',
+      
+      // Table Headers
+      qualityColor: 'Quality / Color',
+      unit: 'Unit',
+      availableStock: 'Available',
+      incomingStock: 'Incoming',
+      inProductionStock: 'In Production',
+      totalPosition: 'Total Position',
+      past12mDemand: 'Past 12M Demand',
+      forecastedDemand: 'Forecasted Demand',
+      safetyStock: 'Safety Stock',
+      targetCoverage: 'Target Coverage',
+      recommendation: 'Recommendation',
+      lastOrderDate: 'Last Order',
+      leadTime: 'Lead Time',
+      statusLabel: 'Status',
+      hasOverride: 'Has Override',
+      
+      // Actions
+      runForecast: 'Run Forecast',
+      runningForecast: 'Running...',
+      exportCsv: 'Export CSV',
+      importHistory: 'Import History',
+      viewDetails: 'View Details',
+      markReviewed: 'Mark as Reviewed',
+      
+      // Detail Drawer
+      recommendationDetails: 'Recommendation Details',
+      stockPosition: 'Stock Position',
+      demandInfo: 'Demand & Forecast Info',
+      parameters: 'Parameters',
+      recommendations: 'Recommendations',
+      forecastByPeriod: 'Forecast by Period',
+      notesPlaceholder: 'Add notes about this recommendation...',
+      reviewedBy: 'Reviewed by',
+      reviewedAt: 'Reviewed at',
+      
+      // Settings Tabs
+      globalSettings: 'Global Settings',
+      perQualityOverrides: 'Per-Quality Overrides',
+      permissionsTab: 'Permissions',
+      auditLogTab: 'Audit Log',
+      
+      // Global Settings
+      forecastHorizon: 'Forecast Horizon',
+      forecastHorizonDesc: 'How far into the future to generate forecasts',
+      timeBucket: 'Time Bucket',
+      timeBucketDesc: 'Granularity of forecast periods',
+      historyWindow: 'History Window',
+      historyWindowDesc: 'How much historical data to consider',
+      normalizationType: 'Normalization',
+      normalizationDesc: 'How to handle seasonality and trends',
+      weightingMethod: 'Weighting Method',
+      weightingMethodDesc: 'How to weight recent vs older data',
+      defaultLeadTime: 'Default Lead Time',
+      defaultLeadTimeDesc: 'Default supplier lead time in days',
+      safetyStockMode: 'Safety Stock Mode',
+      safetyStockModeDesc: 'How safety stock is calculated',
+      safetyStockWeeks: 'Safety Stock Weeks',
+      safetyStockWeeksDesc: 'Number of weeks of demand to keep as safety stock',
+      minOrderZeroHistory: 'Min Order (Zero History)',
+      minOrderZeroHistoryDesc: 'Minimum order quantity for items with no demand history',
+      demandStatuses: 'Demand Statuses',
+      demandStatusesDesc: 'Which order statuses count as demand',
+      overrideRowTint: 'Override Row Tint',
+      overrideRowTintDesc: 'Color to highlight rows with per-quality overrides',
+      stockoutAlertDays: 'Stockout Alert Days',
+      stockoutAlertDaysDesc: 'Alert when projected stockout is within X days',
+      overstockAlertMonths: 'Overstock Alert Months',
+      overstockAlertMonthsDesc: 'Alert when coverage exceeds X months',
+      weeklySchedule: 'Weekly Schedule',
+      weeklyScheduleEnabled: 'Enable Weekly Runs',
+      weeklyScheduleDay: 'Day of Week',
+      weeklyScheduleHour: 'Hour of Day',
+      weeklyScheduleTimezone: 'Timezone',
+      emailDigest: 'Email Digest',
+      emailDigestEnabled: 'Enable Email Digest',
+      emailDigestRecipients: 'Recipients',
+      outlierPercentile: 'Outlier Percentile',
+      outlierPercentileDesc: 'Cap outliers above this percentile',
+      scenarioParameters: 'Scenario Parameters',
+      
+      // Time Bucket Options
+      weekly: 'Weekly',
+      biweekly: 'Bi-weekly',
+      monthly: 'Monthly',
+      quarterly: 'Quarterly',
+      
+      // Weighting Options
+      fixedWeights: 'Fixed Weights',
+      linearDecay: 'Linear Decay',
+      exponentialDecay: 'Exponential Decay',
+      
+      // Safety Stock Modes
+      weeksOfDemand: 'Weeks of Demand',
+      fixedQuantity: 'Fixed Quantity',
+      
+      // Per-Quality Overrides
+      noOverrides: 'No per-quality overrides configured',
+      addOverride: 'Add Override',
+      editOverride: 'Edit Override',
+      deleteOverride: 'Delete Override',
+      overrideFor: 'Override for',
+      targetCoverageWeeks: 'Target Coverage (Weeks)',
+      minRecommendedOrder: 'Min Recommended Order',
+      
+      // Permissions
+      permissionsDescription: 'Configure which roles can view and modify forecast settings',
+      viewForecast: 'View Forecast',
+      runForecastPerm: 'Run Forecast',
+      modifySettings: 'Modify Settings',
+      
+      // Audit Log
+      auditLogDescription: 'History of changes to forecast settings',
+      changedBy: 'Changed By',
+      changedAt: 'Changed At',
+      parameterName: 'Parameter',
+      oldValue: 'Old Value',
+      newValue: 'New Value',
+      scopeGlobal: 'Global',
+      scopeQuality: 'Quality',
+      scopePermission: 'Permission',
+      noAuditEntries: 'No audit entries found',
+      
+      // Import Modal
+      importTitle: 'Import Historical Demand',
+      importDescription: 'Upload CSV or Excel file with historical demand data',
+      downloadSample: 'Download Sample CSV',
+      dropFileHere: 'Drop file here or click to upload',
+      supportedFormats: 'Supported formats: CSV, XLSX, XLS (max 20MB)',
+      uploadProgress: 'Uploading...',
+      importSuccess: 'Successfully imported {count} records',
+      importFailed: 'Import failed',
+      duplicatesSkipped: '{count} duplicate records skipped',
+      
+      // Notifications
+      forecastStarted: 'Forecast calculation started',
+      forecastCompleted: 'Forecast completed successfully',
+      forecastFailed: 'Forecast calculation failed',
+      settingsSaved: 'Settings saved successfully',
+      settingsSaveFailed: 'Failed to save settings',
+      overrideSaved: 'Override saved successfully',
+      overrideDeleted: 'Override deleted successfully',
+      markedAsReviewed: 'Marked as reviewed',
+      
+      // Units
+      days: 'days',
+      weeks: 'weeks',
+      months: 'months',
+      
+      // Common
+      refresh: 'Refresh',
+      close: 'Close',
+      noData: 'No data available',
+      loadingData: 'Loading data...',
+      fetchError: 'Failed to load data',
+      noPermission: 'You do not have permission to access this feature',
+      readOnlyMode: 'Read-only mode - you cannot modify settings'
+    },
   },
   tr: {
     // Navigation
@@ -2556,6 +2753,203 @@ const translations = {
       selectedDaysBefore: 'Seçili: Teslimden {days} gün önce',
       dailyRemindersLabel: 'İlk X gün için günlük hatırlatıcılar',
       timezone: 'Saat Dilimi'
+    },
+    
+    // Forecast Module
+    forecast: {
+      // Navigation & Page Titles
+      title: 'Talep Tahmini',
+      settings: 'Tahmin Ayarları',
+      settingsDescription: 'Tahmin parametrelerini, kalite bazlı geçersiz kılmaları ve izinleri yapılandırın',
+      
+      // Summary Cards
+      reorderNeeded: 'Yeniden Sipariş Gerekli',
+      outOf: '/',
+      items: 'kalem',
+      criticalAlerts: 'Kritik Uyarılar',
+      needAttention: 'dikkat gerektiriyor',
+      totalStockPosition: 'Toplam Stok Pozisyonu',
+      acrossAllItems: 'tüm kalemlerde',
+      lastRun: 'Son Çalışma',
+      noRunsYet: 'Henüz tahmin çalıştırılmadı',
+      running: 'Çalışıyor...',
+      
+      // Alerts Section
+      activeAlerts: 'Aktif Uyarılar',
+      alertStockout: 'Stok Tükenme Riski',
+      alertOverstock: 'Aşırı Stok Uyarısı',
+      noActiveAlerts: 'Aktif uyarı yok',
+      daysUntilStockout: 'gün içinde stok tükenecek',
+      monthsCoverage: 'aylık kapsam',
+      
+      // Filters
+      allStatuses: 'Tüm Durumlar',
+      statusPending: 'Beklemede',
+      statusReviewed: 'İncelendi',
+      statusOrdered: 'Sipariş Verildi',
+      searchPlaceholder: 'Kalite veya renk ara...',
+      scenario: 'Senaryo',
+      conservative: 'Muhafazakar',
+      normal: 'Normal',
+      aggressive: 'Agresif',
+      
+      // Table Headers
+      qualityColor: 'Kalite / Renk',
+      unit: 'Birim',
+      availableStock: 'Mevcut',
+      incomingStock: 'Yolda',
+      inProductionStock: 'Üretimde',
+      totalPosition: 'Toplam Pozisyon',
+      past12mDemand: 'Son 12 Ay Talep',
+      forecastedDemand: 'Tahmini Talep',
+      safetyStock: 'Emniyet Stoğu',
+      targetCoverage: 'Hedef Kapsam',
+      recommendation: 'Öneri',
+      lastOrderDate: 'Son Sipariş',
+      leadTime: 'Tedarik Süresi',
+      statusLabel: 'Durum',
+      hasOverride: 'Özel Ayar Var',
+      
+      // Actions
+      runForecast: 'Tahmini Çalıştır',
+      runningForecast: 'Çalışıyor...',
+      exportCsv: 'CSV Dışa Aktar',
+      importHistory: 'Geçmiş Yükle',
+      viewDetails: 'Detayları Gör',
+      markReviewed: 'İncelendi Olarak İşaretle',
+      
+      // Detail Drawer
+      recommendationDetails: 'Öneri Detayları',
+      stockPosition: 'Stok Pozisyonu',
+      demandInfo: 'Talep ve Tahmin Bilgisi',
+      parameters: 'Parametreler',
+      recommendations: 'Öneriler',
+      forecastByPeriod: 'Dönem Bazlı Tahmin',
+      notesPlaceholder: 'Bu öneri hakkında not ekleyin...',
+      reviewedBy: 'İnceleyen',
+      reviewedAt: 'İncelenme Tarihi',
+      
+      // Settings Tabs
+      globalSettings: 'Genel Ayarlar',
+      perQualityOverrides: 'Kalite Bazlı Geçersiz Kılmalar',
+      permissionsTab: 'İzinler',
+      auditLogTab: 'Denetim Günlüğü',
+      
+      // Global Settings
+      forecastHorizon: 'Tahmin Ufku',
+      forecastHorizonDesc: 'Tahminlerin ne kadar ileriye yapılacağı',
+      timeBucket: 'Zaman Dilimi',
+      timeBucketDesc: 'Tahmin dönemlerinin ayrıntı düzeyi',
+      historyWindow: 'Geçmiş Penceresi',
+      historyWindowDesc: 'Ne kadar geçmiş verinin dikkate alınacağı',
+      normalizationType: 'Normalizasyon',
+      normalizationDesc: 'Mevsimsellik ve trendlerin nasıl ele alınacağı',
+      weightingMethod: 'Ağırlıklandırma Yöntemi',
+      weightingMethodDesc: 'Yeni ve eski verilerin nasıl ağırlıklandırılacağı',
+      defaultLeadTime: 'Varsayılan Tedarik Süresi',
+      defaultLeadTimeDesc: 'Varsayılan tedarikçi tedarik süresi (gün)',
+      safetyStockMode: 'Emniyet Stoğu Modu',
+      safetyStockModeDesc: 'Emniyet stoğunun nasıl hesaplanacağı',
+      safetyStockWeeks: 'Emniyet Stoğu Haftası',
+      safetyStockWeeksDesc: 'Emniyet stoğu olarak tutulacak talep haftası sayısı',
+      minOrderZeroHistory: 'Min Sipariş (Geçmiş Yok)',
+      minOrderZeroHistoryDesc: 'Talep geçmişi olmayan kalemler için minimum sipariş miktarı',
+      demandStatuses: 'Talep Durumları',
+      demandStatusesDesc: 'Hangi sipariş durumlarının talep olarak sayılacağı',
+      overrideRowTint: 'Geçersiz Kılma Satır Rengi',
+      overrideRowTintDesc: 'Kalite bazlı geçersiz kılmaları olan satırları vurgulama rengi',
+      stockoutAlertDays: 'Stok Tükenme Uyarı Günleri',
+      stockoutAlertDaysDesc: 'Tahmini stok tükenme X gün içindeyse uyar',
+      overstockAlertMonths: 'Aşırı Stok Uyarı Ayları',
+      overstockAlertMonthsDesc: 'Kapsam X ayı aştığında uyar',
+      weeklySchedule: 'Haftalık Program',
+      weeklyScheduleEnabled: 'Haftalık Çalıştırmayı Etkinleştir',
+      weeklyScheduleDay: 'Haftanın Günü',
+      weeklyScheduleHour: 'Günün Saati',
+      weeklyScheduleTimezone: 'Saat Dilimi',
+      emailDigest: 'E-posta Özeti',
+      emailDigestEnabled: 'E-posta Özetini Etkinleştir',
+      emailDigestRecipients: 'Alıcılar',
+      outlierPercentile: 'Aykırı Değer Yüzdeliği',
+      outlierPercentileDesc: 'Bu yüzdeliğin üzerindeki aykırı değerleri sınırla',
+      scenarioParameters: 'Senaryo Parametreleri',
+      
+      // Time Bucket Options
+      weekly: 'Haftalık',
+      biweekly: 'İki Haftalık',
+      monthly: 'Aylık',
+      quarterly: 'Üç Aylık',
+      
+      // Weighting Options
+      fixedWeights: 'Sabit Ağırlıklar',
+      linearDecay: 'Doğrusal Azalma',
+      exponentialDecay: 'Üstel Azalma',
+      
+      // Safety Stock Modes
+      weeksOfDemand: 'Talep Haftası',
+      fixedQuantity: 'Sabit Miktar',
+      
+      // Per-Quality Overrides
+      noOverrides: 'Yapılandırılmış kalite bazlı geçersiz kılma yok',
+      addOverride: 'Geçersiz Kılma Ekle',
+      editOverride: 'Geçersiz Kılmayı Düzenle',
+      deleteOverride: 'Geçersiz Kılmayı Sil',
+      overrideFor: 'Geçersiz kılma:',
+      targetCoverageWeeks: 'Hedef Kapsam (Hafta)',
+      minRecommendedOrder: 'Min Önerilen Sipariş',
+      
+      // Permissions
+      permissionsDescription: 'Hangi rollerin tahmin ayarlarını görüntüleyip değiştirebileceğini yapılandırın',
+      viewForecast: 'Tahmini Görüntüle',
+      runForecastPerm: 'Tahmini Çalıştır',
+      modifySettings: 'Ayarları Değiştir',
+      
+      // Audit Log
+      auditLogDescription: 'Tahmin ayarlarındaki değişikliklerin geçmişi',
+      changedBy: 'Değiştiren',
+      changedAt: 'Değiştirilme Tarihi',
+      parameterName: 'Parametre',
+      oldValue: 'Eski Değer',
+      newValue: 'Yeni Değer',
+      scopeGlobal: 'Genel',
+      scopeQuality: 'Kalite',
+      scopePermission: 'İzin',
+      noAuditEntries: 'Denetim kaydı bulunamadı',
+      
+      // Import Modal
+      importTitle: 'Geçmiş Talep Verisi Yükle',
+      importDescription: 'Geçmiş talep verileriyle CSV veya Excel dosyası yükleyin',
+      downloadSample: 'Örnek CSV İndir',
+      dropFileHere: 'Dosyayı buraya bırakın veya yüklemek için tıklayın',
+      supportedFormats: 'Desteklenen formatlar: CSV, XLSX, XLS (maks 20MB)',
+      uploadProgress: 'Yükleniyor...',
+      importSuccess: '{count} kayıt başarıyla içe aktarıldı',
+      importFailed: 'İçe aktarma başarısız',
+      duplicatesSkipped: '{count} yinelenen kayıt atlandı',
+      
+      // Notifications
+      forecastStarted: 'Tahmin hesaplaması başlatıldı',
+      forecastCompleted: 'Tahmin başarıyla tamamlandı',
+      forecastFailed: 'Tahmin hesaplaması başarısız',
+      settingsSaved: 'Ayarlar başarıyla kaydedildi',
+      settingsSaveFailed: 'Ayarlar kaydedilemedi',
+      overrideSaved: 'Geçersiz kılma başarıyla kaydedildi',
+      overrideDeleted: 'Geçersiz kılma başarıyla silindi',
+      markedAsReviewed: 'İncelendi olarak işaretlendi',
+      
+      // Units
+      days: 'gün',
+      weeks: 'hafta',
+      months: 'ay',
+      
+      // Common
+      refresh: 'Yenile',
+      close: 'Kapat',
+      noData: 'Veri yok',
+      loadingData: 'Veriler yükleniyor...',
+      fetchError: 'Veriler yüklenemedi',
+      noPermission: 'Bu özelliğe erişim izniniz yok',
+      readOnlyMode: 'Salt okunur mod - ayarları değiştiremezsiniz'
     },
   },
 };
