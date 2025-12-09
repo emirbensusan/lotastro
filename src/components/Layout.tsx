@@ -21,7 +21,7 @@ import {
   QrCode,
   Users,
   Truck,
-  Clock,
+  Calendar,
   Menu,
   CheckCircle,
   ShoppingCart,
@@ -101,7 +101,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: String(t('ordersAndReservations')),
       items: [
         { path: '/orders', label: String(t('orders')), icon: Truck, permission: { category: 'orders', action: 'vieworders' } },
-        { path: '/reservations', label: String(t('reservations')), icon: Clock, permission: { category: 'orders', action: 'vieworders' } },
+        { path: '/reservations', label: String(t('reservations')), icon: Calendar, permission: { category: 'orders', action: 'vieworders' } },
         { path: '/order-queue', label: String(t('orderQueue')), icon: ListOrdered, permission: { category: 'orders', action: 'createorders' } },
       ]
     },
