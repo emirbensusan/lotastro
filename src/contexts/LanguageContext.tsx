@@ -1045,6 +1045,10 @@ const translations = {
     multipleSamples: 'Multiple Samples',
     multiOrderMinimum: 'Multi-quality orders require at least 2 different quality/color combinations',
     continueToNextSelection: 'Continue to Next Selection',
+    selectSingleQualityInstruction: 'Select a quality to create a standard order',
+    selectSampleQualityInstruction: 'Select a quality for your sample order',
+    selectMultiQualityInstruction: 'Select 2 or more qualities for your multi-quality order, then click "Proceed to Color Selection"',
+    selectMultiSampleInstruction: 'Select 2 or more qualities for your multiple samples order, then click "Proceed to Color Selection"',
     
     // Lot Intake - Additional
     singleLotEntry: 'Single Lot Entry',
@@ -1794,6 +1798,10 @@ const translations = {
     multipleSamples: 'Çoklu Numune',
     multiOrderMinimum: 'Çoklu kalite siparişleri en az 2 farklı kalite/renk kombinasyonu gerektirir',
     continueToNextSelection: 'Sonraki Seçime Devam Et',
+    selectSingleQualityInstruction: 'Standart sipariş için bir kalite seçin',
+    selectSampleQualityInstruction: 'Numune siparişiniz için bir kalite seçin',
+    selectMultiQualityInstruction: 'Çoklu kalite siparişiniz için 2 veya daha fazla kalite seçin, ardından "Renk Seçimine Geç" butonuna tıklayın',
+    selectMultiSampleInstruction: 'Çoklu numune siparişiniz için 2 veya daha fazla kalite seçin, ardından "Renk Seçimine Geç" butonuna tıklayın',
     totalRolls: 'Toplam Top sayısı',
     totalQualities: 'Toplam Kaliteler',
     lotsByQuality: 'Kalite bazında Lot sayısı',

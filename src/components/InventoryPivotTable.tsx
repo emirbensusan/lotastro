@@ -92,6 +92,13 @@ const InventoryPivotTable = () => {
     isComplete: false
   });
 
+  // Auto-enable bulk selection mode when navigating from Orders page with any order mode
+  useEffect(() => {
+    if (orderMode) {
+      setBulkSelectionMode(true);
+    }
+  }, [orderMode]);
+
   useEffect(() => {
     fetchPivotData();
   }, []);
@@ -427,15 +434,25 @@ const InventoryPivotTable = () => {
       
       setSelectedItems(newSelected);
     } else if (bulkSelectionMode) {
-      const newSelected = new Set(selectedQualitiesForBulk);
+      // For single-selection modes (single, sample), auto-proceed immediately
+      const isSingleSelectionMode = orderMode === 'single' || orderMode === 'sample';
       
-      if (newSelected.has(normalizedQuality)) {
-        newSelected.delete(normalizedQuality);
+      if (isSingleSelectionMode) {
+        // Clear previous selection and navigate directly
+        setSelectedQualitiesForBulk(new Set([normalizedQuality]));
+        navigateToQualityDetails(normalizedQuality);
       } else {
-        newSelected.add(normalizedQuality);
+        // Multi-selection toggle for multi and multi-sample modes
+        const newSelected = new Set(selectedQualitiesForBulk);
+        
+        if (newSelected.has(normalizedQuality)) {
+          newSelected.delete(normalizedQuality);
+        } else {
+          newSelected.add(normalizedQuality);
+        }
+        
+        setSelectedQualitiesForBulk(newSelected);
       }
-      
-      setSelectedQualitiesForBulk(newSelected);
     }
   };
 
@@ -449,8 +466,19 @@ const InventoryPivotTable = () => {
       return;
     }
     
+    // For multi modes, require at least 2 selections
+    if (isMultiMode && selectedQualitiesForBulk.size < 2) {
+      toast({
+        title: String(t('error')),
+        description: String(t('multiOrderMinimum')),
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const selectedQualityNames = Array.from(selectedQualitiesForBulk);
-    navigate(`/bulk-selection?qualities=${encodeURIComponent(selectedQualityNames.join(','))}`);
+    const modeParam = orderMode ? `&mode=${orderMode}` : '';
+    navigate(`/bulk-selection?qualities=${encodeURIComponent(selectedQualityNames.join(','))}${modeParam}`);
   };
 
   const toggleBulkSelectionMode = () => {
@@ -500,8 +528,23 @@ const InventoryPivotTable = () => {
     );
   }
 
+  // Determine if we're in single-selection mode
+  const isSingleSelectionMode = orderMode === 'single' || orderMode === 'sample';
+
   return (
     <div className="space-y-6">
+      {/* Contextual instruction banner based on order mode */}
+      {orderMode && (
+        <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+          <p className="text-sm text-primary">
+            {orderMode === 'single' && t('selectSingleQualityInstruction')}
+            {orderMode === 'sample' && t('selectSampleQualityInstruction')}
+            {orderMode === 'multi' && t('selectMultiQualityInstruction')}
+            {orderMode === 'multi-sample' && t('selectMultiSampleInstruction')}
+          </p>
+        </div>
+      )}
+
       {/* Search and Controls */}
       <div className="flex items-center justify-between space-x-4">
         <div className="relative flex-1">

@@ -522,10 +522,10 @@ const Orders = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => navigate('/inventory')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('standardOrder')}
-                </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/inventory?mode=single')}>
+                <Plus className="mr-2 h-4 w-4" />
+                {t('standardOrder')}
+              </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/inventory?mode=multi')}>
                   <Layers className="mr-2 h-4 w-4" />
                   {t('multiQualityOrder')}
