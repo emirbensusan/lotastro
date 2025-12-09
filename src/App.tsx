@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import LotIntake from "./pages/LotIntake";
 import Inventory from "./pages/Inventory";
 import Orders from "./pages/Orders";
+import Reservations from "./pages/Reservations";
 import LotSelection from "./pages/LotSelection";
 import LotQueue from "./pages/LotQueue";
 import QRScan from "./pages/QRScan";
@@ -108,6 +109,11 @@ const App = () => (
               <Route path="/orders" element={
                 <ProtectedRoute>
                   <Orders />
+                </ProtectedRoute>
+              } />
+              <Route path="/reservations" element={
+                <ProtectedRoute>
+                  <Reservations />
                 </ProtectedRoute>
               } />
               <Route path="/lot-selection" element={
