@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { 
   ShoppingCart, 
@@ -37,7 +38,32 @@ const FloatingPOCart = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
+  // Get unique quality+color combinations in cart
+  const getUniqueQualityColors = () => {
+    return new Set(cartItems.map(item => `${item.quality}|${item.color}`));
+  };
+
+  // Check current mode from URL
+  const getCurrentMode = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode');
+  };
+
   const handleCreatePO = () => {
+    const mode = getCurrentMode();
+    const isMultiMode = mode === 'multi' || mode === 'multi-sample';
+    const uniqueCombos = getUniqueQualityColors();
+
+    // Validate multi-mode requires at least 2 quality+color combinations
+    if (isMultiMode && uniqueCombos.size < 2) {
+      toast({
+        title: t('error') as string,
+        description: t('multiOrderMinimum') as string,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Navigate to orders page with cart data - pass complete cart items
     navigate('/orders', { 
       state: { 
@@ -50,7 +76,10 @@ const FloatingPOCart = () => {
 
   const handleContinueShopping = () => {
     setIsCartOpen(false);
-    navigate('/inventory');
+    // Preserve mode when continuing shopping
+    const mode = getCurrentMode();
+    const modeParam = mode ? `?mode=${mode}` : '';
+    navigate(`/inventory${modeParam}`);
   };
 
   const adjustQuantity = (lotId: string, change: number) => {

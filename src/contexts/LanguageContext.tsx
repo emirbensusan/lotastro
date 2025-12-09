@@ -1041,6 +1041,11 @@ const translations = {
     inProduction: 'In Production',
     metersBeingManufactured: 'meters being manufactured',
     
+    // Order Flow - Multi-mode
+    multipleSamples: 'Multiple Samples',
+    multiOrderMinimum: 'Multi-quality orders require at least 2 different quality/color combinations',
+    continueToNextSelection: 'Continue to Next Selection',
+    
     // Lot Intake - Additional
     singleLotEntry: 'Single Lot Entry',
     bulkLotImport: 'Bulk Lot Import',
@@ -1784,6 +1789,11 @@ const translations = {
     totalMeters: 'Toplam Metraj',
     inProduction: 'Üretimde',
     metersBeingManufactured: 'metre üretiliyor',
+    
+    // Order Flow - Multi-mode
+    multipleSamples: 'Çoklu Numune',
+    multiOrderMinimum: 'Çoklu kalite siparişleri en az 2 farklı kalite/renk kombinasyonu gerektirir',
+    continueToNextSelection: 'Sonraki Seçime Devam Et',
     totalRolls: 'Toplam Top sayısı',
     totalQualities: 'Toplam Kaliteler',
     lotsByQuality: 'Kalite bazında Lot sayısı',

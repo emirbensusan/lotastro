@@ -12,10 +12,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { toast } from "sonner";
-import { Truck, Plus, CheckCircle, Eye, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown } from 'lucide-react';
+import { Truck, Plus, CheckCircle, Eye, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown, Layers } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
-import MultiQualityOrderDialog from '@/components/MultiQualityOrderDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
 import AIOrderInput from '@/components/AIOrderInput';
 import { InlineEditableField } from '@/components/InlineEditableField';
@@ -65,7 +64,6 @@ const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showMultiQualityDialog, setShowMultiQualityDialog] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -524,21 +522,25 @@ const Orders = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setShowCreateDialog(true)}>
+                <DropdownMenuItem onClick={() => navigate('/inventory')}>
                   <Plus className="mr-2 h-4 w-4" />
                   {t('standardOrder')}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowMultiQualityDialog(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
+                <DropdownMenuItem onClick={() => navigate('/inventory?mode=multi')}>
+                  <Layers className="mr-2 h-4 w-4" />
                   {t('multiQualityOrder')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowBulkUpload(true)}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  {t('bulkUpload')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/inventory?mode=sample')}>
                   <FlaskConical className="mr-2 h-4 w-4" />
                   {t('sampleOrder')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/inventory?mode=multi-sample')}>
+                  <FlaskConical className="mr-2 h-4 w-4" />
+                  {t('multipleSamples')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowBulkUpload(true)}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  {t('bulkUpload')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -817,17 +819,6 @@ const Orders = () => {
           onOpenChange={setShowPrintDialog}
         />
       )}
-
-      {/* Multi Quality Order Dialog */}
-      <MultiQualityOrderDialog
-        open={showMultiQualityDialog}
-        onOpenChange={setShowMultiQualityDialog}
-        availableQualities={[]}
-        onProceed={async (selections) => {
-          console.log('Multi-quality selections:', selections);
-          setShowMultiQualityDialog(false);
-        }}
-      />
 
       {/* Bulk Upload Dialog */}
       <OrderBulkUpload
