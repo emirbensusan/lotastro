@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, Link2 } from 'lucide-react';
+import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, Link2, ArrowRightLeft, Package } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -80,6 +80,12 @@ const Admin: React.FC = () => {
   const [reconcilingUsers, setReconcilingUsers] = useState(false);
   const [forceDeleteDialog, setForceDeleteDialog] = useState(false);
   const [deleteDependencies, setDeleteDependencies] = useState<any[]>([]);
+  
+  // Catalog migration state
+  const [migrationLoading, setMigrationLoading] = useState(false);
+  const [migrationPreviewLoading, setMigrationPreviewLoading] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<any>(null);
+  const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -560,6 +566,55 @@ const Admin: React.FC = () => {
     });
   };
 
+  const handleMigrationPreview = async () => {
+    setMigrationPreviewLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('migrate-catalog-items', {
+        body: { dryRun: true }
+      });
+
+      if (error) throw error;
+
+      setMigrationResult(data);
+      setMigrationDialogOpen(true);
+    } catch (error: any) {
+      console.error('Migration preview error:', error);
+      toast({
+        title: t('error') as string,
+        description: error?.message || (t('catalog.migration.migrationFailed') as string),
+        variant: 'destructive'
+      });
+    } finally {
+      setMigrationPreviewLoading(false);
+    }
+  };
+
+  const handleMigrationRun = async () => {
+    setMigrationLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('migrate-catalog-items', {
+        body: { dryRun: false }
+      });
+
+      if (error) throw error;
+
+      setMigrationResult(data);
+      toast({
+        title: t('success') as string,
+        description: t('catalog.migration.migrationComplete') as string,
+      });
+    } catch (error: any) {
+      console.error('Migration error:', error);
+      toast({
+        title: t('error') as string,
+        description: error?.message || (t('catalog.migration.migrationFailed') as string),
+        variant: 'destructive'
+      });
+    } finally {
+      setMigrationLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -1022,6 +1077,59 @@ const Admin: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Catalog Data Migration */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              {t('catalog.migration.title')}
+            </CardTitle>
+            <CardDescription>{t('catalog.migration.description')}</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button
+              variant="outline"
+              onClick={handleMigrationPreview}
+              disabled={migrationPreviewLoading || migrationLoading}
+            >
+              {migrationPreviewLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('catalog.migration.previewRunning')}
+                </>
+              ) : (
+                <>
+                  <ArrowRightLeft className="mr-2 h-4 w-4" />
+                  {t('catalog.migration.preview')}
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {migrationResult && !migrationResult.dryRun && (
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                {t('catalog.migration.migrationComplete')}
+              </h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">{t('catalog.migration.catalogItemsCreated')}:</span>
+                <span className="font-medium">{migrationResult.catalogItemsCreated}</span>
+                <span className="text-muted-foreground">{t('catalog.migration.lotsLinked')}:</span>
+                <span className="font-medium">{migrationResult.lotsLinked}</span>
+                <span className="text-muted-foreground">{t('catalog.migration.incomingStockLinked')}:</span>
+                <span className="font-medium">{migrationResult.incomingStockLinked}</span>
+                <span className="text-muted-foreground">{t('catalog.migration.manufacturingOrdersLinked')}:</span>
+                <span className="font-medium">{migrationResult.manufacturingOrdersLinked}</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
         </TabsContent>
 
         <TabsContent value="permissions" className="space-y-6">
@@ -1266,6 +1374,103 @@ const Admin: React.FC = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Migration Preview Dialog */}
+        <Dialog open={migrationDialogOpen} onOpenChange={setMigrationDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ArrowRightLeft className="h-5 w-5" />
+                {migrationResult?.dryRun 
+                  ? t('catalog.migration.dryRunComplete') 
+                  : t('catalog.migration.migrationComplete')}
+              </DialogTitle>
+            </DialogHeader>
+            {migrationResult && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <span className="text-muted-foreground">{t('catalog.migration.uniquePairs')}:</span>
+                  <span className="font-medium">{migrationResult.details?.uniquePairs || 0}</span>
+                  <span className="text-muted-foreground">{t('catalog.migration.existingItems')}:</span>
+                  <span className="font-medium">{migrationResult.details?.existingCatalogItems || 0}</span>
+                  <span className="text-muted-foreground">
+                    {migrationResult.dryRun 
+                      ? t('catalog.migration.catalogItemsToCreate') 
+                      : t('catalog.migration.catalogItemsCreated')}:
+                  </span>
+                  <span className="font-medium text-green-600">{migrationResult.catalogItemsCreated}</span>
+                  <span className="text-muted-foreground">{t('catalog.migration.skippedExisting')}:</span>
+                  <span className="font-medium">{migrationResult.skippedExisting}</span>
+                  <span className="text-muted-foreground">
+                    {migrationResult.dryRun 
+                      ? t('catalog.migration.lotsToLink') 
+                      : t('catalog.migration.lotsLinked')}:
+                  </span>
+                  <span className="font-medium">{migrationResult.lotsLinked || (migrationResult.dryRun ? '—' : 0)}</span>
+                  <span className="text-muted-foreground">
+                    {migrationResult.dryRun 
+                      ? t('catalog.migration.incomingStockToLink') 
+                      : t('catalog.migration.incomingStockLinked')}:
+                  </span>
+                  <span className="font-medium">{migrationResult.incomingStockLinked || (migrationResult.dryRun ? '—' : 0)}</span>
+                  <span className="text-muted-foreground">
+                    {migrationResult.dryRun 
+                      ? t('catalog.migration.manufacturingOrdersToLink') 
+                      : t('catalog.migration.manufacturingOrdersLinked')}:
+                  </span>
+                  <span className="font-medium">{migrationResult.manufacturingOrdersLinked || (migrationResult.dryRun ? '—' : 0)}</span>
+                </div>
+
+                {migrationResult.errors && migrationResult.errors.length > 0 && (
+                  <div className="bg-destructive/10 p-3 rounded-md">
+                    <p className="text-sm font-medium text-destructive mb-1">{t('catalog.migration.errors')}:</p>
+                    <ul className="text-xs text-destructive space-y-1">
+                      {migrationResult.errors.slice(0, 5).map((err: string, i: number) => (
+                        <li key={i}>• {err}</li>
+                      ))}
+                      {migrationResult.errors.length > 5 && (
+                        <li>... {t('and')} {migrationResult.errors.length - 5} {t('more')}</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                {migrationResult.dryRun && migrationResult.catalogItemsCreated === 0 && (
+                  <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                    {t('catalog.migration.noDataToMigrate')}
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setMigrationDialogOpen(false)}>
+                    {t('cancel')}
+                  </Button>
+                  {migrationResult.dryRun && migrationResult.catalogItemsCreated > 0 && (
+                    <Button 
+                      onClick={() => {
+                        setMigrationDialogOpen(false);
+                        handleMigrationRun();
+                      }}
+                      disabled={migrationLoading}
+                    >
+                      {migrationLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {t('catalog.migration.running')}
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          {t('catalog.migration.run')}
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
     </div>
   );
 };

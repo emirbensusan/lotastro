@@ -1845,6 +1845,34 @@ const translations = {
         itemPending: 'This item is pending approval'
       },
       
+      // Migration
+      migration: {
+        title: 'Catalog Data Migration',
+        description: 'Migrate existing inventory data to the catalog system',
+        preview: 'Preview Migration',
+        run: 'Run Migration',
+        running: 'Migrating...',
+        previewRunning: 'Analyzing...',
+        dryRunComplete: 'Migration Preview Complete',
+        migrationComplete: 'Migration Complete',
+        catalogItemsToCreate: 'Catalog items to create',
+        catalogItemsCreated: 'Catalog items created',
+        lotsToLink: 'Lots to link',
+        lotsLinked: 'Lots linked',
+        incomingStockToLink: 'Incoming stock to link',
+        incomingStockLinked: 'Incoming stock linked',
+        manufacturingOrdersToLink: 'Manufacturing orders to link',
+        manufacturingOrdersLinked: 'Manufacturing orders linked',
+        skippedExisting: 'Skipped (already exists)',
+        existingItems: 'Existing catalog items',
+        uniquePairs: 'Unique quality-color pairs',
+        errors: 'Errors',
+        confirmMigration: 'Confirm Migration',
+        confirmMigrationDesc: 'This will create catalog items for all existing inventory data. This action cannot be undone.',
+        noDataToMigrate: 'No data to migrate. All records are already linked to catalog items.',
+        migrationFailed: 'Migration failed'
+      },
+      
       // Types
       types: {
         fabric: 'Fabric',
@@ -3853,6 +3881,34 @@ const translations = {
         linkedToCatalog: 'Katalog öğesine bağlı',
         itemInactive: 'Bu öğe pasif',
         itemPending: 'Bu öğe onay bekliyor'
+      },
+      
+      // Migration
+      migration: {
+        title: 'Katalog Veri Göçü',
+        description: 'Mevcut envanter verilerini katalog sistemine taşıyın',
+        preview: 'Göçü Önizle',
+        run: 'Göçü Başlat',
+        running: 'Taşınıyor...',
+        previewRunning: 'Analiz ediliyor...',
+        dryRunComplete: 'Göç Önizlemesi Tamamlandı',
+        migrationComplete: 'Göç Tamamlandı',
+        catalogItemsToCreate: 'Oluşturulacak katalog öğeleri',
+        catalogItemsCreated: 'Oluşturulan katalog öğeleri',
+        lotsToLink: 'Bağlanacak lotlar',
+        lotsLinked: 'Bağlanan lotlar',
+        incomingStockToLink: 'Bağlanacak gelen stok',
+        incomingStockLinked: 'Bağlanan gelen stok',
+        manufacturingOrdersToLink: 'Bağlanacak üretim siparişleri',
+        manufacturingOrdersLinked: 'Bağlanan üretim siparişleri',
+        skippedExisting: 'Atlanan (zaten var)',
+        existingItems: 'Mevcut katalog öğeleri',
+        uniquePairs: 'Benzersiz kalite-renk çiftleri',
+        errors: 'Hatalar',
+        confirmMigration: 'Göçü Onayla',
+        confirmMigrationDesc: 'Bu, tüm mevcut envanter verileri için katalog öğeleri oluşturacaktır. Bu işlem geri alınamaz.',
+        noDataToMigrate: 'Taşınacak veri yok. Tüm kayıtlar zaten katalog öğelerine bağlı.',
+        migrationFailed: 'Göç başarısız oldu'
       },
       
       // Types

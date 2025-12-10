@@ -50,3 +50,6 @@ verify_jwt = true
 
 [functions.forecast-import-history]
 verify_jwt = true
+
+[functions.migrate-catalog-items]
+verify_jwt = true
