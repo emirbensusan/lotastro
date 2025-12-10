@@ -29,6 +29,7 @@ import CatalogColumnSelector from '@/components/catalog/CatalogColumnSelector';
 import CatalogFilters from '@/components/catalog/CatalogFilters';
 import CatalogCustomFieldsAdmin from '@/components/catalog/CatalogCustomFieldsAdmin';
 import CatalogApprovalSettings from '@/components/catalog/CatalogApprovalSettings';
+import CatalogBulkUpload from '@/components/catalog/CatalogBulkUpload';
 
 interface CatalogItem {
   id: string;
@@ -139,6 +140,7 @@ const Catalog: React.FC = () => {
   // Custom fields dialog state
   const [customFieldsDialogOpen, setCustomFieldsDialogOpen] = useState(false);
   const [approvalSettingsOpen, setApprovalSettingsOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   // Load saved view from URL or localStorage
   useEffect(() => {
@@ -368,7 +370,7 @@ const Catalog: React.FC = () => {
           )}
           
           {canImport && (
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
               {t('catalog.import')}
             </Button>
@@ -552,6 +554,13 @@ const Catalog: React.FC = () => {
       <CatalogApprovalSettings
         open={approvalSettingsOpen}
         onOpenChange={setApprovalSettingsOpen}
+      />
+
+      {/* Bulk Upload Dialog */}
+      <CatalogBulkUpload
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        onSuccess={fetchData}
       />
     </div>
   );
