@@ -1920,6 +1920,27 @@ const translations = {
         fieldReactivated: 'Custom field reactivated',
       },
       
+      // Approval Settings
+      approvalSettings: {
+        title: 'Catalog Approval Settings',
+        description: 'Configure which field changes trigger re-approval for catalog items',
+        infoMessage: 'When an active catalog item is edited, changes to any selected field below will reset its status to "Pending Approval".',
+        categories: {
+          basic: 'Basic Information',
+          fabric: 'Fabric Properties',
+          compliance: 'Compliance & Sustainability',
+          files: 'Technical Files',
+        },
+        selectedFields: 'Fields requiring re-approval',
+        emailNotifications: 'Email Notifications',
+        emailNotificationsDesc: 'Notify approvers and creators when items need approval',
+        fetchError: 'Failed to load approval settings',
+        saveError: 'Failed to save approval settings',
+        saved: 'Approval settings saved successfully',
+        reApprovalRequired: 'Changes require re-approval',
+        reApprovalMessage: 'This item has been reset to pending approval because you modified fields that require re-approval: {fields}',
+      },
+      
       // History tab
       changeHistory: 'Change History',
       noHistory: 'No change history available',
@@ -3894,6 +3915,27 @@ const translations = {
         fieldUpdated: 'Özel alan başarıyla güncellendi',
         fieldDeactivated: 'Özel alan pasifleştirildi',
         fieldReactivated: 'Özel alan aktifleştirildi',
+      },
+      
+      // Approval Settings
+      approvalSettings: {
+        title: 'Katalog Onay Ayarları',
+        description: 'Katalog öğeleri için hangi alan değişikliklerinin yeniden onay gerektireceğini yapılandırın',
+        infoMessage: 'Aktif bir katalog öğesi düzenlendiğinde, aşağıda seçili alanlardan herhangi birinde yapılan değişiklikler durumu "Onay Bekliyor"a sıfırlar.',
+        categories: {
+          basic: 'Temel Bilgiler',
+          fabric: 'Kumaş Özellikleri',
+          compliance: 'Uyumluluk & Sürdürülebilirlik',
+          files: 'Teknik Dosyalar',
+        },
+        selectedFields: 'Yeniden onay gerektiren alanlar',
+        emailNotifications: 'E-posta Bildirimleri',
+        emailNotificationsDesc: 'Öğeler onay gerektirdiğinde onaylayanları ve oluşturanları bilgilendir',
+        fetchError: 'Onay ayarları yüklenemedi',
+        saveError: 'Onay ayarları kaydedilemedi',
+        saved: 'Onay ayarları başarıyla kaydedildi',
+        reApprovalRequired: 'Değişiklikler yeniden onay gerektiriyor',
+        reApprovalMessage: 'Bu öğe, yeniden onay gerektiren alanları değiştirdiğiniz için onay bekliyor durumuna sıfırlandı: {fields}',
       },
       
       // History tab

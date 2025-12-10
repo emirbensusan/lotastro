@@ -101,6 +101,7 @@ const CatalogDetail: React.FC = () => {
   const { toast } = useToast();
 
   const [item, setItem] = useState<CatalogItem | null>(null);
+  const [originalItem, setOriginalItem] = useState<CatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -108,17 +109,19 @@ const CatalogDetail: React.FC = () => {
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<string>('');
+  const [triggerFields, setTriggerFields] = useState<string[]>([]);
 
   const isNew = id === 'new';
   const canEdit = hasPermission('catalog', 'edit');
   const canApprove = hasPermission('catalog', 'approve');
 
   useEffect(() => {
+    fetchTriggerFields();
     if (!isNew && id) {
       fetchItem();
     } else {
       // Initialize new item with defaults
-      setItem({
+      const newItem = {
         id: '',
         code: '',
         color_name: '',
@@ -155,10 +158,33 @@ const CatalogDetail: React.FC = () => {
         updated_by_user_id: null,
         approved_at: null,
         approved_by_user_id: null,
-      });
+      };
+      setItem(newItem);
+      setOriginalItem(newItem);
       setLoading(false);
     }
   }, [id, isNew]);
+
+  const fetchTriggerFields = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('catalog_approval_settings')
+        .select('setting_value')
+        .eq('setting_key', 'trigger_fields')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching trigger fields:', error);
+        return;
+      }
+
+      if (data) {
+        setTriggerFields((data.setting_value as any)?.fields || []);
+      }
+    } catch (error) {
+      console.error('Error fetching trigger fields:', error);
+    }
+  };
 
   const fetchItem = async () => {
     try {
@@ -170,6 +196,7 @@ const CatalogDetail: React.FC = () => {
 
       if (error) throw error;
       setItem(data as any);
+      setOriginalItem(data as any);
       
     } catch (error: any) {
       console.error('Error fetching catalog item:', error);
@@ -182,6 +209,25 @@ const CatalogDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Check if any trigger fields have changed
+  const getChangedTriggerFields = (): string[] => {
+    if (!originalItem || !item || originalItem.status !== 'active') {
+      return [];
+    }
+
+    const changedFields: string[] = [];
+    for (const fieldKey of triggerFields) {
+      const originalValue = originalItem[fieldKey as keyof CatalogItem];
+      const newValue = item[fieldKey as keyof CatalogItem];
+      
+      // Deep compare for objects/arrays
+      if (JSON.stringify(originalValue) !== JSON.stringify(newValue)) {
+        changedFields.push(fieldKey);
+      }
+    }
+    return changedFields;
   };
 
   const handleSave = async () => {
@@ -239,9 +285,22 @@ const CatalogDetail: React.FC = () => {
         toast({ title: 'Success', description: 'Catalog item created successfully' });
         navigate(`/catalog/${data.id}`);
       } else {
+        // Check if trigger fields changed (only for active items)
+        const changedTriggerFields = getChangedTriggerFields();
+        const needsReApproval = changedTriggerFields.length > 0;
+        
+        const updateData: any = { ...saveData };
+        
+        // If trigger fields changed on an active item, reset to pending_approval
+        if (needsReApproval) {
+          updateData.status = 'pending_approval';
+          updateData.approved_at = null;
+          updateData.approved_by_user_id = null;
+        }
+
         const { error } = await supabase
           .from('catalog_items')
-          .update(saveData as any)
+          .update(updateData)
           .eq('id', item.id);
 
         if (error) throw error;
@@ -250,11 +309,24 @@ const CatalogDetail: React.FC = () => {
         await supabase.from('catalog_item_audit_logs').insert([{
           catalog_item_id: item.id,
           changed_by_user_id: user?.id,
-          change_type: 'update',
-          field_changes: saveData,
+          change_type: needsReApproval ? 'status_reset_pending' : 'update',
+          field_changes: needsReApproval 
+            ? { ...saveData, trigger_fields_changed: changedTriggerFields, status: { old: 'active', new: 'pending_approval' } }
+            : saveData,
         }]);
 
-        toast({ title: 'Success', description: 'Catalog item updated successfully' });
+        if (needsReApproval) {
+          // Show re-approval toast
+          const fieldLabels = changedTriggerFields.join(', ');
+          toast({ 
+            title: String(t('catalog.approvalSettings.reApprovalRequired')), 
+            description: String(t('catalog.approvalSettings.reApprovalMessage')).replace('{fields}', fieldLabels),
+            variant: 'default',
+          });
+        } else {
+          toast({ title: 'Success', description: 'Catalog item updated successfully' });
+        }
+        
         setHasChanges(false);
         fetchItem();
       }

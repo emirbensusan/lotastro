@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import CatalogColumnSelector from '@/components/catalog/CatalogColumnSelector';
 import CatalogFilters from '@/components/catalog/CatalogFilters';
 import CatalogCustomFieldsAdmin from '@/components/catalog/CatalogCustomFieldsAdmin';
+import CatalogApprovalSettings from '@/components/catalog/CatalogApprovalSettings';
 
 interface CatalogItem {
   id: string;
@@ -133,9 +134,11 @@ const Catalog: React.FC = () => {
   const canImport = hasPermission('catalog', 'import');
   const canExport = hasPermission('catalog', 'export');
   const canManageFields = hasPermission('catalog', 'manage_custom_fields');
+  const isAdmin = hasPermission('usermanagement', 'manageusers');
 
   // Custom fields dialog state
   const [customFieldsDialogOpen, setCustomFieldsDialogOpen] = useState(false);
+  const [approvalSettingsOpen, setApprovalSettingsOpen] = useState(false);
 
   // Load saved view from URL or localStorage
   useEffect(() => {
@@ -371,6 +374,13 @@ const Catalog: React.FC = () => {
             </Button>
           )}
           
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setApprovalSettingsOpen(true)}>
+              <Settings2 className="h-4 w-4 mr-2" />
+              {t('catalog.approvalSettings.title')}
+            </Button>
+          )}
+          
           {canCreate && (
             <Button size="sm" onClick={() => navigate('/catalog/new')}>
               <Plus className="h-4 w-4 mr-2" />
@@ -529,6 +539,12 @@ const Catalog: React.FC = () => {
       <CatalogCustomFieldsAdmin
         open={customFieldsDialogOpen}
         onOpenChange={setCustomFieldsDialogOpen}
+      />
+
+      {/* Approval Settings Dialog */}
+      <CatalogApprovalSettings
+        open={approvalSettingsOpen}
+        onOpenChange={setApprovalSettingsOpen}
       />
     </div>
   );
