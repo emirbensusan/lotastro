@@ -242,9 +242,15 @@ const QualityTransitionScreen: React.FC<QualityTransitionScreenProps> = ({
           {/* Main Question */}
           <div className="bg-primary/10 rounded-lg p-4 text-center">
             <p className="text-base font-medium text-primary mb-1">
-              {t('isQualitySelectionComplete')}
+              {nextDestination === 'color' 
+                ? t('continueToNextColor')
+                : t('isQualitySelectionComplete')
+              }
             </p>
             <p className="text-sm text-muted-foreground">
+              {nextDestination === 'color' && (
+                <>{t('nextColor')}: <span className="font-medium">{nextQualityOrColor}</span></>
+              )}
               {nextDestination === 'quality' && (
                 <>{t('nextQuality')}: <span className="font-medium">{nextQualityOrColor}</span></>
               )}

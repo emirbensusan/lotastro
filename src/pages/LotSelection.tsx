@@ -276,50 +276,87 @@ const LotSelection = () => {
       });
     }
 
-    // Move to next color if available
+    // If rolls were added to cart in multi-mode, ALWAYS show transition popup
+    if (addedMeters && addedMeters > 0 && isMultiMode) {
+      setCompletedQualityInfo({
+        quality: quality || getCurrentQuality(),
+        color: color || colorArray[currentColorIndex]?.color || '',
+      });
+      setShowTransitionScreen(true);
+      return; // Don't auto-navigate, let popup handle it
+    }
+
+    // For single mode or skip actions (no meters added), proceed automatically
     if (currentColorIndex < colorArray.length - 1) {
       setCurrentColorIndex(currentColorIndex + 1);
       setLoading(true);
-    } else if (isMultiMode && pendingQualities.length > 0) {
-      // Show transition screen before navigating to next quality
-      setCompletedQualityInfo({
-        quality: getCurrentQuality(),
-        color: colorArray[currentColorIndex]?.color || '',
-      });
-      setShowTransitionScreen(true);
-    } else if (isMultiMode) {
-      // All qualities processed - open cart
-      setIsCartOpen(true);
-    } else {
+    } else if (!isMultiMode) {
       // Single mode - show cart
       setIsCartOpen(true);
     }
   };
 
-  // Handle proceeding to next quality from transition screen
-  const handleProceedToNextQuality = useCallback(() => {
-    setShowTransitionScreen(false);
-    const nextQuality = pendingQualities[0];
-    const remainingQualities = pendingQualities.slice(1);
-    const modeParam = orderMode ? `?mode=${orderMode}` : '?';
-    const pendingParam = remainingQualities.length > 0 ? `&pendingQualities=${encodeURIComponent(remainingQualities.join(','))}` : '';
+  // Determine what comes next after current color
+  const getNextDestination = useCallback((): 'color' | 'quality' | 'cart' => {
+    const hasMoreColors = currentColorIndex < colorArray.length - 1;
+    const hasMoreQualities = pendingQualities.length > 0;
     
-    navigate(`/inventory/${encodeURIComponent(nextQuality)}${modeParam}${pendingParam}`);
-  }, [pendingQualities, orderMode, navigate]);
+    if (hasMoreColors) return 'color';
+    if (hasMoreQualities) return 'quality';
+    return 'cart';
+  }, [currentColorIndex, colorArray.length, pendingQualities.length]);
 
-  // Handle canceling the next quality selection
-  const handleCancelNextQuality = useCallback(() => {
+  // Get the next color or quality name for display
+  const getNextDestinationName = useCallback((): string => {
+    const hasMoreColors = currentColorIndex < colorArray.length - 1;
+    if (hasMoreColors) {
+      return colorArray[currentColorIndex + 1]?.color || '';
+    }
+    if (pendingQualities.length > 0) {
+      return pendingQualities[0];
+    }
+    return '';
+  }, [currentColorIndex, colorArray, pendingQualities]);
+
+  // Handle YES - proceed to next color/quality/cart
+  const handleYesProceed = useCallback(() => {
     setShowTransitionScreen(false);
-    // Navigate back to inventory with remaining qualities removed
+    const destination = getNextDestination();
+    
+    if (destination === 'color') {
+      // Move to next color for same quality
+      setCurrentColorIndex(prev => prev + 1);
+      setLoading(true);
+    } else if (destination === 'quality') {
+      // Move to next quality
+      const nextQuality = pendingQualities[0];
+      const remainingQualities = pendingQualities.slice(1);
+      const modeParam = orderMode ? `?mode=${orderMode}` : '?';
+      const pendingParam = remainingQualities.length > 0 
+        ? `&pendingQualities=${encodeURIComponent(remainingQualities.join(','))}` 
+        : '';
+      navigate(`/inventory/${encodeURIComponent(nextQuality)}${modeParam}${pendingParam}`);
+    } else {
+      // All done - open cart
+      setIsCartOpen(true);
+    }
+  }, [getNextDestination, pendingQualities, orderMode, navigate, setIsCartOpen]);
+
+  // Handle NO - go back to QualityDetails to add more colors
+  const handleNoAddMoreColors = useCallback(() => {
+    setShowTransitionScreen(false);
+    const normalizedQuality = encodeURIComponent(getCurrentQuality());
     const modeParam = orderMode ? `?mode=${orderMode}` : '';
-    navigate(`/inventory${modeParam}`);
-  }, [orderMode, navigate]);
+    const pendingParam = pendingQualities.length > 0 
+      ? `&pendingQualities=${encodeURIComponent(pendingQualities.join(','))}` 
+      : '';
+    navigate(`/inventory/${normalizedQuality}${modeParam}${pendingParam}`);
+  }, [getCurrentQuality, orderMode, pendingQualities, navigate]);
 
-  // Handle going back to current quality for modifications
-  const handleGoBackToCurrentQuality = useCallback(() => {
+  // Handle Go Back - stay on current page to select more from this color
+  const handleGoBack = useCallback(() => {
     setShowTransitionScreen(false);
-    // Reset to allow re-selection of current quality colors
-    // Just close the transition screen and stay on current page
+    // Just close popup and stay on current LotSelection page
   }, []);
 
   // Check if can proceed to checkout
@@ -690,12 +727,16 @@ const LotSelection = () => {
           isOpen={showTransitionScreen}
           completedQuality={completedQualityInfo?.quality || getCurrentQuality()}
           completedColor={completedQualityInfo?.color || colorArray[currentColorIndex]?.color || ''}
-          nextDestination={pendingQualities.length > 0 ? 'quality' : 'cart'}
-          nextQualityOrColor={pendingQualities.length > 0 ? pendingQualities[0] : ''}
+          nextDestination={getNextDestination()}
+          nextQualityOrColor={getNextDestinationName()}
           currentQualityIndex={
-            (searchParams.get('pendingQualities')?.split(',').length || 0) - pendingQualities.length
+            (flowState.allQualities.length > 0 ? flowState.allQualities.indexOf(getCurrentQuality()) : 0)
           }
-          totalQualities={(searchParams.get('pendingQualities')?.split(',').length || 0) + 1}
+          totalQualities={
+            flowState.allQualities.length > 0 
+              ? flowState.allQualities.length 
+              : pendingQualities.length + 1
+          }
           currentColorIndex={currentColorIndex}
           totalColors={colorArray.length}
           selectionOverview={cartItems.map(item => ({
@@ -704,9 +745,9 @@ const LotSelection = () => {
             meters: item.selectedRollsData.reduce((sum, r) => sum + r.meters, 0),
             rolls: item.selectedRollIds.length,
           }))}
-          onYesProceed={handleProceedToNextQuality}
-          onNoAddMoreColors={handleGoBackToCurrentQuality}
-          onGoBack={handleCancelNextQuality}
+          onYesProceed={handleYesProceed}
+          onNoAddMoreColors={handleNoAddMoreColors}
+          onGoBack={handleGoBack}
         />
       )}
     </div>
