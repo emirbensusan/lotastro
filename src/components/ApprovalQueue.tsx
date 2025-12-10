@@ -347,6 +347,65 @@ export const ApprovalQueue: React.FC = () => {
     }
   };
 
+  const handleApproveCatalogItem = async (catalogItem: CatalogQueueItem) => {
+    try {
+      const { error } = await supabase
+        .from('catalog_items')
+        .update({
+          status: 'active',
+          is_active: true,
+          approved_at: new Date().toISOString(),
+          approved_by_user_id: profile?.user_id
+        })
+        .eq('id', catalogItem.id);
+
+      if (error) throw error;
+
+      toast({
+        title: t('approved') as string,
+        description: t('catalog.itemApproved') as string
+      });
+
+      fetchQueues();
+    } catch (error: any) {
+      toast({
+        title: t('error') as string,
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleRejectCatalogItem = async (catalogItem: CatalogQueueItem) => {
+    try {
+      const { error } = await supabase
+        .from('catalog_items')
+        .update({
+          status: 'blocked' as const,
+          is_active: false,
+          product_notes: rejectionReason ? `Rejected: ${rejectionReason}` : 'Rejected'
+        })
+        .eq('id', catalogItem.id);
+
+      if (error) throw error;
+
+      toast({
+        title: t('rejected') as string,
+        description: t('catalog.itemRejected') as string
+      });
+
+      setShowRejectDialog(false);
+      setRejectionReason('');
+      fetchQueues();
+    } catch (error: any) {
+      toast({
+        title: t('error') as string,
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString();
   };
@@ -569,7 +628,7 @@ export const ApprovalQueue: React.FC = () => {
                       <TableHead>{t('catalog.skuCode')}</TableHead>
                       <TableHead>{t('qualityCode')}</TableHead>
                       <TableHead>{t('color')}</TableHead>
-                      <TableHead>{t('type')}</TableHead>
+                      <TableHead>{t('catalog.type')}</TableHead>
                       <TableHead>{t('submitted')}</TableHead>
                       <TableHead>{t('actions')}</TableHead>
                     </TableRow>
@@ -586,6 +645,25 @@ export const ApprovalQueue: React.FC = () => {
                         <TableCell>{formatDate(item.created_at)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleApproveCatalogItem(item)}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              {t('approve')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setSelectedItem(item);
+                                setShowRejectDialog(true);
+                              }}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              {t('reject')}
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -704,6 +782,8 @@ export const ApprovalQueue: React.FC = () => {
                       handleRejectLot(selectedItem);
                     } else if ('order_id' in selectedItem) {
                       handleRejectOrder(selectedItem);
+                    } else if ('lastro_sku_code' in selectedItem) {
+                      handleRejectCatalogItem(selectedItem);
                     } else {
                       handleRejectFieldEdit(selectedItem);
                     }

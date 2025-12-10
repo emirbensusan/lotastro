@@ -2058,6 +2058,22 @@ const translations = {
       // Column selector
       default: 'Default',
       columnsSelected: 'columns selected',
+      availableColumns: 'Available Columns',
+      savedViews: 'Saved Views',
+      savedViewsDescription: 'Load a previously saved column configuration',
+      noSavedViews: 'No saved views yet',
+      selectColumnsDescription: 'Choose which columns to display in the catalog table',
+      
+      // Pending approval message
+      pendingApprovalMessage: 'This item is pending approval. Only administrators can approve or reject it.',
+      itemRejected: 'Item rejected successfully',
+      
+      // Composition
+      type: 'Type',
+      fiberName: 'Fiber Name',
+      addFiber: 'Add Fiber',
+      totalPercent: 'Total',
+      mustEqual100: 'must equal 100%',
       
       // History tab
       systemAction: 'System',
@@ -4200,6 +4216,22 @@ const translations = {
       // Column selector
       default: 'Varsayılan',
       columnsSelected: 'sütun seçildi',
+      availableColumns: 'Mevcut Sütunlar',
+      savedViews: 'Kayıtlı Görünümler',
+      savedViewsDescription: 'Önceden kaydedilmiş sütun yapılandırmasını yükle',
+      noSavedViews: 'Henüz kayıtlı görünüm yok',
+      selectColumnsDescription: 'Katalog tablosunda görüntülenecek sütunları seçin',
+      
+      // Pending approval message
+      pendingApprovalMessage: 'Bu öğe onay bekliyor. Sadece yöneticiler onaylayabilir veya reddedebilir.',
+      itemRejected: 'Öğe başarıyla reddedildi',
+      
+      // Composition
+      type: 'Tip',
+      fiberName: 'Elyaf Adı',
+      addFiber: 'Elyaf Ekle',
+      totalPercent: 'Toplam',
+      mustEqual100: '%100 olmalı',
       
       // History tab
       systemAction: 'Sistem',
