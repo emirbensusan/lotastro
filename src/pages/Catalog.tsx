@@ -350,7 +350,7 @@ const Catalog: React.FC = () => {
             onClick={() => setShowColumnSelector(true)}
           >
             <Columns3 className="h-4 w-4 mr-2" />
-            {t('catalog.columns')}
+            {t('catalog.columnsButton')}
           </Button>
           
           {canExport && (
