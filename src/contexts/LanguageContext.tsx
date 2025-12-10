@@ -1868,6 +1868,19 @@ const translations = {
         compositionTotal: 'Composition percentages must total 100%'
       },
       
+      // Bulk Upload
+      bulkUpload: {
+        title: 'Bulk Upload Catalog Items',
+        instructions: 'Download the template, fill in your catalog items, then upload the file. Items will be created with pending approval status.',
+        codeRequired: 'Quality code is required',
+        colorRequired: 'Color name is required',
+        invalidType: 'Invalid item type',
+        invalidWeight: 'Weight must be positive',
+        duplicateExists: 'Item already exists in catalog',
+        uploadSuccess: '{count} items uploaded successfully and pending approval',
+        uploadError: 'Failed to upload catalog items'
+      },
+      
       // SKU Code
       skuCode: 'SKU Code',
       
@@ -4025,6 +4038,19 @@ const translations = {
         invalidWeight: 'Ağırlık pozitif bir sayı olmalıdır',
         invalidBatchSize: 'Parti büyüklüğü pozitif bir sayı olmalıdır',
         compositionTotal: 'Kompozisyon yüzdeleri toplamı %100 olmalıdır'
+      },
+      
+      // Bulk Upload
+      bulkUpload: {
+        title: 'Toplu Katalog Yükleme',
+        instructions: 'Şablonu indirin, katalog öğelerinizi doldurun, ardından dosyayı yükleyin. Öğeler onay bekliyor durumunda oluşturulacaktır.',
+        codeRequired: 'Kalite kodu gereklidir',
+        colorRequired: 'Renk adı gereklidir',
+        invalidType: 'Geçersiz öğe tipi',
+        invalidWeight: 'Ağırlık pozitif olmalıdır',
+        duplicateExists: 'Öğe zaten katalogda mevcut',
+        uploadSuccess: '{count} öğe başarıyla yüklendi ve onay bekliyor',
+        uploadError: 'Katalog öğeleri yüklenemedi'
       },
       
       // SKU Code
