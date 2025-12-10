@@ -139,6 +139,8 @@ const translations = {
     noAddMoreColors: 'No - Add More Colors',
     goBackToPreviousSelection: 'Go Back to Previous',
     allQualitiesProcessed: 'All qualities have been processed',
+    continueToNextColor: 'Continue to next color?',
+    nextColor: 'Next color',
     total: 'Total',
     // Multi-order progress
     multiOrderProgress: 'Multi-Order Progress',
@@ -2015,6 +2017,8 @@ const translations = {
     noAddMoreColors: 'Hayır - Daha Fazla Renk Ekle',
     goBackToPreviousSelection: 'Öncekine Geri Dön',
     allQualitiesProcessed: 'Tüm kaliteler işlendi',
+    continueToNextColor: 'Sonraki renge devam edilsin mi?',
+    nextColor: 'Sonraki renk',
     total: 'Toplam',
     // Multi-order progress
     multiOrderProgress: 'Çoklu Sipariş İlerlemesi',
