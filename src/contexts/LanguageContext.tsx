@@ -150,9 +150,14 @@ const translations = {
     incompleteOrderDesc: 'You have items in your cart from an incomplete multi-order selection.',
     keepInCart: 'Keep in Cart',
     discardOrder: 'Discard',
-    // Admin settings
-    enableTransitionPopups: 'Enable transition popups',
-    autoProceEnabled: 'Auto-proceed enabled',
+    // Admin settings - Order Flow
+    orderFlowSettings: 'Order Flow',
+    showTransitionPopups: 'Show Transition Popups',
+    showTransitionPopupsDesc: 'Show confirmation popup after each quality selection',
+    enableAutoProceed: 'Enable Auto-Proceed',
+    enableAutoProceedDesc: 'Automatically proceed to next quality after countdown',
+    transitionCountdown: 'Transition Countdown',
+    transitionCountdownDesc: 'Time in seconds before auto-proceeding to next step',
     multiOrderSettings: 'Multi-Order Settings',
     multiOrderSettingsDesc: 'Configure behavior for multi-quality order flows',
     searchLots: 'Search lots...',
@@ -2029,8 +2034,14 @@ const translations = {
     keepInCart: 'Sepette Tut',
     discardOrder: 'Sil',
     // Admin settings
-    enableTransitionPopups: 'Geçiş açılır pencerelerini etkinleştir',
-    autoProceEnabled: 'Otomatik ilerleme etkin',
+    // Admin settings - Order Flow
+    orderFlowSettings: 'Sipariş Akışı',
+    showTransitionPopups: 'Geçiş Açılır Pencerelerini Göster',
+    showTransitionPopupsDesc: 'Her kalite seçiminden sonra onay açılır penceresi göster',
+    enableAutoProceed: 'Otomatik İlerlemeyi Etkinleştir',
+    enableAutoProceedDesc: 'Geri sayımdan sonra otomatik olarak sonraki kaliteye ilerle',
+    transitionCountdown: 'Geçiş Geri Sayımı',
+    transitionCountdownDesc: 'Sonraki adıma otomatik ilerlemeden önceki süre (saniye)',
     multiOrderSettings: 'Çoklu Sipariş Ayarları',
     multiOrderSettingsDesc: 'Çoklu kalite sipariş akışları için davranışı yapılandırın',
     
