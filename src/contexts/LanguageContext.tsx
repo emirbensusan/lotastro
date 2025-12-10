@@ -1794,10 +1794,16 @@ const translations = {
       confirmStatusChangeDesc: 'Are you sure you want to change the status to {status}?',
       selectColumns: 'Select Columns',
       selectColumnsDesc: 'Choose which columns to display in the catalog table',
-      loadCatalog: 'Load Catalog',
+      loadCatalog: 'View Catalog',
       resetDefaults: 'Reset to Defaults',
       selectAll: 'Select All',
       clearAll: 'Clear All',
+      availableColumns: 'Available Columns',
+      savedViews: 'Saved Views',
+      savedViewsDescription: 'Load a previously saved column configuration',
+      noSavedViews: 'No saved views yet',
+      columnsSelected: 'columns selected',
+      default: 'Default',
       
       // Tabs
       overview: 'Overview',
@@ -1808,17 +1814,17 @@ const translations = {
       
       // Column headers
       columns: {
-        code: 'Code',
-        colorName: 'Color Name',
-        lastroSkuCode: 'Lastro SKU',
+        code: 'Quality Code',
+        colorName: 'Color',
+        lastroSkuCode: 'LTA SKU',
         logoSkuCode: 'Logo SKU',
         type: 'Type',
         status: 'Status',
         fabricType: 'Fabric Type',
-        weightGm2: 'Weight (g/m²)',
+        weight: 'Weight (g/m²)',
         producedUnit: 'Produced Unit',
         soldUnit: 'Sold Unit',
-        weavingKnitted: 'Weaving/Knitted',
+        construction: 'Construction',
         euOrigin: 'EU Origin',
         composition: 'Composition',
         description: 'Description',
@@ -1826,8 +1832,10 @@ const translations = {
         careInstructions: 'Care Instructions',
         productNotes: 'Product Notes',
         sustainableNotes: 'Sustainability Notes',
-        createdAt: 'Created At',
-        updatedAt: 'Updated At'
+        created: 'Created',
+        updated: 'Updated',
+        approved: 'Approved',
+        suppliers: 'Suppliers',
       },
       
       // Status
@@ -2055,14 +2063,6 @@ const translations = {
       or: 'or',
       clickToUpload: 'Click to upload or drag and drop',
       
-      // Column selector
-      default: 'Default',
-      columnsSelected: 'columns selected',
-      availableColumns: 'Available Columns',
-      savedViews: 'Saved Views',
-      savedViewsDescription: 'Load a previously saved column configuration',
-      noSavedViews: 'No saved views yet',
-      selectColumnsDescription: 'Choose which columns to display in the catalog table',
       
       // Pending approval message
       pendingApprovalMessage: 'This item is pending approval. Only administrators can approve or reject it.',
@@ -3952,10 +3952,17 @@ const translations = {
       confirmStatusChangeDesc: 'Durumu {status} olarak değiştirmek istediğinizden emin misiniz?',
       selectColumns: 'Sütunları Seç',
       selectColumnsDesc: 'Katalog tablosunda görüntülenecek sütunları seçin',
-      loadCatalog: 'Kataloğu Yükle',
+      selectColumnsDescription: 'Katalog tablosunda görüntülenecek sütunları seçin',
+      loadCatalog: 'Kataloğu Göster',
       resetDefaults: 'Varsayılanlara Sıfırla',
       selectAll: 'Tümünü Seç',
       clearAll: 'Tümünü Temizle',
+      availableColumns: 'Mevcut Sütunlar',
+      savedViews: 'Kayıtlı Görünümler',
+      savedViewsDescription: 'Önceden kaydedilmiş sütun yapılandırmasını yükle',
+      noSavedViews: 'Henüz kayıtlı görünüm yok',
+      columnsSelected: 'sütun seçildi',
+      default: 'Varsayılan',
       
       // Tabs
       overview: 'Genel Bakış',
@@ -3966,17 +3973,17 @@ const translations = {
       
       // Column headers
       columns: {
-        code: 'Kod',
-        colorName: 'Renk Adı',
-        lastroSkuCode: 'Lastro SKU',
+        code: 'Kalite Kodu',
+        colorName: 'Renk',
+        lastroSkuCode: 'LTA SKU',
         logoSkuCode: 'Logo SKU',
         type: 'Tip',
         status: 'Durum',
         fabricType: 'Kumaş Tipi',
-        weightGm2: 'Ağırlık (g/m²)',
+        weight: 'Ağırlık (g/m²)',
         producedUnit: 'Üretim Birimi',
         soldUnit: 'Satış Birimi',
-        weavingKnitted: 'Dokuma/Örgü',
+        construction: 'Yapı',
         euOrigin: 'AB Menşei',
         composition: 'Kompozisyon',
         description: 'Açıklama',
@@ -3984,8 +3991,10 @@ const translations = {
         careInstructions: 'Bakım Talimatları',
         productNotes: 'Ürün Notları',
         sustainableNotes: 'Sürdürülebilirlik Notları',
-        createdAt: 'Oluşturulma Tarihi',
-        updatedAt: 'Güncellenme Tarihi'
+        created: 'Oluşturulma',
+        updated: 'Güncelleme',
+        approved: 'Onay',
+        suppliers: 'Tedarikçiler',
       },
       
       // Status
@@ -4213,14 +4222,6 @@ const translations = {
       or: 'veya',
       clickToUpload: 'Yüklemek için tıklayın veya sürükleyin',
       
-      // Column selector
-      default: 'Varsayılan',
-      columnsSelected: 'sütun seçildi',
-      availableColumns: 'Mevcut Sütunlar',
-      savedViews: 'Kayıtlı Görünümler',
-      savedViewsDescription: 'Önceden kaydedilmiş sütun yapılandırmasını yükle',
-      noSavedViews: 'Henüz kayıtlı görünüm yok',
-      selectColumnsDescription: 'Katalog tablosunda görüntülenecek sütunları seçin',
       
       // Pending approval message
       pendingApprovalMessage: 'Bu öğe onay bekliyor. Sadece yöneticiler onaylayabilir veya reddedebilir.',

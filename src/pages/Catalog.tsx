@@ -77,23 +77,23 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const ALL_COLUMNS = [
-  { key: 'lastro_sku_code', label: 'LTA SKU', default: true },
-  { key: 'code', label: 'Quality Code', default: true },
-  { key: 'color_name', label: 'Color', default: true },
-  { key: 'status', label: 'Status', default: true },
-  { key: 'type', label: 'Type', default: true },
-  { key: 'description', label: 'Description', default: false },
-  { key: 'logo_sku_code', label: 'Logo SKU', default: false },
-  { key: 'composition', label: 'Composition', default: false },
-  { key: 'weaving_knitted', label: 'Construction', default: true },
-  { key: 'weight_g_m2', label: 'Weight (g/m²)', default: false },
-  { key: 'produced_unit', label: 'Produced Unit', default: false },
-  { key: 'sold_unit', label: 'Sold Unit', default: false },
-  { key: 'eu_origin', label: 'EU Origin', default: false },
-  { key: 'suppliers', label: 'Suppliers', default: true },
-  { key: 'created_at', label: 'Created', default: false },
-  { key: 'updated_at', label: 'Updated', default: false },
-  { key: 'approved_at', label: 'Approved', default: false },
+  { key: 'lastro_sku_code', translationKey: 'catalog.columns.lastroSkuCode', default: false },
+  { key: 'code', translationKey: 'catalog.columns.code', default: true },
+  { key: 'color_name', translationKey: 'catalog.columns.colorName', default: true },
+  { key: 'status', translationKey: 'catalog.columns.status', default: true },
+  { key: 'type', translationKey: 'catalog.columns.type', default: true },
+  { key: 'description', translationKey: 'catalog.columns.description', default: false },
+  { key: 'logo_sku_code', translationKey: 'catalog.columns.logoSkuCode', default: false },
+  { key: 'composition', translationKey: 'catalog.columns.composition', default: false },
+  { key: 'weaving_knitted', translationKey: 'catalog.columns.construction', default: true },
+  { key: 'weight_g_m2', translationKey: 'catalog.columns.weight', default: false },
+  { key: 'produced_unit', translationKey: 'catalog.columns.producedUnit', default: false },
+  { key: 'sold_unit', translationKey: 'catalog.columns.soldUnit', default: false },
+  { key: 'eu_origin', translationKey: 'catalog.columns.euOrigin', default: false },
+  { key: 'suppliers', translationKey: 'catalog.columns.suppliers', default: true },
+  { key: 'created_at', translationKey: 'catalog.columns.created', default: false },
+  { key: 'updated_at', translationKey: 'catalog.columns.updated', default: false },
+  { key: 'approved_at', translationKey: 'catalog.columns.approved', default: false },
 ];
 
 const Catalog: React.FC = () => {
@@ -167,8 +167,12 @@ const Catalog: React.FC = () => {
         query = query.or(`code.ilike.%${searchQuery}%,color_name.ilike.%${searchQuery}%,lastro_sku_code.ilike.%${searchQuery}%,logo_sku_code.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
       }
 
-      // Apply status filter
-      if (statusFilter !== 'all') {
+      // Apply status filter - exclude blocked by default
+      if (statusFilter === 'all') {
+        query = query.neq('status', 'blocked');
+      } else if (statusFilter === 'all_including_blocked') {
+        // Show everything including blocked
+      } else {
         query = query.eq('status', statusFilter as any);
       }
 
@@ -251,8 +255,11 @@ const Catalog: React.FC = () => {
       if (error) throw error;
 
       // Convert to CSV
-      const headers = selectedColumns.map(col => ALL_COLUMNS.find(c => c.key === col)?.label || col);
-      const rows = data?.map(item => 
+      const headers = selectedColumns.map(col => {
+        const colDef = ALL_COLUMNS.find(c => c.key === col);
+        return colDef ? t(colDef.translationKey) : col;
+      });
+      const rows = data?.map(item =>
         selectedColumns.map(col => {
           const value = item[col as keyof typeof item];
           if (col === 'composition' && Array.isArray(value)) {
@@ -468,7 +475,7 @@ const Catalog: React.FC = () => {
                           onClick={() => handleSort(col)}
                         >
                           <div className="flex items-center gap-1">
-                            {colDef?.label || col}
+                            {colDef ? t(colDef.translationKey) : col}
                             {sortColumn === col && (
                               <ArrowUpDown className="h-3 w-3" />
                             )}
