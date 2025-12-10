@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Columns3, Check, X, RotateCcw } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Columns3, Check, X, RotateCcw, Save } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Column {
@@ -50,78 +51,96 @@ const CatalogColumnSelector: React.FC<CatalogColumnSelectorProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <Columns3 className="h-6 w-6 text-primary" />
-            <div>
-              <CardTitle>{t('catalog.selectColumns')}</CardTitle>
-              <CardDescription>
-                {t('catalog.selectColumnsDescription')}
-              </CardDescription>
-            </div>
+    <div className="min-h-[80vh] p-6">
+      {/* Header with title and action buttons */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <Columns3 className="h-6 w-6 text-primary" />
+          <div>
+            <h1 className="text-2xl font-semibold">{t('catalog.selectColumns')}</h1>
+            <p className="text-muted-foreground text-sm">
+              {t('catalog.selectColumnsDescription')}
+            </p>
           </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          {/* Quick actions */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleSelectAll}>
-              <Check className="h-4 w-4 mr-2" />
-              {t('catalog.selectAll')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleClearAll}>
-              <X className="h-4 w-4 mr-2" />
-              {t('catalog.clearAll')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleResetDefaults}>
-              <RotateCcw className="h-4 w-4 mr-2" />
-              {t('catalog.resetDefaults')}
-            </Button>
-          </div>
-
-          {/* Column grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {allColumns.map(column => (
-              <label
-                key={column.key}
-                className={`
-                  flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors
-                  ${selected.includes(column.key) 
-                    ? 'bg-primary/5 border-primary/30' 
-                    : 'hover:bg-muted/50'}
-                `}
-              >
-                <Checkbox
-                  checked={selected.includes(column.key)}
-                  onCheckedChange={() => handleToggle(column.key)}
-                />
-                <span className="text-sm">{column.label}</span>
-                {column.default && (
-                  <Badge variant="secondary" className="text-xs ml-auto">
-                    {t('catalog.default')}
-                  </Badge>
-                )}
-              </label>
-            ))}
-          </div>
-
-          {/* Selection count */}
-          <p className="text-sm text-muted-foreground text-center">
-            {selected.length} {t('catalog.columnsSelected')}
-          </p>
-        </CardContent>
-
-        <CardFooter className="flex justify-between">
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={handleSelectAll}>
+            <Check className="h-4 w-4 mr-2" />
+            {t('catalog.selectAll')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleClearAll}>
+            <X className="h-4 w-4 mr-2" />
+            {t('catalog.clearAll')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleResetDefaults}>
+            <RotateCcw className="h-4 w-4 mr-2" />
+            {t('catalog.resetDefaults')}
+          </Button>
           <Button variant="outline" onClick={onCancel}>
             {t('cancel')}
           </Button>
           <Button onClick={() => onConfirm(selected)} disabled={selected.length === 0}>
+            <Save className="h-4 w-4 mr-2" />
             {t('catalog.loadCatalog')}
           </Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
+
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Column Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('catalog.availableColumns')}</CardTitle>
+            <CardDescription>
+              {selected.length} {t('catalog.columnsSelected')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[calc(80vh-280px)]">
+              <div className="space-y-2 pr-4">
+                {allColumns.map(column => (
+                  <label
+                    key={column.key}
+                    className={`
+                      flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors
+                      ${selected.includes(column.key) 
+                        ? 'bg-primary/5 border-primary/30' 
+                        : 'hover:bg-muted/50 border-border'}
+                    `}
+                  >
+                    <Checkbox
+                      checked={selected.includes(column.key)}
+                      onCheckedChange={() => handleToggle(column.key)}
+                    />
+                    <span className="text-sm flex-1">{column.label}</span>
+                    {column.default && (
+                      <Badge variant="secondary" className="text-xs">
+                        {t('catalog.default')}
+                      </Badge>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Right: Saved Views */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('catalog.savedViews')}</CardTitle>
+            <CardDescription>{t('catalog.savedViewsDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center h-[calc(80vh-280px)] text-muted-foreground">
+              <p className="text-center">
+                {t('catalog.noSavedViews')}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
