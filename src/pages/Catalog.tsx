@@ -6,29 +6,26 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Search, 
   Plus, 
   Download, 
-  Upload, 
-  Settings2, 
+  Upload,
   ChevronLeft, 
   ChevronRight,
   Filter,
   ArrowUpDown,
   BookOpen,
   Columns3,
-  Eye
+  Eye,
+  X
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import CatalogColumnSelector from '@/components/catalog/CatalogColumnSelector';
-import CatalogFilters from '@/components/catalog/CatalogFilters';
-import CatalogCustomFieldsAdmin from '@/components/catalog/CatalogCustomFieldsAdmin';
-import CatalogApprovalSettings from '@/components/catalog/CatalogApprovalSettings';
 import CatalogBulkUpload from '@/components/catalog/CatalogBulkUpload';
 
 interface CatalogItem {
@@ -43,6 +40,7 @@ interface CatalogItem {
   is_active: boolean;
   composition: any;
   weaving_knitted: string | null;
+  fabric_type: string | null;
   weight_g_m2: number | null;
   produced_unit: string;
   sold_unit: string;
@@ -87,6 +85,7 @@ const ALL_COLUMNS = [
   { key: 'logo_sku_code', translationKey: 'catalog.columns.logoSkuCode', default: false },
   { key: 'composition', translationKey: 'catalog.columns.composition', default: false },
   { key: 'weaving_knitted', translationKey: 'catalog.columns.construction', default: true },
+  { key: 'fabric_type', translationKey: 'catalog.columns.fabricType', default: false },
   { key: 'weight_g_m2', translationKey: 'catalog.columns.weight', default: false },
   { key: 'produced_unit', translationKey: 'catalog.columns.producedUnit', default: false },
   { key: 'sold_unit', translationKey: 'catalog.columns.soldUnit', default: false },
@@ -97,6 +96,11 @@ const ALL_COLUMNS = [
   { key: 'approved_at', translationKey: 'catalog.columns.approved', default: false },
 ];
 
+// Column filter state type
+interface ColumnFilters {
+  [key: string]: string;
+}
+
 const Catalog: React.FC = () => {
   const { t } = useLanguage();
   const { hasPermission } = usePermissions();
@@ -104,12 +108,25 @@ const Catalog: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Column selection state
-  const [showColumnSelector, setShowColumnSelector] = useState(true);
-  const [selectedColumns, setSelectedColumns] = useState<string[]>(
-    ALL_COLUMNS.filter(c => c.default).map(c => c.key)
-  );
-  const [dataLoaded, setDataLoaded] = useState(false);
+  // Check if returning from detail page
+  const isReturning = searchParams.get('loaded') === 'true';
+  
+  // Column selection state - skip selector if returning or columns exist in localStorage
+  const savedColumns = localStorage.getItem('catalog_columns');
+  const [showColumnSelector, setShowColumnSelector] = useState(() => {
+    return !isReturning && !savedColumns;
+  });
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(() => {
+    if (savedColumns) {
+      try {
+        return JSON.parse(savedColumns);
+      } catch (e) {
+        return ALL_COLUMNS.filter(c => c.default).map(c => c.key);
+      }
+    }
+    return ALL_COLUMNS.filter(c => c.default).map(c => c.key);
+  });
+  const [dataLoaded, setDataLoaded] = useState(() => isReturning || !!savedColumns);
   
   // Data state
   const [items, setItems] = useState<CatalogItem[]>([]);
@@ -126,35 +143,22 @@ const Catalog: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [sortColumn, setSortColumn] = useState<string>('code');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [showFilters, setShowFilters] = useState(false);
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>({});
 
-  // Permissions
   // Permissions
   const canView = hasPermission('catalog', 'view');
   const canCreate = hasPermission('catalog', 'create');
   const canImport = hasPermission('catalog', 'import');
   const canExport = hasPermission('catalog', 'export');
-  const canManageFields = hasPermission('catalog', 'manage_custom_fields');
-  const isAdmin = hasPermission('usermanagement', 'manageusers');
 
-  // Custom fields dialog state
-  const [customFieldsDialogOpen, setCustomFieldsDialogOpen] = useState(false);
-  const [approvalSettingsOpen, setApprovalSettingsOpen] = useState(false);
+  // Bulk upload dialog state
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
-  // Load saved view from URL or localStorage
-  useEffect(() => {
-    const savedColumns = localStorage.getItem('catalog_columns');
-    if (savedColumns) {
-      try {
-        setSelectedColumns(JSON.parse(savedColumns));
-      } catch (e) {
-        // Use defaults
-      }
-    }
-  }, []);
+  // Calculate dynamic cell padding based on column count
+  const cellPadding = selectedColumns.length > 8 ? 'px-2 py-1' : 'px-2 py-1.5';
+  const headerPadding = selectedColumns.length > 8 ? 'px-2 py-1' : 'px-2 py-1.5';
 
-  // Fetch data after column selection
+  // Fetch data after column selection or on mount if returning
   const fetchData = async () => {
     if (!canView) return;
     
@@ -183,6 +187,21 @@ const Catalog: React.FC = () => {
         query = query.eq('type', typeFilter as any);
       }
 
+      // Apply column-specific filters
+      Object.entries(columnFilters).forEach(([column, filterValue]) => {
+        if (filterValue && filterValue.trim()) {
+          if (column === 'status') {
+            query = query.eq('status', filterValue as any);
+          } else if (column === 'type') {
+            query = query.eq('type', filterValue as any);
+          } else if (column === 'eu_origin') {
+            query = query.eq('eu_origin', filterValue === 'true');
+          } else {
+            query = query.ilike(column, `%${filterValue}%`);
+          }
+        }
+      });
+
       // Apply sorting
       query = query.order(sortColumn as any, { ascending: sortDirection === 'asc' });
 
@@ -209,19 +228,20 @@ const Catalog: React.FC = () => {
     }
   };
 
-  // Fetch data when filters change
+  // Fetch data when filters change or on mount if returning
   useEffect(() => {
     if (dataLoaded) {
       fetchData();
     }
-  }, [dataLoaded, searchQuery, statusFilter, typeFilter, sortColumn, sortDirection, page]);
+  }, [dataLoaded, searchQuery, statusFilter, typeFilter, sortColumn, sortDirection, page, columnFilters]);
 
   const handleColumnSelectionConfirm = (columns: string[]) => {
     setSelectedColumns(columns);
     localStorage.setItem('catalog_columns', JSON.stringify(columns));
     setShowColumnSelector(false);
     setDataLoaded(true);
-    fetchData();
+    // Update URL to mark as loaded
+    setSearchParams({ loaded: 'true' });
   };
 
   const handleSort = (column: string) => {
@@ -235,7 +255,24 @@ const Catalog: React.FC = () => {
   };
 
   const handleRowClick = (item: CatalogItem) => {
-    navigate(`/catalog/${item.id}`);
+    navigate(`/catalog/${item.id}?returnLoaded=true`);
+  };
+
+  const handleColumnFilter = (column: string, value: string) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [column]: value
+    }));
+    setPage(1);
+  };
+
+  const clearColumnFilter = (column: string) => {
+    setColumnFilters(prev => {
+      const newFilters = { ...prev };
+      delete newFilters[column];
+      return newFilters;
+    });
+    setPage(1);
   };
 
   const handleExport = async () => {
@@ -296,15 +333,15 @@ const Catalog: React.FC = () => {
     switch (column) {
       case 'status':
         return (
-          <Badge className={STATUS_COLORS[value as string] || ''}>
+          <Badge className={`${STATUS_COLORS[value as string] || ''} text-xs`}>
             {STATUS_LABELS[value as string] || value}
           </Badge>
         );
       case 'type':
-        return TYPE_LABELS[value as string] || value;
+        return <span className="text-xs">{TYPE_LABELS[value as string] || value}</span>;
       case 'composition':
         if (Array.isArray(value) && value.length > 0) {
-          return value.map((c: any) => `${c.fiber} ${c.percent}%`).join(', ');
+          return <span className="text-xs">{value.map((c: any) => `${c.fiber} ${c.percent}%`).join(', ')}</span>;
         }
         return '-';
       case 'eu_origin':
@@ -312,15 +349,139 @@ const Catalog: React.FC = () => {
       case 'created_at':
       case 'updated_at':
       case 'approved_at':
-        return value ? new Date(value as string).toLocaleDateString() : '-';
+        return value ? <span className="text-xs">{new Date(value as string).toLocaleDateString()}</span> : '-';
       case 'weight_g_m2':
-        return value ? `${value} g/m²` : '-';
+        return value ? <span className="text-xs">{value} g/m²</span> : '-';
       case 'lastro_sku_code':
         return <span className="font-mono text-xs">{value}</span>;
       default:
-        return value || '-';
+        return <span className="text-xs">{value || '-'}</span>;
     }
   };
+
+  const renderColumnFilterPopover = (column: string) => {
+    const currentFilter = columnFilters[column] || '';
+    
+    // Get filter options based on column type
+    if (column === 'status') {
+      return (
+        <div className="space-y-2 p-2">
+          <Select value={currentFilter} onValueChange={(v) => handleColumnFilter(column, v)}>
+            <SelectTrigger className="w-full h-8 text-xs">
+              <SelectValue placeholder={t('catalog.allStatuses')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">{t('catalog.allStatuses')}</SelectItem>
+              {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                <SelectItem key={key} value={key}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {currentFilter && (
+            <Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => clearColumnFilter(column)}>
+              <X className="h-3 w-3 mr-1" /> {t('clearFilters')}
+            </Button>
+          )}
+        </div>
+      );
+    }
+    
+    if (column === 'type') {
+      return (
+        <div className="space-y-2 p-2">
+          <Select value={currentFilter} onValueChange={(v) => handleColumnFilter(column, v)}>
+            <SelectTrigger className="w-full h-8 text-xs">
+              <SelectValue placeholder={t('catalog.allTypes')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">{t('catalog.allTypes')}</SelectItem>
+              {Object.entries(TYPE_LABELS).map(([key, label]) => (
+                <SelectItem key={key} value={key}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {currentFilter && (
+            <Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => clearColumnFilter(column)}>
+              <X className="h-3 w-3 mr-1" /> {t('clearFilters')}
+            </Button>
+          )}
+        </div>
+      );
+    }
+    
+    if (column === 'eu_origin') {
+      return (
+        <div className="space-y-2 p-2">
+          <Select value={currentFilter} onValueChange={(v) => handleColumnFilter(column, v)}>
+            <SelectTrigger className="w-full h-8 text-xs">
+              <SelectValue placeholder={t('all')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">{t('all')}</SelectItem>
+              <SelectItem value="true">Yes</SelectItem>
+              <SelectItem value="false">No</SelectItem>
+            </SelectContent>
+          </Select>
+          {currentFilter && (
+            <Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => clearColumnFilter(column)}>
+              <X className="h-3 w-3 mr-1" /> {t('clearFilters')}
+            </Button>
+          )}
+        </div>
+      );
+    }
+    
+    // Default text filter
+    return (
+      <div className="space-y-2 p-2">
+        <Input
+          placeholder={`${t('filter')}...`}
+          value={currentFilter}
+          onChange={(e) => handleColumnFilter(column, e.target.value)}
+          className="h-8 text-xs"
+        />
+        {currentFilter && (
+          <Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => clearColumnFilter(column)}>
+            <X className="h-3 w-3 mr-1" /> {t('clearFilters')}
+          </Button>
+        )}
+      </div>
+    );
+  };
+
+  // Pagination component for reuse
+  const PaginationControls = ({ showInfo = true }: { showInfo?: boolean }) => (
+    <div className="flex items-center justify-between">
+      {showInfo && (
+        <p className="text-xs text-muted-foreground">
+          {t('showing')} {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} {t('of')} {totalCount}
+        </p>
+      )}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page === 1}
+          onClick={() => setPage(p => p - 1)}
+          className="h-7"
+        >
+          <ChevronLeft className="h-3 w-3" />
+        </Button>
+        <span className="text-xs">
+          {t('page')} {page} {t('of')} {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page === totalPages}
+          onClick={() => setPage(p => p + 1)}
+          className="h-7"
+        >
+          <ChevronRight className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  );
 
   // Show column selector first
   if (showColumnSelector) {
@@ -343,13 +504,12 @@ const Catalog: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="flex items-center gap-2">
-          <BookOpen className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">{t('catalog.title')}</h1>
-          <Badge variant="outline">{totalCount} {t('catalog.items')}</Badge>
+          <BookOpen className="h-5 w-5 text-primary" />
+          <h1 className="text-xl font-bold">{t('catalog.title')}</h1>
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
@@ -357,90 +517,86 @@ const Catalog: React.FC = () => {
             variant="outline" 
             size="sm"
             onClick={() => setShowColumnSelector(true)}
+            className="h-8"
           >
-            <Columns3 className="h-4 w-4 mr-2" />
+            <Columns3 className="h-3.5 w-3.5 mr-1.5" />
             {t('catalog.columnsButton')}
           </Button>
           
           {canExport && (
-            <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={handleExport} className="h-8">
+              <Download className="h-3.5 w-3.5 mr-1.5" />
               {t('export')}
             </Button>
           )}
           
           {canImport && (
-            <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)} className="h-8">
+              <Upload className="h-3.5 w-3.5 mr-1.5" />
               {t('catalog.import')}
             </Button>
           )}
           
-          {canManageFields && (
-            <Button variant="outline" size="sm" onClick={() => setCustomFieldsDialogOpen(true)}>
-              <Settings2 className="h-4 w-4 mr-2" />
-              {t('catalog.customFields')}
-            </Button>
-          )}
-          
-          {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => setApprovalSettingsOpen(true)}>
-              <Settings2 className="h-4 w-4 mr-2" />
-              {t('catalog.approvalSettings.title')}
-            </Button>
-          )}
-          
           {canCreate && (
-            <Button size="sm" onClick={() => navigate('/catalog/new')}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button size="sm" onClick={() => navigate('/catalog/new')} className="h-8">
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
               {t('catalog.create')}
             </Button>
           )}
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters + Top Pagination */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t('catalog.searchPlaceholder') as string}
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setPage(1);
-                  }}
-                  className="pl-10"
-                />
+        <CardContent className="p-3">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex-1 flex flex-col md:flex-row gap-3">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder={t('catalog.searchPlaceholder') as string}
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
+                    className="pl-8 h-8 text-sm"
+                  />
+                </div>
               </div>
+              
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[150px] h-8 text-sm">
+                  <SelectValue placeholder={t('catalog.allStatuses')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('catalog.allStatuses')}</SelectItem>
+                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+                <SelectTrigger className="w-[150px] h-8 text-sm">
+                  <SelectValue placeholder={t('catalog.allTypes')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('catalog.allTypes')}</SelectItem>
+                  {Object.entries(TYPE_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={t('catalog.allStatuses')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('catalog.allStatuses')}</SelectItem>
-                {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={t('catalog.allTypes')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('catalog.allTypes')}</SelectItem>
-                {Object.entries(TYPE_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Top Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center">
+                <PaginationControls showInfo={false} />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -449,16 +605,16 @@ const Catalog: React.FC = () => {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="flex items-center justify-center h-48">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>
           ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-              <BookOpen className="h-12 w-12 mb-4 opacity-50" />
-              <p>{t('catalog.noItems')}</p>
+            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+              <BookOpen className="h-10 w-10 mb-3 opacity-50" />
+              <p className="text-sm">{t('catalog.noItems')}</p>
               {canCreate && (
-                <Button variant="outline" className="mt-4" onClick={() => navigate('/catalog/new')}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate('/catalog/new')}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
                   {t('catalog.createFirst')}
                 </Button>
               )}
@@ -467,42 +623,58 @@ const Catalog: React.FC = () => {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="h-8">
                     {selectedColumns.map(col => {
                       const colDef = ALL_COLUMNS.find(c => c.key === col);
+                      const hasFilter = !!columnFilters[col];
                       return (
                         <TableHead 
                           key={col}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleSort(col)}
+                          className={`${headerPadding} text-xs font-medium`}
                         >
                           <div className="flex items-center gap-1">
-                            {colDef ? t(colDef.translationKey) : col}
+                            <span 
+                              className="cursor-pointer hover:text-foreground"
+                              onClick={() => handleSort(col)}
+                            >
+                              {colDef ? t(colDef.translationKey) : col}
+                            </span>
                             {sortColumn === col && (
                               <ArrowUpDown className="h-3 w-3" />
                             )}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" size="sm" className={`h-5 w-5 p-0 ${hasFilter ? 'text-primary' : 'text-muted-foreground'}`}>
+                                  <Filter className="h-3 w-3" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-48 p-0" align="start">
+                                {renderColumnFilterPopover(col)}
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </TableHead>
                       );
                     })}
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead className={`w-20 ${headerPadding}`}></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item) => (
                     <TableRow 
                       key={item.id}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="cursor-pointer hover:bg-muted/50 h-8"
                       onClick={() => handleRowClick(item)}
                     >
                       {selectedColumns.map(col => (
-                        <TableCell key={col}>
+                        <TableCell key={col} className={cellPadding}>
                           {renderCellValue(item, col)}
                         </TableCell>
                       ))}
-                      <TableCell>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
+                      <TableCell className={cellPadding}>
+                        <Button variant="ghost" size="sm" className="h-6 text-xs">
+                          <Eye className="h-3 w-3 mr-1" />
+                          {t('catalog.seeDetails')}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -512,49 +684,14 @@ const Catalog: React.FC = () => {
             </div>
           )}
 
-          {/* Pagination */}
+          {/* Bottom Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t">
-              <p className="text-sm text-muted-foreground">
-                {t('showing')} {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} {t('of')} {totalCount}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page === 1}
-                  onClick={() => setPage(p => p - 1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm">
-                  {t('page')} {page} {t('of')} {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page === totalPages}
-                  onClick={() => setPage(p => p + 1)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+            <div className="p-3 border-t">
+              <PaginationControls />
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Custom Fields Admin Dialog */}
-      <CatalogCustomFieldsAdmin
-        open={customFieldsDialogOpen}
-        onOpenChange={setCustomFieldsDialogOpen}
-      />
-
-      {/* Approval Settings Dialog */}
-      <CatalogApprovalSettings
-        open={approvalSettingsOpen}
-        onOpenChange={setApprovalSettingsOpen}
-      />
 
       {/* Bulk Upload Dialog */}
       <CatalogBulkUpload

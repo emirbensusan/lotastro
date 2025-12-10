@@ -120,7 +120,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { path: '/reports', label: String(t('reports')), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
         { path: '/audit-logs', label: String(t('actionHistory')), icon: History, permission: { category: 'auditlogs', action: 'viewalllogs' } },
         { path: '/suppliers', label: String(t('suppliers')), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
-        { path: '/admin', label: String(t('admin')), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
+        { path: '/admin', label: String(t('settings')), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
       ]
     }
   ];
