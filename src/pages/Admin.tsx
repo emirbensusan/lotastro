@@ -18,6 +18,8 @@ import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
 import EmailTemplatesTab from '@/components/EmailTemplatesTab';
 import ReminderSettingsTab from '@/components/ReminderSettingsTab';
 import OrderFlowSettingsTab from '@/components/OrderFlowSettingsTab';
+import CatalogCustomFieldsAdmin from '@/components/catalog/CatalogCustomFieldsAdmin';
+import CatalogApprovalSettings from '@/components/catalog/CatalogApprovalSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import MigrationProgressDialog from '@/components/MigrationProgressDialog';
@@ -96,6 +98,10 @@ const Admin: React.FC = () => {
     errors: [] as string[],
     result: undefined as any,
   });
+  
+  // Catalog settings dialogs
+  const [customFieldsDialogOpen, setCustomFieldsDialogOpen] = useState(false);
+  const [approvalSettingsOpen, setApprovalSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -750,7 +756,7 @@ const Admin: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">{t('adminPanel')}</h1>
+        <h1 className="text-3xl font-bold">{t('settingsPanel')}</h1>
         <Button onClick={() => setDialogOpen(true)} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
           {t('addUser')}
@@ -758,9 +764,10 @@ const Admin: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="users">{t('userManagement')}</TabsTrigger>
           <TabsTrigger value="permissions">{t('permissions')}</TabsTrigger>
+          <TabsTrigger value="catalog">{t('catalog.settings')}</TabsTrigger>
           <TabsTrigger value="emailTemplates">{t('emailSettings.emailTemplates')}</TabsTrigger>
           <TabsTrigger value="reminderSettings">{t('emailSettings.reminderSettings')}</TabsTrigger>
           <TabsTrigger value="orderFlow">{t('orderFlowSettings')}</TabsTrigger>
@@ -1262,6 +1269,33 @@ const Admin: React.FC = () => {
 
         <TabsContent value="reminderSettings" className="space-y-6">
           <ReminderSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="catalog" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('catalog.customFieldsAdmin.title')}</CardTitle>
+              <CardDescription>{t('catalog.customFieldsAdmin.description')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CatalogCustomFieldsAdmin 
+                open={customFieldsDialogOpen} 
+                onOpenChange={setCustomFieldsDialogOpen} 
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('catalog.approvalSettings.title')}</CardTitle>
+              <CardDescription>{t('catalog.approvalSettings.description')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CatalogApprovalSettings 
+                open={approvalSettingsOpen} 
+                onOpenChange={setApprovalSettingsOpen} 
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="orderFlow" className="space-y-6">

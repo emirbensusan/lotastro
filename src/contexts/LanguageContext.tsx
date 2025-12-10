@@ -24,6 +24,7 @@ const translations = {
     reports: 'Reports',
     suppliers: 'Suppliers',
     admin: 'Admin',
+    settingsPanel: 'Settings',
     signOut: 'Sign Out',
     overview: 'Overview',
     inventoryManagement: 'Inventory Management',
@@ -1812,6 +1813,10 @@ const translations = {
       noSavedViews: 'No saved views yet',
       columnsSelected: 'columns selected',
       default: 'Default',
+      columnsButton: 'Columns',
+      items: 'items',
+      createFirst: 'Create your first catalog item',
+      seeDetails: 'See Details',
       
       // Tabs
       overview: 'Overview',
@@ -2191,6 +2196,7 @@ const translations = {
     reports: 'Raporlar',
     suppliers: 'Tedarikçiler',
     admin: 'Yönetici',
+    settingsPanel: 'Ayarlar',
     signOut: 'Çıkış Yap',
 
     // Navigation and sections
