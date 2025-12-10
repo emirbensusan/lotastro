@@ -2143,10 +2143,7 @@ const translations = {
       backToCatalog: 'Back to Catalog',
       
       // Main page
-      items: 'items',
-      columnsButton: 'Columns',
       create: 'Create Item',
-      createFirst: 'Create your first catalog item',
       noCatalogItems: 'No catalog items yet',
       
       // Status and type labels
