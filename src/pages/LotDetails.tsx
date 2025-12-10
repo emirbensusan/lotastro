@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { InlineEditableField } from '@/components/InlineEditableField';
 import { RollSelectionDialog } from '@/components/RollSelectionDialog';
+import QualityTransitionScreen from '@/components/QualityTransitionScreen';
+import MultiOrderProgressStepper, { QualityStep } from '@/components/MultiOrderProgressStepper';
 import { ArrowLeft, Plus, Package, Calendar, Filter, CheckCircle } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,6 +43,7 @@ interface QualityVariant {
 const LotDetails = () => {
   const { quality: normalizedQuality, color } = useParams<{ quality: string; color: string }>();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [lots, setLots] = useState<LotDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLot, setSelectedLot] = useState<LotDetail | null>(null);
@@ -55,9 +58,13 @@ const LotDetails = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedMeters, setSelectedMeters] = useState(0);
   
+  // Multi-order flow state
+  const [showTransitionScreen, setShowTransitionScreen] = useState(false);
+  const [completedInfo, setCompletedInfo] = useState<{ quality: string; color: string } | null>(null);
+  
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { addToCart } = usePOCart();
+  const { addToCart, cartItems, setIsCartOpen, flowState } = usePOCart();
   const { toast } = useToast();
   const { profile } = useAuth();
   const { viewAsRole } = useViewAsRole();
@@ -65,9 +72,36 @@ const LotDetails = () => {
   // Get the effective role (viewAsRole takes precedence)
   const getEffectiveRole = () => viewAsRole || profile?.role;
   
-  // Check if we're in sample mode
-  const searchParams = new URLSearchParams(location.search);
-  const isSampleMode = searchParams.get('mode') === 'sample';
+  // Multi-order mode detection
+  const orderMode = searchParams.get('mode');
+  const isMultiMode = orderMode === 'multi' || orderMode === 'multi-sample';
+  const isSampleMode = orderMode === 'sample' || orderMode === 'multi-sample';
+  
+  // Get pending qualities from URL or flowState
+  const pendingQualitiesParam = searchParams.get('pendingQualities');
+  const pendingQualities = pendingQualitiesParam 
+    ? pendingQualitiesParam.split(',').map(q => decodeURIComponent(q))
+    : (flowState?.pendingQualities || []);
+  
+  // Build progress steps for stepper
+  const buildProgressSteps = useCallback((): QualityStep[] => {
+    if (!isMultiMode || !flowState?.allQualities) return [];
+    
+    const currentQuality = decodeURIComponent(normalizedQuality || '');
+    const completedQualities = flowState.completedQualities || [];
+    
+    return flowState.allQualities.map(quality => {
+      let status: 'completed' | 'current' | 'pending' = 'pending';
+      if (completedQualities.includes(quality)) {
+        status = 'completed';
+      } else if (quality === currentQuality) {
+        status = 'current';
+      }
+      return { quality, status };
+    });
+  }, [isMultiMode, flowState, normalizedQuality]);
+  
+  const progressSteps = buildProgressSteps();
 
   useEffect(() => {
     if (normalizedQuality && color) {
@@ -221,7 +255,82 @@ const LotDetails = () => {
     }
     setIsRollDialogOpen(false);
     setSelectedLot(null);
+    
+    // Show transition screen in multi-mode after successful cart add
+    if (addedMeters && addedMeters > 0 && isMultiMode) {
+      setCompletedInfo({
+        quality: decodeURIComponent(normalizedQuality || ''),
+        color: decodeURIComponent(color || '')
+      });
+      setShowTransitionScreen(true);
+      return; // Don't auto-navigate, let popup handle it
+    }
   };
+  
+  // Determine what's next after current selection
+  const getNextDestination = useCallback((): 'quality' | 'cart' => {
+    // Check if there are pending qualities
+    if (pendingQualities.length > 0) {
+      return 'quality';
+    }
+    return 'cart';
+  }, [pendingQualities]);
+  
+  const getNextQualityName = useCallback((): string => {
+    if (pendingQualities.length > 0) {
+      return pendingQualities[0];
+    }
+    return '';
+  }, [pendingQualities]);
+  
+  // Handler for YES - proceed to next quality or cart
+  const handleYesProceed = useCallback(() => {
+    setShowTransitionScreen(false);
+    
+    const destination = getNextDestination();
+    
+    if (destination === 'quality') {
+      const nextQuality = pendingQualities[0];
+      const remainingQualities = pendingQualities.slice(1);
+      const modeParam = orderMode ? `?mode=${orderMode}` : '';
+      const pendingParam = remainingQualities.length > 0 
+        ? `&pendingQualities=${remainingQualities.map(q => encodeURIComponent(q)).join(',')}` 
+        : '';
+      navigate(`/inventory/${encodeURIComponent(nextQuality)}${modeParam}${pendingParam}`);
+    } else {
+      // Open cart
+      setIsCartOpen(true);
+    }
+  }, [getNextDestination, pendingQualities, orderMode, navigate, setIsCartOpen]);
+  
+  // Handler for NO - go back to QualityDetails to add more colors
+  const handleNoAddMoreColors = useCallback(() => {
+    setShowTransitionScreen(false);
+    const currentQuality = decodeURIComponent(normalizedQuality || '');
+    const modeParam = orderMode ? `?mode=${orderMode}` : '';
+    const pendingParam = pendingQualities.length > 0 
+      ? `&pendingQualities=${pendingQualities.map(q => encodeURIComponent(q)).join(',')}` 
+      : '';
+    navigate(`/inventory/${encodeURIComponent(currentQuality)}${modeParam}${pendingParam}`);
+  }, [normalizedQuality, orderMode, pendingQualities, navigate]);
+  
+  // Handler for Go Back - stay on current page
+  const handleGoBack = useCallback(() => {
+    setShowTransitionScreen(false);
+  }, []);
+  
+  // Build selection overview from cart items
+  const buildSelectionOverview = useCallback(() => {
+    const currentQuality = decodeURIComponent(normalizedQuality || '');
+    return cartItems
+      .filter(item => item.quality === currentQuality)
+      .map(item => ({
+        quality: item.quality,
+        color: item.color,
+        rolls: item.roll_count,
+        meters: item.meters
+      }));
+  }, [cartItems, normalizedQuality]);
   
   const handleNextItem = () => {
     if (currentIndex < requestedItems.length - 1) {
@@ -375,6 +484,14 @@ const LotDetails = () => {
 
   return (
     <div className="space-y-6">
+      {/* Multi-Order Progress Stepper */}
+      {isMultiMode && progressSteps.length > 1 && (
+        <MultiOrderProgressStepper 
+          steps={progressSteps}
+          currentQuality={decodeURIComponent(normalizedQuality || '')}
+        />
+      )}
+
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -657,6 +774,21 @@ const LotDetails = () => {
           sampleMode={isSampleMode}
         />
       )}
+
+      {/* Quality Transition Screen for Multi-Order Flow */}
+      <QualityTransitionScreen
+        isOpen={showTransitionScreen}
+        completedQuality={completedInfo?.quality || ''}
+        completedColor={completedInfo?.color || ''}
+        nextDestination={getNextDestination()}
+        nextQualityOrColor={getNextQualityName()}
+        currentQualityIndex={(flowState?.completedQualities?.length || 0) + 1}
+        totalQualities={flowState?.allQualities?.length || 0}
+        selectionOverview={buildSelectionOverview()}
+        onYesProceed={handleYesProceed}
+        onNoAddMoreColors={handleNoAddMoreColors}
+        onGoBack={handleGoBack}
+      />
     </div>
   );
 };
