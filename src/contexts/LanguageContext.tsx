@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+// Note: Adding translation for mandatoryFieldsNote and invalidBatchSize
+
 // Catalog Autocomplete translations will be added to both EN and TR objects
 
 interface LanguageContextType {
@@ -1872,10 +1874,12 @@ const translations = {
       bulkUpload: {
         title: 'Bulk Upload Catalog Items',
         instructions: 'Download the template, fill in your catalog items, then upload the file. Items will be created with pending approval status.',
+        mandatoryFieldsNote: 'Orange columns are mandatory fields',
         codeRequired: 'Quality code is required',
         colorRequired: 'Color name is required',
         invalidType: 'Invalid item type',
         invalidWeight: 'Weight must be positive',
+        invalidBatchSize: 'Batch size must be positive',
         duplicateExists: 'Item already exists in catalog',
         uploadSuccess: '{count} items uploaded successfully and pending approval',
         uploadError: 'Failed to upload catalog items'
@@ -4044,10 +4048,12 @@ const translations = {
       bulkUpload: {
         title: 'Toplu Katalog Yükleme',
         instructions: 'Şablonu indirin, katalog öğelerinizi doldurun, ardından dosyayı yükleyin. Öğeler onay bekliyor durumunda oluşturulacaktır.',
+        mandatoryFieldsNote: 'Turuncu sütunlar zorunlu alanlardır',
         codeRequired: 'Kalite kodu gereklidir',
         colorRequired: 'Renk adı gereklidir',
         invalidType: 'Geçersiz öğe tipi',
         invalidWeight: 'Ağırlık pozitif olmalıdır',
+        invalidBatchSize: 'Parti büyüklüğü pozitif olmalıdır',
         duplicateExists: 'Öğe zaten katalogda mevcut',
         uploadSuccess: '{count} öğe başarıyla yüklendi ve onay bekliyor',
         uploadError: 'Katalog öğeleri yüklenemedi'
