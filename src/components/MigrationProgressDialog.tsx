@@ -25,6 +25,7 @@ interface MigrationProgress {
       uniquePairs: number;
       existingCatalogItems: number;
     };
+    timedOut?: boolean;
   };
 }
 
@@ -32,17 +33,22 @@ interface MigrationProgressDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   progress: MigrationProgress;
+  onCheckStatus?: () => void;
+  onRerunMigration?: () => void;
 }
 
 const MigrationProgressDialog: React.FC<MigrationProgressDialogProps> = ({
   open,
   onOpenChange,
   progress,
+  onCheckStatus,
+  onRerunMigration,
 }) => {
   const { t } = useLanguage();
   const { isRunning, currentStep, processedItems, totalItems, errors, result } = progress;
 
   const percentage = totalItems > 0 ? Math.round((processedItems / totalItems) * 100) : 0;
+  const isTimedOut = result?.timedOut === true;
 
   return (
     <Dialog open={open} onOpenChange={isRunning ? undefined : onOpenChange}>
@@ -50,9 +56,11 @@ const MigrationProgressDialog: React.FC<MigrationProgressDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5" />
-            {result 
-              ? (result.success ? t('catalog.migration.migrationComplete') : t('catalog.migration.migrationFailed'))
-              : t('catalog.migration.runningMigration')}
+            {isTimedOut
+              ? t('catalog.migration.serverProcessing')
+              : result 
+                ? (result.success ? t('catalog.migration.migrationComplete') : t('catalog.migration.migrationFailed'))
+                : t('catalog.migration.runningMigration')}
           </DialogTitle>
         </DialogHeader>
 
@@ -78,8 +86,44 @@ const MigrationProgressDialog: React.FC<MigrationProgressDialogProps> = ({
             </>
           )}
 
-          {/* Result state */}
-          {result && (
+          {/* Timeout state - server still processing */}
+          {isTimedOut && (
+            <>
+              <div className="flex items-center gap-2 p-3 bg-amber-500/10 rounded-md border border-amber-500/20">
+                <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-amber-600">{t('catalog.migration.timeoutTitle')}</p>
+                  <p className="text-muted-foreground text-xs mt-1">{t('catalog.migration.timeoutDescription')}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {onCheckStatus && (
+                  <Button 
+                    variant="outline" 
+                    onClick={onCheckStatus}
+                    className="flex-1"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    {t('catalog.migration.checkStatus')}
+                  </Button>
+                )}
+                {onRerunMigration && (
+                  <Button 
+                    variant="default" 
+                    onClick={onRerunMigration}
+                    className="flex-1"
+                  >
+                    <ArrowRightLeft className="h-4 w-4 mr-2" />
+                    {t('catalog.migration.rerunMigration')}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Normal result state (not timed out) */}
+          {result && !isTimedOut && (
             <>
               <div className="flex items-center gap-2">
                 {result.success ? (
@@ -139,10 +183,19 @@ const MigrationProgressDialog: React.FC<MigrationProgressDialogProps> = ({
             </div>
           )}
 
-          {/* Close button (only when not running) */}
-          {!isRunning && (
+          {/* Close button (only when not running and not timed out) */}
+          {!isRunning && !isTimedOut && (
             <div className="flex justify-end">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
+                {t('close')}
+              </Button>
+            </div>
+          )}
+
+          {/* Close button for timeout state */}
+          {isTimedOut && (
+            <div className="flex justify-end pt-2">
+              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
                 {t('close')}
               </Button>
             </div>
