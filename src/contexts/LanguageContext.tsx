@@ -4346,6 +4346,7 @@ const translations = {
       create: 'Öğe Oluştur',
       createFirst: 'İlk katalog öğenizi oluşturun',
       noCatalogItems: 'Henüz katalog öğesi yok',
+      seeDetails: 'Ürün Detay Görüntüle',
       
       // Status and type labels
       statusLabels: {
