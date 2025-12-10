@@ -183,6 +183,7 @@ const Dashboard = () => {
       description: t('awaitingFulfillment'),
       icon: Truck,
       color: 'text-blue-600',
+      link: '/orders',
     },
     {
       title: t('incomingStockLabel'),
@@ -198,7 +199,7 @@ const Dashboard = () => {
       description: `${stats.activeReservations} ${t('reservedStockCount')}`,
       icon: Lock,
       color: 'text-amber-600',
-      link: '/orders?tab=reservations',
+      link: '/reservations',
     },
     {
       title: t('inProduction'),
