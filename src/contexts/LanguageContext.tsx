@@ -1898,6 +1898,7 @@ const translations = {
         previewRunning: 'Analyzing...',
         dryRunComplete: 'Migration Preview Complete',
         migrationComplete: 'Migration Complete',
+        migrationFailed: 'Migration Failed',
         catalogItemsToCreate: 'Catalog items to create',
         catalogItemsCreated: 'Catalog items created',
         lotsToLink: 'Lots to link',
@@ -1913,7 +1914,14 @@ const translations = {
         confirmMigration: 'Confirm Migration',
         confirmMigrationDesc: 'This will create catalog items for all existing inventory data. This action cannot be undone.',
         noDataToMigrate: 'No data to migrate. All records are already linked to catalog items.',
-        migrationFailed: 'Migration failed'
+        runningMigration: 'Running Migration',
+        fetchingData: 'Fetching inventory data...',
+        creatingItems: 'Creating catalog items...',
+        linkingRecords: 'Linking records...',
+        processing: 'Processing...',
+        doNotClose: 'Please do not close this window until migration is complete.',
+        success: 'Migration completed successfully',
+        failed: 'Migration failed',
       },
       
       // Types
@@ -4072,6 +4080,7 @@ const translations = {
         previewRunning: 'Analiz ediliyor...',
         dryRunComplete: 'Göç Önizlemesi Tamamlandı',
         migrationComplete: 'Göç Tamamlandı',
+        migrationFailed: 'Göç Başarısız',
         catalogItemsToCreate: 'Oluşturulacak katalog öğeleri',
         catalogItemsCreated: 'Oluşturulan katalog öğeleri',
         lotsToLink: 'Bağlanacak lotlar',
@@ -4087,7 +4096,14 @@ const translations = {
         confirmMigration: 'Göçü Onayla',
         confirmMigrationDesc: 'Bu, tüm mevcut envanter verileri için katalog öğeleri oluşturacaktır. Bu işlem geri alınamaz.',
         noDataToMigrate: 'Taşınacak veri yok. Tüm kayıtlar zaten katalog öğelerine bağlı.',
-        migrationFailed: 'Göç başarısız oldu'
+        runningMigration: 'Göç Çalışıyor',
+        fetchingData: 'Envanter verileri alınıyor...',
+        creatingItems: 'Katalog öğeleri oluşturuluyor...',
+        linkingRecords: 'Kayıtlar bağlanıyor...',
+        processing: 'İşleniyor...',
+        doNotClose: 'Göç tamamlanana kadar lütfen bu pencereyi kapatmayın.',
+        success: 'Göç başarıyla tamamlandı',
+        failed: 'Göç başarısız oldu',
       },
       
       // Types
