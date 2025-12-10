@@ -25,6 +25,7 @@ import {
   FileText,
   AlertTriangle
 } from 'lucide-react';
+import { getMinQualitiesForMultiOrder } from '@/components/OrderFlowSettingsTab';
 
 const FloatingPOCart = () => {
   const { user } = useAuth();
@@ -80,8 +81,9 @@ const FloatingPOCart = () => {
     const isMultiMode = mode === 'multi' || mode === 'multi-sample';
     const uniqueCombos = getUniqueQualityColors();
 
-    // Validate multi-mode requires at least 2 quality+color combinations
-    if (isMultiMode && uniqueCombos.size < 2) {
+    // Validate multi-mode requires minimum quality+color combinations
+    const minRequired = getMinQualitiesForMultiOrder();
+    if (isMultiMode && uniqueCombos.size < minRequired) {
       toast({
         title: t('error') as string,
         description: t('multiOrderMinimum') as string,
@@ -156,7 +158,7 @@ const FloatingPOCart = () => {
 
             <div className="mt-6 space-y-4">
               {/* Multi-mode warning if insufficient quality/color combinations */}
-              {isMultiMode && uniqueCombos.size < 2 && (
+              {isMultiMode && uniqueCombos.size < getMinQualitiesForMultiOrder() && (
                 <Alert className="border-amber-200 bg-amber-50">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <AlertDescription className="text-amber-800 text-sm">

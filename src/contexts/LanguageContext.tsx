@@ -160,6 +160,8 @@ const translations = {
     transitionCountdownDesc: 'Time in seconds before auto-proceeding to next step',
     multiOrderSettings: 'Multi-Order Settings',
     multiOrderSettingsDesc: 'Configure behavior for multi-quality order flows',
+    minQualitiesForMultiOrder: 'Minimum Qualities',
+    minQualitiesForMultiOrderDesc: 'Minimum number of quality/color combinations required for multi-quality orders',
     searchLots: 'Search lots...',
     allDates: 'All Dates',
     today: 'Today',
@@ -2044,6 +2046,8 @@ const translations = {
     transitionCountdownDesc: 'Sonraki adıma otomatik ilerlemeden önceki süre (saniye)',
     multiOrderSettings: 'Çoklu Sipariş Ayarları',
     multiOrderSettingsDesc: 'Çoklu kalite sipariş akışları için davranışı yapılandırın',
+    minQualitiesForMultiOrder: 'Minimum Kalite Sayısı',
+    minQualitiesForMultiOrderDesc: 'Çoklu kalite siparişleri için gereken minimum kalite/renk kombinasyonu sayısı',
     
     searchLots: 'Lot ara...',
     allDates: 'Tüm Tarihler',
