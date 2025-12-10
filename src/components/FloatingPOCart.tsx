@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react';
 
 const FloatingPOCart = () => {
+  const { user } = useAuth();
   const {
     cartItems,
     removeFromCart,
@@ -39,6 +41,11 @@ const FloatingPOCart = () => {
   } = usePOCart();
   const { t } = useLanguage();
   const navigate = useNavigate();
+
+  // Don't render cart on public pages (when user is not logged in)
+  if (!user) {
+    return null;
+  }
 
   // Get unique quality+color combinations in cart
   const getUniqueQualityColors = () => {
