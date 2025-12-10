@@ -842,6 +842,16 @@ const translations = {
     noPendingInventoryChanges: 'No pending inventory changes',
     pendingOrderChanges: 'Pending Order Changes',
     noPendingOrderChanges: 'No pending order changes',
+    catalogItemsTab: 'Catalog Items',
+    pendingCatalogItems: 'Pending Catalog Items',
+    noPendingCatalogItems: 'No pending catalog items',
+    fieldChanges: 'Field Changes',
+    pendingFieldChanges: 'Pending Field Changes',
+    noPendingFieldChanges: 'No pending field changes',
+    field: 'Field',
+    from: 'From',
+    to: 'To',
+    table: 'Table',
     submitted: 'Submitted',
     submittedBy: 'Submitted By',
     orderId: 'Order ID',
@@ -849,6 +859,7 @@ const translations = {
     rejectItem: 'Reject',
     rejectionReason: 'Rejection Reason',
     rejectionReasonPlaceholder: 'Explain why this change is being rejected...',
+    qualityCode: 'Quality Code',
     
     // FloatingPOCart Component Keys
     cart: 'Cart',
@@ -1024,11 +1035,6 @@ const translations = {
     failedToProcessApproval: 'Failed to process approval',
     noPermissionOrderQueue: "You don't have permission to access the order queue. Contact your administrator.",
     
-    // Approval Queue - Field Changes
-    fieldChanges: 'Field Changes',
-    pendingFieldChanges: 'Pending Field Changes',
-    noPendingFieldChanges: 'No pending field changes',
-    table: 'Table',
     fieldChangeApproved: 'Field change for {field} has been approved',
     fieldChangeRejected: 'Field change for {field} has been rejected',
     
@@ -1844,6 +1850,18 @@ const translations = {
         itemInactive: 'This item is inactive',
         itemPending: 'This item is pending approval'
       },
+      
+      // Validation
+      validation: {
+        codeRequired: 'Quality code is required',
+        colorRequired: 'Color name is required',
+        invalidWeight: 'Weight must be a positive number',
+        invalidBatchSize: 'Batch size must be a positive number',
+        compositionTotal: 'Composition percentages must total 100%'
+      },
+      
+      // SKU Code
+      skuCode: 'SKU Code',
       
       // Migration
       migration: {
@@ -3044,6 +3062,16 @@ const translations = {
     noPendingInventoryChanges: 'Bekleyen envanter değişikliği yok',
     pendingOrderChanges: 'Bekleyen Sipariş Değişiklikleri',
     noPendingOrderChanges: 'Bekleyen sipariş değişikliği yok',
+    catalogItemsTab: 'Katalog Öğeleri',
+    pendingCatalogItems: 'Bekleyen Katalog Öğeleri',
+    noPendingCatalogItems: 'Bekleyen katalog öğesi yok',
+    fieldChanges: 'Alan Değişiklikleri',
+    pendingFieldChanges: 'Bekleyen Alan Değişiklikleri',
+    noPendingFieldChanges: 'Bekleyen alan değişikliği yok',
+    field: 'Alan',
+    from: 'Önceki',
+    to: 'Yeni',
+    table: 'Tablo',
     submitted: 'Gönderildi',
     submittedBy: 'Gönderen',
     orderId: 'Sipariş No',
@@ -3051,6 +3079,7 @@ const translations = {
     rejectItem: 'Reddet',
     rejectionReason: 'Reddetme Nedeni',
     rejectionReasonPlaceholder: 'Bu değişikliğin neden reddedildiğini açıklayın...',
+    qualityCode: 'Kalite Kodu',
     
     // FloatingPOCart Component Keys
     cart: 'Sepet',
@@ -3226,14 +3255,6 @@ const translations = {
     failedToProcessApproval: 'Onay işlenemedi',
     noPermissionOrderQueue: 'Sipariş kuyruğuna erişim izniniz yok. Yöneticinizle iletişime geçin.',
     
-    // Approval Queue - Field Changes
-    fieldChanges: 'Alan Değişiklikleri',
-    pendingFieldChanges: 'Bekleyen Alan Değişiklikleri',
-    noPendingFieldChanges: 'Bekleyen alan değişikliği yok',
-    field: 'Alan',
-    from: 'Önceki Değer',
-    to: 'Yeni Değer',
-    table: 'Tablo',
     fieldChangeApproved: '{field} için alan değişikliği onaylandı',
     fieldChangeRejected: '{field} için alan değişikliği reddedildi',
     
@@ -3971,6 +3992,18 @@ const translations = {
         itemInactive: 'Bu öğe pasif',
         itemPending: 'Bu öğe onay bekliyor'
       },
+      
+      // Validation
+      validation: {
+        codeRequired: 'Kalite kodu gereklidir',
+        colorRequired: 'Renk adı gereklidir',
+        invalidWeight: 'Ağırlık pozitif bir sayı olmalıdır',
+        invalidBatchSize: 'Parti büyüklüğü pozitif bir sayı olmalıdır',
+        compositionTotal: 'Kompozisyon yüzdeleri toplamı %100 olmalıdır'
+      },
+      
+      // SKU Code
+      skuCode: 'SKU Kodu',
       
       // Migration
       migration: {
