@@ -136,7 +136,7 @@ const CatalogSuppliersTab: React.FC<CatalogSuppliersTabProps> = ({
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('catalog.confirmDeleteSupplier'))) return;
+    if (!confirm(t('catalog.confirmDeleteSupplier') as string)) return;
 
     try {
       const { error } = await supabase

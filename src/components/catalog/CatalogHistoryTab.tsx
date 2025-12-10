@@ -21,7 +21,7 @@ interface AuditLog {
   changed_by_user_id: string | null;
   changed_at: string;
   change_type: string;
-  field_changes: Record<string, any> | null;
+  field_changes: any;
   user_email?: string;
 }
 

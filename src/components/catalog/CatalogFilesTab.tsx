@@ -97,15 +97,15 @@ const CatalogFilesTab: React.FC<CatalogFilesTabProps> = ({
 
   const FileField: React.FC<{
     label: string;
-    urlField: keyof CatalogItem;
-    fileField: keyof CatalogItem;
+    urlField: string;
+    fileField: string;
     bucket: string;
     acceptedTypes: string;
     icon: React.ReactNode;
     isImage?: boolean;
   }> = ({ label, urlField, fileField, bucket, acceptedTypes, icon, isImage }) => {
-    const urlValue = item[urlField] as string | null;
-    const fileValue = item[fileField] as string | null;
+    const urlValue = item[urlField as keyof CatalogItem] as string | null;
+    const fileValue = item[fileField as keyof CatalogItem] as string | null;
     const hasFile = fileValue || urlValue;
 
     return (
@@ -123,7 +123,7 @@ const CatalogFilesTab: React.FC<CatalogFilesTabProps> = ({
             <div className="flex gap-2">
               <Input
                 value={urlValue || ''}
-                onChange={(e) => onChange({ [urlField]: e.target.value || null })}
+                onChange={(e) => onChange({ [urlField]: e.target.value || null } as Partial<CatalogItem>)}
                 placeholder="https://..."
                 disabled={!canEdit || !!fileValue}
               />
@@ -180,7 +180,7 @@ const CatalogFilesTab: React.FC<CatalogFilesTabProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleFileRemove(bucket, fileField)}
+                      onClick={() => handleFileRemove(bucket, fileField as keyof CatalogItem)}
                     >
                       <X className="h-4 w-4 text-destructive" />
                     </Button>
@@ -195,7 +195,7 @@ const CatalogFilesTab: React.FC<CatalogFilesTabProps> = ({
                     accept={acceptedTypes}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file, bucket, fileField);
+                      if (file) handleFileUpload(file, bucket, fileField as keyof CatalogItem);
                     }}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     disabled={uploading === fileField || !!urlValue}
@@ -224,7 +224,7 @@ const CatalogFilesTab: React.FC<CatalogFilesTabProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <FileField
-        label={t('catalog.specSheet')}
+        label={t('catalog.specSheet') as string}
         urlField="spec_sheet_url"
         fileField="spec_sheet_file"
         bucket="catalog-spec-sheets"
@@ -233,7 +233,7 @@ const CatalogFilesTab: React.FC<CatalogFilesTabProps> = ({
       />
 
       <FileField
-        label={t('catalog.testReport')}
+        label={t('catalog.testReport') as string}
         urlField="test_report_url"
         fileField="test_report_file"
         bucket="catalog-test-reports"
@@ -242,7 +242,7 @@ const CatalogFilesTab: React.FC<CatalogFilesTabProps> = ({
       />
 
       <FileField
-        label={t('catalog.shadeRangeImage')}
+        label={t('catalog.shadeRangeImage') as string}
         urlField="shade_range_image_url"
         fileField="shade_range_image_url"
         bucket="catalog-images"
@@ -252,7 +252,7 @@ const CatalogFilesTab: React.FC<CatalogFilesTabProps> = ({
       />
 
       <FileField
-        label={t('catalog.photoOfDesign')}
+        label={t('catalog.photoOfDesign') as string}
         urlField="photo_of_design_url"
         fileField="photo_of_design_url"
         bucket="catalog-images"
