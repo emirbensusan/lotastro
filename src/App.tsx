@@ -35,6 +35,8 @@ import InviteAccept from "./pages/InviteAccept";
 import ManufacturingOrders from "./pages/ManufacturingOrders";
 import Forecast from "./pages/Forecast";
 import ForecastSettings from "./pages/ForecastSettings";
+import Catalog from "./pages/Catalog";
+import CatalogDetail from "./pages/CatalogDetail";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -166,6 +168,16 @@ const App = () => (
               <Route path="/forecast-settings" element={
                 <ProtectedRoute>
                   <ForecastSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/catalog" element={
+                <ProtectedRoute>
+                  <Catalog />
+                </ProtectedRoute>
+              } />
+              <Route path="/catalog/:id" element={
+                <ProtectedRoute>
+                  <CatalogDetail />
                 </ProtectedRoute>
               } />
               <Route path="/goods-receipt" element={

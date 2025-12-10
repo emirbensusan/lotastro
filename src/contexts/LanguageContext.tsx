@@ -1763,6 +1763,150 @@ const translations = {
       runFailed: 'Forecast run failed',
       runCompleted: 'Forecast calculation completed'
     },
+
+    // Catalog Module
+    catalog: {
+      title: 'Catalog',
+      description: 'Manage product catalog items',
+      createItem: 'Create Item',
+      editItem: 'Edit Item',
+      viewItem: 'View Item',
+      searchPlaceholder: 'Search by code, color, or SKU...',
+      noItems: 'No catalog items found',
+      loadingItems: 'Loading catalog items...',
+      failedToLoad: 'Failed to load catalog items',
+      itemSaved: 'Item saved successfully',
+      itemCreated: 'Item created successfully',
+      failedToSave: 'Failed to save item',
+      itemApproved: 'Item approved successfully',
+      failedToApprove: 'Failed to approve item',
+      confirmApprove: 'Confirm Approval',
+      confirmApproveDesc: 'Are you sure you want to approve this catalog item? This will make it available for use across the system.',
+      confirmStatusChange: 'Confirm Status Change',
+      confirmStatusChangeDesc: 'Are you sure you want to change the status to {status}?',
+      selectColumns: 'Select Columns',
+      selectColumnsDesc: 'Choose which columns to display in the catalog table',
+      loadCatalog: 'Load Catalog',
+      resetDefaults: 'Reset to Defaults',
+      selectAll: 'Select All',
+      clearAll: 'Clear All',
+      
+      // Tabs
+      overview: 'Overview',
+      suppliers: 'Suppliers',
+      files: 'Files',
+      customFields: 'Custom Fields',
+      history: 'History',
+      
+      // Column headers
+      columns: {
+        code: 'Code',
+        colorName: 'Color Name',
+        lastroSkuCode: 'Lastro SKU',
+        logoSkuCode: 'Logo SKU',
+        type: 'Type',
+        status: 'Status',
+        fabricType: 'Fabric Type',
+        weightGm2: 'Weight (g/m²)',
+        producedUnit: 'Produced Unit',
+        soldUnit: 'Sold Unit',
+        weavingKnitted: 'Weaving/Knitted',
+        euOrigin: 'EU Origin',
+        composition: 'Composition',
+        description: 'Description',
+        dyeingBatchSize: 'Dyeing Batch Size',
+        careInstructions: 'Care Instructions',
+        productNotes: 'Product Notes',
+        sustainableNotes: 'Sustainability Notes',
+        createdAt: 'Created At',
+        updatedAt: 'Updated At'
+      },
+      
+      // Status
+      status: {
+        draft: 'Draft',
+        pendingApproval: 'Pending Approval',
+        active: 'Active',
+        discontinued: 'Discontinued'
+      },
+      
+      // Types
+      types: {
+        fabric: 'Fabric',
+        trim: 'Trim',
+        accessory: 'Accessory'
+      },
+      
+      // Overview tab
+      basicInfo: 'Basic Information',
+      productDetails: 'Product Details',
+      technicalSpecs: 'Technical Specifications',
+      sustainabilityInfo: 'Sustainability Information',
+      
+      // Suppliers tab
+      addSupplier: 'Add Supplier',
+      editSupplier: 'Edit Supplier',
+      deleteSupplier: 'Delete Supplier',
+      supplierName: 'Supplier Name',
+      supplierCode: 'Supplier Code',
+      leadTimeDays: 'Lead Time (days)',
+      moq: 'MOQ',
+      supplierNotes: 'Supplier Notes',
+      noSuppliers: 'No suppliers added yet',
+      supplierAdded: 'Supplier added successfully',
+      supplierUpdated: 'Supplier updated successfully',
+      supplierDeleted: 'Supplier deleted successfully',
+      failedToSaveSupplier: 'Failed to save supplier',
+      failedToDeleteSupplier: 'Failed to delete supplier',
+      confirmDeleteSupplier: 'Are you sure you want to delete this supplier?',
+      
+      // Files tab
+      specSheet: 'Spec Sheet',
+      testReport: 'Test Report',
+      photoOfDesign: 'Photo of Design',
+      shadeRangeImage: 'Shade Range Image',
+      uploadFile: 'Upload File',
+      viewFile: 'View File',
+      removeFile: 'Remove File',
+      noFileUploaded: 'No file uploaded',
+      fileUploaded: 'File uploaded successfully',
+      fileRemoved: 'File removed successfully',
+      failedToUploadFile: 'Failed to upload file',
+      failedToRemoveFile: 'Failed to remove file',
+      
+      // Custom fields tab
+      noCustomFields: 'No custom fields defined',
+      customFieldsDesc: 'Custom fields allow you to add additional attributes to catalog items',
+      
+      // History tab
+      changeHistory: 'Change History',
+      noHistory: 'No change history available',
+      changedBy: 'Changed By',
+      changedAt: 'Changed At',
+      changeType: 'Change Type',
+      fieldChanges: 'Field Changes',
+      
+      // Composition
+      composition: 'Composition',
+      addMaterial: 'Add Material',
+      material: 'Material',
+      percentage: 'Percentage',
+      totalMustBe100: 'Total composition must equal 100%',
+      
+      // Filters
+      allStatuses: 'All Statuses',
+      allTypes: 'All Types',
+      
+      // Actions
+      approve: 'Approve',
+      submitForApproval: 'Submit for Approval',
+      discontinue: 'Discontinue',
+      reactivate: 'Reactivate',
+      duplicate: 'Duplicate',
+      export: 'Export',
+      import: 'Import',
+      settings: 'Settings'
+    },
   },
   tr: {
     // Navigation
@@ -3552,6 +3696,150 @@ const translations = {
       runStarted: 'Tahmin hesaplaması başlatıldı',
       runFailed: 'Tahmin çalışması başarısız',
       runCompleted: 'Tahmin hesaplaması tamamlandı'
+    },
+
+    // Catalog Module
+    catalog: {
+      title: 'Katalog',
+      description: 'Ürün kataloğu öğelerini yönetin',
+      createItem: 'Öğe Oluştur',
+      editItem: 'Öğeyi Düzenle',
+      viewItem: 'Öğeyi Görüntüle',
+      searchPlaceholder: 'Kod, renk veya SKU ile ara...',
+      noItems: 'Katalog öğesi bulunamadı',
+      loadingItems: 'Katalog öğeleri yükleniyor...',
+      failedToLoad: 'Katalog öğeleri yüklenemedi',
+      itemSaved: 'Öğe başarıyla kaydedildi',
+      itemCreated: 'Öğe başarıyla oluşturuldu',
+      failedToSave: 'Öğe kaydedilemedi',
+      itemApproved: 'Öğe başarıyla onaylandı',
+      failedToApprove: 'Öğe onaylanamadı',
+      confirmApprove: 'Onayı Onayla',
+      confirmApproveDesc: 'Bu katalog öğesini onaylamak istediğinizden emin misiniz? Bu, sistemde kullanılabilir hale gelecektir.',
+      confirmStatusChange: 'Durum Değişikliğini Onayla',
+      confirmStatusChangeDesc: 'Durumu {status} olarak değiştirmek istediğinizden emin misiniz?',
+      selectColumns: 'Sütunları Seç',
+      selectColumnsDesc: 'Katalog tablosunda görüntülenecek sütunları seçin',
+      loadCatalog: 'Kataloğu Yükle',
+      resetDefaults: 'Varsayılanlara Sıfırla',
+      selectAll: 'Tümünü Seç',
+      clearAll: 'Tümünü Temizle',
+      
+      // Tabs
+      overview: 'Genel Bakış',
+      suppliers: 'Tedarikçiler',
+      files: 'Dosyalar',
+      customFields: 'Özel Alanlar',
+      history: 'Geçmiş',
+      
+      // Column headers
+      columns: {
+        code: 'Kod',
+        colorName: 'Renk Adı',
+        lastroSkuCode: 'Lastro SKU',
+        logoSkuCode: 'Logo SKU',
+        type: 'Tip',
+        status: 'Durum',
+        fabricType: 'Kumaş Tipi',
+        weightGm2: 'Ağırlık (g/m²)',
+        producedUnit: 'Üretim Birimi',
+        soldUnit: 'Satış Birimi',
+        weavingKnitted: 'Dokuma/Örgü',
+        euOrigin: 'AB Menşei',
+        composition: 'Kompozisyon',
+        description: 'Açıklama',
+        dyeingBatchSize: 'Boyama Parti Büyüklüğü',
+        careInstructions: 'Bakım Talimatları',
+        productNotes: 'Ürün Notları',
+        sustainableNotes: 'Sürdürülebilirlik Notları',
+        createdAt: 'Oluşturulma Tarihi',
+        updatedAt: 'Güncellenme Tarihi'
+      },
+      
+      // Status
+      status: {
+        draft: 'Taslak',
+        pendingApproval: 'Onay Bekliyor',
+        active: 'Aktif',
+        discontinued: 'Üretimi Durmuş'
+      },
+      
+      // Types
+      types: {
+        fabric: 'Kumaş',
+        trim: 'Aksesuar',
+        accessory: 'Aksesuar'
+      },
+      
+      // Overview tab
+      basicInfo: 'Temel Bilgiler',
+      productDetails: 'Ürün Detayları',
+      technicalSpecs: 'Teknik Özellikler',
+      sustainabilityInfo: 'Sürdürülebilirlik Bilgisi',
+      
+      // Suppliers tab
+      addSupplier: 'Tedarikçi Ekle',
+      editSupplier: 'Tedarikçiyi Düzenle',
+      deleteSupplier: 'Tedarikçiyi Sil',
+      supplierName: 'Tedarikçi Adı',
+      supplierCode: 'Tedarikçi Kodu',
+      leadTimeDays: 'Tedarik Süresi (gün)',
+      moq: 'MOQ',
+      supplierNotes: 'Tedarikçi Notları',
+      noSuppliers: 'Henüz tedarikçi eklenmedi',
+      supplierAdded: 'Tedarikçi başarıyla eklendi',
+      supplierUpdated: 'Tedarikçi başarıyla güncellendi',
+      supplierDeleted: 'Tedarikçi başarıyla silindi',
+      failedToSaveSupplier: 'Tedarikçi kaydedilemedi',
+      failedToDeleteSupplier: 'Tedarikçi silinemedi',
+      confirmDeleteSupplier: 'Bu tedarikçiyi silmek istediğinizden emin misiniz?',
+      
+      // Files tab
+      specSheet: 'Teknik Şartname',
+      testReport: 'Test Raporu',
+      photoOfDesign: 'Tasarım Fotoğrafı',
+      shadeRangeImage: 'Ton Aralığı Görseli',
+      uploadFile: 'Dosya Yükle',
+      viewFile: 'Dosyayı Görüntüle',
+      removeFile: 'Dosyayı Kaldır',
+      noFileUploaded: 'Dosya yüklenmedi',
+      fileUploaded: 'Dosya başarıyla yüklendi',
+      fileRemoved: 'Dosya başarıyla kaldırıldı',
+      failedToUploadFile: 'Dosya yüklenemedi',
+      failedToRemoveFile: 'Dosya kaldırılamadı',
+      
+      // Custom fields tab
+      noCustomFields: 'Özel alan tanımlanmadı',
+      customFieldsDesc: 'Özel alanlar, katalog öğelerine ek özellikler eklemenizi sağlar',
+      
+      // History tab
+      changeHistory: 'Değişiklik Geçmişi',
+      noHistory: 'Değişiklik geçmişi mevcut değil',
+      changedBy: 'Değiştiren',
+      changedAt: 'Değiştirilme Tarihi',
+      changeType: 'Değişiklik Tipi',
+      fieldChanges: 'Alan Değişiklikleri',
+      
+      // Composition
+      composition: 'Kompozisyon',
+      addMaterial: 'Malzeme Ekle',
+      material: 'Malzeme',
+      percentage: 'Yüzde',
+      totalMustBe100: 'Toplam kompozisyon %100 olmalıdır',
+      
+      // Filters
+      allStatuses: 'Tüm Durumlar',
+      allTypes: 'Tüm Tipler',
+      
+      // Actions
+      approve: 'Onayla',
+      submitForApproval: 'Onaya Gönder',
+      discontinue: 'Üretimi Durdur',
+      reactivate: 'Yeniden Aktifleştir',
+      duplicate: 'Kopyala',
+      export: 'Dışa Aktar',
+      import: 'İçe Aktar',
+      settings: 'Ayarlar'
     },
   },
 };
