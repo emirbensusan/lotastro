@@ -230,8 +230,51 @@ const CatalogDetail: React.FC = () => {
     return changedFields;
   };
 
+  const validateItem = (): { valid: boolean; errors: string[] } => {
+    if (!item) return { valid: false, errors: ['No item to validate'] };
+    
+    const errors: string[] = [];
+    
+    // Required fields
+    if (!item.code?.trim()) {
+      errors.push(t('catalog.validation.codeRequired') as string);
+    }
+    if (!item.color_name?.trim()) {
+      errors.push(t('catalog.validation.colorRequired') as string);
+    }
+    
+    // Numeric validations (only if value is provided)
+    if (item.weight_g_m2 !== null && item.weight_g_m2 !== undefined && item.weight_g_m2 <= 0) {
+      errors.push(t('catalog.validation.invalidWeight') as string);
+    }
+    if (item.dyeing_batch_size !== null && item.dyeing_batch_size !== undefined && item.dyeing_batch_size <= 0) {
+      errors.push(t('catalog.validation.invalidBatchSize') as string);
+    }
+    
+    // Composition validation (if provided, must total ~100%)
+    if (item.composition && Array.isArray(item.composition) && item.composition.length > 0) {
+      const total = item.composition.reduce((sum: number, c: any) => sum + (c.percent || 0), 0);
+      if (Math.abs(total - 100) > 0.01) {
+        errors.push(t('catalog.validation.compositionTotal') as string);
+      }
+    }
+    
+    return { valid: errors.length === 0, errors };
+  };
+
   const handleSave = async () => {
     if (!item) return;
+
+    // Validate before saving
+    const validation = validateItem();
+    if (!validation.valid) {
+      toast({
+        title: t('validationError') as string,
+        description: validation.errors.join(', '),
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setSaving(true);
     try {

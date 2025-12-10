@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { CheckCircle, XCircle, Eye, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, Clock, AlertTriangle, Package } from 'lucide-react';
 
 interface LotQueueItem {
   id: string;
@@ -50,10 +51,22 @@ interface FieldEditQueueItem {
   rejection_reason: string | null;
 }
 
+interface CatalogQueueItem {
+  id: string;
+  code: string;
+  color_name: string;
+  lastro_sku_code: string;
+  type: string;
+  created_at: string;
+  created_by_user_id: string | null;
+}
+
 export const ApprovalQueue: React.FC = () => {
+  const navigate = useNavigate();
   const [lotQueue, setLotQueue] = useState<LotQueueItem[]>([]);
   const [orderQueue, setOrderQueue] = useState<OrderQueueItem[]>([]);
   const [fieldEditQueue, setFieldEditQueue] = useState<FieldEditQueueItem[]>([]);
+  const [catalogQueue, setCatalogQueue] = useState<CatalogQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -99,9 +112,19 @@ export const ApprovalQueue: React.FC = () => {
 
       if (fieldEditError) throw fieldEditError;
 
+      // Fetch pending catalog items
+      const { data: catalogData, error: catalogError } = await supabase
+        .from('catalog_items')
+        .select('id, code, color_name, lastro_sku_code, type, created_at, created_by_user_id')
+        .eq('status', 'pending_approval')
+        .order('created_at', { ascending: false });
+
+      if (catalogError) throw catalogError;
+
       setLotQueue(lotData || []);
       setOrderQueue(orderData || []);
       setFieldEditQueue(fieldEditData || []);
+      setCatalogQueue(catalogData || []);
     } catch (error) {
       console.error('Error fetching queues:', error);
         toast({
@@ -343,7 +366,7 @@ export const ApprovalQueue: React.FC = () => {
         <div className="flex items-center gap-4">
           <Badge variant="secondary" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            {lotQueue.length + orderQueue.length + fieldEditQueue.length} {t('pendingCount')}
+            {lotQueue.length + orderQueue.length + fieldEditQueue.length + catalogQueue.length} {t('pendingCount')}
           </Badge>
         </div>
       </div>
@@ -366,8 +389,17 @@ export const ApprovalQueue: React.FC = () => {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="catalog" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            {t('catalogItemsTab')}
+            {catalogQueue.length > 0 && (
+              <Badge variant="destructive" className="ml-1">
+                {catalogQueue.length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="fields" className="flex items-center gap-2">
-            Field Changes
+            {t('fieldChanges')}
             {fieldEditQueue.length > 0 && (
               <Badge variant="destructive" className="ml-1">
                 {fieldEditQueue.length}
@@ -514,10 +546,69 @@ export const ApprovalQueue: React.FC = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="catalog">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('pendingCatalogItems')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-12 bg-muted rounded animate-pulse"></div>
+                  ))}
+                </div>
+              ) : catalogQueue.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  {t('noPendingCatalogItems')}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('catalog.skuCode')}</TableHead>
+                      <TableHead>{t('qualityCode')}</TableHead>
+                      <TableHead>{t('color')}</TableHead>
+                      <TableHead>{t('type')}</TableHead>
+                      <TableHead>{t('submitted')}</TableHead>
+                      <TableHead>{t('actions')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {catalogQueue.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-mono">{item.lastro_sku_code}</TableCell>
+                        <TableCell className="font-medium">{item.code}</TableCell>
+                        <TableCell>{item.color_name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{item.type}</Badge>
+                        </TableCell>
+                        <TableCell>{formatDate(item.created_at)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => navigate(`/catalog/${item.id}`)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              {t('view')}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="fields">
           <Card>
             <CardHeader>
-              <CardTitle>Pending Field Changes</CardTitle>
+              <CardTitle>{t('pendingFieldChanges')}</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -528,19 +619,19 @@ export const ApprovalQueue: React.FC = () => {
                 </div>
               ) : fieldEditQueue.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
-                  No pending field changes
+                  {t('noPendingFieldChanges')}
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Field</TableHead>
-                      <TableHead>From</TableHead>
-                      <TableHead>To</TableHead>
-                      <TableHead>Table</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead>Submitted By</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead>{t('field')}</TableHead>
+                      <TableHead>{t('from')}</TableHead>
+                      <TableHead>{t('to')}</TableHead>
+                      <TableHead>{t('table')}</TableHead>
+                      <TableHead>{t('submitted')}</TableHead>
+                      <TableHead>{t('submittedBy')}</TableHead>
+                      <TableHead>{t('actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
