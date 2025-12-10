@@ -672,7 +672,7 @@ const Catalog: React.FC = () => {
                         </TableCell>
                       ))}
                       <TableCell className={cellPadding}>
-                        <Button variant="ghost" size="sm" className="h-6 text-xs">
+                        <Button variant="ghost" size="sm" className="h-6 text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20">
                           <Eye className="h-3 w-3 mr-1" />
                           {t('catalog.seeDetails')}
                         </Button>
