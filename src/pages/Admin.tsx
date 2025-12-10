@@ -612,24 +612,31 @@ const Admin: React.FC = () => {
     });
     setMigrationLoading(true);
 
+    // Create AbortController with 3 minute timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes
+
     try {
       // Simulate progress updates while waiting
       const progressInterval = setInterval(() => {
         setMigrationProgress(prev => ({
           ...prev,
-          processedItems: Math.min(prev.processedItems + 10, 90),
-          currentStep: prev.processedItems < 30 
+          processedItems: Math.min(prev.processedItems + 5, 95),
+          currentStep: prev.processedItems < 20 
             ? (t('catalog.migration.fetchingData') as string)
-            : prev.processedItems < 60 
+            : prev.processedItems < 50 
               ? (t('catalog.migration.creatingItems') as string)
-              : (t('catalog.migration.linkingRecords') as string),
+              : prev.processedItems < 80
+                ? (t('catalog.migration.linkingRecords') as string)
+                : (t('catalog.migration.finalizing') as string),
         }));
-      }, 800);
+      }, 2000);
 
       const { data, error } = await supabase.functions.invoke('migrate-catalog-items', {
         body: { dryRun: false }
       });
 
+      clearTimeout(timeoutId);
       clearInterval(progressInterval);
 
       if (error) throw error;
@@ -649,20 +656,82 @@ const Admin: React.FC = () => {
         description: t('catalog.migration.migrationComplete') as string,
       });
     } catch (error: any) {
+      clearTimeout(timeoutId);
       console.error('Migration error:', error);
-      setMigrationProgress(prev => ({
-        ...prev,
-        isRunning: false,
-        errors: [...prev.errors, error?.message || 'Unknown error'],
-        result: { success: false, error: error?.message },
-      }));
-      toast({
-        title: t('error') as string,
-        description: error?.message || (t('catalog.migration.migrationFailed') as string),
-        variant: 'destructive'
-      });
+      
+      // Check if it's a timeout/abort error
+      const isTimeout = error?.name === 'AbortError' || 
+                       error?.message?.includes('timeout') ||
+                       error?.message?.includes('aborted') ||
+                       error?.message?.includes('Failed to send');
+      
+      if (isTimeout) {
+        // Show "still running on server" state instead of error
+        setMigrationProgress(prev => ({
+          ...prev,
+          isRunning: false,
+          currentStep: '',
+          errors: [],
+          result: {
+            success: true,
+            dryRun: false,
+            catalogItemsCreated: -1, // -1 indicates "unknown - check status"
+            lotsLinked: -1,
+            incomingStockLinked: -1,
+            manufacturingOrdersLinked: -1,
+            skippedExisting: -1,
+            errors: [],
+            details: { uniquePairs: -1, existingCatalogItems: -1 },
+            timedOut: true,
+          },
+        }));
+        toast({
+          title: t('catalog.migration.serverProcessing') as string,
+          description: t('catalog.migration.timeoutMessage') as string,
+        });
+      } else {
+        setMigrationProgress(prev => ({
+          ...prev,
+          isRunning: false,
+          errors: [...prev.errors, error?.message || 'Unknown error'],
+          result: { success: false, error: error?.message },
+        }));
+        toast({
+          title: t('error') as string,
+          description: error?.message || (t('catalog.migration.migrationFailed') as string),
+          variant: 'destructive'
+        });
+      }
     } finally {
       setMigrationLoading(false);
+    }
+  };
+
+  const handleCheckMigrationStatus = async () => {
+    try {
+      // Query current catalog items count and unlinked lots
+      const [catalogResult, lotsResult, unlinkedLotsResult] = await Promise.all([
+        supabase.from('catalog_items').select('id', { count: 'exact', head: true }),
+        supabase.from('lots').select('id', { count: 'exact', head: true }),
+        supabase.from('lots').select('id', { count: 'exact', head: true }).is('catalog_item_id', null),
+      ]);
+      
+      const catalogCount = catalogResult.count || 0;
+      const totalLots = lotsResult.count || 0;
+      const unlinkedLots = unlinkedLotsResult.count || 0;
+      const linkedLots = totalLots - unlinkedLots;
+      
+      toast({
+        title: t('catalog.migration.statusCheck') as string,
+        description: `${t('catalog.migration.catalogItems')}: ${catalogCount} | ${t('catalog.migration.linkedLots')}: ${linkedLots}/${totalLots} | ${t('catalog.migration.unlinkedLots')}: ${unlinkedLots}`,
+      });
+    } catch (error) {
+      console.error('Status check error:', error);
+      toast({
+        title: t('error') as string,
+        description: t('catalog.migration.statusCheckFailed') as string,
+        variant: 'destructive'
+      });
     }
   };
 
@@ -1528,6 +1597,8 @@ const Admin: React.FC = () => {
           open={migrationProgressOpen}
           onOpenChange={setMigrationProgressOpen}
           progress={migrationProgress}
+          onCheckStatus={handleCheckMigrationStatus}
+          onRerunMigration={handleMigrationRun}
         />
     </div>
   );
