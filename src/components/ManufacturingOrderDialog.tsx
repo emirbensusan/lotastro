@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { CatalogAutocomplete } from '@/components/catalog/CatalogAutocomplete';
 
 interface ManufacturingOrder {
   id: string;
@@ -68,6 +69,7 @@ const ManufacturingOrderDialog: React.FC<Props> = ({
     customer_name: '',
     customer_agreed_date: '',
     status: 'ORDERED',
+    catalog_item_id: null as string | null,
   });
 
   useEffect(() => {
@@ -86,6 +88,7 @@ const ManufacturingOrderDialog: React.FC<Props> = ({
         customer_name: editingOrder.customer_name || '',
         customer_agreed_date: editingOrder.customer_agreed_date || '',
         status: editingOrder.status,
+        catalog_item_id: (editingOrder as any).catalog_item_id || null,
       });
     } else {
       setFormData({
@@ -102,6 +105,7 @@ const ManufacturingOrderDialog: React.FC<Props> = ({
         customer_name: '',
         customer_agreed_date: '',
         status: 'ORDERED',
+        catalog_item_id: null,
       });
     }
   }, [editingOrder, open]);
@@ -135,6 +139,7 @@ const ManufacturingOrderDialog: React.FC<Props> = ({
         customer_agreed_date: formData.is_customer_order && formData.customer_agreed_date ? formData.customer_agreed_date : null,
         status: formData.status,
         updated_by: user?.id,
+        catalog_item_id: formData.catalog_item_id,
       };
 
       if (editingOrder) {
@@ -151,6 +156,7 @@ const ManufacturingOrderDialog: React.FC<Props> = ({
               status: 'pending_inbound',
               created_by: user?.id,
               notes: `Auto-created from MO ${editingOrder.mo_number}`,
+              catalog_item_id: formData.catalog_item_id,
             })
             .select()
             .single();
@@ -265,25 +271,22 @@ const ManufacturingOrderDialog: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Quality */}
-            <div className="space-y-2">
-              <Label htmlFor="quality">{t('quality')} *</Label>
-              <Input
-                id="quality"
-                value={formData.quality}
-                onChange={(e) => setFormData({ ...formData, quality: e.target.value })}
-                placeholder="e.g., V710"
-              />
-            </div>
-
-            {/* Color */}
-            <div className="space-y-2">
-              <Label htmlFor="color">{t('color')} *</Label>
-              <Input
-                id="color"
-                value={formData.color}
-                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                placeholder="e.g., RED"
+            {/* Quality & Color */}
+            <div className="col-span-2 space-y-2">
+              <Label>{t('quality')} & {t('color')} *</Label>
+              <CatalogAutocomplete
+                value={{
+                  quality: formData.quality,
+                  color: formData.color,
+                  catalog_item_id: formData.catalog_item_id
+                }}
+                onChange={(val) => setFormData({ 
+                  ...formData, 
+                  quality: val.quality, 
+                  color: val.color, 
+                  catalog_item_id: val.catalog_item_id 
+                })}
+                allowNonCatalog={true}
               />
             </div>
 

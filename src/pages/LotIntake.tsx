@@ -15,6 +15,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2, Package, QrCode, Printer, Upload, Download, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { generateExcelTemplate, parseCSVFile, importLotsToDatabase, generateErrorReport, ImportLotData, ImportResult, ParseError } from '@/utils/excelImport';
+import { CatalogAutocomplete } from '@/components/catalog/CatalogAutocomplete';
 
 interface Supplier {
   id: string;
@@ -34,6 +35,7 @@ interface LotFormData {
   invoiceNumber: string;
   warehouseLocation: string;
   notes: string;
+  catalog_item_id: string | null;
 }
 
 const LotIntake = () => {
@@ -56,6 +58,7 @@ const LotIntake = () => {
     invoiceNumber: '',
     warehouseLocation: '',
     notes: '',
+    catalog_item_id: null,
   });
   const [createdLot, setCreatedLot] = useState<any>(null);
   
@@ -124,7 +127,7 @@ const LotIntake = () => {
         .insert({
           quality: formData.quality,
           color: formData.color,
-          roll_count: 1, // Always 1 for single entry
+          roll_count: 1,
           meters: meters,
           lot_number: formData.lotNumber,
           entry_date: formData.entryDate,
@@ -136,6 +139,7 @@ const LotIntake = () => {
           notes: formData.notes || null,
           qr_code_url: qrCodeUrl,
           status: 'in_stock',
+          catalog_item_id: formData.catalog_item_id,
         })
         .select('*')
         .single();
@@ -193,6 +197,7 @@ const LotIntake = () => {
         invoiceNumber: '',
         warehouseLocation: '',
         notes: '',
+        catalog_item_id: null,
       });
 
     } catch (error: any) {
@@ -455,24 +460,20 @@ const LotIntake = () => {
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="quality">{t('intakeQuality')} *</Label>
-                <Input
-                  id="quality"
-                  value={formData.quality}
-                  onChange={(e) => handleInputChange('quality', e.target.value)}
-                  placeholder="e.g., Cotton, Polyester, Blend"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="color">{t('intakeColor')} *</Label>
-                <Input
-                  id="color"
-                  value={formData.color}
-                  onChange={(e) => handleInputChange('color', e.target.value)}
-                  placeholder="e.g., Red, Blue, White"
-                  required
+                <Label>{t('intakeQuality')} & {t('intakeColor')} *</Label>
+                <CatalogAutocomplete
+                  value={{
+                    quality: formData.quality,
+                    color: formData.color,
+                    catalog_item_id: formData.catalog_item_id
+                  }}
+                  onChange={(val) => setFormData(prev => ({
+                    ...prev,
+                    quality: val.quality,
+                    color: val.color,
+                    catalog_item_id: val.catalog_item_id
+                  }))}
+                  allowNonCatalog={true}
                 />
               </div>
 

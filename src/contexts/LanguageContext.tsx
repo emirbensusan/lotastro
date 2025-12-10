@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+// Catalog Autocomplete translations will be added to both EN and TR objects
+
 interface LanguageContextType {
   language: 'en' | 'tr';
   setLanguage: (lang: 'en' | 'tr') => void;
@@ -1826,8 +1828,21 @@ const translations = {
       status: {
         draft: 'Draft',
         pendingApproval: 'Pending Approval',
+        pending: 'Pending',
         active: 'Active',
+        inactive: 'Inactive',
         discontinued: 'Discontinued'
+      },
+      
+      // Autocomplete
+      autocomplete: {
+        placeholder: 'Search quality - color...',
+        noResults: 'No matching catalog items',
+        createNew: 'Create new catalog item',
+        manualEntryHint: 'Type to enter manually or select from catalog',
+        linkedToCatalog: 'Linked to catalog item',
+        itemInactive: 'This item is inactive',
+        itemPending: 'This item is pending approval'
       },
       
       // Types
@@ -3823,8 +3838,21 @@ const translations = {
       status: {
         draft: 'Taslak',
         pendingApproval: 'Onay Bekliyor',
+        pending: 'Beklemede',
         active: 'Aktif',
+        inactive: 'Pasif',
         discontinued: 'Üretimi Durmuş'
+      },
+      
+      // Autocomplete
+      autocomplete: {
+        placeholder: 'Kalite - renk ara...',
+        noResults: 'Eşleşen katalog öğesi bulunamadı',
+        createNew: 'Yeni katalog öğesi oluştur',
+        manualEntryHint: 'Manuel giriş yapmak için yazın veya katalogdan seçin',
+        linkedToCatalog: 'Katalog öğesine bağlı',
+        itemInactive: 'Bu öğe pasif',
+        itemPending: 'Bu öğe onay bekliyor'
       },
       
       // Types

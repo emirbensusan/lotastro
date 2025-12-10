@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { CatalogAutocomplete } from '@/components/catalog/CatalogAutocomplete';
 
 interface IncomingStockWithSupplier {
   id: string;
@@ -47,6 +48,7 @@ interface FormData {
   color: string;
   expected_meters: string;
   notes: string;
+  catalog_item_id: string | null;
 }
 
 interface Supplier {
@@ -68,7 +70,8 @@ export const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
     quality: '',
     color: '',
     expected_meters: '',
-    notes: ''
+    notes: '',
+    catalog_item_id: null
   });
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,7 +94,8 @@ export const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
         quality: editingStock.quality,
         color: editingStock.color,
         expected_meters: editingStock.expected_meters.toString(),
-        notes: editingStock.notes || ''
+        notes: editingStock.notes || '',
+        catalog_item_id: (editingStock as any).catalog_item_id || null
       });
     } else if (!editingStock && open) {
       setFormData({
@@ -102,7 +106,8 @@ export const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
         quality: '',
         color: '',
         expected_meters: '',
-        notes: ''
+        notes: '',
+        catalog_item_id: null
       });
     }
   }, [editingStock, open]);
@@ -157,7 +162,8 @@ export const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
             quality: formData.quality,
             color: formData.color,
             expected_meters: expectedMeters,
-            notes: formData.notes || null
+            notes: formData.notes || null,
+            catalog_item_id: formData.catalog_item_id
           })
           .eq('id', editingStock.id);
 
@@ -193,7 +199,8 @@ export const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
             received_meters: 0,
             reserved_meters: 0,
             status: 'pending_inbound',
-            created_by: user.id
+            created_by: user.id,
+            catalog_item_id: formData.catalog_item_id
           })
           .select()
           .single();
@@ -289,23 +296,21 @@ export const IncomingStockDialog: React.FC<IncomingStockDialogProps> = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="quality">Quality *</Label>
-              <Input
-                id="quality"
-                value={formData.quality}
-                onChange={(e) => setFormData(prev => ({ ...prev, quality: e.target.value }))}
-                placeholder="V710"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="color">Color *</Label>
-              <Input
-                id="color"
-                value={formData.color}
-                onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                placeholder="NAVY BLUE"
+            <div className="col-span-2 space-y-2">
+              <Label>Quality & Color *</Label>
+              <CatalogAutocomplete
+                value={{
+                  quality: formData.quality,
+                  color: formData.color,
+                  catalog_item_id: formData.catalog_item_id
+                }}
+                onChange={(val) => setFormData(prev => ({
+                  ...prev,
+                  quality: val.quality,
+                  color: val.color,
+                  catalog_item_id: val.catalog_item_id
+                }))}
+                allowNonCatalog={true}
               />
             </div>
           </div>
