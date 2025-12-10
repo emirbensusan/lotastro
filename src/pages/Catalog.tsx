@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import CatalogColumnSelector from '@/components/catalog/CatalogColumnSelector';
 import CatalogFilters from '@/components/catalog/CatalogFilters';
+import CatalogCustomFieldsAdmin from '@/components/catalog/CatalogCustomFieldsAdmin';
 
 interface CatalogItem {
   id: string;
@@ -126,11 +127,15 @@ const Catalog: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   // Permissions
+  // Permissions
   const canView = hasPermission('catalog', 'view');
   const canCreate = hasPermission('catalog', 'create');
   const canImport = hasPermission('catalog', 'import');
   const canExport = hasPermission('catalog', 'export');
   const canManageFields = hasPermission('catalog', 'manage_custom_fields');
+
+  // Custom fields dialog state
+  const [customFieldsDialogOpen, setCustomFieldsDialogOpen] = useState(false);
 
   // Load saved view from URL or localStorage
   useEffect(() => {
@@ -360,7 +365,7 @@ const Catalog: React.FC = () => {
           )}
           
           {canManageFields && (
-            <Button variant="outline" size="sm" onClick={() => navigate('/admin?tab=catalog')}>
+            <Button variant="outline" size="sm" onClick={() => setCustomFieldsDialogOpen(true)}>
               <Settings2 className="h-4 w-4 mr-2" />
               {t('catalog.customFields')}
             </Button>
@@ -519,6 +524,12 @@ const Catalog: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Custom Fields Admin Dialog */}
+      <CatalogCustomFieldsAdmin
+        open={customFieldsDialogOpen}
+        onOpenChange={setCustomFieldsDialogOpen}
+      />
     </div>
   );
 };
