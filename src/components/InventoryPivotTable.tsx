@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/hooks/useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { InlineEditableField } from '@/components/InlineEditableField';
+import { getMinQualitiesForMultiOrder } from '@/components/OrderFlowSettingsTab';
 
 interface InventoryItem {
   quality: string;
@@ -466,8 +467,9 @@ const InventoryPivotTable = () => {
       return;
     }
     
-    // For multi modes, require at least 2 selections
-    if (isMultiMode && selectedQualitiesForBulk.size < 2) {
+    // For multi modes, require minimum selections
+    const minRequired = getMinQualitiesForMultiOrder();
+    if (isMultiMode && selectedQualitiesForBulk.size < minRequired) {
       toast({
         title: String(t('error')),
         description: String(t('multiOrderMinimum')),

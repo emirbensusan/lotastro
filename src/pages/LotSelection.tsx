@@ -381,6 +381,26 @@ const LotSelection = () => {
     navigate(`/inventory${modeParam}`);
   };
 
+  // Build progress steps for multi-order flow - MUST be before any early returns to follow Rules of Hooks
+  const progressSteps: QualityStep[] = useMemo(() => {
+    if (!isMultiMode) return [];
+    
+    const allQualities = flowState.allQualities.length > 0 
+      ? flowState.allQualities 
+      : [getCurrentQuality(), ...pendingQualities];
+    
+    return allQualities.map((q) => {
+      const isCompleted = flowState.completedQualities.includes(q);
+      const isCurrent = q === getCurrentQuality();
+      return {
+        quality: q,
+        status: isCompleted ? 'completed' : isCurrent ? 'current' : 'pending',
+        colorsCompleted: isCurrent ? currentColorIndex : undefined,
+        totalColors: isCurrent ? colorArray.length : undefined,
+      } as QualityStep;
+    });
+  }, [isMultiMode, flowState, getCurrentQuality, pendingQualities, currentColorIndex, colorArray.length]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -403,26 +423,6 @@ const LotSelection = () => {
       </div>
     );
   }
-
-  // Build progress steps for multi-order flow
-  const progressSteps: QualityStep[] = useMemo(() => {
-    if (!isMultiMode) return [];
-    
-    const allQualities = flowState.allQualities.length > 0 
-      ? flowState.allQualities 
-      : [getCurrentQuality(), ...pendingQualities];
-    
-    return allQualities.map((q) => {
-      const isCompleted = flowState.completedQualities.includes(q);
-      const isCurrent = q === getCurrentQuality();
-      return {
-        quality: q,
-        status: isCompleted ? 'completed' : isCurrent ? 'current' : 'pending',
-        colorsCompleted: isCurrent ? currentColorIndex : undefined,
-        totalColors: isCurrent ? colorArray.length : undefined,
-      } as QualityStep;
-    });
-  }, [isMultiMode, flowState, getCurrentQuality, pendingQualities, currentColorIndex, colorArray.length]);
 
   return (
     <div className="space-y-6">
