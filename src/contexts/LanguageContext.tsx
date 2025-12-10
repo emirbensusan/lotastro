@@ -1115,6 +1115,12 @@ const translations = {
     totalOrders: 'Total Orders',
     inProduction: 'In Production',
     metersBeingManufactured: 'meters being manufactured',
+    inStockVarieties: 'In-Stock Varieties',
+    inStockVarietiesDesc: 'Unique quality-color pairs in stock',
+    outOfStockVarieties: 'Out-of-Stock Varieties',
+    outOfStockVarietiesDesc: 'Unique quality-color pairs depleted',
+    activeCatalogItems: 'Active Catalog Items',
+    activeCatalogItemsDesc: 'Approved items in catalog',
     
     // Order Flow - Multi-mode
     multipleSamples: 'Multiple Samples',
@@ -2297,6 +2303,12 @@ const translations = {
     totalMeters: 'Toplam Metraj',
     inProduction: 'Üretimde',
     metersBeingManufactured: 'metre üretiliyor',
+    inStockVarieties: 'Stoktaki Çeşitler',
+    inStockVarietiesDesc: 'Stokta bulunan benzersiz kalite-renk çiftleri',
+    outOfStockVarieties: 'Stokta Olmayan Çeşitler',
+    outOfStockVarietiesDesc: 'Tükenen benzersiz kalite-renk çiftleri',
+    activeCatalogItems: 'Aktif Katalog Öğeleri',
+    activeCatalogItemsDesc: 'Katalogda onaylanmış öğeler',
     
     // Order Flow - Multi-mode
     multipleSamples: 'Çoklu Numune',
