@@ -86,6 +86,15 @@ const defaultPermissions: Permission[] = [
   { categoryKey: 'categoryForecasting', actionKey: 'actionRunForecasts', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
   { categoryKey: 'categoryForecasting', actionKey: 'actionModifyForecastSettings', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
   { categoryKey: 'categoryForecasting', actionKey: 'actionImportForecastData', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+
+  // Catalog
+  { categoryKey: 'categoryCatalog', actionKey: 'actionViewCatalog', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryCatalog', actionKey: 'actionCreateCatalogItems', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryCatalog', actionKey: 'actionEditCatalogItems', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryCatalog', actionKey: 'actionApproveCatalogItems', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+  { categoryKey: 'categoryCatalog', actionKey: 'actionImportCatalog', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryCatalog', actionKey: 'actionExportCatalog', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryCatalog', actionKey: 'actionManageCustomFields', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
 ];
 
 const getRoleColor = (role: string) => {

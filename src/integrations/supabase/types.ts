@@ -117,6 +117,355 @@ export type Database = {
           },
         ]
       }
+      catalog_approval_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      catalog_custom_field_definitions: {
+        Row: {
+          created_at: string
+          created_by_user_id: string | null
+          display_order: number | null
+          field_key: string
+          field_type: string
+          help_text: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          label: string
+          options: Json | null
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id?: string | null
+          display_order?: number | null
+          field_key: string
+          field_type: string
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label: string
+          options?: Json | null
+          scope?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string | null
+          display_order?: number | null
+          field_key?: string
+          field_type?: string
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label?: string
+          options?: Json | null
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalog_custom_field_values: {
+        Row: {
+          catalog_item_id: string
+          created_at: string
+          field_definition_id: string
+          id: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          catalog_item_id: string
+          created_at?: string
+          field_definition_id: string
+          id?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          catalog_item_id?: string
+          created_at?: string
+          field_definition_id?: string
+          id?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_custom_field_values_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_custom_field_values_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_custom_field_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_item_audit_logs: {
+        Row: {
+          catalog_item_id: string
+          change_type: string
+          changed_at: string
+          changed_by_user_id: string | null
+          field_changes: Json | null
+          id: string
+        }
+        Insert: {
+          catalog_item_id: string
+          change_type: string
+          changed_at?: string
+          changed_by_user_id?: string | null
+          field_changes?: Json | null
+          id?: string
+        }
+        Update: {
+          catalog_item_id?: string
+          change_type?: string
+          changed_at?: string
+          changed_by_user_id?: string | null
+          field_changes?: Json | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_item_audit_logs_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_item_suppliers: {
+        Row: {
+          catalog_item_id: string
+          created_at: string
+          id: string
+          last_update_date: string | null
+          lead_time_days: number | null
+          moq: number | null
+          supplier_code: string | null
+          supplier_name: string
+          supplier_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          catalog_item_id: string
+          created_at?: string
+          id?: string
+          last_update_date?: string | null
+          lead_time_days?: number | null
+          moq?: number | null
+          supplier_code?: string | null
+          supplier_name: string
+          supplier_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          catalog_item_id?: string
+          created_at?: string
+          id?: string
+          last_update_date?: string | null
+          lead_time_days?: number | null
+          moq?: number | null
+          supplier_code?: string | null
+          supplier_name?: string
+          supplier_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_item_suppliers_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_items: {
+        Row: {
+          approved_at: string | null
+          approved_by_user_id: string | null
+          care_instructions: string | null
+          code: string
+          color_name: string
+          composition: Json | null
+          created_at: string
+          created_by_user_id: string | null
+          description: string | null
+          dyeing_batch_size: number | null
+          eu_origin: boolean | null
+          extra_attributes: Json | null
+          fabric_type: string | null
+          id: string
+          is_active: boolean
+          last_inbound_date: string | null
+          last_update_date: string | null
+          lastro_sku_code: string
+          logo_sku_code: string | null
+          photo_of_design_url: string | null
+          produced_unit: Database["public"]["Enums"]["catalog_unit"] | null
+          product_notes: string | null
+          shade_range_image_url: string | null
+          sold_unit: Database["public"]["Enums"]["catalog_unit"] | null
+          spec_sheet_file: string | null
+          spec_sheet_url: string | null
+          status: Database["public"]["Enums"]["catalog_item_status"]
+          suppliers: string | null
+          sustainable_notes: string | null
+          test_report_file: string | null
+          test_report_url: string | null
+          type: Database["public"]["Enums"]["catalog_item_type"]
+          updated_at: string
+          updated_by_user_id: string | null
+          weaving_knitted: string | null
+          weight_g_m2: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by_user_id?: string | null
+          care_instructions?: string | null
+          code: string
+          color_name: string
+          composition?: Json | null
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          dyeing_batch_size?: number | null
+          eu_origin?: boolean | null
+          extra_attributes?: Json | null
+          fabric_type?: string | null
+          id?: string
+          is_active?: boolean
+          last_inbound_date?: string | null
+          last_update_date?: string | null
+          lastro_sku_code: string
+          logo_sku_code?: string | null
+          photo_of_design_url?: string | null
+          produced_unit?: Database["public"]["Enums"]["catalog_unit"] | null
+          product_notes?: string | null
+          shade_range_image_url?: string | null
+          sold_unit?: Database["public"]["Enums"]["catalog_unit"] | null
+          spec_sheet_file?: string | null
+          spec_sheet_url?: string | null
+          status?: Database["public"]["Enums"]["catalog_item_status"]
+          suppliers?: string | null
+          sustainable_notes?: string | null
+          test_report_file?: string | null
+          test_report_url?: string | null
+          type?: Database["public"]["Enums"]["catalog_item_type"]
+          updated_at?: string
+          updated_by_user_id?: string | null
+          weaving_knitted?: string | null
+          weight_g_m2?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by_user_id?: string | null
+          care_instructions?: string | null
+          code?: string
+          color_name?: string
+          composition?: Json | null
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          dyeing_batch_size?: number | null
+          eu_origin?: boolean | null
+          extra_attributes?: Json | null
+          fabric_type?: string | null
+          id?: string
+          is_active?: boolean
+          last_inbound_date?: string | null
+          last_update_date?: string | null
+          lastro_sku_code?: string
+          logo_sku_code?: string | null
+          photo_of_design_url?: string | null
+          produced_unit?: Database["public"]["Enums"]["catalog_unit"] | null
+          product_notes?: string | null
+          shade_range_image_url?: string | null
+          sold_unit?: Database["public"]["Enums"]["catalog_unit"] | null
+          spec_sheet_file?: string | null
+          spec_sheet_url?: string | null
+          status?: Database["public"]["Enums"]["catalog_item_status"]
+          suppliers?: string | null
+          sustainable_notes?: string | null
+          test_report_file?: string | null
+          test_report_url?: string | null
+          type?: Database["public"]["Enums"]["catalog_item_type"]
+          updated_at?: string
+          updated_by_user_id?: string | null
+          weaving_knitted?: string | null
+          weight_g_m2?: number | null
+        }
+        Relationships: []
+      }
+      catalog_user_views: {
+        Row: {
+          created_at: string
+          filters: Json | null
+          id: string
+          is_default: boolean
+          selected_columns: Json
+          sort_order: Json | null
+          updated_at: string
+          user_id: string
+          view_name: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          is_default?: boolean
+          selected_columns?: Json
+          sort_order?: Json | null
+          updated_at?: string
+          user_id: string
+          view_name: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          is_default?: boolean
+          selected_columns?: Json
+          sort_order?: Json | null
+          updated_at?: string
+          user_id?: string
+          view_name?: string
+        }
+        Relationships: []
+      }
       demand_history: {
         Row: {
           amount: number
@@ -830,6 +1179,7 @@ export type Database = {
       }
       incoming_stock: {
         Row: {
+          catalog_item_id: string | null
           color: string
           created_at: string
           created_by: string
@@ -847,6 +1197,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          catalog_item_id?: string | null
           color: string
           created_at?: string
           created_by: string
@@ -864,6 +1215,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          catalog_item_id?: string | null
           color?: string
           created_at?: string
           created_by?: string
@@ -881,6 +1233,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "incoming_stock_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "incoming_stock_created_by_fkey"
             columns: ["created_by"]
@@ -944,6 +1303,7 @@ export type Database = {
       }
       lots: {
         Row: {
+          catalog_item_id: string | null
           color: string
           created_at: string
           entry_date: string
@@ -964,6 +1324,7 @@ export type Database = {
           warehouse_location: string | null
         }
         Insert: {
+          catalog_item_id?: string | null
           color: string
           created_at?: string
           entry_date?: string
@@ -984,6 +1345,7 @@ export type Database = {
           warehouse_location?: string | null
         }
         Update: {
+          catalog_item_id?: string | null
           color?: string
           created_at?: string
           entry_date?: string
@@ -1005,6 +1367,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "lots_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lots_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
@@ -1015,6 +1384,7 @@ export type Database = {
       }
       manufacturing_orders: {
         Row: {
+          catalog_item_id: string | null
           color: string
           created_at: string
           created_by: string
@@ -1039,6 +1409,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          catalog_item_id?: string | null
           color: string
           created_at?: string
           created_by: string
@@ -1063,6 +1434,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          catalog_item_id?: string | null
           color?: string
           created_at?: string
           created_by?: string
@@ -1087,6 +1459,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "manufacturing_orders_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "manufacturing_orders_incoming_stock_id_fkey"
             columns: ["incoming_stock_id"]
@@ -1959,6 +2338,7 @@ export type Database = {
           table_name: string
         }[]
       }
+      generate_lastro_sku_code: { Args: never; Returns: string }
       generate_mo_number: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       generate_reservation_number: { Args: never; Returns: string }
@@ -2125,11 +2505,25 @@ export type Database = {
         | "role_permission"
         | "incoming_stock"
         | "forecast_settings"
+        | "catalog_item"
       cancel_reason_type:
         | "no_payment"
         | "customer_canceled"
         | "incorrect_entry"
         | "other"
+      catalog_item_status:
+        | "pending_approval"
+        | "active"
+        | "temporarily_unavailable"
+        | "blocked"
+        | "end_of_life"
+      catalog_item_type:
+        | "lining"
+        | "pocketing"
+        | "sleeve_lining"
+        | "stretch"
+        | "knee_lining"
+      catalog_unit: "meters" | "kilograms"
       convert_reason_type: "payment_confirmation" | "manager_confirmation"
       order_line_type: "sample" | "standard"
       reservation_status: "active" | "released" | "converted" | "canceled"
@@ -2284,6 +2678,7 @@ export const Constants = {
         "role_permission",
         "incoming_stock",
         "forecast_settings",
+        "catalog_item",
       ],
       cancel_reason_type: [
         "no_payment",
@@ -2291,6 +2686,21 @@ export const Constants = {
         "incorrect_entry",
         "other",
       ],
+      catalog_item_status: [
+        "pending_approval",
+        "active",
+        "temporarily_unavailable",
+        "blocked",
+        "end_of_life",
+      ],
+      catalog_item_type: [
+        "lining",
+        "pocketing",
+        "sleeve_lining",
+        "stretch",
+        "knee_lining",
+      ],
+      catalog_unit: ["meters", "kilograms"],
       convert_reason_type: ["payment_confirmation", "manager_confirmation"],
       order_line_type: ["sample", "standard"],
       reservation_status: ["active", "released", "converted", "canceled"],
