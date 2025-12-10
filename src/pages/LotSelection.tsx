@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { format } from 'date-fns';
 import { RollSelectionDialog } from '@/components/RollSelectionDialog';
+import QualityTransitionScreen from '@/components/QualityTransitionScreen';
 
 interface Lot {
   id: string;
@@ -87,6 +88,13 @@ const LotSelection = () => {
   
   // Roll selection dialog state
   const [rollSelectionDialogLotId, setRollSelectionDialogLotId] = useState<string | null>(null);
+  
+  // Transition screen state for multi-quality flow
+  const [showTransitionScreen, setShowTransitionScreen] = useState(false);
+  const [completedQualityInfo, setCompletedQualityInfo] = useState<{
+    quality: string;
+    color: string;
+  } | null>(null);
   
   // Parse colors that may be in format "quality|color" or just "color"
   const parseColorEntry = (colorEntry: string) => {
@@ -272,18 +280,12 @@ const LotSelection = () => {
       setCurrentColorIndex(currentColorIndex + 1);
       setLoading(true);
     } else if (isMultiMode && pendingQualities.length > 0) {
-      // Navigate to next quality in the sequence
-      const nextQuality = pendingQualities[0];
-      const remainingQualities = pendingQualities.slice(1);
-      const modeParam = orderMode ? `?mode=${orderMode}` : '?';
-      const pendingParam = remainingQualities.length > 0 ? `&pendingQualities=${encodeURIComponent(remainingQualities.join(','))}` : '';
-      
-      toast({
-        title: String(t('movingToNextQuality')),
-        description: `${t('nextQuality')}: ${nextQuality}`,
+      // Show transition screen before navigating to next quality
+      setCompletedQualityInfo({
+        quality: getCurrentQuality(),
+        color: colorArray[currentColorIndex]?.color || '',
       });
-      
-      navigate(`/inventory/${encodeURIComponent(nextQuality)}${modeParam}${pendingParam}`);
+      setShowTransitionScreen(true);
     } else if (isMultiMode) {
       // All qualities processed - open cart
       setIsCartOpen(true);
@@ -292,6 +294,32 @@ const LotSelection = () => {
       setIsCartOpen(true);
     }
   };
+
+  // Handle proceeding to next quality from transition screen
+  const handleProceedToNextQuality = useCallback(() => {
+    setShowTransitionScreen(false);
+    const nextQuality = pendingQualities[0];
+    const remainingQualities = pendingQualities.slice(1);
+    const modeParam = orderMode ? `?mode=${orderMode}` : '?';
+    const pendingParam = remainingQualities.length > 0 ? `&pendingQualities=${encodeURIComponent(remainingQualities.join(','))}` : '';
+    
+    navigate(`/inventory/${encodeURIComponent(nextQuality)}${modeParam}${pendingParam}`);
+  }, [pendingQualities, orderMode, navigate]);
+
+  // Handle canceling the next quality selection
+  const handleCancelNextQuality = useCallback(() => {
+    setShowTransitionScreen(false);
+    // Navigate back to inventory with remaining qualities removed
+    const modeParam = orderMode ? `?mode=${orderMode}` : '';
+    navigate(`/inventory${modeParam}`);
+  }, [orderMode, navigate]);
+
+  // Handle going back to current quality for modifications
+  const handleGoBackToCurrentQuality = useCallback(() => {
+    setShowTransitionScreen(false);
+    // Reset to allow re-selection of current quality colors
+    // Just close the transition screen and stay on current page
+  }, []);
 
   // Check if can proceed to checkout
   const canProceedToCheckout = useMemo(() => {
@@ -626,6 +654,24 @@ const LotSelection = () => {
           />
         );
       })()}
+
+      {/* Quality Transition Screen for Multi-Quality Flow */}
+      {isMultiMode && pendingQualities.length > 0 && (
+        <QualityTransitionScreen
+          isOpen={showTransitionScreen}
+          completedQuality={completedQualityInfo?.quality || getCurrentQuality()}
+          completedColor={completedQualityInfo?.color || colorArray[currentColorIndex]?.color || ''}
+          nextQuality={pendingQualities[0]}
+          currentQualityIndex={pendingQualities.length > 0 ? 
+            (searchParams.get('pendingQualities')?.split(',').length || 1) - pendingQualities.length : 0
+          }
+          totalQualities={(searchParams.get('pendingQualities')?.split(',').length || 0) + 1}
+          remainingQualities={pendingQualities.length}
+          onProceed={handleProceedToNextQuality}
+          onCancel={handleCancelNextQuality}
+          onGoBack={handleGoBackToCurrentQuality}
+        />
+      )}
     </div>
   );
 };
