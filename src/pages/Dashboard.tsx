@@ -281,7 +281,7 @@ const Dashboard = () => {
           return (
             <Card 
               key={stat.title as string}
-              className={stat.link ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}
+              className={stat.link ? 'cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-primary/50' : ''}
               onClick={stat.link ? () => navigate(stat.link) : undefined}
             >
               <CardWrapper className="w-full text-left">
@@ -307,7 +307,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {profile?.role === 'warehouse_staff' && (
           <>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/lot-intake')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/lot-intake')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('generateQrCodes')}
@@ -321,7 +321,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/qr-scan')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/qr-scan')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('scanQrCodes')}
@@ -335,7 +335,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/orders')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/orders')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('fulfillOrders')}
@@ -353,7 +353,7 @@ const Dashboard = () => {
 
         {profile?.role === 'accounting' && (
           <>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/goods-receipt')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/goods-receipt')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('receiveGoodsAction')}
@@ -367,7 +367,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/orders?tab=reservations')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/orders?tab=reservations')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('manageReservationsAction')}
@@ -381,7 +381,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/incoming-stock')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/incoming-stock')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('trackIncomingStockAction')}
@@ -399,7 +399,7 @@ const Dashboard = () => {
 
         {profile?.role === 'senior_manager' && (
           <>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/approvals')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/approvals')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('reviewApprovals')}
@@ -413,7 +413,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/reports')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/reports')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('viewReports')}
@@ -427,7 +427,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/incoming-stock')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/incoming-stock')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('viewIncomingStockAction')}
@@ -445,7 +445,7 @@ const Dashboard = () => {
 
         {profile?.role === 'admin' && (
           <>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/suppliers')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/suppliers')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   📦 {t('manageSuppliers')}
@@ -459,7 +459,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/inventory')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/inventory')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   📦 {t('deleteLots')}
@@ -473,7 +473,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/lot-intake')}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary/50" onClick={() => navigate('/lot-intake')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   📦 {t('reprintQrCodes')}
