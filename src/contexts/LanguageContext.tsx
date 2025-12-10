@@ -1222,6 +1222,7 @@ const translations = {
     categoryApprovals: 'Approvals (Change Requests)',
     categoryAuditLogs: 'Audit Logs',
     categoryForecasting: 'Forecasting',
+    categoryCatalog: 'Catalog',
     
     // User Management Actions
     actionViewUsers: 'View Users',
@@ -1281,6 +1282,15 @@ const translations = {
     actionRunForecasts: 'Run Forecasts',
     actionModifyForecastSettings: 'Modify Forecast Settings',
     actionImportForecastData: 'Import Historical Data',
+    
+    // Catalog Actions
+    actionViewCatalog: 'View Catalog',
+    actionCreateCatalogItems: 'Create Catalog Items',
+    actionEditCatalogItems: 'Edit Catalog Items',
+    actionApproveCatalogItems: 'Approve Catalog Items',
+    actionImportCatalog: 'Import Catalog',
+    actionExportCatalog: 'Export Catalog',
+    actionManageCustomFields: 'Manage Custom Fields',
     
     // Manufacturing Orders
     manufacturingOrders: 'Manufacturing Orders',
@@ -3002,6 +3012,7 @@ const translations = {
     categoryApprovals: 'Onaylar (Değişiklik Talepleri)',
     categoryAuditLogs: 'Denetim Kayıtları',
     categoryForecasting: 'Talep Tahmini',
+    categoryCatalog: 'Katalog',
     
     // User Management Actions
     actionViewUsers: 'Kullanıcıları Görüntüle',
@@ -3017,6 +3028,10 @@ const translations = {
     actionEditLotInfo: 'LOT Bilgilerini Düzenle',
     actionDeleteLotEntries: 'LOT Girişlerini Sil',
     actionGenerateQrCodes: 'QR Kodları Oluştur',
+    actionViewIncoming: 'Gelen Stoğu Görüntüle',
+    actionReceiveIncoming: 'Gelen Stoğu Teslim Al',
+    actionUnreceiveIncoming: 'Gelen Stok Teslimini İptal Et',
+    actionDeleteIncoming: 'Gelen Stok Kaydını Sil',
     
     // Order Actions
     actionViewOrders: 'Siparişleri Görüntüle',
@@ -3057,6 +3072,15 @@ const translations = {
     actionRunForecasts: 'Tahmin Çalıştır',
     actionModifyForecastSettings: 'Tahmin Ayarlarını Değiştir',
     actionImportForecastData: 'Geçmiş Verileri İçe Aktar',
+    
+    // Catalog Actions
+    actionViewCatalog: 'Kataloğu Görüntüle',
+    actionCreateCatalogItems: 'Katalog Öğesi Oluştur',
+    actionEditCatalogItems: 'Katalog Öğelerini Düzenle',
+    actionApproveCatalogItems: 'Katalog Öğelerini Onayla',
+    actionImportCatalog: 'Kataloğu İçe Aktar',
+    actionExportCatalog: 'Kataloğu Dışa Aktar',
+    actionManageCustomFields: 'Özel Alanları Yönet',
     
     // Manufacturing Orders
     manufacturingOrders: 'Üretim Siparişleri',
