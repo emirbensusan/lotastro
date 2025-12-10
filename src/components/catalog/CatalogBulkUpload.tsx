@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Download, Upload, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 
 interface Props {
   open: boolean;
@@ -24,17 +24,45 @@ interface CatalogBulkItem {
   logo_sku_code?: string;
   composition?: string;
   weaving_knitted?: string;
+  fabric_type?: string;
   weight_g_m2?: number;
   produced_unit?: string;
   sold_unit?: string;
   eu_origin?: boolean;
+  dyeing_batch_size?: number;
   suppliers?: string;
+  sustainable_notes?: string;
+  product_notes?: string;
+  care_instructions?: string;
   isValid: boolean;
   error?: string;
 }
 
 const VALID_TYPES = ['lining', 'pocketing', 'sleeve_lining', 'stretch', 'knee_lining'];
 const VALID_UNITS = ['meters', 'kilograms'];
+
+// All template columns - mandatory fields marked with *
+const TEMPLATE_COLUMNS = [
+  'Quality Code*',
+  'Color Name*',
+  'Type',
+  'Description',
+  'Logo SKU Code',
+  'Composition',
+  'Weaving/Knitted',
+  'Fabric Type',
+  'Weight (g/m²)',
+  'Produced Unit (meters/kilograms)',
+  'Sold Unit (meters/kilograms)',
+  'EU Origin (Y/N)',
+  'Dyeing Batch Size',
+  'Suppliers',
+  'Sustainable Notes',
+  'Product Notes',
+  'Care Instructions'
+];
+
+const MANDATORY_COLUMNS = ['Quality Code*', 'Color Name*'];
 
 const CatalogBulkUpload: React.FC<Props> = ({ open, onOpenChange, onSuccess }) => {
   const { t } = useLanguage();
@@ -73,24 +101,60 @@ const CatalogBulkUpload: React.FC<Props> = ({ open, onOpenChange, onSuccess }) =
   };
 
   const downloadTemplate = () => {
-    const templateData = [
-      {
-        'Quality Code': 'V710',
-        'Color Name': 'BLACK',
-        'Type': 'lining',
-        'Description': 'Premium lining fabric',
-        'Logo SKU Code': '',
-        'Composition': '100% Polyester',
-        'Weaving/Knitted': 'Woven',
-        'Weight (g/m²)': 120,
-        'Produced Unit (meters/kilograms)': 'meters',
-        'Sold Unit (meters/kilograms)': 'meters',
-        'EU Origin (Y/N)': 'N',
-        'Suppliers': 'Supplier A, Supplier B',
-      }
-    ];
+    // Create sample data row
+    const sampleData = {
+      'Quality Code*': 'V710',
+      'Color Name*': 'BLACK',
+      'Type': 'lining',
+      'Description': 'Premium lining fabric',
+      'Logo SKU Code': '',
+      'Composition': '100% Polyester',
+      'Weaving/Knitted': 'Woven',
+      'Fabric Type': 'Satin',
+      'Weight (g/m²)': 120,
+      'Produced Unit (meters/kilograms)': 'meters',
+      'Sold Unit (meters/kilograms)': 'meters',
+      'EU Origin (Y/N)': 'N',
+      'Dyeing Batch Size': 1000,
+      'Suppliers': 'Supplier A, Supplier B',
+      'Sustainable Notes': '',
+      'Product Notes': '',
+      'Care Instructions': 'Machine wash cold'
+    };
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
+    // Create worksheet with headers
+    const ws = XLSX.utils.json_to_sheet([sampleData], { header: TEMPLATE_COLUMNS });
+
+    // Define orange style for mandatory columns
+    const orangeStyle = {
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFCC80' } },
+      font: { bold: true, color: { rgb: '000000' } },
+      alignment: { horizontal: 'center' }
+    };
+
+    // Define regular header style
+    const regularStyle = {
+      font: { bold: true },
+      alignment: { horizontal: 'center' }
+    };
+
+    // Apply styles to header row
+    TEMPLATE_COLUMNS.forEach((col, index) => {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: index });
+      if (!ws[cellRef]) return;
+      
+      if (MANDATORY_COLUMNS.includes(col)) {
+        ws[cellRef].s = orangeStyle;
+      } else {
+        ws[cellRef].s = regularStyle;
+      }
+    });
+
+    // Set column widths
+    ws['!cols'] = TEMPLATE_COLUMNS.map(col => ({
+      wch: Math.max(col.length + 2, 15)
+    }));
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Catalog Items');
     XLSX.writeFile(wb, 'catalog_items_template.xlsx');
@@ -127,19 +191,25 @@ const CatalogBulkUpload: React.FC<Props> = ({ open, onOpenChange, onSuccess }) =
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
       const parsedItems: CatalogBulkItem[] = jsonData.map((row: any) => {
-        const code = String(row['Quality Code'] || '').trim().toUpperCase();
-        const color_name = String(row['Color Name'] || '').trim().toUpperCase();
+        // Handle both with and without asterisk in column names
+        const code = String(row['Quality Code*'] || row['Quality Code'] || '').trim().toUpperCase();
+        const color_name = String(row['Color Name*'] || row['Color Name'] || '').trim().toUpperCase();
         const type = String(row['Type'] || 'lining').trim().toLowerCase();
         const description = row['Description'] || '';
         const logo_sku_code = row['Logo SKU Code'] || '';
         const composition = row['Composition'] || '';
         const weaving_knitted = row['Weaving/Knitted'] || '';
+        const fabric_type = row['Fabric Type'] || '';
         const weight_g_m2 = parseFloat(row['Weight (g/m²)']) || undefined;
         const produced_unit = String(row['Produced Unit (meters/kilograms)'] || 'meters').toLowerCase();
         const sold_unit = String(row['Sold Unit (meters/kilograms)'] || 'meters').toLowerCase();
         const eu_origin_raw = String(row['EU Origin (Y/N)'] || 'N').toUpperCase();
         const eu_origin = eu_origin_raw === 'Y' || eu_origin_raw === 'YES' || eu_origin_raw === 'TRUE';
+        const dyeing_batch_size = parseFloat(row['Dyeing Batch Size']) || undefined;
         const suppliers = row['Suppliers'] || '';
+        const sustainable_notes = row['Sustainable Notes'] || '';
+        const product_notes = row['Product Notes'] || '';
+        const care_instructions = row['Care Instructions'] || '';
 
         let isValid = true;
         let error = '';
@@ -157,6 +227,9 @@ const CatalogBulkUpload: React.FC<Props> = ({ open, onOpenChange, onSuccess }) =
         } else if (weight_g_m2 !== undefined && weight_g_m2 <= 0) {
           isValid = false;
           error = t('catalog.bulkUpload.invalidWeight') as string;
+        } else if (dyeing_batch_size !== undefined && dyeing_batch_size <= 0) {
+          isValid = false;
+          error = t('catalog.bulkUpload.invalidBatchSize') as string;
         } else if (existingItems.has(`${code.toLowerCase()}-${color_name.toLowerCase()}`)) {
           isValid = false;
           error = t('catalog.bulkUpload.duplicateExists') as string;
@@ -170,11 +243,16 @@ const CatalogBulkUpload: React.FC<Props> = ({ open, onOpenChange, onSuccess }) =
           logo_sku_code,
           composition,
           weaving_knitted,
+          fabric_type,
           weight_g_m2,
           produced_unit: VALID_UNITS.includes(produced_unit) ? produced_unit : 'meters',
           sold_unit: VALID_UNITS.includes(sold_unit) ? sold_unit : 'meters',
           eu_origin,
+          dyeing_batch_size,
           suppliers,
+          sustainable_notes,
+          product_notes,
+          care_instructions,
           isValid,
           error,
         };
@@ -226,11 +304,16 @@ const CatalogBulkUpload: React.FC<Props> = ({ open, onOpenChange, onSuccess }) =
         logo_sku_code: item.logo_sku_code || null,
         composition: parseComposition(item.composition || ''),
         weaving_knitted: item.weaving_knitted || null,
+        fabric_type: item.fabric_type || null,
         weight_g_m2: item.weight_g_m2 || null,
         produced_unit: item.produced_unit as any,
         sold_unit: item.sold_unit as any,
         eu_origin: item.eu_origin || false,
+        dyeing_batch_size: item.dyeing_batch_size || null,
         suppliers: item.suppliers || null,
+        sustainable_notes: item.sustainable_notes || null,
+        product_notes: item.product_notes || null,
+        care_instructions: item.care_instructions || null,
         status: 'pending_approval' as const,
         is_active: false,
         created_by_user_id: user?.id,
@@ -276,6 +359,11 @@ const CatalogBulkUpload: React.FC<Props> = ({ open, onOpenChange, onSuccess }) =
           {/* Instructions */}
           <p className="text-sm text-muted-foreground">
             {t('catalog.bulkUpload.instructions')}
+          </p>
+          
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: '#FFCC80' }} />
+            {t('catalog.bulkUpload.mandatoryFieldsNote')}
           </p>
 
           {/* Upload Controls */}
