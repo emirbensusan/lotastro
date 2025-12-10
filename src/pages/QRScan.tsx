@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ interface LotDetails {
 const QRScan = () => {
   const { lotNumber } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { t } = useLanguage();
@@ -194,7 +195,7 @@ const QRScan = () => {
             <p className="text-sm text-muted-foreground mb-4">
               {t('lotNumber')}: <span className="font-mono">{lotNumber}</span>
             </p>
-            <Button onClick={() => window.location.href = '/auth'} className="w-full">
+            <Button onClick={() => navigate('/auth')} className="w-full">
               {t('signInToView')}
             </Button>
           </CardContent>
