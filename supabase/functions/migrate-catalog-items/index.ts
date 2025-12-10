@@ -18,7 +18,47 @@ interface MigrationResult {
   details: {
     uniquePairs: number;
     existingCatalogItems: number;
+    totalLotsFetched: number;
+    totalIncomingFetched: number;
+    totalMOFetched: number;
   };
+}
+
+// Helper function to fetch all records with pagination (bypasses 1000 row limit)
+async function fetchAllRecords<T>(
+  supabase: ReturnType<typeof createClient>,
+  tableName: string,
+  columns: string
+): Promise<{ data: T[] | null; error: Error | null }> {
+  const PAGE_SIZE = 1000;
+  const allRecords: T[] = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    const { data, error } = await supabase
+      .from(tableName)
+      .select(columns)
+      .range(from, to);
+
+    if (error) {
+      return { data: null, error: new Error(error.message) };
+    }
+
+    if (data && data.length > 0) {
+      allRecords.push(...(data as T[]));
+      console.log(`  Fetched ${allRecords.length} ${tableName} records so far...`);
+    }
+
+    // If we got fewer records than PAGE_SIZE, we've reached the end
+    hasMore = data !== null && data.length === PAGE_SIZE;
+    page++;
+  }
+
+  return { data: allRecords, error: null };
 }
 
 serve(async (req) => {
@@ -89,13 +129,19 @@ serve(async (req) => {
       details: {
         uniquePairs: 0,
         existingCatalogItems: 0,
+        totalLotsFetched: 0,
+        totalIncomingFetched: 0,
+        totalMOFetched: 0,
       },
     };
 
-    // Step 1: Get all existing catalog items
-    const { data: existingCatalog, error: catalogError } = await supabase
-      .from('catalog_items')
-      .select('id, code, color_name');
+    // Step 1: Get all existing catalog items (with pagination)
+    console.log('Fetching existing catalog items...');
+    const { data: existingCatalog, error: catalogError } = await fetchAllRecords<{
+      id: string;
+      code: string;
+      color_name: string;
+    }>(supabase, 'catalog_items', 'id, code, color_name');
 
     if (catalogError) {
       throw new Error(`Failed to fetch existing catalog: ${catalogError.message}`);
@@ -124,16 +170,20 @@ serve(async (req) => {
     }
     const recordGroups = new Map<string, RecordGroup>();
 
-    // From lots - fetch ALL (not just unlinked for counting, but we only update unlinked)
-    console.log('Fetching lots...');
-    const { data: allLots, error: lotError } = await supabase
-      .from('lots')
-      .select('id, quality, color, catalog_item_id');
+    // From lots - fetch ALL with pagination
+    console.log('Fetching all lots (with pagination)...');
+    const { data: allLots, error: lotError } = await fetchAllRecords<{
+      id: string;
+      quality: string;
+      color: string;
+      catalog_item_id: string | null;
+    }>(supabase, 'lots', 'id, quality, color, catalog_item_id');
 
     if (lotError) {
       result.errors.push(`Failed to fetch lots: ${lotError.message}`);
     } else {
-      console.log(`Found ${allLots?.length || 0} lots total`);
+      result.details.totalLotsFetched = allLots?.length || 0;
+      console.log(`Fetched ${allLots?.length || 0} lots total`);
       (allLots || []).forEach(row => {
         const key = `${row.quality.toLowerCase()}||${row.color.toLowerCase()}`;
         if (!recordGroups.has(key)) {
@@ -152,16 +202,20 @@ serve(async (req) => {
       });
     }
 
-    // From incoming_stock
-    console.log('Fetching incoming_stock...');
-    const { data: allIncoming, error: incomingError } = await supabase
-      .from('incoming_stock')
-      .select('id, quality, color, catalog_item_id');
+    // From incoming_stock - fetch ALL with pagination
+    console.log('Fetching all incoming_stock (with pagination)...');
+    const { data: allIncoming, error: incomingError } = await fetchAllRecords<{
+      id: string;
+      quality: string;
+      color: string;
+      catalog_item_id: string | null;
+    }>(supabase, 'incoming_stock', 'id, quality, color, catalog_item_id');
 
     if (incomingError) {
       result.errors.push(`Failed to fetch incoming_stock: ${incomingError.message}`);
     } else {
-      console.log(`Found ${allIncoming?.length || 0} incoming_stock records total`);
+      result.details.totalIncomingFetched = allIncoming?.length || 0;
+      console.log(`Fetched ${allIncoming?.length || 0} incoming_stock records total`);
       (allIncoming || []).forEach(row => {
         const key = `${row.quality.toLowerCase()}||${row.color.toLowerCase()}`;
         if (!recordGroups.has(key)) {
@@ -180,16 +234,20 @@ serve(async (req) => {
       });
     }
 
-    // From manufacturing_orders
-    console.log('Fetching manufacturing_orders...');
-    const { data: allMO, error: moError } = await supabase
-      .from('manufacturing_orders')
-      .select('id, quality, color, catalog_item_id');
+    // From manufacturing_orders - fetch ALL with pagination
+    console.log('Fetching all manufacturing_orders (with pagination)...');
+    const { data: allMO, error: moError } = await fetchAllRecords<{
+      id: string;
+      quality: string;
+      color: string;
+      catalog_item_id: string | null;
+    }>(supabase, 'manufacturing_orders', 'id, quality, color, catalog_item_id');
 
     if (moError) {
       result.errors.push(`Failed to fetch manufacturing_orders: ${moError.message}`);
     } else {
-      console.log(`Found ${allMO?.length || 0} manufacturing_orders total`);
+      result.details.totalMOFetched = allMO?.length || 0;
+      console.log(`Fetched ${allMO?.length || 0} manufacturing_orders total`);
       (allMO || []).forEach(row => {
         const key = `${row.quality.toLowerCase()}||${row.color.toLowerCase()}`;
         if (!recordGroups.has(key)) {
