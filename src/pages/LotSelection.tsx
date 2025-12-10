@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast, toast } from "@/hooks/use-toast";
-import { ArrowLeft, Package, Filter, ShoppingCart, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Package, Filter, ShoppingCart, CheckCircle, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { format } from 'date-fns';
@@ -255,9 +255,6 @@ const LotSelection = () => {
     setFilteredLots(filtered);
   };
 
-  // Track if all colors for current quality are done (for multi-mode prompt)
-  const [showMultiModePrompt, setShowMultiModePrompt] = useState(false);
-
   const handleRollSelectionComplete = (addedMeters?: number, quality?: string, color?: string) => {
     // Update selectedMeters if meters were added
     if (addedMeters && quality && color) {
@@ -288,8 +285,8 @@ const LotSelection = () => {
       
       navigate(`/inventory/${encodeURIComponent(nextQuality)}${modeParam}${pendingParam}`);
     } else if (isMultiMode) {
-      // All qualities processed - show prompt
-      setShowMultiModePrompt(true);
+      // All qualities processed - open cart
+      setIsCartOpen(true);
     } else {
       // Single mode - show cart
       setIsCartOpen(true);
@@ -547,29 +544,59 @@ const LotSelection = () => {
         </CardContent>
       </Card>
 
-      {/* Multi-Mode Continue Prompt */}
-      {showMultiModePrompt && isMultiMode && (
+      {/* Navigation Controls */}
+      {isMultiMode && (
         <Card className="border-2 border-primary bg-primary/5">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div>
-                <h3 className="font-semibold text-lg">{t('qualitySelectionComplete')}</h3>
-                <p className="text-muted-foreground">{t('continueToNextQualityPrompt')}</p>
+              {/* Progress Info */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <Badge className="bg-purple-500 text-white">
+                  {t('processingQuality')}: {getCurrentQuality()}
+                </Badge>
+                <span className="text-sm">
+                  {t('colorProgress')} {currentColorIndex + 1}/{colorArray.length}: 
+                  <span className="font-medium ml-1">{colorArray[currentColorIndex]?.color}</span>
+                </span>
+                {pendingQualities.length > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    | {t('nextQuality')}: <span className="font-medium">{pendingQualities[0]}</span>
+                    {pendingQualities.length > 1 && (
+                      <span className="ml-1">(+{pendingQualities.length - 1} {t('more')})</span>
+                    )}
+                  </span>
+                )}
               </div>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => {
-                  setShowMultiModePrompt(false);
-                  continueShopping();
-                }}>
-                  {t('continueToNextSelection')}
-                </Button>
-                <Button onClick={() => {
-                  setShowMultiModePrompt(false);
-                  setIsCartOpen(true);
-                }}>
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  {t('viewCart')}
-                </Button>
+              
+              {/* Navigation Buttons */}
+              <div className="flex gap-2">
+                {currentColorIndex < colorArray.length - 1 && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleRollSelectionComplete()}
+                  >
+                    {t('skipToNextColor')}
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                )}
+                {currentColorIndex >= colorArray.length - 1 && pendingQualities.length > 0 && (
+                  <Button 
+                    variant="default" 
+                    onClick={() => handleRollSelectionComplete()}
+                  >
+                    {t('continueToNextQuality')} ({pendingQualities[0]})
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                )}
+                {currentColorIndex >= colorArray.length - 1 && pendingQualities.length === 0 && (
+                  <Button 
+                    variant="default" 
+                    onClick={() => setIsCartOpen(true)}
+                  >
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    {t('viewCartButton')}
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
