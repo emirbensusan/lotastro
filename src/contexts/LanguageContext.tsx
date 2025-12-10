@@ -131,6 +131,28 @@ const translations = {
     seconds: 'seconds',
     qualityNumberOf: 'Quality {current} of {total}',
     transitionCountdownSetting: 'Quality Transition Countdown (seconds)',
+    // New transition screen keys
+    colorSelectionComplete: 'Color Selection Complete',
+    selectionOverview: 'Selection Overview',
+    isQualitySelectionComplete: 'Is this quality selection complete?',
+    yesQualityComplete: 'Yes - Proceed',
+    noAddMoreColors: 'No - Add More Colors',
+    goBackToPreviousSelection: 'Go Back to Previous',
+    allQualitiesProcessed: 'All qualities have been processed',
+    total: 'Total',
+    // Multi-order progress
+    multiOrderProgress: 'Multi-Order Progress',
+    qualitiesCompleted: 'completed',
+    // Navigation warning
+    incompleteOrderWarning: 'Incomplete Order',
+    incompleteOrderDesc: 'You have items in your cart from an incomplete multi-order selection.',
+    keepInCart: 'Keep in Cart',
+    discardOrder: 'Discard',
+    // Admin settings
+    enableTransitionPopups: 'Enable transition popups',
+    autoProceEnabled: 'Auto-proceed enabled',
+    multiOrderSettings: 'Multi-Order Settings',
+    multiOrderSettingsDesc: 'Configure behavior for multi-quality order flows',
     searchLots: 'Search lots...',
     allDates: 'All Dates',
     today: 'Today',
@@ -1985,6 +2007,28 @@ const translations = {
     seconds: 'saniye',
     qualityNumberOf: '{total} kaliteden {current}. kalite',
     transitionCountdownSetting: 'Kalite Geçiş Sayacı (saniye)',
+    // New transition screen keys
+    colorSelectionComplete: 'Renk Seçimi Tamamlandı',
+    selectionOverview: 'Seçim Özeti',
+    isQualitySelectionComplete: 'Bu kalite seçimi tamamlandı mı?',
+    yesQualityComplete: 'Evet - Devam Et',
+    noAddMoreColors: 'Hayır - Daha Fazla Renk Ekle',
+    goBackToPreviousSelection: 'Öncekine Geri Dön',
+    allQualitiesProcessed: 'Tüm kaliteler işlendi',
+    total: 'Toplam',
+    // Multi-order progress
+    multiOrderProgress: 'Çoklu Sipariş İlerlemesi',
+    qualitiesCompleted: 'tamamlandı',
+    // Navigation warning
+    incompleteOrderWarning: 'Eksik Sipariş',
+    incompleteOrderDesc: 'Sepetinizde tamamlanmamış bir çoklu sipariş seçiminden öğeler var.',
+    keepInCart: 'Sepette Tut',
+    discardOrder: 'Sil',
+    // Admin settings
+    enableTransitionPopups: 'Geçiş açılır pencerelerini etkinleştir',
+    autoProceEnabled: 'Otomatik ilerleme etkin',
+    multiOrderSettings: 'Çoklu Sipariş Ayarları',
+    multiOrderSettingsDesc: 'Çoklu kalite sipariş akışları için davranışı yapılandırın',
     
     searchLots: 'Lot ara...',
     allDates: 'Tüm Tarihler',

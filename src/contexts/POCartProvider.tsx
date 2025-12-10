@@ -18,6 +18,15 @@ interface CartLot {
   selectedRollMeters?: string[];
 }
 
+export interface MultiOrderFlowState {
+  isActive: boolean;
+  orderMode: 'multi' | 'multi-sample' | null;
+  allQualities: string[];
+  completedQualities: string[];
+  currentQuality: string | null;
+  pendingQualities: string[];
+}
+
 interface POCartContextType {
   cartItems: CartLot[];
   addToCart: (lot: CartLot) => void;
@@ -29,6 +38,10 @@ interface POCartContextType {
   getTotalMeters: () => number;
   getTotalRolls: () => number;
   getItemCount: () => number;
+  // Multi-order flow state
+  flowState: MultiOrderFlowState;
+  setFlowState: (state: MultiOrderFlowState) => void;
+  clearFlowState: () => void;
 }
 
 const POCartContext = createContext<POCartContextType | undefined>(undefined);
@@ -47,6 +60,16 @@ interface POCartProviderProps {
 
 const CART_STORAGE_KEY = 'po_cart_items';
 const CART_OPEN_STORAGE_KEY = 'po_cart_open';
+const FLOW_STATE_STORAGE_KEY = 'po_cart_flow_state';
+
+const DEFAULT_FLOW_STATE: MultiOrderFlowState = {
+  isActive: false,
+  orderMode: null,
+  allQualities: [],
+  completedQualities: [],
+  currentQuality: null,
+  pendingQualities: [],
+};
 
 // Helper functions for localStorage
 const saveToStorage = (key: string, value: any) => {
@@ -74,6 +97,9 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
   const [isCartOpen, setIsCartOpen] = useState(() => 
     loadFromStorage(CART_OPEN_STORAGE_KEY, false)
   );
+  const [flowState, setFlowStateInternal] = useState<MultiOrderFlowState>(() =>
+    loadFromStorage(FLOW_STATE_STORAGE_KEY, DEFAULT_FLOW_STATE)
+  );
 
   // Save cart items to localStorage whenever they change
   useEffect(() => {
@@ -84,6 +110,20 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
   useEffect(() => {
     saveToStorage(CART_OPEN_STORAGE_KEY, isCartOpen);
   }, [isCartOpen]);
+
+  // Save flow state to localStorage whenever it changes
+  useEffect(() => {
+    saveToStorage(FLOW_STATE_STORAGE_KEY, flowState);
+  }, [flowState]);
+
+  const setFlowState = (state: MultiOrderFlowState) => {
+    setFlowStateInternal(state);
+  };
+
+  const clearFlowState = () => {
+    setFlowStateInternal(DEFAULT_FLOW_STATE);
+    saveToStorage(FLOW_STATE_STORAGE_KEY, DEFAULT_FLOW_STATE);
+  };
 
   const addToCart = (lot: CartLot) => {
     setCartItems(prev => {
@@ -128,6 +168,7 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
   const clearCart = () => {
     setCartItems([]);
     setIsCartOpen(false);
+    clearFlowState();
     // Clear localStorage as well
     saveToStorage(CART_STORAGE_KEY, []);
     saveToStorage(CART_OPEN_STORAGE_KEY, false);
@@ -160,6 +201,9 @@ export const POCartProvider: React.FC<POCartProviderProps> = ({ children }) => {
     getTotalMeters,
     getTotalRolls,
     getItemCount,
+    flowState,
+    setFlowState,
+    clearFlowState,
   };
 
   return (

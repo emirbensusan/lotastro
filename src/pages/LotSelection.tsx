@@ -12,6 +12,7 @@ import { useToast, toast } from "@/hooks/use-toast";
 import { ArrowLeft, Package, Filter, ShoppingCart, CheckCircle, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
+import MultiOrderProgressStepper, { QualityStep } from '@/components/MultiOrderProgressStepper';
 import { format } from 'date-fns';
 import { RollSelectionDialog } from '@/components/RollSelectionDialog';
 import QualityTransitionScreen from '@/components/QualityTransitionScreen';
@@ -48,7 +49,7 @@ const LotSelection = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { t } = useLanguage();
-  const { addToCart, setIsCartOpen } = usePOCart();
+  const { addToCart, setIsCartOpen, cartItems, flowState } = usePOCart();
   
   const quality = searchParams.get('quality') || '';
   const color = searchParams.get('color') || '';
@@ -366,8 +367,36 @@ const LotSelection = () => {
     );
   }
 
+  // Build progress steps for multi-order flow
+  const progressSteps: QualityStep[] = useMemo(() => {
+    if (!isMultiMode) return [];
+    
+    const allQualities = flowState.allQualities.length > 0 
+      ? flowState.allQualities 
+      : [getCurrentQuality(), ...pendingQualities];
+    
+    return allQualities.map((q) => {
+      const isCompleted = flowState.completedQualities.includes(q);
+      const isCurrent = q === getCurrentQuality();
+      return {
+        quality: q,
+        status: isCompleted ? 'completed' : isCurrent ? 'current' : 'pending',
+        colorsCompleted: isCurrent ? currentColorIndex : undefined,
+        totalColors: isCurrent ? colorArray.length : undefined,
+      } as QualityStep;
+    });
+  }, [isMultiMode, flowState, getCurrentQuality, pendingQualities, currentColorIndex, colorArray.length]);
+
   return (
     <div className="space-y-6">
+      {/* Multi-Order Progress Stepper */}
+      {isMultiMode && progressSteps.length > 1 && (
+        <MultiOrderProgressStepper 
+          steps={progressSteps}
+          currentQuality={getCurrentQuality()}
+        />
+      )}
+
       {/* Requested Quantities Tracker */}
       {requestedItems.length > 0 && (
         <Card className="sticky top-0 z-10 bg-background shadow-lg">
@@ -656,20 +685,28 @@ const LotSelection = () => {
       })()}
 
       {/* Quality Transition Screen for Multi-Quality Flow */}
-      {isMultiMode && pendingQualities.length > 0 && (
+      {isMultiMode && (
         <QualityTransitionScreen
           isOpen={showTransitionScreen}
           completedQuality={completedQualityInfo?.quality || getCurrentQuality()}
           completedColor={completedQualityInfo?.color || colorArray[currentColorIndex]?.color || ''}
-          nextQuality={pendingQualities[0]}
-          currentQualityIndex={pendingQualities.length > 0 ? 
-            (searchParams.get('pendingQualities')?.split(',').length || 1) - pendingQualities.length : 0
+          nextDestination={pendingQualities.length > 0 ? 'quality' : 'cart'}
+          nextQualityOrColor={pendingQualities.length > 0 ? pendingQualities[0] : ''}
+          currentQualityIndex={
+            (searchParams.get('pendingQualities')?.split(',').length || 0) - pendingQualities.length
           }
           totalQualities={(searchParams.get('pendingQualities')?.split(',').length || 0) + 1}
-          remainingQualities={pendingQualities.length}
-          onProceed={handleProceedToNextQuality}
-          onCancel={handleCancelNextQuality}
-          onGoBack={handleGoBackToCurrentQuality}
+          currentColorIndex={currentColorIndex}
+          totalColors={colorArray.length}
+          selectionOverview={cartItems.map(item => ({
+            quality: item.quality,
+            color: item.color,
+            meters: item.selectedRollsData.reduce((sum, r) => sum + r.meters, 0),
+            rolls: item.selectedRollIds.length,
+          }))}
+          onYesProceed={handleProceedToNextQuality}
+          onNoAddMoreColors={handleGoBackToCurrentQuality}
+          onGoBack={handleCancelNextQuality}
         />
       )}
     </div>
