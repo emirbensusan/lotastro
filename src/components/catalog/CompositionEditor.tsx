@@ -51,7 +51,7 @@ const CompositionEditor: React.FC<CompositionEditorProps> = ({
           <Input
             value={item.fiber}
             onChange={(e) => handleUpdate(index, 'fiber', e.target.value)}
-            placeholder={t('catalog.fiberName')}
+            placeholder={t('catalog.fiberName') as string}
             disabled={disabled}
             list="fiber-options"
             className="flex-1"

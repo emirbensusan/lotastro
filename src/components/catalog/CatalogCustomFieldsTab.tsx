@@ -18,7 +18,7 @@ interface CustomFieldDefinition {
   help_text: string | null;
   is_required: boolean;
   is_active: boolean;
-  display_order: number;
+  display_order: number | null;
 }
 
 interface CatalogCustomFieldsTabProps {
@@ -52,7 +52,10 @@ const CatalogCustomFieldsTab: React.FC<CatalogCustomFieldsTabProps> = ({
         .order('display_order');
 
       if (error) throw error;
-      setDefinitions(data || []);
+      setDefinitions((data || []).map(d => ({
+        ...d,
+        options: Array.isArray(d.options) ? d.options as string[] : null,
+      })));
     } catch (error: any) {
       console.error('Error fetching custom field definitions:', error);
     } finally {
