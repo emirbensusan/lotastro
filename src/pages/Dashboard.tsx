@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Package, Truck, AlertTriangle, TrendingUp, TruckIcon, Lock, PackageCheck, Calendar, Factory } from 'lucide-react';
+import { Package, Truck, AlertTriangle, TrendingUp, TruckIcon, Lock, PackageCheck, Calendar, Factory, Palette, BookOpen, PackageX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface DashboardStats {
@@ -21,6 +21,9 @@ interface DashboardStats {
   activeReservations: number;
   pendingReceipts: number;
   metersInProduction: number;
+  inStockQualityColorPairs: number;
+  outOfStockQualityColorPairs: number;
+  activeCatalogItems: number;
 }
 
 const Dashboard = () => {
@@ -40,6 +43,9 @@ const Dashboard = () => {
     activeReservations: 0,
     pendingReceipts: 0,
     metersInProduction: 0,
+    inStockQualityColorPairs: 0,
+    outOfStockQualityColorPairs: 0,
+    activeCatalogItems: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -79,6 +85,26 @@ const Dashboard = () => {
 
       const metersInProduction = moData?.reduce((sum, mo) => sum + Number(mo.ordered_amount || 0), 0) || 0;
 
+      // Count distinct quality-color pairs for in-stock lots
+      const { data: inStockPairs } = await supabase
+        .from('lots')
+        .select('quality, color')
+        .eq('status', 'in_stock');
+      const inStockQualityColorPairs = new Set(inStockPairs?.map(l => `${l.quality}|${l.color}`)).size;
+
+      // Count distinct quality-color pairs for out-of-stock lots
+      const { data: outOfStockPairs } = await supabase
+        .from('lots')
+        .select('quality, color')
+        .eq('status', 'out_of_stock');
+      const outOfStockQualityColorPairs = new Set(outOfStockPairs?.map(l => `${l.quality}|${l.color}`)).size;
+
+      // Count active catalog items
+      const { count: activeCatalogItems } = await supabase
+        .from('catalog_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
       const inStockLots = Number(data?.total_in_stock_lots || 0);
       const outOfStockLots = Number(data?.total_out_of_stock_lots || 0);
       const totalRolls = Number(data?.total_rolls || 0);
@@ -100,6 +126,9 @@ const Dashboard = () => {
         activeReservations,
         pendingReceipts: pendingReceiptCount,
         metersInProduction,
+        inStockQualityColorPairs,
+        outOfStockQualityColorPairs,
+        activeCatalogItems,
       });
 
       setStats({
@@ -115,6 +144,9 @@ const Dashboard = () => {
         activeReservations,
         pendingReceipts: pendingReceiptCount || 0,
         metersInProduction,
+        inStockQualityColorPairs,
+        outOfStockQualityColorPairs,
+        activeCatalogItems: activeCatalogItems || 0,
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -184,6 +216,29 @@ const Dashboard = () => {
       color: 'text-green-600',
       link: '/goods-receipt',
     },
+    {
+      title: t('inStockVarieties'),
+      value: stats.inStockQualityColorPairs.toString(),
+      description: t('inStockVarietiesDesc'),
+      icon: Palette,
+      color: 'text-emerald-600',
+      link: '/inventory',
+    },
+    {
+      title: t('outOfStockVarieties'),
+      value: stats.outOfStockQualityColorPairs.toString(),
+      description: t('outOfStockVarietiesDesc'),
+      icon: PackageX,
+      color: 'text-rose-600',
+    },
+    {
+      title: t('activeCatalogItems'),
+      value: stats.activeCatalogItems.toString(),
+      description: t('activeCatalogItemsDesc'),
+      icon: BookOpen,
+      color: 'text-violet-600',
+      link: '/catalog',
+    },
   ];
 
   if (loading) {
@@ -251,7 +306,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {profile?.role === 'warehouse_staff' && (
           <>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/lot-intake'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/lot-intake')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('generateQrCodes')}
@@ -265,7 +320,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/qr-scan'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/qr-scan')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('scanQrCodes')}
@@ -279,7 +334,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/orders')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('fulfillOrders')}
@@ -297,7 +352,7 @@ const Dashboard = () => {
 
         {profile?.role === 'accounting' && (
           <>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/goods-receipt'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/goods-receipt')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('receiveGoodsAction')}
@@ -311,7 +366,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/orders?tab=reservations'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/orders?tab=reservations')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('manageReservationsAction')}
@@ -325,7 +380,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/incoming-stock'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/incoming-stock')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('trackIncomingStockAction')}
@@ -343,7 +398,7 @@ const Dashboard = () => {
 
         {profile?.role === 'senior_manager' && (
           <>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/approvals'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/approvals')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('reviewApprovals')}
@@ -357,7 +412,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/reports'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/reports')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('viewReports')}
@@ -371,7 +426,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/incoming-stock'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/incoming-stock')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   {t('viewIncomingStockAction')}
@@ -389,7 +444,7 @@ const Dashboard = () => {
 
         {profile?.role === 'admin' && (
           <>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/suppliers'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/suppliers')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   📦 {t('manageSuppliers')}
@@ -403,7 +458,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/inventory'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/inventory')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   📦 {t('deleteLots')}
@@ -417,7 +472,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = '/lot-intake'}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/lot-intake')}>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-lg">
                   📦 {t('reprintQrCodes')}
