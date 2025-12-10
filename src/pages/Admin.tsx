@@ -20,6 +20,7 @@ import ReminderSettingsTab from '@/components/ReminderSettingsTab';
 import OrderFlowSettingsTab from '@/components/OrderFlowSettingsTab';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import MigrationProgressDialog from '@/components/MigrationProgressDialog';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
@@ -86,6 +87,15 @@ const Admin: React.FC = () => {
   const [migrationPreviewLoading, setMigrationPreviewLoading] = useState(false);
   const [migrationResult, setMigrationResult] = useState<any>(null);
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
+  const [migrationProgressOpen, setMigrationProgressOpen] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState({
+    isRunning: false,
+    currentStep: '',
+    processedItems: 0,
+    totalItems: 0,
+    errors: [] as string[],
+    result: undefined as any,
+  });
 
   useEffect(() => {
     if (!authLoading) {
@@ -590,21 +600,62 @@ const Admin: React.FC = () => {
   };
 
   const handleMigrationRun = async () => {
+    // Open progress dialog immediately
+    setMigrationProgressOpen(true);
+    setMigrationProgress({
+      isRunning: true,
+      currentStep: t('catalog.migration.fetchingData') as string,
+      processedItems: 0,
+      totalItems: 100,
+      errors: [],
+      result: undefined,
+    });
     setMigrationLoading(true);
+
     try {
+      // Simulate progress updates while waiting
+      const progressInterval = setInterval(() => {
+        setMigrationProgress(prev => ({
+          ...prev,
+          processedItems: Math.min(prev.processedItems + 10, 90),
+          currentStep: prev.processedItems < 30 
+            ? (t('catalog.migration.fetchingData') as string)
+            : prev.processedItems < 60 
+              ? (t('catalog.migration.creatingItems') as string)
+              : (t('catalog.migration.linkingRecords') as string),
+        }));
+      }, 800);
+
       const { data, error } = await supabase.functions.invoke('migrate-catalog-items', {
         body: { dryRun: false }
       });
 
+      clearInterval(progressInterval);
+
       if (error) throw error;
 
       setMigrationResult(data);
+      setMigrationProgress({
+        isRunning: false,
+        currentStep: '',
+        processedItems: 100,
+        totalItems: 100,
+        errors: data?.errors || [],
+        result: data,
+      });
+      
       toast({
         title: t('success') as string,
         description: t('catalog.migration.migrationComplete') as string,
       });
     } catch (error: any) {
       console.error('Migration error:', error);
+      setMigrationProgress(prev => ({
+        ...prev,
+        isRunning: false,
+        errors: [...prev.errors, error?.message || 'Unknown error'],
+        result: { success: false, error: error?.message },
+      }));
       toast({
         title: t('error') as string,
         description: error?.message || (t('catalog.migration.migrationFailed') as string),
@@ -1471,6 +1522,13 @@ const Admin: React.FC = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Migration Progress Dialog */}
+        <MigrationProgressDialog
+          open={migrationProgressOpen}
+          onOpenChange={setMigrationProgressOpen}
+          progress={migrationProgress}
+        />
     </div>
   );
 };

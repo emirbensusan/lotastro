@@ -101,7 +101,7 @@ serve(async (req) => {
       throw new Error(`Failed to fetch existing catalog: ${catalogError.message}`);
     }
 
-    // Create lookup map for existing items
+    // Create lookup map for existing items (case-insensitive)
     const existingMap = new Map<string, string>();
     (existingCatalog || []).forEach(item => {
       const key = `${item.code.toLowerCase()}||${item.color_name.toLowerCase()}`;
@@ -111,111 +111,167 @@ serve(async (req) => {
     result.details.existingCatalogItems = existingMap.size;
     console.log(`Found ${existingMap.size} existing catalog items`);
 
-    // Step 2: Extract unique (quality, color) pairs from all tables
-    const uniquePairs = new Map<string, { quality: string; color: string; sources: string[] }>();
+    // Step 2: Fetch ALL records from lots, incoming_stock, manufacturing_orders
+    // and group them by lowercase (quality, color) key with their original values and IDs
 
-    // From lots
-    const { data: lotPairs, error: lotError } = await supabase
+    // Structure to hold records grouped by lowercase key
+    interface RecordGroup {
+      quality: string; // Original casing (first encountered)
+      color: string;   // Original casing (first encountered)
+      lotIds: string[];
+      incomingStockIds: string[];
+      manufacturingOrderIds: string[];
+    }
+    const recordGroups = new Map<string, RecordGroup>();
+
+    // From lots - fetch ALL (not just unlinked for counting, but we only update unlinked)
+    console.log('Fetching lots...');
+    const { data: allLots, error: lotError } = await supabase
       .from('lots')
-      .select('quality, color')
-      .is('catalog_item_id', null);
+      .select('id, quality, color, catalog_item_id');
 
     if (lotError) {
       result.errors.push(`Failed to fetch lots: ${lotError.message}`);
     } else {
-      (lotPairs || []).forEach(row => {
+      console.log(`Found ${allLots?.length || 0} lots total`);
+      (allLots || []).forEach(row => {
         const key = `${row.quality.toLowerCase()}||${row.color.toLowerCase()}`;
-        if (!uniquePairs.has(key)) {
-          uniquePairs.set(key, { quality: row.quality, color: row.color, sources: [] });
+        if (!recordGroups.has(key)) {
+          recordGroups.set(key, { 
+            quality: row.quality, 
+            color: row.color, 
+            lotIds: [], 
+            incomingStockIds: [], 
+            manufacturingOrderIds: [] 
+          });
         }
-        if (!uniquePairs.get(key)!.sources.includes('lots')) {
-          uniquePairs.get(key)!.sources.push('lots');
+        // Only add to list if not already linked
+        if (!row.catalog_item_id) {
+          recordGroups.get(key)!.lotIds.push(row.id);
         }
       });
     }
 
     // From incoming_stock
-    const { data: incomingPairs, error: incomingError } = await supabase
+    console.log('Fetching incoming_stock...');
+    const { data: allIncoming, error: incomingError } = await supabase
       .from('incoming_stock')
-      .select('quality, color')
-      .is('catalog_item_id', null);
+      .select('id, quality, color, catalog_item_id');
 
     if (incomingError) {
       result.errors.push(`Failed to fetch incoming_stock: ${incomingError.message}`);
     } else {
-      (incomingPairs || []).forEach(row => {
+      console.log(`Found ${allIncoming?.length || 0} incoming_stock records total`);
+      (allIncoming || []).forEach(row => {
         const key = `${row.quality.toLowerCase()}||${row.color.toLowerCase()}`;
-        if (!uniquePairs.has(key)) {
-          uniquePairs.set(key, { quality: row.quality, color: row.color, sources: [] });
+        if (!recordGroups.has(key)) {
+          recordGroups.set(key, { 
+            quality: row.quality, 
+            color: row.color, 
+            lotIds: [], 
+            incomingStockIds: [], 
+            manufacturingOrderIds: [] 
+          });
         }
-        if (!uniquePairs.get(key)!.sources.includes('incoming_stock')) {
-          uniquePairs.get(key)!.sources.push('incoming_stock');
+        // Only add to list if not already linked
+        if (!row.catalog_item_id) {
+          recordGroups.get(key)!.incomingStockIds.push(row.id);
         }
       });
     }
 
     // From manufacturing_orders
-    const { data: moPairs, error: moError } = await supabase
+    console.log('Fetching manufacturing_orders...');
+    const { data: allMO, error: moError } = await supabase
       .from('manufacturing_orders')
-      .select('quality, color')
-      .is('catalog_item_id', null);
+      .select('id, quality, color, catalog_item_id');
 
     if (moError) {
       result.errors.push(`Failed to fetch manufacturing_orders: ${moError.message}`);
     } else {
-      (moPairs || []).forEach(row => {
+      console.log(`Found ${allMO?.length || 0} manufacturing_orders total`);
+      (allMO || []).forEach(row => {
         const key = `${row.quality.toLowerCase()}||${row.color.toLowerCase()}`;
-        if (!uniquePairs.has(key)) {
-          uniquePairs.set(key, { quality: row.quality, color: row.color, sources: [] });
+        if (!recordGroups.has(key)) {
+          recordGroups.set(key, { 
+            quality: row.quality, 
+            color: row.color, 
+            lotIds: [], 
+            incomingStockIds: [], 
+            manufacturingOrderIds: [] 
+          });
         }
-        if (!uniquePairs.get(key)!.sources.includes('manufacturing_orders')) {
-          uniquePairs.get(key)!.sources.push('manufacturing_orders');
+        // Only add to list if not already linked
+        if (!row.catalog_item_id) {
+          recordGroups.get(key)!.manufacturingOrderIds.push(row.id);
         }
       });
     }
 
-    result.details.uniquePairs = uniquePairs.size;
-    console.log(`Found ${uniquePairs.size} unique (quality, color) pairs to process`);
+    result.details.uniquePairs = recordGroups.size;
+    console.log(`Found ${recordGroups.size} unique (quality, color) pairs to process`);
 
-    // Step 3: Create catalog items and link records
-    for (const [key, pair] of uniquePairs) {
-      // Check if already exists in catalog
-      if (existingMap.has(key)) {
+    // Step 3: Create catalog items and link records using ID-based updates
+    let processed = 0;
+    for (const [key, group] of recordGroups) {
+      processed++;
+      const hasUnlinkedRecords = group.lotIds.length > 0 || group.incomingStockIds.length > 0 || group.manufacturingOrderIds.length > 0;
+      
+      // Check if catalog item already exists
+      let catalogItemId = existingMap.get(key);
+
+      if (catalogItemId) {
         result.skippedExisting++;
-        const catalogItemId = existingMap.get(key)!;
         
-        // Still link records to existing catalog item
-        if (!dryRun) {
-          // Link lots
-          const { count: lotsUpdated } = await supabase
-            .from('lots')
-            .update({ catalog_item_id: catalogItemId })
-            .eq('quality', pair.quality)
-            .eq('color', pair.color)
-            .is('catalog_item_id', null)
-            .select('*', { count: 'exact', head: true });
-          result.lotsLinked += lotsUpdated || 0;
+        // Link unlinked records to existing catalog item using IDs
+        if (!dryRun && hasUnlinkedRecords) {
+          // Link lots by ID
+          if (group.lotIds.length > 0) {
+            const { error: lotUpdateError } = await supabase
+              .from('lots')
+              .update({ catalog_item_id: catalogItemId })
+              .in('id', group.lotIds);
+            
+            if (lotUpdateError) {
+              result.errors.push(`Failed to link lots for ${group.quality}/${group.color}: ${lotUpdateError.message}`);
+            } else {
+              result.lotsLinked += group.lotIds.length;
+            }
+          }
 
-          // Link incoming_stock
-          const { count: incomingUpdated } = await supabase
-            .from('incoming_stock')
-            .update({ catalog_item_id: catalogItemId })
-            .eq('quality', pair.quality)
-            .eq('color', pair.color)
-            .is('catalog_item_id', null)
-            .select('*', { count: 'exact', head: true });
-          result.incomingStockLinked += incomingUpdated || 0;
+          // Link incoming_stock by ID
+          if (group.incomingStockIds.length > 0) {
+            const { error: incomingUpdateError } = await supabase
+              .from('incoming_stock')
+              .update({ catalog_item_id: catalogItemId })
+              .in('id', group.incomingStockIds);
+            
+            if (incomingUpdateError) {
+              result.errors.push(`Failed to link incoming_stock for ${group.quality}/${group.color}: ${incomingUpdateError.message}`);
+            } else {
+              result.incomingStockLinked += group.incomingStockIds.length;
+            }
+          }
 
-          // Link manufacturing_orders
-          const { count: moUpdated } = await supabase
-            .from('manufacturing_orders')
-            .update({ catalog_item_id: catalogItemId })
-            .eq('quality', pair.quality)
-            .eq('color', pair.color)
-            .is('catalog_item_id', null)
-            .select('*', { count: 'exact', head: true });
-          result.manufacturingOrdersLinked += moUpdated || 0;
+          // Link manufacturing_orders by ID
+          if (group.manufacturingOrderIds.length > 0) {
+            const { error: moUpdateError } = await supabase
+              .from('manufacturing_orders')
+              .update({ catalog_item_id: catalogItemId })
+              .in('id', group.manufacturingOrderIds);
+            
+            if (moUpdateError) {
+              result.errors.push(`Failed to link manufacturing_orders for ${group.quality}/${group.color}: ${moUpdateError.message}`);
+            } else {
+              result.manufacturingOrdersLinked += group.manufacturingOrderIds.length;
+            }
+          }
         }
+        continue;
+      }
+
+      // Only create new catalog item if there are unlinked records
+      if (!hasUnlinkedRecords) {
         continue;
       }
 
@@ -225,12 +281,13 @@ serve(async (req) => {
       }
 
       // Create new catalog item
+      const skuCode = `LTA-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       const { data: newItem, error: insertError } = await supabase
         .from('catalog_items')
         .insert({
-          code: pair.quality,
-          color_name: pair.color,
-          lastro_sku_code: `MIGRATED-${pair.quality}-${pair.color.substring(0, 10)}`.replace(/\s+/g, '-').toUpperCase(),
+          code: group.quality,
+          color_name: group.color,
+          lastro_sku_code: skuCode,
           status: 'active',
           is_active: true,
           type: 'lining',
@@ -241,42 +298,59 @@ serve(async (req) => {
         .single();
 
       if (insertError) {
-        result.errors.push(`Failed to create catalog item for ${pair.quality}/${pair.color}: ${insertError.message}`);
+        result.errors.push(`Failed to create catalog item for ${group.quality}/${group.color}: ${insertError.message}`);
         continue;
       }
 
       result.catalogItemsCreated++;
-      const catalogItemId = newItem.id;
+      catalogItemId = newItem.id;
 
-      // Link lots
-      const { count: lotsUpdated } = await supabase
-        .from('lots')
-        .update({ catalog_item_id: catalogItemId })
-        .eq('quality', pair.quality)
-        .eq('color', pair.color)
-        .is('catalog_item_id', null)
-        .select('*', { count: 'exact', head: true });
-      result.lotsLinked += lotsUpdated || 0;
+      // Link lots by ID
+      if (group.lotIds.length > 0) {
+        const { error: lotUpdateError } = await supabase
+          .from('lots')
+          .update({ catalog_item_id: catalogItemId })
+          .in('id', group.lotIds);
+        
+        if (lotUpdateError) {
+          result.errors.push(`Failed to link lots for ${group.quality}/${group.color}: ${lotUpdateError.message}`);
+        } else {
+          result.lotsLinked += group.lotIds.length;
+        }
+      }
 
-      // Link incoming_stock
-      const { count: incomingUpdated } = await supabase
-        .from('incoming_stock')
-        .update({ catalog_item_id: catalogItemId })
-        .eq('quality', pair.quality)
-        .eq('color', pair.color)
-        .is('catalog_item_id', null)
-        .select('*', { count: 'exact', head: true });
-      result.incomingStockLinked += incomingUpdated || 0;
+      // Link incoming_stock by ID
+      if (group.incomingStockIds.length > 0) {
+        const { error: incomingUpdateError } = await supabase
+          .from('incoming_stock')
+          .update({ catalog_item_id: catalogItemId })
+          .in('id', group.incomingStockIds);
+        
+        if (incomingUpdateError) {
+          result.errors.push(`Failed to link incoming_stock for ${group.quality}/${group.color}: ${incomingUpdateError.message}`);
+        } else {
+          result.incomingStockLinked += group.incomingStockIds.length;
+        }
+      }
 
-      // Link manufacturing_orders
-      const { count: moUpdated } = await supabase
-        .from('manufacturing_orders')
-        .update({ catalog_item_id: catalogItemId })
-        .eq('quality', pair.quality)
-        .eq('color', pair.color)
-        .is('catalog_item_id', null)
-        .select('*', { count: 'exact', head: true });
-      result.manufacturingOrdersLinked += moUpdated || 0;
+      // Link manufacturing_orders by ID
+      if (group.manufacturingOrderIds.length > 0) {
+        const { error: moUpdateError } = await supabase
+          .from('manufacturing_orders')
+          .update({ catalog_item_id: catalogItemId })
+          .in('id', group.manufacturingOrderIds);
+        
+        if (moUpdateError) {
+          result.errors.push(`Failed to link manufacturing_orders for ${group.quality}/${group.color}: ${moUpdateError.message}`);
+        } else {
+          result.manufacturingOrdersLinked += group.manufacturingOrderIds.length;
+        }
+      }
+
+      // Log progress every 50 items
+      if (processed % 50 === 0) {
+        console.log(`Processed ${processed}/${recordGroups.size} pairs...`);
+      }
     }
 
     console.log('Migration complete:', result);
