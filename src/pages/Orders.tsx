@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { toast } from "sonner";
-import { Truck, Plus, CheckCircle, Eye, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown, Layers } from 'lucide-react';
+import { Truck, Plus, CheckCircle, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown, Layers } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
@@ -20,6 +20,10 @@ import AIOrderInput from '@/components/AIOrderInput';
 import { InlineEditableField } from '@/components/InlineEditableField';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
+import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
+import { ViewDetailsButton } from '@/components/ui/view-details-button';
 
 interface Order {
   id: string;
@@ -44,16 +48,6 @@ interface Order {
   }>;
 }
 
-interface Lot {
-  id: string;
-  lot_number: string;
-  quality: string;
-  color: string;
-  meters: number;
-  roll_count: number;
-  status: string;
-}
-
 const Orders = () => {
   const { profile } = useAuth();
   const { logAction } = useAuditLog();
@@ -69,6 +63,20 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Sorting state
+  const [currentSort, setCurrentSort] = useState<{ key: string; direction: SortDirection } | null>({
+    key: 'created_at',
+    direction: 'desc'
+  });
+
+  // Filter state
+  const [filters, setFilters] = useState<Record<string, string>>({});
 
   // Create order form state
   const [customerName, setCustomerName] = useState('');
@@ -88,7 +96,6 @@ const Orders = () => {
   // Check for pre-filled data from cart
   useEffect(() => {
     if (location.state?.selectedLots && location.state?.fromCart) {
-      // Convert cart data to order format
       const convertedLots = location.state.selectedLots.map((cartItem: any) => ({
         lotId: cartItem.id,
         quality: cartItem.quality,
@@ -106,20 +113,43 @@ const Orders = () => {
       
       setSelectedLots(convertedLots);
       setShowCreateDialog(true);
-      // Clear the location state to avoid re-triggering
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
   useEffect(() => {
     fetchOrders();
-  }, []);
-  
+  }, [page, pageSize, currentSort, filters]);
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Get total count first
+      let countQuery = supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true });
+      
+      // Apply filters to count query
+      if (filters.order_number) {
+        countQuery = countQuery.ilike('order_number', `%${filters.order_number}%`);
+      }
+      if (filters.customer_name) {
+        countQuery = countQuery.ilike('customer_name', `%${filters.customer_name}%`);
+      }
+      if (filters.status) {
+        if (filters.status === 'fulfilled') {
+          countQuery = countQuery.not('fulfilled_at', 'is', null);
+        } else if (filters.status === 'pending') {
+          countQuery = countQuery.is('fulfilled_at', null);
+        }
+      }
+      
+      const { count } = await countQuery;
+      setTotalCount(count || 0);
+
+      // Fetch paginated data
+      let query = supabase
         .from('orders')
         .select(`
           *,
@@ -136,8 +166,34 @@ const Orders = () => {
               meters
             )
           )
-        `)
-        .order('created_at', { ascending: false });
+        `);
+
+      // Apply filters
+      if (filters.order_number) {
+        query = query.ilike('order_number', `%${filters.order_number}%`);
+      }
+      if (filters.customer_name) {
+        query = query.ilike('customer_name', `%${filters.customer_name}%`);
+      }
+      if (filters.status) {
+        if (filters.status === 'fulfilled') {
+          query = query.not('fulfilled_at', 'is', null);
+        } else if (filters.status === 'pending') {
+          query = query.is('fulfilled_at', null);
+        }
+      }
+
+      // Apply sorting
+      if (currentSort?.key && currentSort?.direction) {
+        query = query.order(currentSort.key, { ascending: currentSort.direction === 'asc' });
+      }
+
+      // Apply pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -149,6 +205,36 @@ const Orders = () => {
     }
   };
 
+  const handleSort = (key: string, direction: SortDirection) => {
+    setCurrentSort(direction ? { key, direction } : null);
+    setPage(1);
+  };
+
+  const handleFilter = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
+
+  const handleExport = () => {
+    const exportData = orders.map(order => ({
+      order_number: order.order_number,
+      customer_name: order.customer_name,
+      lots_count: order.order_lots.length,
+      status: order.fulfilled_at ? 'Fulfilled' : 'Pending',
+      created_at: new Date(order.created_at).toLocaleDateString(),
+      fulfilled_at: order.fulfilled_at ? new Date(order.fulfilled_at).toLocaleDateString() : '',
+    }));
+    
+    exportToCSV(exportData, [
+      { key: 'order_number', label: t('orderNumberField') as string },
+      { key: 'customer_name', label: t('customer') as string },
+      { key: 'lots_count', label: t('lotsCount') as string },
+      { key: 'status', label: t('status') as string },
+      { key: 'created_at', label: t('created') as string },
+      { key: 'fulfilled_at', label: t('fulfilled') as string },
+    ], 'orders');
+  };
+
   const handleCreateOrder = async () => {
     if (!customerName || selectedLots.length === 0) {
       toast.error(t('fillAllFields') as string);
@@ -156,7 +242,6 @@ const Orders = () => {
     }
 
     try {
-      // Validate inventory availability
       for (const selectedLot of selectedLots) {
         const { data: currentLot, error: fetchError } = await supabase
           .from('lots')
@@ -177,7 +262,6 @@ const Orders = () => {
         }
       }
 
-      // Create order with auto-generated order number
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -189,7 +273,6 @@ const Orders = () => {
 
       if (orderError) throw orderError;
 
-      // Create order lots and mark rolls as allocated
       for (const selectedLot of selectedLots) {
         await supabase
           .from('order_lots')
@@ -204,25 +287,19 @@ const Orders = () => {
             selected_roll_ids: selectedLot.rollIds || '',
           });
 
-        // Mark selected rolls as allocated
         if (selectedLot.rollIds) {
           const rollIds = selectedLot.rollIds.split(',').filter(id => id.trim());
           if (rollIds.length > 0) {
-            const { error: rollUpdateError } = await supabase
+            await supabase
               .from('rolls')
               .update({ status: 'allocated' })
               .in('id', rollIds);
-            
-            if (rollUpdateError) {
-              console.error('Error marking rolls as allocated:', rollUpdateError);
-            }
           }
         }
       }
 
       toast.success(`${t('orderCreatedSuccessfully')} ${orderData.order_number}`);
 
-      // Log audit action with detailed description
       const totalMeters = selectedLots.reduce((sum, lot) => {
         const meters = lot.rollMeters?.split(',').reduce((s, m) => s + parseFloat(m), 0) || 0;
         return sum + meters;
@@ -244,7 +321,6 @@ const Orders = () => {
           .replace('{meters}', totalMeters.toFixed(2))
       );
 
-      // Show print dialog for new order
       const newOrder = await supabase
         .from('orders')
         .select(`
@@ -275,7 +351,6 @@ const Orders = () => {
       setCustomerName('');
       setSelectedLots([]);
       
-      // Clear cart if order was created from cart
       if (location.state?.fromCart) {
         clearCart();
       }
@@ -298,71 +373,47 @@ const Orders = () => {
 
       if (error) throw error;
 
-      // Get order details with selected roll IDs
       const order = orders.find(o => o.id === orderId);
       if (order) {
         for (const orderLot of order.order_lots) {
-          // Parse selected roll IDs
           const selectedRollIds = orderLot.selected_roll_ids?.split(',').filter(id => id.trim()) || [];
           
           if (selectedRollIds.length > 0) {
-            // Mark specific rolls as fulfilled
-            const { error: rollUpdateError } = await supabase
+            await supabase
               .from('rolls')
               .update({ status: 'fulfilled' })
               .in('id', selectedRollIds);
-            
-            if (rollUpdateError) {
-              console.error('Error marking rolls as fulfilled:', rollUpdateError);
-            }
 
-            // Get the actual meters from fulfilled rolls
-            const { data: fulfilledRolls, error: rollFetchError } = await supabase
+            const { data: fulfilledRolls } = await supabase
               .from('rolls')
               .select('meters')
               .in('id', selectedRollIds);
-            
-            if (rollFetchError) {
-              console.error('Error fetching fulfilled rolls:', rollFetchError);
-              continue;
-            }
 
             const totalFulfilledMeters = fulfilledRolls?.reduce((sum, roll) => sum + Number(roll.meters), 0) || 0;
 
-            // Get current lot data
-            const { data: currentLot, error: fetchError } = await supabase
+            const { data: currentLot } = await supabase
               .from('lots')
               .select('roll_count, meters, id')
               .eq('lot_number', orderLot.lot.lot_number)
               .single();
 
-            if (fetchError) {
-              console.error('Error fetching lot:', fetchError);
-              continue;
-            }
+            if (currentLot) {
+              const newRollCount = currentLot.roll_count - selectedRollIds.length;
+              const newMeters = Math.max(0, currentLot.meters - totalFulfilledMeters);
 
-            // Calculate new values based on actual roll data
-            const newRollCount = currentLot.roll_count - selectedRollIds.length;
-            const newMeters = Math.max(0, currentLot.meters - totalFulfilledMeters);
+              const updateData: any = {
+                roll_count: Math.max(0, newRollCount),
+                meters: newMeters
+              };
 
-            // Update lot quantities or mark as out_of_stock
-            const updateData: any = {
-              roll_count: Math.max(0, newRollCount),
-              meters: newMeters
-            };
+              if (newRollCount <= 0) {
+                updateData.status = 'out_of_stock';
+              }
 
-            // Mark as out_of_stock if no available rolls remaining
-            if (newRollCount <= 0) {
-              updateData.status = 'out_of_stock';
-            }
-
-            const { error: lotError } = await supabase
-              .from('lots')
-              .update(updateData)
-              .eq('lot_number', orderLot.lot.lot_number);
-
-            if (lotError) {
-              console.error('Error updating lot:', lotError);
+              await supabase
+                .from('lots')
+                .update(updateData)
+                .eq('lot_number', orderLot.lot.lot_number);
             }
           }
         }
@@ -370,7 +421,6 @@ const Orders = () => {
 
       toast.success(t('orderMarkedFulfilled') as string);
 
-      // Log audit action with detailed description
       await logAction(
         'FULFILL',
         'order',
@@ -396,10 +446,8 @@ const Orders = () => {
 
   const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
     try {
-      // First, get the order details to release allocated rolls
       const order = orders.find(o => o.id === orderId);
 
-      // Log audit action BEFORE deletion
       if (order) {
         const totalRolls = order.order_lots.reduce((sum, ol) => sum + ol.roll_count, 0);
         await logAction(
@@ -415,21 +463,16 @@ const Orders = () => {
         );
       }
 
-      if (order && !order.fulfilled_at) { // Only release if not fulfilled
+      if (order && !order.fulfilled_at) {
         for (const orderLot of order.order_lots) {
           const selectedRollIds = orderLot.selected_roll_ids?.split(',').filter(id => id.trim()) || [];
           
           if (selectedRollIds.length > 0) {
-            // Mark rolls as available again
-            const { error: rollUpdateError } = await supabase
+            await supabase
               .from('rolls')
               .update({ status: 'available' })
               .in('id', selectedRollIds)
-              .eq('status', 'allocated'); // Only update if they were allocated
-            
-            if (rollUpdateError) {
-              console.error('Error releasing rolls:', rollUpdateError);
-            }
+              .eq('status', 'allocated');
           }
         }
       }
@@ -442,7 +485,6 @@ const Orders = () => {
       if (error) throw error;
 
       toast.success(`Order ${orderNumber} deleted successfully`);
-
       fetchOrders();
     } catch (error: any) {
       toast.error('Failed to delete order: ' + error.message);
@@ -451,7 +493,6 @@ const Orders = () => {
 
   const handleUpdateOrder = async (orderId: string, updates: Record<string, any>) => {
     try {
-      // Get old data before update
       const oldOrder = orders.find(o => o.id === orderId);
 
       const { error } = await supabase
@@ -461,7 +502,6 @@ const Orders = () => {
 
       if (error) throw error;
 
-      // Log audit action
       if (oldOrder) {
         await logAction(
           'UPDATE',
@@ -486,7 +526,7 @@ const Orders = () => {
   const canFulfillOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
   const canDeleteOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
 
-  if (loading) {
+  if (loading && orders.length === 0) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -570,7 +610,6 @@ const Orders = () => {
               />
             </div>
 
-            {/* Show selected lots from cart */}
             {selectedLots.length > 0 && (
               <div className="space-y-2">
                 <Label>{t('selectedLots')} ({selectedLots.length})</Label>
@@ -589,7 +628,6 @@ const Orders = () => {
               </div>
             )}
 
-            {/* Instructions */}
             {selectedLots.length === 0 && (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
@@ -628,21 +666,81 @@ const Orders = () => {
       
       <Card>
         <CardHeader>
-          <CardTitle>{t('allOrders')}</CardTitle>
-          <CardDescription>
-            {t('viewManageOrders')}
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>{t('allOrders')}</CardTitle>
+              <CardDescription>
+                {t('viewManageOrders')}
+              </CardDescription>
+            </div>
+            <TableExportButton onExport={handleExport} />
+          </div>
         </CardHeader>
         <CardContent>
+          {/* Top Pagination */}
+          <DataTablePagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('orderNumberField')}</TableHead>
-                <TableHead>{t('customer')}</TableHead>
-                <TableHead>{t('lotsCount')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
-                <TableHead>{t('created')}</TableHead>
-                <TableHead>{t('actions')}</TableHead>
+                <SortableTableHead
+                  label={t('orderNumberField') as string}
+                  sortKey="order_number"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  filterable
+                  filterType="text"
+                  filterValue={filters.order_number || ''}
+                  onFilterChange={(value) => handleFilter('order_number', value)}
+                />
+                <SortableTableHead
+                  label={t('customer') as string}
+                  sortKey="customer_name"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  filterable
+                  filterType="text"
+                  filterValue={filters.customer_name || ''}
+                  onFilterChange={(value) => handleFilter('customer_name', value)}
+                />
+                <SortableTableHead
+                  label={t('lotsCount') as string}
+                  sortKey="lots_count"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                />
+                <SortableTableHead
+                  label={t('status') as string}
+                  sortKey="fulfilled_at"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  filterable
+                  filterType="select"
+                  filterOptions={[
+                    { value: 'fulfilled', label: t('fulfilled') as string },
+                    { value: 'pending', label: t('pending') as string },
+                  ]}
+                  filterValue={filters.status || ''}
+                  onFilterChange={(value) => handleFilter('status', value)}
+                />
+                <SortableTableHead
+                  label={t('created') as string}
+                  sortKey="created_at"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                />
+                <SortableTableHead
+                  label={t('actions') as string}
+                  sortKey=""
+                  currentSort={currentSort}
+                  onSort={() => {}}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -677,21 +775,13 @@ const Orders = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        {t('view')}
-                      </Button>
+                      <ViewDetailsButton onClick={() => setSelectedOrder(order)} />
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handlePrintOrder(order)}
                       >
-                        <FileText className="mr-2 h-4 w-4" />
-                        {t('print')}
+                        <FileText className="h-3 w-3" />
                       </Button>
                       {!order.fulfilled_at && canFulfillOrders && (
                         <Button
@@ -699,7 +789,7 @@ const Orders = () => {
                           size="sm"
                           onClick={() => handleFulfillOrder(order.id)}
                         >
-                          <CheckCircle className="h-4 w-4" />
+                          <CheckCircle className="h-3 w-3" />
                         </Button>
                       )}
                       {canDeleteOrders && (
@@ -709,7 +799,7 @@ const Orders = () => {
                               variant="outline"
                               size="sm"
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2 className="h-3 w-3 text-destructive" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -738,6 +828,15 @@ const Orders = () => {
               ))}
             </TableBody>
           </Table>
+
+          {/* Bottom Pagination */}
+          <DataTablePagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 
@@ -775,12 +874,12 @@ const Orders = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Quality</TableHead>
-                      <TableHead>Color</TableHead>
-                      <TableHead>Lot Number</TableHead>
-                      <TableHead>Rolls</TableHead>
-                      <TableHead>Meters</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableCell className="font-medium">Quality</TableCell>
+                      <TableCell className="font-medium">Color</TableCell>
+                      <TableCell className="font-medium">Lot Number</TableCell>
+                      <TableCell className="font-medium">Rolls</TableCell>
+                      <TableCell className="font-medium">Meters</TableCell>
+                      <TableCell className="font-medium">Type</TableCell>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -829,8 +928,6 @@ const Orders = () => {
           setShowBulkUpload(false);
         }}
       />
-
-
     </div>
   );
 };

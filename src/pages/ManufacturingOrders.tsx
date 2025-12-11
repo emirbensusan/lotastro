@@ -4,15 +4,19 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Upload, Factory, PackageIcon, AlertCircle, Clock, Search, History, Edit } from 'lucide-react';
+import { Plus, Upload, Factory, PackageIcon, AlertCircle, Clock, Search } from 'lucide-react';
 import ManufacturingOrderDialog from '@/components/ManufacturingOrderDialog';
 import MOBulkUpload from '@/components/MOBulkUpload';
 import MOStatusHistoryDialog from '@/components/MOStatusHistoryDialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
+import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
+import { ViewDetailsButton } from '@/components/ui/view-details-button';
 
 interface ManufacturingOrder {
   id: string;
@@ -58,21 +62,60 @@ const ManufacturingOrders: React.FC = () => {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<ManufacturingOrder | null>(null);
   
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Sorting state
+  const [currentSort, setCurrentSort] = useState<{ key: string; direction: SortDirection } | null>({
+    key: 'created_at',
+    direction: 'desc'
+  });
+
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!permissionsLoading) {
+      fetchSuppliers();
+    }
+  }, [permissionsLoading]);
 
   useEffect(() => {
     if (!permissionsLoading) {
       fetchOrders();
-      fetchSuppliers();
     }
-  }, [permissionsLoading, statusFilter, supplierFilter]);
+  }, [permissionsLoading, page, pageSize, currentSort, statusFilter, supplierFilter, filters]);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
+      // Get total count first
+      let countQuery = supabase
+        .from('manufacturing_orders')
+        .select('*', { count: 'exact', head: true });
+
+      if (statusFilter !== 'all') {
+        countQuery = countQuery.eq('status', statusFilter);
+      }
+      if (supplierFilter !== 'all') {
+        countQuery = countQuery.eq('supplier_id', supplierFilter);
+      }
+      if (filters.quality) {
+        countQuery = countQuery.ilike('quality', `%${filters.quality}%`);
+      }
+      if (filters.color) {
+        countQuery = countQuery.ilike('color', `%${filters.color}%`);
+      }
+
+      const { count } = await countQuery;
+      setTotalCount(count || 0);
+
+      // Fetch paginated data
       let query = supabase
         .from('manufacturing_orders')
         .select(`
@@ -81,16 +124,30 @@ const ManufacturingOrders: React.FC = () => {
             id,
             name
           )
-        `)
-        .order('created_at', { ascending: false });
+        `);
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
       }
-
       if (supplierFilter !== 'all') {
         query = query.eq('supplier_id', supplierFilter);
       }
+      if (filters.quality) {
+        query = query.ilike('quality', `%${filters.quality}%`);
+      }
+      if (filters.color) {
+        query = query.ilike('color', `%${filters.color}%`);
+      }
+
+      // Apply sorting
+      if (currentSort?.key && currentSort?.direction) {
+        query = query.order(currentSort.key, { ascending: currentSort.direction === 'asc' });
+      }
+
+      // Apply pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
 
       const { data, error } = await query;
 
@@ -120,6 +177,42 @@ const ManufacturingOrders: React.FC = () => {
     } catch (error) {
       console.error('Error fetching suppliers:', error);
     }
+  };
+
+  const handleSort = (key: string, direction: SortDirection) => {
+    setCurrentSort(direction ? { key, direction } : null);
+    setPage(1);
+  };
+
+  const handleFilter = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
+
+  const handleExport = () => {
+    const exportData = orders.map(order => ({
+      mo_number: order.mo_number,
+      supplier: order.suppliers?.name || '-',
+      quality: order.quality,
+      color: order.color,
+      ordered_amount: order.ordered_amount,
+      order_date: new Date(order.order_date).toLocaleDateString(),
+      eta: order.expected_completion_date ? new Date(order.expected_completion_date).toLocaleDateString() : '-',
+      status: order.status,
+      customer: order.is_customer_order ? order.customer_name || '' : '-',
+    }));
+    
+    exportToCSV(exportData, [
+      { key: 'mo_number', label: t('mo.moNumber') as string },
+      { key: 'supplier', label: t('supplier') as string },
+      { key: 'quality', label: t('quality') as string },
+      { key: 'color', label: t('color') as string },
+      { key: 'ordered_amount', label: t('mo.orderedMeters') as string },
+      { key: 'order_date', label: t('mo.orderDate') as string },
+      { key: 'eta', label: t('mo.eta') as string },
+      { key: 'status', label: t('status') as string },
+      { key: 'customer', label: t('customer') as string },
+    ], 'manufacturing_orders');
   };
 
   const calculateStats = () => {
@@ -162,18 +255,6 @@ const ManufacturingOrders: React.FC = () => {
     const diffTime = eta.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
-  };
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'ORDERED': return 'outline';
-      case 'CONFIRMED': return 'secondary';
-      case 'IN_PRODUCTION': return 'default';
-      case 'READY_TO_SHIP': return 'default';
-      case 'SHIPPED': return 'default';
-      case 'CANCELLED': return 'destructive';
-      default: return 'outline';
-    }
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -338,7 +419,7 @@ const ManufacturingOrders: React.FC = () => {
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder={t('filterByStatus')} />
           </SelectTrigger>
@@ -352,7 +433,7 @@ const ManufacturingOrders: React.FC = () => {
           </SelectContent>
         </Select>
 
-        <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+        <Select value={supplierFilter} onValueChange={(value) => { setSupplierFilter(value); setPage(1); }}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder={t('filterBySupplier')} />
           </SelectTrigger>
@@ -370,9 +451,21 @@ const ManufacturingOrders: React.FC = () => {
       {/* Orders Table */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('mo.ordersList')}</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>{t('mo.ordersList')}</CardTitle>
+            <TableExportButton onExport={handleExport} />
+          </div>
         </CardHeader>
         <CardContent>
+          {/* Top Pagination */}
+          <DataTablePagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+
           {loading ? (
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
@@ -387,18 +480,81 @@ const ManufacturingOrders: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('mo.moNumber')}</TableHead>
-                  <TableHead>{t('supplier')}</TableHead>
-                  <TableHead>{t('quality')}</TableHead>
-                  <TableHead>{t('color')}</TableHead>
-                  <TableHead className="text-right">{t('mo.orderedMeters')}</TableHead>
-                  <TableHead>{t('mo.orderDate')}</TableHead>
-                  <TableHead>{t('mo.eta')}</TableHead>
-                  <TableHead>{t('status')}</TableHead>
-                  <TableHead>{t('mo.daysToEta')}</TableHead>
-                  <TableHead>{t('customer')}</TableHead>
-                  <TableHead>{t('mo.lastUpdated')}</TableHead>
-                  <TableHead>{t('actions')}</TableHead>
+                  <SortableTableHead
+                    label={t('mo.moNumber') as string}
+                    sortKey="mo_number"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={t('supplier') as string}
+                    sortKey="supplier_id"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={t('quality') as string}
+                    sortKey="quality"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                    filterable
+                    filterType="text"
+                    filterValue={filters.quality || ''}
+                    onFilterChange={(value) => handleFilter('quality', value)}
+                  />
+                  <SortableTableHead
+                    label={t('color') as string}
+                    sortKey="color"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                    filterable
+                    filterType="text"
+                    filterValue={filters.color || ''}
+                    onFilterChange={(value) => handleFilter('color', value)}
+                  />
+                  <SortableTableHead
+                    label={t('mo.orderedMeters') as string}
+                    sortKey="ordered_amount"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                    className="text-right"
+                  />
+                  <SortableTableHead
+                    label={t('mo.orderDate') as string}
+                    sortKey="order_date"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={t('mo.eta') as string}
+                    sortKey="expected_completion_date"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={t('status') as string}
+                    sortKey="status"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={t('mo.daysToEta') as string}
+                    sortKey=""
+                    currentSort={currentSort}
+                    onSort={() => {}}
+                  />
+                  <SortableTableHead
+                    label={t('customer') as string}
+                    sortKey="customer_name"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={t('actions') as string}
+                    sortKey=""
+                    currentSort={currentSort}
+                    onSort={() => {}}
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -437,27 +593,15 @@ const ManufacturingOrders: React.FC = () => {
                         ) : '-'}
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(order.updated_at).toLocaleDateString()}
-                        </span>
-                      </TableCell>
-                      <TableCell>
                         <div className="flex space-x-2">
-                          {canCreate && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEdit(order)}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                          )}
+                          <ViewDetailsButton onClick={() => handleEdit(order)} />
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleViewHistory(order)}
+                            className="px-2"
                           >
-                            <History className="h-3 w-3" />
+                            {t('mo.history')}
                           </Button>
                         </div>
                       </TableCell>
@@ -467,6 +611,15 @@ const ManufacturingOrders: React.FC = () => {
               </TableBody>
             </Table>
           )}
+
+          {/* Bottom Pagination */}
+          <DataTablePagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 
@@ -478,6 +631,7 @@ const ManufacturingOrders: React.FC = () => {
         suppliers={suppliers}
         onSuccess={() => {
           fetchOrders();
+          setDialogOpen(false);
           setSelectedOrder(null);
         }}
       />
@@ -486,7 +640,10 @@ const ManufacturingOrders: React.FC = () => {
         open={bulkUploadOpen}
         onOpenChange={setBulkUploadOpen}
         suppliers={suppliers}
-        onSuccess={fetchOrders}
+        onSuccess={() => {
+          fetchOrders();
+          setBulkUploadOpen(false);
+        }}
       />
 
       <MOStatusHistoryDialog
