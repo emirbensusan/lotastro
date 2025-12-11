@@ -235,8 +235,9 @@ serve(async (req) => {
       let allAvailableRolls: { lot_id: string; meters: number }[] = [];
       
       if (lotIds.length > 0) {
-        // Batch fetch rolls in chunks of 500 lot IDs to avoid query limits
-        const LOT_BATCH_SIZE = 500;
+        // Batch fetch rolls in chunks of 100 lot IDs to avoid URL length limits
+        // (500 UUIDs = ~18KB URL which exceeds HTTP limits)
+        const LOT_BATCH_SIZE = 100;
         for (let i = 0; i < lotIds.length; i += LOT_BATCH_SIZE) {
           const batchLotIds = lotIds.slice(i, i + LOT_BATCH_SIZE);
           const rollsData = await fetchAllRecords<{ lot_id: string; meters: number }>(
