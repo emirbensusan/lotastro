@@ -53,6 +53,23 @@ const translations = {
     page: 'Page',
     of: 'of',
     
+    // Pagination
+    'pagination.showing': 'Showing',
+    'pagination.of': 'of',
+    'pagination.perPage': 'Per page',
+    'pagination.page': 'Page',
+    'pagination.previous': 'Previous',
+    'pagination.next': 'Next',
+    
+    // Table Actions
+    'table.seeDetails': 'See Details',
+    'table.export': 'Export',
+    'table.filter': 'Filter',
+    'table.sort': 'Sort',
+    'table.sortAsc': 'Sort Ascending',
+    'table.sortDesc': 'Sort Descending',
+    'table.clearSort': 'Clear Sort',
+    
     // Common keys for forecast and other modules
     all: 'All',
     reviewed: 'Reviewed',
@@ -2370,6 +2387,23 @@ const translations = {
     next: 'Sonraki',
     page: 'Sayfa',
     of: '/',
+    
+    // Pagination
+    'pagination.showing': 'Gösteriliyor',
+    'pagination.of': '/',
+    'pagination.perPage': 'Sayfa başına',
+    'pagination.page': 'Sayfa',
+    'pagination.previous': 'Önceki',
+    'pagination.next': 'Sonraki',
+    
+    // Table Actions
+    'table.seeDetails': 'Detay Görüntüle',
+    'table.export': 'Dışa Aktar',
+    'table.filter': 'Filtrele',
+    'table.sort': 'Sırala',
+    'table.sortAsc': 'Artan Sırala',
+    'table.sortDesc': 'Azalan Sırala',
+    'table.clearSort': 'Sıralamayı Temizle',
     
     // Common keys for forecast and other modules
     all: 'Tümü',
