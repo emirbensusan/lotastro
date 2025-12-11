@@ -12,15 +12,14 @@ import {
   Plus, 
   Download, 
   Upload,
-  ChevronLeft, 
-  ChevronRight,
   Filter,
   ArrowUpDown,
   BookOpen,
   Columns3,
-  Eye,
   X
 } from 'lucide-react';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { ViewDetailsButton } from '@/components/ui/view-details-button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
@@ -135,7 +134,7 @@ const Catalog: React.FC = () => {
   
   // Pagination
   const [page, setPage] = useState(1);
-  const pageSize = 50;
+  const [pageSize, setPageSize] = useState(50);
   
   // Filters & Sorting
   const [searchQuery, setSearchQuery] = useState('');
@@ -449,40 +448,6 @@ const Catalog: React.FC = () => {
     );
   };
 
-  // Pagination component for reuse
-  const PaginationControls = ({ showInfo = true }: { showInfo?: boolean }) => (
-    <div className="flex items-center justify-between">
-      {showInfo && (
-        <p className="text-xs text-muted-foreground">
-          {t('showing')} {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} {t('of')} {totalCount}
-        </p>
-      )}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page === 1}
-          onClick={() => setPage(p => p - 1)}
-          className="h-7"
-        >
-          <ChevronLeft className="h-3 w-3" />
-        </Button>
-        <span className="text-xs">
-          {t('page')} {page} {t('of')} {totalPages}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page === totalPages}
-          onClick={() => setPage(p => p + 1)}
-          className="h-7"
-        >
-          <ChevronRight className="h-3 w-3" />
-        </Button>
-      </div>
-    </div>
-  );
-
   // Show column selector first
   if (showColumnSelector) {
     return (
@@ -592,11 +557,13 @@ const Catalog: React.FC = () => {
             </div>
             
             {/* Top Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center">
-                <PaginationControls showInfo={false} />
-              </div>
-            )}
+            <DataTablePagination
+              page={page}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            />
           </div>
         </CardContent>
       </Card>
@@ -672,10 +639,7 @@ const Catalog: React.FC = () => {
                         </TableCell>
                       ))}
                       <TableCell className={cellPadding}>
-                        <Button variant="ghost" size="sm" className="h-6 text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20">
-                          <Eye className="h-3 w-3 mr-1" />
-                          {t('catalog.seeDetails')}
-                        </Button>
+                        <ViewDetailsButton onClick={() => {}} showLabel={true} />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -685,11 +649,15 @@ const Catalog: React.FC = () => {
           )}
 
           {/* Bottom Pagination */}
-          {totalPages > 1 && (
-            <div className="p-3 border-t">
-              <PaginationControls />
-            </div>
-          )}
+          <div className="p-3 border-t">
+            <DataTablePagination
+              page={page}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            />
+          </div>
         </CardContent>
       </Card>
 

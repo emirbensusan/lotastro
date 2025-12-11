@@ -23,9 +23,6 @@ import {
   Upload,
   Settings,
   Search,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
   RefreshCw,
   ArrowUpDown,
   ArrowUp,
@@ -33,6 +30,8 @@ import {
   Filter,
   X
 } from 'lucide-react';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { ViewDetailsButton } from '@/components/ui/view-details-button';
 import { useNavigate } from 'react-router-dom';
 import HistoricalImportModal from '@/components/forecast/HistoricalImportModal';
 import ForecastDetailDrawer from '@/components/forecast/ForecastDetailDrawer';
@@ -113,7 +112,7 @@ const Forecast: React.FC = () => {
   
   // Pagination
   const [page, setPage] = useState(1);
-  const pageSize = 50;
+  const [pageSize, setPageSize] = useState(50);
 
   // Get unique qualities and colors for filters
   const uniqueQualities = useMemo(() => {
@@ -394,36 +393,6 @@ const Forecast: React.FC = () => {
 
   const hasActiveFilters = searchQuery || statusFilter !== 'all' || qualityFilter || colorFilter;
 
-  // Pagination controls component
-  const PaginationControls = () => (
-    <div className="flex items-center justify-between">
-      <p className="text-sm text-muted-foreground">
-        {t('showing') || 'Showing'} {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredAndSortedRecommendations.length)} {t('of') || 'of'} {filteredAndSortedRecommendations.length}
-      </p>
-      <div className="flex gap-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setPage(p => Math.max(1, p - 1))}
-          disabled={page === 1}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="flex items-center px-3 text-sm">
-          {page} / {totalPages}
-        </span>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-          disabled={page === totalPages}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-
   if (permissionsLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -688,11 +657,15 @@ const Forecast: React.FC = () => {
           ) : (
             <>
               {/* Top Pagination */}
-              {totalPages > 1 && (
-                <div className="mb-4">
-                  <PaginationControls />
-                </div>
-              )}
+              <div className="mb-4">
+                <DataTablePagination
+                  page={page}
+                  pageSize={pageSize}
+                  totalCount={filteredAndSortedRecommendations.length}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+                />
+              </div>
 
               <Table>
                 <TableHeader>
@@ -805,15 +778,10 @@ const Forecast: React.FC = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <ViewDetailsButton
                             onClick={() => openDetail(rec)}
-                            className="h-6 text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            {t('forecast.viewDetails') || 'Details'}
-                          </Button>
+                            showLabel={false}
+                          />
                         </TableCell>
                       </TableRow>
                     );
@@ -822,11 +790,15 @@ const Forecast: React.FC = () => {
               </Table>
 
               {/* Bottom Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-4">
-                  <PaginationControls />
-                </div>
-              )}
+              <div className="mt-4">
+                <DataTablePagination
+                  page={page}
+                  pageSize={pageSize}
+                  totalCount={filteredAndSortedRecommendations.length}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+                />
+              </div>
             </>
           )}
         </CardContent>
