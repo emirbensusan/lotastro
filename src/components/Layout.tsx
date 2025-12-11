@@ -252,15 +252,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <SidebarProvider>
       <div className="min-h-screen bg-background flex w-full">
-        {/* Desktop Sidebar */}
-        <div className="hidden md:flex md:flex-col">
-          <AppSidebar />
-        </div>
+        {/* Desktop Sidebar - direct flex child, no wrapper */}
+        <AppSidebar />
 
         {/* Main content area including header */}
-        <div className="flex-1 flex flex-col min-h-screen w-full">
+        <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-hidden">
           {/* Top Navigation - sticky within content flow */}
-          <header className="sticky top-0 z-50 border-b bg-card">
+          <header className="sticky top-0 z-50 border-b bg-card shrink-0">
             <div className="flex h-12 items-center justify-between px-3 md:px-4">
               <div className="flex items-center space-x-2">
                 {/* Desktop Sidebar Toggle */}
@@ -395,8 +393,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 w-full">
-            <div className="p-4 md:p-6 w-full">
+          <main className="flex-1 overflow-auto">
+            <div className="p-4 md:p-6">
               {children}
             </div>
           </main>
