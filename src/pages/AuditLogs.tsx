@@ -5,17 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/use-toast';
-import { History, Undo, Search, Filter, FileText, RefreshCw } from 'lucide-react';
+import { History, Undo, Search, Filter, FileText, RefreshCw, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
+import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
+import { ViewDetailsButton } from '@/components/ui/view-details-button';
 
 interface AuditLog {
   id: string;
@@ -302,19 +306,44 @@ const AuditLogs: React.FC = () => {
   const [showReversalDialog, setShowReversalDialog] = useState(false);
   const [reversalReason, setReversalReason] = useState('');
   const [reversing, setReversing] = useState(false);
+  
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
+  
+  // Sorting state
+  const [currentSort, setCurrentSort] = useState<{ key: string; direction: SortDirection } | null>({
+    key: 'created_at',
+    direction: 'desc'
+  });
 
   useEffect(() => {
     fetchAuditLogs();
-  }, [filterAction, filterEntity]);
+  }, [filterAction, filterEntity, page, pageSize, currentSort]);
 
   const fetchAuditLogs = async () => {
     setLoading(true);
     try {
+      // Get total count
+      let countQuery = supabase
+        .from('audit_logs')
+        .select('*', { count: 'exact', head: true });
+      
+      if (filterAction !== 'all') {
+        countQuery = countQuery.eq('action', filterAction as any);
+      }
+      if (filterEntity !== 'all') {
+        countQuery = countQuery.eq('entity_type', filterEntity as any);
+      }
+      
+      const { count } = await countQuery;
+      setTotalCount(count || 0);
+      
+      // Get paginated data
       let query = supabase
         .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .select('*');
 
       if (filterAction !== 'all') {
         query = query.eq('action', filterAction as any);
@@ -323,6 +352,18 @@ const AuditLogs: React.FC = () => {
       if (filterEntity !== 'all') {
         query = query.eq('entity_type', filterEntity as any);
       }
+
+      // Apply sorting
+      if (currentSort) {
+        query = query.order(currentSort.key, { ascending: currentSort.direction === 'asc' });
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
+      
+      // Apply pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
 
       const { data, error } = await query;
 
@@ -338,6 +379,35 @@ const AuditLogs: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleSort = (key: string, direction: SortDirection) => {
+    setCurrentSort(direction ? { key, direction } : null);
+    setPage(1);
+  };
+  
+  const handleExport = () => {
+    const exportData = logs.map(log => ({
+      timestamp: format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss'),
+      action: log.action,
+      entity_type: log.entity_type,
+      entity_identifier: log.entity_identifier || '',
+      user_email: log.user_email,
+      user_role: log.user_role,
+      status: log.is_reversed ? 'Reversed' : 'Active',
+      notes: log.notes || ''
+    }));
+    
+    exportToCSV(exportData, [
+      { key: 'timestamp', label: String(t('timestamp')) },
+      { key: 'action', label: String(t('action')) },
+      { key: 'entity_type', label: String(t('entity')) },
+      { key: 'entity_identifier', label: String(t('identifier')) },
+      { key: 'user_email', label: String(t('user')) },
+      { key: 'user_role', label: String(t('role')) },
+      { key: 'status', label: String(t('status')) },
+      { key: 'notes', label: String(t('notes')) }
+    ], `audit-logs-${format(new Date(), 'yyyy-MM-dd')}`);
   };
 
   const handleReverseAction = async () => {
@@ -484,6 +554,8 @@ const AuditLogs: React.FC = () => {
               <RefreshCw className="mr-2 h-4 w-4" />
               {String(t('refresh'))}
             </Button>
+            
+            <TableExportButton onExport={handleExport} disabled={logs.length === 0} />
           </div>
         </CardContent>
       </Card>
@@ -498,70 +570,147 @@ const AuditLogs: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{String(t('timestamp'))}</TableHead>
-                  <TableHead>{String(t('action'))}</TableHead>
-                  <TableHead>{String(t('entity'))}</TableHead>
-                  <TableHead>{String(t('identifier'))}</TableHead>
-                  <TableHead>{String(t('user'))}</TableHead>
-                  <TableHead>{String(t('status'))}</TableHead>
-                  <TableHead>{String(t('auditActions'))}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLogs.map((log) => (
-                  <TableRow key={log.id} className={log.is_reversed ? 'opacity-50' : ''}>
-                    <TableCell>{format(new Date(log.created_at), 'PPpp')}</TableCell>
-                    <TableCell>{getActionBadge(log.action)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{log.entity_type}</Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">{log.entity_identifier}</TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>{log.user_email}</div>
-                        <div className="text-muted-foreground text-xs">{log.user_role}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {log.is_reversed ? (
-                        <Badge variant="secondary">{String(t('reversed'))}</Badge>
-                      ) : (
-                        <Badge variant="default">{String(t('active'))}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedLog(log);
-                            setShowDetailsDialog(true);
-                          }}
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                        {canReverse && !log.is_reversed && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
+            <>
+              <DataTablePagination
+                page={page}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+              />
+              
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableTableHead
+                      label={String(t('timestamp'))}
+                      sortKey="created_at"
+                      currentSort={currentSort}
+                      onSort={handleSort}
+                    />
+                    <SortableTableHead
+                      label={String(t('action'))}
+                      sortKey="action"
+                      currentSort={currentSort}
+                      onSort={handleSort}
+                      filterable
+                      filterType="select"
+                      filterOptions={[
+                        { value: 'CREATE', label: String(t('actionCreate')) },
+                        { value: 'UPDATE', label: String(t('actionUpdate')) },
+                        { value: 'DELETE', label: String(t('actionDelete')) },
+                        { value: 'FULFILL', label: String(t('actionFulfill')) },
+                        { value: 'APPROVE', label: String(t('actionApprove')) },
+                        { value: 'REJECT', label: String(t('actionReject')) }
+                      ]}
+                      filterValue={filterAction !== 'all' ? filterAction : ''}
+                      onFilterChange={(value) => { setFilterAction(value || 'all'); setPage(1); }}
+                    />
+                    <SortableTableHead
+                      label={String(t('entity'))}
+                      sortKey="entity_type"
+                      currentSort={currentSort}
+                      onSort={handleSort}
+                      filterable
+                      filterType="select"
+                      filterOptions={[
+                        { value: 'lot', label: String(t('lotsEntity')) },
+                        { value: 'order', label: String(t('ordersEntity')) },
+                        { value: 'roll', label: String(t('rollsEntity')) },
+                        { value: 'supplier', label: String(t('suppliersEntity')) },
+                        { value: 'forecast_settings', label: String(t('forecastSettingsEntity')) }
+                      ]}
+                      filterValue={filterEntity !== 'all' ? filterEntity : ''}
+                      onFilterChange={(value) => { setFilterEntity(value || 'all'); setPage(1); }}
+                    />
+                    <SortableTableHead
+                      label={String(t('identifier'))}
+                      sortKey="entity_identifier"
+                      currentSort={currentSort}
+                      onSort={handleSort}
+                      filterable
+                      filterType="text"
+                      filterValue={searchTerm}
+                      onFilterChange={(value) => setSearchTerm(value || '')}
+                    />
+                    <SortableTableHead
+                      label={String(t('user'))}
+                      sortKey="user_email"
+                      currentSort={currentSort}
+                      onSort={handleSort}
+                    />
+                    <SortableTableHead
+                      label={String(t('status'))}
+                      sortKey="is_reversed"
+                      currentSort={currentSort}
+                      onSort={handleSort}
+                    />
+                    <SortableTableHead
+                      label={String(t('auditActions'))}
+                      sortKey=""
+                      currentSort={currentSort}
+                      onSort={() => {}}
+                    />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLogs.map((log) => (
+                    <TableRow key={log.id} className={log.is_reversed ? 'opacity-50' : ''}>
+                      <TableCell>{format(new Date(log.created_at), 'PPpp')}</TableCell>
+                      <TableCell>{getActionBadge(log.action)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{log.entity_type}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">{log.entity_identifier}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>{log.user_email}</div>
+                          <div className="text-muted-foreground text-xs">{log.user_role}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {log.is_reversed ? (
+                          <Badge variant="secondary">{String(t('reversed'))}</Badge>
+                        ) : (
+                          <Badge variant="default">{String(t('active'))}</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <ViewDetailsButton
                             onClick={() => {
                               setSelectedLog(log);
-                              setShowReversalDialog(true);
+                              setShowDetailsDialog(true);
                             }}
-                          >
-                            <Undo className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                            showLabel={false}
+                          />
+                          {canReverse && !log.is_reversed && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setSelectedLog(log);
+                                setShowReversalDialog(true);
+                              }}
+                            >
+                              <Undo className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              <DataTablePagination
+                page={page}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+              />
+            </>
           )}
         </CardContent>
       </Card>
