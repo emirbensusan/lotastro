@@ -51,6 +51,62 @@ interface DemandData {
   demand_periods: { date: Date; amount: number }[];
 }
 
+// Helper function to fetch ALL records with pagination (avoiding 1000 row limit)
+async function fetchAllRecords<T>(
+  supabase: any,
+  table: string,
+  select: string,
+  filters?: { column: string; operator: string; value: any }[],
+  order?: { column: string; ascending: boolean }
+): Promise<T[]> {
+  const BATCH_SIZE = 1000;
+  let allRecords: T[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabase.from(table).select(select);
+    
+    // Apply filters
+    if (filters) {
+      for (const filter of filters) {
+        if (filter.operator === 'eq') {
+          query = query.eq(filter.column, filter.value);
+        } else if (filter.operator === 'in') {
+          query = query.in(filter.column, filter.value);
+        } else if (filter.operator === 'gte') {
+          query = query.gte(filter.column, filter.value);
+        } else if (filter.operator === 'neq') {
+          query = query.neq(filter.column, filter.value);
+        }
+      }
+    }
+    
+    // Apply ordering if specified
+    if (order) {
+      query = query.order(order.column, { ascending: order.ascending });
+    }
+    
+    const { data, error } = await query.range(offset, offset + BATCH_SIZE - 1);
+    
+    if (error) {
+      console.error(`[fetchAllRecords] Error fetching ${table}:`, error);
+      throw error;
+    }
+    
+    allRecords = allRecords.concat(data || []);
+    hasMore = (data?.length || 0) === BATCH_SIZE;
+    offset += BATCH_SIZE;
+    
+    if (hasMore) {
+      console.log(`[fetchAllRecords] Fetched ${allRecords.length} records from ${table}, fetching more...`);
+    }
+  }
+  
+  console.log(`[fetchAllRecords] Total records from ${table}: ${allRecords.length}`);
+  return allRecords;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -123,17 +179,15 @@ serve(async (req) => {
 
       console.log(`[forecast-engine] Using settings:`, JSON.stringify(settings, null, 2));
 
-      // 3. Fetch per-quality overrides
-      const { data: overridesData, error: overridesError } = await supabase
-        .from('forecast_settings_per_quality')
-        .select('*');
-
-      if (overridesError) {
-        console.warn('[forecast-engine] Error fetching overrides:', overridesError);
-      }
+      // 3. Fetch per-quality overrides (using pagination)
+      const overridesData = await fetchAllRecords<QualityOverride>(
+        supabase,
+        'forecast_settings_per_quality',
+        '*'
+      );
 
       const overridesMap = new Map<string, QualityOverride>();
-      (overridesData || []).forEach((o: QualityOverride) => {
+      overridesData.forEach((o: QualityOverride) => {
         overridesMap.set(`${o.quality_code}|${o.color_code}`, o);
       });
 
@@ -146,30 +200,71 @@ serve(async (req) => {
       console.log(`[forecast-engine] Default lead time: ${defaultLeadTime} days`);
 
       // 5. Fetch quality units
-      const { data: qualitiesData } = await supabase
-        .from('qualities')
-        .select('code, unit');
+      const qualitiesData = await fetchAllRecords<{ code: string; unit: string }>(
+        supabase,
+        'qualities',
+        'code, unit'
+      );
 
       const unitMap = new Map<string, string>();
-      (qualitiesData || []).forEach((q: { code: string; unit: string }) => {
+      qualitiesData.forEach((q: { code: string; unit: string }) => {
         unitMap.set(q.code.toUpperCase(), q.unit);
       });
 
       // 6. Aggregate available stock from lots + rolls
+      // First fetch ALL lots with in_stock status using pagination
       console.log('[forecast-engine] Aggregating available stock...');
-      const { data: lotsData, error: lotsError } = await supabase
-        .from('lots')
-        .select('id, quality, color, meters, roll_count, status')
-        .eq('status', 'in_stock');
+      const lotsData = await fetchAllRecords<{
+        id: string;
+        quality: string;
+        color: string;
+        meters: number;
+        roll_count: number;
+        status: string;
+      }>(
+        supabase,
+        'lots',
+        'id, quality, color, meters, roll_count, status',
+        [{ column: 'status', operator: 'eq', value: 'in_stock' }]
+      );
 
-      if (lotsError) {
-        console.error('[forecast-engine] Error fetching lots:', lotsError);
+      console.log(`[forecast-engine] Fetched ${lotsData.length} lots with in_stock status`);
+
+      // Fetch ALL available rolls in one batch query (instead of per-lot queries)
+      const lotIds = lotsData.map(l => l.id);
+      let allAvailableRolls: { lot_id: string; meters: number }[] = [];
+      
+      if (lotIds.length > 0) {
+        // Batch fetch rolls in chunks of 500 lot IDs to avoid query limits
+        const LOT_BATCH_SIZE = 500;
+        for (let i = 0; i < lotIds.length; i += LOT_BATCH_SIZE) {
+          const batchLotIds = lotIds.slice(i, i + LOT_BATCH_SIZE);
+          const rollsData = await fetchAllRecords<{ lot_id: string; meters: number }>(
+            supabase,
+            'rolls',
+            'lot_id, meters',
+            [
+              { column: 'lot_id', operator: 'in', value: batchLotIds },
+              { column: 'status', operator: 'eq', value: 'available' }
+            ]
+          );
+          allAvailableRolls = allAvailableRolls.concat(rollsData);
+        }
       }
 
-      // Get available rolls for each lot
+      console.log(`[forecast-engine] Fetched ${allAvailableRolls.length} available rolls`);
+
+      // Group rolls by lot_id
+      const rollsByLot = new Map<string, number>();
+      for (const roll of allAvailableRolls) {
+        const current = rollsByLot.get(roll.lot_id) || 0;
+        rollsByLot.set(roll.lot_id, current + roll.meters);
+      }
+
+      // Now aggregate stock positions
       const stockPositions = new Map<string, StockPosition>();
 
-      for (const lot of (lotsData || [])) {
+      for (const lot of lotsData) {
         const key = `${lot.quality.toUpperCase()}|${lot.color.toUpperCase()}`;
         const existing = stockPositions.get(key) || {
           quality_code: lot.quality.toUpperCase(),
@@ -180,28 +275,30 @@ serve(async (req) => {
           in_production_stock: 0,
         };
 
-        // Get available rolls for this lot
-        const { data: rollsData } = await supabase
-          .from('rolls')
-          .select('meters')
-          .eq('lot_id', lot.id)
-          .eq('status', 'available');
-
-        const availableMeters = (rollsData || []).reduce((sum: number, r: { meters: number }) => sum + r.meters, 0);
+        const availableMeters = rollsByLot.get(lot.id) || 0;
         existing.available_stock += availableMeters;
         stockPositions.set(key, existing);
       }
 
       console.log(`[forecast-engine] Found ${stockPositions.size} quality-color combinations in stock`);
 
-      // 7. Aggregate incoming stock
+      // 7. Aggregate incoming stock using pagination
       console.log('[forecast-engine] Aggregating incoming stock...');
-      const { data: incomingData } = await supabase
-        .from('incoming_stock')
-        .select('quality, color, expected_meters, received_meters')
-        .in('status', ['pending_inbound', 'partially_received']);
+      const incomingData = await fetchAllRecords<{
+        quality: string;
+        color: string;
+        expected_meters: number;
+        received_meters: number;
+      }>(
+        supabase,
+        'incoming_stock',
+        'quality, color, expected_meters, received_meters',
+        [{ column: 'status', operator: 'in', value: ['pending_inbound', 'partially_received'] }]
+      );
 
-      for (const inc of (incomingData || [])) {
+      console.log(`[forecast-engine] Fetched ${incomingData.length} incoming stock records`);
+
+      for (const inc of incomingData) {
         const key = `${inc.quality.toUpperCase()}|${inc.color.toUpperCase()}`;
         const existing = stockPositions.get(key) || {
           quality_code: inc.quality.toUpperCase(),
@@ -215,14 +312,22 @@ serve(async (req) => {
         stockPositions.set(key, existing);
       }
 
-      // 8. Aggregate in-production stock from manufacturing orders
+      // 8. Aggregate in-production stock from manufacturing orders using pagination
       console.log('[forecast-engine] Aggregating in-production stock...');
-      const { data: moData } = await supabase
-        .from('manufacturing_orders')
-        .select('quality, color, ordered_amount')
-        .in('status', ['ORDERED', 'CONFIRMED', 'IN_PRODUCTION', 'READY_TO_SHIP']);
+      const moData = await fetchAllRecords<{
+        quality: string;
+        color: string;
+        ordered_amount: number;
+      }>(
+        supabase,
+        'manufacturing_orders',
+        'quality, color, ordered_amount',
+        [{ column: 'status', operator: 'in', value: ['ORDERED', 'CONFIRMED', 'IN_PRODUCTION', 'READY_TO_SHIP'] }]
+      );
 
-      for (const mo of (moData || [])) {
+      console.log(`[forecast-engine] Fetched ${moData.length} manufacturing orders`);
+
+      for (const mo of moData) {
         const key = `${mo.quality.toUpperCase()}|${mo.color.toUpperCase()}`;
         const existing = stockPositions.get(key) || {
           quality_code: mo.quality.toUpperCase(),
@@ -236,19 +341,29 @@ serve(async (req) => {
         stockPositions.set(key, existing);
       }
 
-      // 9. Fetch historical demand
+      // 9. Fetch historical demand using pagination
       console.log('[forecast-engine] Fetching historical demand...');
       const historyStartDate = new Date();
       historyStartDate.setMonth(historyStartDate.getMonth() - settings.history_window_months);
 
-      const { data: demandData } = await supabase
-        .from('demand_history')
-        .select('quality_code, color_code, demand_date, amount, unit')
-        .gte('demand_date', historyStartDate.toISOString().split('T')[0])
-        .order('demand_date', { ascending: false });
+      const demandDataRecords = await fetchAllRecords<{
+        quality_code: string;
+        color_code: string;
+        demand_date: string;
+        amount: number;
+        unit: string;
+      }>(
+        supabase,
+        'demand_history',
+        'quality_code, color_code, demand_date, amount, unit',
+        [{ column: 'demand_date', operator: 'gte', value: historyStartDate.toISOString().split('T')[0] }],
+        { column: 'demand_date', ascending: false }
+      );
+
+      console.log(`[forecast-engine] Fetched ${demandDataRecords.length} demand history records`);
 
       const demandMap = new Map<string, DemandData>();
-      for (const d of (demandData || [])) {
+      for (const d of demandDataRecords) {
         const key = `${d.quality_code.toUpperCase()}|${d.color_code.toUpperCase()}`;
         const existing = demandMap.get(key) || {
           quality_code: d.quality_code.toUpperCase(),
@@ -274,6 +389,7 @@ serve(async (req) => {
       }
 
       console.log(`[forecast-engine] Found demand data for ${demandMap.size} quality-color combinations`);
+      console.log(`[forecast-engine] Total quality-color combinations to process: ${stockPositions.size}`);
 
       // 10. Calculate forecasts and recommendations
       console.log('[forecast-engine] Calculating forecasts...');
@@ -412,7 +528,7 @@ serve(async (req) => {
         const normalRec = calcRecommendation(scenarios.normal);
         const aggressiveRec = calcRecommendation(scenarios.aggressive);
 
-        // Get last order date from manufacturing orders
+        // Get last order date from manufacturing orders (single query per item)
         const { data: lastOrderData } = await supabase
           .from('manufacturing_orders')
           .select('order_date')
@@ -493,34 +609,49 @@ serve(async (req) => {
       // 11. Batch insert results
       console.log(`[forecast-engine] Inserting ${forecastResults.length} forecast results...`);
       if (forecastResults.length > 0) {
-        const { error: resultsError } = await supabase
-          .from('forecast_results')
-          .insert(forecastResults);
+        // Insert in batches of 500 to avoid payload size limits
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < forecastResults.length; i += BATCH_SIZE) {
+          const batch = forecastResults.slice(i, i + BATCH_SIZE);
+          const { error: resultsError } = await supabase
+            .from('forecast_results')
+            .insert(batch);
 
-        if (resultsError) {
-          console.error('[forecast-engine] Error inserting forecast results:', resultsError);
+          if (resultsError) {
+            console.error('[forecast-engine] Error inserting forecast results batch:', resultsError);
+          }
         }
       }
 
       console.log(`[forecast-engine] Inserting ${recommendations.length} recommendations...`);
       if (recommendations.length > 0) {
-        const { error: recError } = await supabase
-          .from('purchase_recommendations')
-          .insert(recommendations);
+        // Insert in batches of 500
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < recommendations.length; i += BATCH_SIZE) {
+          const batch = recommendations.slice(i, i + BATCH_SIZE);
+          const { error: recError } = await supabase
+            .from('purchase_recommendations')
+            .insert(batch);
 
-        if (recError) {
-          console.error('[forecast-engine] Error inserting recommendations:', recError);
+          if (recError) {
+            console.error('[forecast-engine] Error inserting recommendations batch:', recError);
+          }
         }
       }
 
       console.log(`[forecast-engine] Inserting ${alerts.length} alerts...`);
       if (alerts.length > 0) {
-        const { error: alertsError } = await supabase
-          .from('forecast_alerts')
-          .insert(alerts);
+        // Insert in batches of 500
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < alerts.length; i += BATCH_SIZE) {
+          const batch = alerts.slice(i, i + BATCH_SIZE);
+          const { error: alertsError } = await supabase
+            .from('forecast_alerts')
+            .insert(batch);
 
-        if (alertsError) {
-          console.error('[forecast-engine] Error inserting alerts:', alertsError);
+          if (alertsError) {
+            console.error('[forecast-engine] Error inserting alerts batch:', alertsError);
+          }
         }
       }
 

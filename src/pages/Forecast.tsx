@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -24,7 +26,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  RefreshCw
+  RefreshCw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Filter,
+  X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HistoricalImportModal from '@/components/forecast/HistoricalImportModal';
@@ -74,6 +81,9 @@ interface Alert {
   is_resolved: boolean;
 }
 
+type SortColumn = 'quality_code' | 'color_code' | 'available_stock' | 'incoming_stock' | 'in_production_stock' | 'past_12m_demand' | 'recommendation';
+type SortDirection = 'asc' | 'desc';
+
 const Forecast: React.FC = () => {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { t } = useLanguage();
@@ -94,10 +104,27 @@ const Forecast: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [scenarioFilter, setScenarioFilter] = useState<'conservative' | 'normal' | 'aggressive'>('normal');
+  const [qualityFilter, setQualityFilter] = useState('');
+  const [colorFilter, setColorFilter] = useState('');
+  
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<SortColumn>('recommendation');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   
   // Pagination
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const pageSize = 50;
+
+  // Get unique qualities and colors for filters
+  const uniqueQualities = useMemo(() => {
+    const qualities = new Set(recommendations.map(r => r.quality_code));
+    return Array.from(qualities).sort();
+  }, [recommendations]);
+
+  const uniqueColors = useMemo(() => {
+    const colors = new Set(recommendations.map(r => r.color_code));
+    return Array.from(colors).sort();
+  }, [recommendations]);
 
   useEffect(() => {
     if (!permissionsLoading) {
@@ -120,14 +147,29 @@ const Forecast: React.FC = () => {
       setLatestRun(runData);
 
       if (runData) {
-        // Fetch recommendations for this run
-        const { data: recData } = await supabase
-          .from('purchase_recommendations')
-          .select('*')
-          .eq('run_id', runData.id)
-          .order('normal_recommendation', { ascending: false });
+        // Fetch recommendations for this run - need to handle pagination for large datasets
+        let allRecs: Recommendation[] = [];
+        let offset = 0;
+        const batchSize = 1000;
+        let hasMore = true;
+
+        while (hasMore) {
+          const { data: recData } = await supabase
+            .from('purchase_recommendations')
+            .select('*')
+            .eq('run_id', runData.id)
+            .range(offset, offset + batchSize - 1);
+          
+          if (recData && recData.length > 0) {
+            allRecs = allRecs.concat(recData);
+            hasMore = recData.length === batchSize;
+            offset += batchSize;
+          } else {
+            hasMore = false;
+          }
+        }
         
-        setRecommendations(recData || []);
+        setRecommendations(allRecs);
 
         // Fetch active alerts
         const { data: alertData } = await supabase
@@ -215,7 +257,7 @@ const Forecast: React.FC = () => {
       'Conservative', 'Normal', 'Aggressive', 'Lead Time (days)', 'Coverage (weeks)'
     ];
     
-    const rows = filteredRecommendations.map(r => [
+    const rows = filteredAndSortedRecommendations.map(r => [
       r.quality_code, r.color_code, r.unit, r.available_stock, r.incoming_stock,
       r.in_production_stock, r.total_stock_position, r.past_12m_demand,
       r.forecasted_lead_time_demand, r.safety_stock_value,
@@ -232,30 +274,6 @@ const Forecast: React.FC = () => {
     a.click();
   };
 
-  // Filtering
-  const filteredRecommendations = recommendations.filter(r => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (!r.quality_code.toLowerCase().includes(query) && !r.color_code.toLowerCase().includes(query)) {
-        return false;
-      }
-    }
-    if (statusFilter !== 'all' && r.status !== statusFilter) {
-      return false;
-    }
-    return true;
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredRecommendations.length / pageSize);
-  const paginatedRecommendations = filteredRecommendations.slice((page - 1) * pageSize, page * pageSize);
-
-  // Summary stats
-  const totalReorderNeeded = recommendations.filter(r => r.normal_recommendation > 0).length;
-  const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
-  const warningAlerts = alerts.filter(a => a.severity === 'warning').length;
-  const totalStockValue = recommendations.reduce((sum, r) => sum + r.total_stock_position, 0);
-
   const getRecommendationValue = (r: Recommendation) => {
     switch (scenarioFilter) {
       case 'conservative': return r.conservative_recommendation;
@@ -264,10 +282,147 @@ const Forecast: React.FC = () => {
     }
   };
 
+  // Filtering and sorting
+  const filteredAndSortedRecommendations = useMemo(() => {
+    let filtered = recommendations.filter(r => {
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (!r.quality_code.toLowerCase().includes(query) && !r.color_code.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+      if (statusFilter !== 'all' && r.status !== statusFilter) {
+        return false;
+      }
+      if (qualityFilter && r.quality_code !== qualityFilter) {
+        return false;
+      }
+      if (colorFilter && !r.color_code.toLowerCase().includes(colorFilter.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let aVal: number | string;
+      let bVal: number | string;
+
+      switch (sortColumn) {
+        case 'quality_code':
+          aVal = a.quality_code;
+          bVal = b.quality_code;
+          break;
+        case 'color_code':
+          aVal = a.color_code;
+          bVal = b.color_code;
+          break;
+        case 'available_stock':
+          aVal = a.available_stock;
+          bVal = b.available_stock;
+          break;
+        case 'incoming_stock':
+          aVal = a.incoming_stock;
+          bVal = b.incoming_stock;
+          break;
+        case 'in_production_stock':
+          aVal = a.in_production_stock;
+          bVal = b.in_production_stock;
+          break;
+        case 'past_12m_demand':
+          aVal = a.past_12m_demand;
+          bVal = b.past_12m_demand;
+          break;
+        case 'recommendation':
+          aVal = getRecommendationValue(a);
+          bVal = getRecommendationValue(b);
+          break;
+        default:
+          aVal = getRecommendationValue(a);
+          bVal = getRecommendationValue(b);
+      }
+
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortDirection === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+    });
+
+    return filtered;
+  }, [recommendations, searchQuery, statusFilter, qualityFilter, colorFilter, sortColumn, sortDirection, scenarioFilter]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedRecommendations.length / pageSize);
+  const paginatedRecommendations = filteredAndSortedRecommendations.slice((page - 1) * pageSize, page * pageSize);
+
+  // Summary stats
+  const totalReorderNeeded = recommendations.filter(r => r.normal_recommendation > 0).length;
+  const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
+  const warningAlerts = alerts.filter(a => a.severity === 'warning').length;
+  const totalStockValue = recommendations.reduce((sum, r) => sum + r.total_stock_position, 0);
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
   const openDetail = (rec: Recommendation) => {
     setSelectedRecommendation(rec);
     setDetailDrawerOpen(true);
   };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setQualityFilter('');
+    setColorFilter('');
+    setPage(1);
+  };
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || qualityFilter || colorFilter;
+
+  // Pagination controls component
+  const PaginationControls = () => (
+    <div className="flex items-center justify-between">
+      <p className="text-sm text-muted-foreground">
+        {t('showing') || 'Showing'} {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredAndSortedRecommendations.length)} {t('of') || 'of'} {filteredAndSortedRecommendations.length}
+      </p>
+      <div className="flex gap-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="flex items-center px-3 text-sm">
+          {page} / {totalPages}
+        </span>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+          disabled={page === totalPages}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 
   if (permissionsLoading || loading) {
     return (
@@ -454,7 +609,7 @@ const Forecast: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-4 flex-wrap">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -464,16 +619,37 @@ const Forecast: React.FC = () => {
                 className="pl-9"
               />
             </div>
+            
+            <Select value={qualityFilter || 'all'} onValueChange={(v) => { setQualityFilter(v === 'all' ? '' : v); setPage(1); }}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder={t('forecast.filterByQuality') || 'Quality'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('all') || 'All'}</SelectItem>
+                {uniqueQualities.map(q => (
+                  <SelectItem key={q} value={q}>{q}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Input
+              placeholder={String(t('forecast.filterByColor') || 'Filter color...')}
+              value={colorFilter}
+              onChange={(e) => { setColorFilter(e.target.value); setPage(1); }}
+              className="w-40"
+            />
+
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('all') || 'All'}</SelectItem>
-                <SelectItem value="pending">{t('pending') || 'Pending'}</SelectItem>
+                <SelectItem value="new">{t('new') || 'New'}</SelectItem>
                 <SelectItem value="reviewed">{t('reviewed') || 'Reviewed'}</SelectItem>
               </SelectContent>
             </Select>
+
             <Select value={scenarioFilter} onValueChange={(v: any) => setScenarioFilter(v)}>
               <SelectTrigger className="w-44">
                 <SelectValue />
@@ -484,6 +660,13 @@ const Forecast: React.FC = () => {
                 <SelectItem value="aggressive">{t('forecast.aggressive') || 'Aggressive'}</SelectItem>
               </SelectContent>
             </Select>
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-10">
+                <X className="h-4 w-4 mr-1" />
+                {t('clearFilters') || 'Clear'}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -504,16 +687,88 @@ const Forecast: React.FC = () => {
             </div>
           ) : (
             <>
+              {/* Top Pagination */}
+              {totalPages > 1 && (
+                <div className="mb-4">
+                  <PaginationControls />
+                </div>
+              )}
+
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('quality') || 'Quality'}</TableHead>
-                    <TableHead>{t('color') || 'Color'}</TableHead>
-                    <TableHead className="text-right">{t('forecast.currentStock') || 'Current Stock'}</TableHead>
-                    <TableHead className="text-right">{t('forecast.incoming') || 'Incoming'}</TableHead>
-                    <TableHead className="text-right">{t('forecast.inProduction') || 'In Production'}</TableHead>
-                    <TableHead className="text-right">{t('forecast.demand12m') || '12M Demand'}</TableHead>
-                    <TableHead className="text-right">{t('forecast.recommendation') || 'Recommendation'}</TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('quality_code')}
+                    >
+                      <div className="flex items-center">
+                        {t('quality') || 'Quality'}
+                        <SortIcon column="quality_code" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('color_code')}
+                    >
+                      <div className="flex items-center">
+                        {t('color') || 'Color'}
+                        <SortIcon column="color_code" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-right cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('available_stock')}
+                    >
+                      <div className="flex items-center justify-end">
+                        {t('forecast.currentStock') || 'Current Stock'}
+                        <SortIcon column="available_stock" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-right cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('incoming_stock')}
+                    >
+                      <div className="flex items-center justify-end">
+                        {t('forecast.incoming') || 'Incoming'}
+                        <SortIcon column="incoming_stock" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-right cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('in_production_stock')}
+                    >
+                      <div className="flex items-center justify-end">
+                        {t('forecast.inProduction') || 'In Production'}
+                        <SortIcon column="in_production_stock" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-right cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('past_12m_demand')}
+                    >
+                      <div className="flex items-center justify-end">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger className="underline decoration-dotted cursor-help">
+                              {t('forecast.demand12m') || 'Talep (12a)'}
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{t('forecast.demand12mTooltip') || 'Total demand from the last 12 months of historical data'}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <SortIcon column="past_12m_demand" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-right cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('recommendation')}
+                    >
+                      <div className="flex items-center justify-end">
+                        {t('forecast.recommendation') || 'Recommendation'}
+                        <SortIcon column="recommendation" />
+                      </div>
+                    </TableHead>
                     <TableHead>{t('status') || 'Status'}</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
@@ -550,8 +805,14 @@ const Forecast: React.FC = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" onClick={() => openDetail(rec)}>
-                            <Eye className="h-4 w-4" />
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => openDetail(rec)}
+                            className="h-6 text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            {t('forecast.viewDetails') || 'Details'}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -560,33 +821,10 @@ const Forecast: React.FC = () => {
                 </TableBody>
               </Table>
 
-              {/* Pagination */}
+              {/* Bottom Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    {t('showing') || 'Showing'} {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filteredRecommendations.length)} {t('of') || 'of'} {filteredRecommendations.length}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="flex items-center px-3 text-sm">
-                      {page} / {totalPages}
-                    </span>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                <div className="mt-4">
+                  <PaginationControls />
                 </div>
               )}
             </>
