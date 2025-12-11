@@ -110,8 +110,13 @@ const LotSelection = () => {
     return parsed;
   };
   
-  const colorArray = colors ? colors.split(',').map(parseColorEntry).filter(entry => entry.quality && entry.color) : 
-                     (color && quality) ? [{ quality, color }] : [];
+  // Memoize colorArray to prevent recalculation on every render
+  const colorArray = useMemo(() => {
+    if (colors) {
+      return colors.split(',').map(parseColorEntry).filter(entry => entry.quality && entry.color);
+    }
+    return (color && quality) ? [{ quality, color }] : [];
+  }, [colors, color, quality]);
   
   console.log('Final colorArray:', colorArray);
   
@@ -131,16 +136,24 @@ const LotSelection = () => {
   
   console.log('Quality validation:', { currentQuality: getCurrentQuality(), hasConsistentQuality, colorCount: colorArray.length });
 
+  // Memoize currentQuality to use as stable dependency
+  const currentQuality = useMemo(() => {
+    if (colorArray.length > 0) {
+      return colorArray[currentColorIndex]?.quality || colorArray[0]?.quality || quality;
+    }
+    return quality;
+  }, [colorArray, currentColorIndex, quality]);
+
   useEffect(() => {
     console.log('LotSelection useEffect - Debug info:', {
-      currentQuality: getCurrentQuality(),
+      currentQuality,
       colorArray,
       colors: searchParams.get('colors'),
       hasConsistentQuality,
       colorArrayLength: colorArray.length
     });
 
-    if (!getCurrentQuality() || colorArray.length === 0) {
+    if (!currentQuality || colorArray.length === 0) {
       console.log('Redirecting to inventory - missing quality or colors');
       navigate('/inventory');
       return;
@@ -160,7 +173,7 @@ const LotSelection = () => {
     console.log('All validations passed, fetching lots and suppliers');
     fetchLots();
     fetchSuppliers();
-  }, [getCurrentQuality(), currentColorIndex]);
+  }, [currentQuality, currentColorIndex, colorArray.length, hasConsistentQuality]);
 
   useEffect(() => {
     applyFilters();
@@ -185,6 +198,13 @@ const LotSelection = () => {
   const fetchLots = async () => {
     try {
       const currentColorEntry = colorArray[currentColorIndex];
+      // Guard against undefined entry
+      if (!currentColorEntry?.quality || !currentColorEntry?.color) {
+        console.log('fetchLots: No valid color entry at index', currentColorIndex);
+        setLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('lots')
         .select(`
@@ -424,6 +444,18 @@ const LotSelection = () => {
     );
   }
 
+  // Guard against invalid colorArray state during navigation
+  if (colorArray.length === 0 || currentColorIndex >= colorArray.length) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Package className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p>{t('loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Multi-Order Progress Stepper */}
@@ -500,7 +532,7 @@ const LotSelection = () => {
           <div>
             <h1 className="text-3xl font-bold">{t('selectLots')}</h1>
             <p className="text-muted-foreground">
-              {t('quality')}: <span className="font-medium">{getCurrentQuality()}</span> | {t('color')}: <span className="font-medium">{colorArray[currentColorIndex].color}</span>
+              {t('quality')}: <span className="font-medium">{getCurrentQuality()}</span> | {t('color')}: <span className="font-medium">{colorArray[currentColorIndex]?.color || ''}</span>
               {colorArray.length > 1 && (
                 <span className="ml-2">({currentColorIndex + 1} of {colorArray.length})</span>
               )}
@@ -707,12 +739,12 @@ const LotSelection = () => {
             isOpen={true}
             onClose={(addedMeters?: number) => {
               setRollSelectionDialogLotId(null);
-              handleRollSelectionComplete(addedMeters, lot.quality, colorArray[currentColorIndex].color);
+              handleRollSelectionComplete(addedMeters, lot.quality, colorArray[currentColorIndex]?.color || '');
             }}
             lotId={lot.id}
             lotNumber={lot.lot_number}
             quality={lot.quality}
-            color={colorArray[currentColorIndex].color}
+            color={colorArray[currentColorIndex]?.color || ''}
             totalMeters={lot.meters}
             totalRolls={lot.roll_count}
             entryDate={lot.entry_date}
