@@ -167,7 +167,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const isCollapsed = state === "collapsed";
     
     return (
-      <Sidebar collapsible="icon" className="flex flex-col mt-12 h-[calc(100vh-3rem)]">
+      <Sidebar collapsible="icon" className="flex flex-col h-full border-r">
         <SidebarContent>
           {permissionsLoading ? (
             <div className="flex items-center justify-center p-4">
@@ -252,150 +252,151 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <SidebarProvider>
       <div className="min-h-screen bg-background flex w-full">
-        {/* Top Navigation */}
-        <header className="fixed top-0 left-0 right-0 z-50 border-b bg-card">
-          <div className="flex h-12 items-center justify-between px-3 md:px-4">
-            <div className="flex items-center space-x-2">
-              {/* Desktop Sidebar Toggle */}
-              <SidebarTrigger className="hidden md:block" />
-              
-              {/* Mobile menu button */}
-              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="md:hidden">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-64 p-4">
-                  <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-primary">LotAstro</h2>
-                  </div>
-                  <MobileNavigationContent />
-                </SheetContent>
-              </Sheet>
+        {/* Desktop Sidebar */}
+        <div className="hidden md:flex md:flex-col">
+          <AppSidebar />
+        </div>
 
-              {/* LotAstro Logo */}
+        {/* Main content area including header */}
+        <div className="flex-1 flex flex-col min-h-screen w-full">
+          {/* Top Navigation - sticky within content flow */}
+          <header className="sticky top-0 z-50 border-b bg-card">
+            <div className="flex h-12 items-center justify-between px-3 md:px-4">
               <div className="flex items-center space-x-2">
-              <img 
-                src="/lotastro-logo.svg" 
-                alt="LotAstro Logo" 
-                className="w-8 h-8 object-contain"
-              />
-                <h1 className="text-xl font-semibold text-primary">LotAstro</h1>
-              </div>
-              
-              {profile && (
-                <>
-                  {profile.role === 'admin' ? (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="sm" className="p-0 h-auto">
-                          <Badge className={getRoleBadgeColor(effectiveRole!, isViewingAsOtherRole)}>
-                            {isViewingAsOtherRole && (
-                              <span className="text-xs mr-1">👁️</span>
-                            )}
-                            {(effectiveRole || '').replace('_', ' ').toUpperCase()}
-                          </Badge>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-56" align="start">
-                        <div className="space-y-3">
-                          <div className="font-medium text-sm">{t('viewAsRole')}</div>
-                          <div className="space-y-2">
-                            {roleOptions.map((option) => (
-                              <Button
-                                key={option.value}
-                                variant={effectiveRole === option.value ? "secondary" : "ghost"}
-                                size="sm"
-                                className="w-full justify-start"
-                                onClick={() => handleRoleChange(option.value)}
-                              >
-                                {option.label}
-                                {effectiveRole === option.value && !isViewingAsOtherRole && (
-                                  <span className="ml-auto text-xs">{t('currentRole')}</span>
-                                )}
-                              </Button>
-                            ))}
-                            {isViewingAsOtherRole && (
-                              <>
-                                <div className="border-t pt-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full"
-                                    onClick={() => handleRoleChange('reset')}
-                                  >
-                                    {t('returnToAdminView')}
-                                  </Button>
-                                </div>
-                              </>
-                            )}
+                {/* Desktop Sidebar Toggle */}
+                <SidebarTrigger className="hidden md:block" />
+                
+                {/* Mobile menu button */}
+                <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="sm" className="md:hidden">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-64 p-4">
+                    <div className="mb-4">
+                      <h2 className="text-lg font-semibold text-primary">LotAstro</h2>
+                    </div>
+                    <MobileNavigationContent />
+                  </SheetContent>
+                </Sheet>
+
+                {/* LotAstro Logo */}
+                <div className="flex items-center space-x-2">
+                <img 
+                  src="/lotastro-logo.svg" 
+                  alt="LotAstro Logo" 
+                  className="w-8 h-8 object-contain"
+                />
+                  <h1 className="text-xl font-semibold text-primary">LotAstro</h1>
+                </div>
+                
+                {profile && (
+                  <>
+                    {profile.role === 'admin' ? (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="sm" className="p-0 h-auto">
+                            <Badge className={getRoleBadgeColor(effectiveRole!, isViewingAsOtherRole)}>
+                              {isViewingAsOtherRole && (
+                                <span className="text-xs mr-1">👁️</span>
+                              )}
+                              {(effectiveRole || '').replace('_', ' ').toUpperCase()}
+                            </Badge>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56" align="start">
+                          <div className="space-y-3">
+                            <div className="font-medium text-sm">{t('viewAsRole')}</div>
+                            <div className="space-y-2">
+                              {roleOptions.map((option) => (
+                                <Button
+                                  key={option.value}
+                                  variant={effectiveRole === option.value ? "secondary" : "ghost"}
+                                  size="sm"
+                                  className="w-full justify-start"
+                                  onClick={() => handleRoleChange(option.value)}
+                                >
+                                  {option.label}
+                                  {effectiveRole === option.value && !isViewingAsOtherRole && (
+                                    <span className="ml-auto text-xs">{t('currentRole')}</span>
+                                  )}
+                                </Button>
+                              ))}
+                              {isViewingAsOtherRole && (
+                                <>
+                                  <div className="border-t pt-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full"
+                                      onClick={() => handleRoleChange('reset')}
+                                    >
+                                      {t('returnToAdminView')}
+                                    </Button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  ) : (
-                    <Badge className={getRoleBadgeColor(profile.role)}>
-                      {profile.role.replace('_', ' ').toUpperCase()}
-                    </Badge>
-                  )}
-                </>
-              )}
-            </div>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <Badge className={getRoleBadgeColor(profile.role)}>
+                        {profile.role.replace('_', ' ').toUpperCase()}
+                      </Badge>
+                    )}
+                  </>
+                )}
+              </div>
 
-            <div className="flex items-center space-x-2 md:space-x-4">
-              <GlobalSearch />
-              
-              <Select value={language} onValueChange={(value: 'en' | 'tr') => setLanguage(value)}>
-                <SelectTrigger className="w-16 md:w-20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">🇺🇸</SelectItem>
-                  <SelectItem value="tr">🇹🇷</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center space-x-2 md:space-x-4">
+                <GlobalSearch />
+                
+                <Select value={language} onValueChange={(value: 'en' | 'tr') => setLanguage(value)}>
+                  <SelectTrigger className="w-16 md:w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">🇺🇸</SelectItem>
+                    <SelectItem value="tr">🇹🇷</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              {/* Cart Icon - Only visible to users who can create orders */}
-              {canCreateOrders && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setIsCartOpen(true)}
-                  className="relative"
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  {cartItemCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                    >
-                      {cartItemCount}
-                    </Badge>
-                  )}
+                {/* Cart Icon - Only visible to users who can create orders */}
+                {canCreateOrders && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setIsCartOpen(true)}
+                    className="relative"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                    {cartItemCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                      >
+                        {cartItemCount}
+                      </Badge>
+                    )}
+                  </Button>
+                )}
+                
+                <span className="text-sm text-muted-foreground hidden md:block">
+                  {profile?.full_name || profile?.email}
+                </span>
+                <Button variant="ghost" size="sm" onClick={signOut}>
+                  <LogOut className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">{t('signOut')}</span>
                 </Button>
-              )}
-              
-              <span className="text-sm text-muted-foreground hidden md:block">
-                {profile?.full_name || profile?.email}
-              </span>
-              <Button variant="ghost" size="sm" onClick={signOut}>
-                <LogOut className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline">{t('signOut')}</span>
-              </Button>
+              </div>
             </div>
-          </div>
-        </header>
-
-        <div className="flex w-full pt-12">
-          {/* Desktop Sidebar */}
-          <div className="hidden md:block">
-            <AppSidebar />
-          </div>
+          </header>
 
           {/* Main Content */}
-          <main className="flex-1">
-            <div className="p-4 md:p-6">
+          <main className="flex-1 w-full">
+            <div className="p-4 md:p-6 w-full">
               {children}
             </div>
           </main>
