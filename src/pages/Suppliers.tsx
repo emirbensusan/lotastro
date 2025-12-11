@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Plus, Edit, Trash2 } from 'lucide-react';
+import { Building2, Plus, Trash2 } from 'lucide-react';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
+import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
+import { ViewDetailsButton } from '@/components/ui/view-details-button';
 
 interface Supplier {
   id: string;
@@ -19,6 +24,7 @@ interface Supplier {
 
 const Suppliers: React.FC = () => {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
+  const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -26,25 +32,53 @@ const Suppliers: React.FC = () => {
   const [supplierName, setSupplierName] = useState('');
   const { toast } = useToast();
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Sorting state
+  const [currentSort, setCurrentSort] = useState<{ key: string; direction: SortDirection } | null>(
+    { key: 'name', direction: 'asc' }
+  );
+
   useEffect(() => {
     fetchSuppliers();
-  }, []);
+  }, [page, pageSize, currentSort]);
 
   const fetchSuppliers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Get total count
+      const { count } = await supabase
         .from('suppliers')
-        .select('*')
-        .order('name');
+        .select('*', { count: 'exact', head: true });
+      setTotalCount(count || 0);
+
+      // Build query
+      let query = supabase.from('suppliers').select('*');
+
+      // Apply sorting
+      if (currentSort?.key && currentSort?.direction) {
+        query = query.order(currentSort.key, { ascending: currentSort.direction === 'asc' });
+      } else {
+        query = query.order('name');
+      }
+
+      // Apply pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setSuppliers(data || []);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to fetch suppliers.',
+        title: t('error') as string,
+        description: t('failedToFetchSuppliers'),
         variant: 'destructive'
       });
     } finally {
@@ -52,11 +86,29 @@ const Suppliers: React.FC = () => {
     }
   };
 
+  const handleSort = (key: string, direction: SortDirection) => {
+    setCurrentSort(direction ? { key, direction } : null);
+    setPage(1);
+  };
+
+  const handleExport = () => {
+    const exportData = suppliers.map(s => ({
+      name: s.name,
+      created_at: s.created_at,
+      updated_at: s.updated_at
+    }));
+    exportToCSV(exportData, [
+      { key: 'name', label: String(t('supplierName')) },
+      { key: 'created_at', label: String(t('created')) },
+      { key: 'updated_at', label: String(t('lastUpdated')) }
+    ], 'suppliers-export');
+  };
+
   const saveSupplier = async () => {
     if (!supplierName.trim()) {
       toast({
-        title: 'Error',
-        description: 'Supplier name is required.',
+        title: t('error') as string,
+        description: t('supplierNameRequired'),
         variant: 'destructive'
       });
       return;
@@ -64,7 +116,6 @@ const Suppliers: React.FC = () => {
 
     try {
       if (editingSupplier) {
-        // Update existing supplier
         const { error } = await supabase
           .from('suppliers')
           .update({ name: supplierName })
@@ -73,11 +124,10 @@ const Suppliers: React.FC = () => {
         if (error) throw error;
 
         toast({
-          title: 'Success',
-          description: 'Supplier updated successfully.'
+          title: t('success') as string,
+          description: t('supplierUpdatedSuccess')
         });
       } else {
-        // Create new supplier
         const { error } = await supabase
           .from('suppliers')
           .insert([{ name: supplierName }]);
@@ -85,8 +135,8 @@ const Suppliers: React.FC = () => {
         if (error) throw error;
 
         toast({
-          title: 'Success',
-          description: 'Supplier created successfully.'
+          title: t('success') as string,
+          description: t('supplierCreatedSuccess')
         });
       }
 
@@ -95,15 +145,15 @@ const Suppliers: React.FC = () => {
     } catch (error) {
       console.error('Error saving supplier:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to save supplier.',
+        title: t('error') as string,
+        description: t('failedToSaveSupplier'),
         variant: 'destructive'
       });
     }
   };
 
   const deleteSupplier = async (supplierId: string) => {
-    if (!confirm('Are you sure you want to delete this supplier?')) return;
+    if (!confirm(String(t('confirmDeleteSupplier')))) return;
 
     try {
       const { error } = await supabase
@@ -114,16 +164,16 @@ const Suppliers: React.FC = () => {
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: 'Supplier deleted successfully.'
+        title: t('success') as string,
+        description: t('supplierDeletedSuccess')
       });
 
       fetchSuppliers();
     } catch (error) {
       console.error('Error deleting supplier:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to delete supplier. It may be associated with existing lots.',
+        title: t('error') as string,
+        description: t('failedToDeleteSupplier'),
         variant: 'destructive'
       });
     }
@@ -146,33 +196,36 @@ const Suppliers: React.FC = () => {
   };
 
   if (permissionsLoading) {
-    return <div className="text-sm text-muted-foreground">Loading…</div>;
+    return <div className="text-sm text-muted-foreground">{t('loadingEllipsis')}</div>;
   }
 
   if (!hasPermission('suppliers', 'viewsuppliers')) {
-    return <div className="text-sm text-muted-foreground">You are not authorized to access suppliers.</div>;
+    return <div className="text-sm text-muted-foreground">{t('noPermissionSuppliers')}</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Supplier Management</h1>
-        <Button onClick={() => openDialog()} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Add Supplier
-        </Button>
+        <h1 className="text-3xl font-bold">{t('supplierManagement')}</h1>
+        <div className="flex gap-2">
+          <TableExportButton onExport={handleExport} disabled={suppliers.length === 0} />
+          <Button onClick={() => openDialog()} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            {t('addSupplier')}
+          </Button>
+        </div>
       </div>
 
       {/* Overview Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Suppliers</CardTitle>
+          <CardTitle className="text-sm font-medium">{t('totalSuppliers')}</CardTitle>
           <Building2 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{suppliers.length}</div>
+          <div className="text-2xl font-bold">{totalCount}</div>
           <p className="text-xs text-muted-foreground">
-            Active suppliers in system
+            {t('activeSuppliersInSystem')}
           </p>
         </CardContent>
       </Card>
@@ -180,27 +233,56 @@ const Suppliers: React.FC = () => {
       {/* Suppliers Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Suppliers</CardTitle>
+          <CardTitle>{t('allSuppliers')}</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Top Pagination */}
+          <DataTablePagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          />
+
           {loading ? (
-            <div className="space-y-2">
+            <div className="space-y-2 mt-4">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="h-12 bg-muted rounded animate-pulse"></div>
               ))}
             </div>
           ) : suppliers.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No suppliers found. Add your first supplier to get started.
+              {t('noSuppliersFound')}
             </div>
           ) : (
-            <Table>
+            <Table className="mt-4">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Supplier Name</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <SortableTableHead
+                    label={String(t('supplierName'))}
+                    sortKey="name"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('created'))}
+                    sortKey="created_at"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('lastUpdated'))}
+                    sortKey="updated_at"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('actions'))}
+                    sortKey=""
+                    currentSort={null}
+                    onSort={() => {}}
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -211,13 +293,7 @@ const Suppliers: React.FC = () => {
                     <TableCell>{formatDate(supplier.updated_at)}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openDialog(supplier)}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
+                        <ViewDetailsButton onClick={() => openDialog(supplier)} />
                         <Button
                           variant="outline"
                           size="sm"
@@ -232,6 +308,17 @@ const Suppliers: React.FC = () => {
               </TableBody>
             </Table>
           )}
+
+          {/* Bottom Pagination */}
+          {!loading && suppliers.length > 0 && (
+            <DataTablePagination
+              page={page}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -240,25 +327,25 @@ const Suppliers: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}
+              {editingSupplier ? t('editSupplier') : t('addNewSupplier')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="supplierName">Supplier Name</Label>
+              <Label htmlFor="supplierName">{t('supplierName')}</Label>
               <Input
                 id="supplierName"
                 value={supplierName}
                 onChange={(e) => setSupplierName(e.target.value)}
-                placeholder="Enter supplier name"
+                placeholder={String(t('enterSupplierName'))}
               />
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={closeDialog}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button onClick={saveSupplier}>
-                {editingSupplier ? 'Update' : 'Create'}
+                {editingSupplier ? t('update') : t('create')}
               </Button>
             </div>
           </div>

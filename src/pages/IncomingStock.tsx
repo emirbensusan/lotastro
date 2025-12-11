@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +14,10 @@ import { IncomingStockDialog } from '@/components/IncomingStockDialog';
 import { IncomingBulkUpload } from '@/components/IncomingBulkUpload';
 import { ReceiveStockDialog } from '@/components/ReceiveStockDialog';
 import ReservationDialog from '@/components/ReservationDialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
+import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
+import { ViewDetailsButton } from '@/components/ui/view-details-button';
 
 interface IncomingStock {
   id: string;
@@ -55,16 +59,42 @@ const IncomingStock: React.FC = () => {
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
   const { toast } = useToast();
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Sorting state
+  const [currentSort, setCurrentSort] = useState<{ key: string; direction: SortDirection } | null>(
+    { key: 'created_at', direction: 'desc' }
+  );
+
   useEffect(() => {
     if (!permissionsLoading && hasPermission('inventory', 'viewincoming')) {
       fetchIncomingStock();
       fetchSuppliers();
     }
-  }, [permissionsLoading, statusFilter, supplierFilter]);
+  }, [permissionsLoading, statusFilter, supplierFilter, page, pageSize, currentSort]);
 
   const fetchIncomingStock = async () => {
     setLoading(true);
     try {
+      // Get total count first
+      let countQuery = supabase
+        .from('incoming_stock')
+        .select('*', { count: 'exact', head: true });
+
+      if (statusFilter !== 'all') {
+        countQuery = countQuery.eq('status', statusFilter);
+      }
+      if (supplierFilter !== 'all') {
+        countQuery = countQuery.eq('supplier_id', supplierFilter);
+      }
+
+      const { count } = await countQuery;
+      setTotalCount(count || 0);
+
+      // Build main query
       let query = supabase
         .from('incoming_stock')
         .select(`
@@ -73,16 +103,26 @@ const IncomingStock: React.FC = () => {
             id,
             name
           )
-        `)
-        .order('created_at', { ascending: false });
+        `);
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
       }
-
       if (supplierFilter !== 'all') {
         query = query.eq('supplier_id', supplierFilter);
       }
+
+      // Apply sorting
+      if (currentSort?.key && currentSort?.direction) {
+        query = query.order(currentSort.key, { ascending: currentSort.direction === 'asc' });
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
+
+      // Apply pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
 
       const { data, error } = await query;
 
@@ -197,12 +237,46 @@ const IncomingStock: React.FC = () => {
     );
   }
 
+  const handleSort = (key: string, direction: SortDirection) => {
+    setCurrentSort(direction ? { key, direction } : null);
+    setPage(1);
+  };
+
+  const handleExport = () => {
+    const exportData = incomingStock.map(item => ({
+      invoice_number: item.invoice_number,
+      supplier: item.suppliers.name,
+      quality: item.quality,
+      color: item.color,
+      expected_meters: item.expected_meters,
+      received_meters: item.received_meters,
+      reserved_meters: item.reserved_meters,
+      open_meters: item.expected_meters - item.received_meters,
+      status: item.status,
+      expected_arrival_date: item.expected_arrival_date || '-'
+    }));
+
+    exportToCSV(exportData, [
+      { key: 'invoice_number', label: String(t('invoiceNumber')) },
+      { key: 'supplier', label: String(t('supplier')) },
+      { key: 'quality', label: String(t('quality')) },
+      { key: 'color', label: String(t('color')) },
+      { key: 'expected_meters', label: String(t('expected')) },
+      { key: 'received_meters', label: String(t('received')) },
+      { key: 'reserved_meters', label: String(t('reserved')) },
+      { key: 'open_meters', label: String(t('open')) },
+      { key: 'status', label: String(t('status')) },
+      { key: 'expected_arrival_date', label: String(t('arrivalDate')) }
+    ], 'incoming-stock-export');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with actions */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">{t('incomingStockLabel')}</h1>
         <div className="flex gap-2">
+          <TableExportButton onExport={handleExport} disabled={incomingStock.length === 0} />
           {hasPermission('inventory', 'createincoming') && (
             <>
               <Button onClick={() => setBulkUploadOpen(true)} variant="outline">
@@ -323,12 +397,21 @@ const IncomingStock: React.FC = () => {
 
       {/* Incoming Stock Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t('incomingStockEntries')}</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Top Pagination */}
+          <DataTablePagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          />
+
           {loading ? (
-            <div className="space-y-2">
+            <div className="space-y-2 mt-4">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="h-12 bg-muted rounded animate-pulse"></div>
               ))}
@@ -338,21 +421,85 @@ const IncomingStock: React.FC = () => {
               {t('noIncomingStockFound')}
             </div>
           ) : (
-            <Table>
+            <Table className="mt-4">
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('invoiceNumber')}</TableHead>
-                  <TableHead>{t('supplier')}</TableHead>
-                  <TableHead>{t('quality')}</TableHead>
-                  <TableHead>{t('color')}</TableHead>
-                  <TableHead className="text-right">{t('expected')}</TableHead>
-                  <TableHead className="text-right">{t('received')}</TableHead>
-                  <TableHead className="text-right">{t('reserved')}</TableHead>
-                  <TableHead className="text-right">{t('open')}</TableHead>
-                  <TableHead>{t('progressLabel')}</TableHead>
-                  <TableHead>{t('arrivalDate')}</TableHead>
-                  <TableHead>{t('status')}</TableHead>
-                  <TableHead>{t('actions')}</TableHead>
+                  <SortableTableHead
+                    label={String(t('invoiceNumber'))}
+                    sortKey="invoice_number"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('supplier'))}
+                    sortKey="supplier_id"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('quality'))}
+                    sortKey="quality"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('color'))}
+                    sortKey="color"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('expected'))}
+                    sortKey="expected_meters"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                    className="text-right"
+                  />
+                  <SortableTableHead
+                    label={String(t('received'))}
+                    sortKey="received_meters"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                    className="text-right"
+                  />
+                  <SortableTableHead
+                    label={String(t('reserved'))}
+                    sortKey="reserved_meters"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                    className="text-right"
+                  />
+                  <SortableTableHead
+                    label={String(t('open'))}
+                    sortKey="expected_meters"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                    className="text-right"
+                  />
+                  <SortableTableHead
+                    label={String(t('progressLabel'))}
+                    sortKey="received_meters"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('arrivalDate'))}
+                    sortKey="expected_arrival_date"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('status'))}
+                    sortKey="status"
+                    currentSort={currentSort}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label={String(t('actions'))}
+                    sortKey=""
+                    currentSort={null}
+                    onSort={() => {}}
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -427,13 +574,7 @@ const IncomingStock: React.FC = () => {
                             </Button>
                           )}
                           {hasPermission('inventory', 'createincoming') && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEdit(item)}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
+                            <ViewDetailsButton onClick={() => handleEdit(item)} />
                           )}
                           {hasPermission('inventory', 'deleteincoming') && (
                             <Button
@@ -451,6 +592,17 @@ const IncomingStock: React.FC = () => {
                 })}
               </TableBody>
             </Table>
+          )}
+
+          {/* Bottom Pagination */}
+          {!loading && incomingStock.length > 0 && (
+            <DataTablePagination
+              page={page}
+              pageSize={pageSize}
+              totalCount={totalCount}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            />
           )}
         </CardContent>
       </Card>
