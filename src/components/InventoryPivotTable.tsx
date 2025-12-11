@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ProgressDialog } from '@/components/ui/progress-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -19,6 +19,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { InlineEditableField } from '@/components/InlineEditableField';
 import { getMinQualitiesForMultiOrder } from '@/components/OrderFlowSettingsTab';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
+import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
 
 interface InventoryItem {
   quality: string;
@@ -72,6 +75,15 @@ const InventoryPivotTable = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
   const [selectedQualitiesForBulk, setSelectedQualitiesForBulk] = useState<Set<string>>(new Set());
+  
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  // Sorting state
+  const [currentSort, setCurrentSort] = useState<{ key: string; direction: SortDirection } | null>(
+    { key: 'total_meters', direction: 'desc' }
+  );
   
   // Sample selection dialog state
   const [sampleDialogOpen, setSampleDialogOpen] = useState(false);
@@ -503,11 +515,39 @@ const InventoryPivotTable = () => {
     }
   };
 
-  const filteredData = pivotData.filter(item => {
-    const matchesSearch = item.normalized_quality.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesQuality = !qualityFilter || item.normalized_quality.toLowerCase().includes(qualityFilter.toLowerCase());
-    return matchesSearch && matchesQuality;
-  });
+  // Filter and sort data
+  const filteredAndSortedData = useMemo(() => {
+    let data = pivotData.filter(item => {
+      const matchesSearch = item.normalized_quality.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesQuality = !qualityFilter || item.normalized_quality.toLowerCase().includes(qualityFilter.toLowerCase());
+      return matchesSearch && matchesQuality;
+    });
+
+    // Apply sorting
+    if (currentSort?.key && currentSort?.direction) {
+      data = [...data].sort((a, b) => {
+        const aVal = a[currentSort.key as keyof AggregatedQuality];
+        const bVal = b[currentSort.key as keyof AggregatedQuality];
+        const direction = currentSort.direction === 'asc' ? 1 : -1;
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return (aVal - bVal) * direction;
+        }
+        return String(aVal).localeCompare(String(bVal)) * direction;
+      });
+    }
+
+    return data;
+  }, [pivotData, searchTerm, qualityFilter, currentSort]);
+
+  // Paginate the data
+  const paginatedData = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredAndSortedData.slice(start, start + pageSize);
+  }, [filteredAndSortedData, page, pageSize]);
+
+  // For backward compatibility
+  const filteredData = paginatedData;
+  const totalCount = filteredAndSortedData.length;
 
   // Get unique qualities for the filter dropdown
   const uniqueQualities = [...new Set(pivotData.map(item => item.normalized_quality))].sort();
@@ -528,6 +568,34 @@ const InventoryPivotTable = () => {
     return Number(dashboardStats?.total_meters || 0) + 
            Number(dashboardStats?.total_incoming_meters || 0) - 
            Number(dashboardStats?.total_reserved_meters || 0);
+  };
+
+  const handleSort = (key: string, direction: SortDirection) => {
+    setCurrentSort(direction ? { key, direction } : null);
+    setPage(1);
+  };
+
+  const handleExport = () => {
+    const exportData = filteredAndSortedData.map(item => ({
+      normalized_quality: item.normalized_quality,
+      color_count: item.color_count,
+      total_meters: item.total_meters,
+      incoming_meters: item.incoming_meters,
+      total_reserved_meters: item.total_reserved_meters,
+      available_meters: item.available_meters,
+      total_rolls: item.total_rolls,
+      lot_count: item.lot_count
+    }));
+    exportToCSV(exportData, [
+      { key: 'normalized_quality', label: String(t('quality')) },
+      { key: 'color_count', label: String(t('colorCount')) },
+      { key: 'total_meters', label: String(t('physicalMeters')) },
+      { key: 'incoming_meters', label: String(t('incoming')) },
+      { key: 'total_reserved_meters', label: String(t('reserved')) },
+      { key: 'available_meters', label: String(t('available')) },
+      { key: 'total_rolls', label: String(t('rolls')) },
+      { key: 'lot_count', label: String(t('lots')) }
+    ], 'inventory-pivot-export');
   };
 
   if (loading) {
@@ -565,7 +633,7 @@ const InventoryPivotTable = () => {
           <Input
             placeholder={String(t('searchPlaceholder'))}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
             className="pl-10 pr-10"
           />
           {searchTerm && (
@@ -573,7 +641,7 @@ const InventoryPivotTable = () => {
               variant="ghost"
               size="sm"
               className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
-              onClick={() => setSearchTerm('')}
+              onClick={() => { setSearchTerm(''); setPage(1); }}
             >
               ×
             </Button>
@@ -582,6 +650,7 @@ const InventoryPivotTable = () => {
         
         {/* Controls - Order matters: bulk selection for all users, delete mode only for admins */}
         <div className="flex items-center space-x-2">
+          <TableExportButton onExport={handleExport} disabled={filteredAndSortedData.length === 0} />
           {!deleteMode && !bulkSelectionMode && (
             <>
               <Button variant="default" onClick={toggleBulkSelectionMode}>
@@ -766,107 +835,118 @@ const InventoryPivotTable = () => {
           <CardTitle>{t('stockOverview')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          {/* Top Pagination */}
+          <DataTablePagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          />
+
+          <Table className="mt-4">
             <TableHeader>
               <TableRow>
                 {(deleteMode || bulkSelectionMode) && (
-                  <TableHead className="w-[50px]">
+                  <SortableTableHead
+                    label=""
+                    sortKey=""
+                    currentSort={null}
+                    onSort={() => {}}
+                    className="w-[50px]"
+                  />
+                )}
+                <SortableTableHead
+                  label={String(t('quality'))}
+                  sortKey="normalized_quality"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  filterable
+                  filterValue={qualityFilter}
+                  onFilterChange={(v) => { setQualityFilter(v); setPage(1); }}
+                  filterType="text"
+                />
+                <SortableTableHead
+                  label={String(t('colorCount'))}
+                  sortKey="color_count"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                />
+                <SortableTableHead
+                  label={String(t('physicalMeters'))}
+                  sortKey="total_meters"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  className="text-right"
+                />
+                <SortableTableHead
+                  label={String(t('incoming'))}
+                  sortKey="incoming_meters"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  className="text-right"
+                />
+                <SortableTableHead
+                  label={String(t('reserved'))}
+                  sortKey="total_reserved_meters"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  className="text-right"
+                />
+                <SortableTableHead
+                  label={String(t('available'))}
+                  sortKey="available_meters"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  className="text-right"
+                />
+                <SortableTableHead
+                  label={String(t('rolls'))}
+                  sortKey="total_rolls"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  className="text-right"
+                />
+                <SortableTableHead
+                  label={String(t('lots'))}
+                  sortKey="lot_count"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                  className="text-right"
+                />
+                <SortableTableHead
+                  label={String(t('actions'))}
+                  sortKey=""
+                  currentSort={null}
+                  onSort={() => {}}
+                  className="text-right"
+                />
+                {deleteMode && getEffectiveRole() === 'admin' && (
+                  <SortableTableHead
+                    label={String(t('delete'))}
+                    sortKey=""
+                    currentSort={null}
+                    onSort={() => {}}
+                    className="text-right"
+                  />
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(deleteMode || bulkSelectionMode) && (
+                <TableRow>
+                  <TableCell>
                     <Checkbox
                       checked={(deleteMode ? selectedItems.size : selectedQualitiesForBulk.size) > 0 && 
                                (deleteMode ? selectedItems.size : selectedQualitiesForBulk.size) === filteredData.length}
                       onCheckedChange={handleSelectAll}
                     />
-                  </TableHead>
-                )}
-                <TableHead>
-                  <div className="flex items-center space-x-2">
-                    <span>Kalite</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                          <Filter className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80" align="start">
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Filter by quality</p>
-                          <Textarea
-                            placeholder="Type to filter qualities..."
-                            value={qualityFilter}
-                            onChange={(e) => setQualityFilter(e.target.value)}
-                            className="min-h-[60px]"
-                          />
-                          {qualityFilter && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setQualityFilter('')}
-                              className="w-full"
-                            >
-                              Clear filter
-                            </Button>
-                          )}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </TableHead>
-                <TableHead>Renk Sayısı</TableHead>
-                <TableHead className="text-right">Physical Meters</TableHead>
-                <TableHead className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Incoming</span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Stock expected to arrive</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Reserved</span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Meters reserved for active orders</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Available</span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Physical + Incoming - Reserved</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">{t('rolls')}</TableHead>
-                <TableHead className="text-right">Farklı Lot Sayısı</TableHead>
-                <TableHead className="text-right">{t('actions')}</TableHead>
-                {deleteMode && getEffectiveRole() === 'admin' && (
-                  <TableHead className="text-right">{t('delete')}</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                  </TableCell>
+                  <TableCell colSpan={10} className="text-sm text-muted-foreground">
+                    {deleteMode ? t('selectAllForDelete') : t('selectAllForOrder')}
+                  </TableCell>
+                </TableRow>
+              )}
               {filteredData.map((item) => (
                 <TableRow key={item.normalized_quality}>
                   {(deleteMode && getEffectiveRole() === 'admin') && (
@@ -1012,6 +1092,15 @@ const InventoryPivotTable = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Bottom Pagination */}
+          <DataTablePagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          />
         </CardContent>
       </Card>
 
