@@ -1689,6 +1689,9 @@ const translations = {
       incoming: 'Incoming',
       inProduction: 'In Production',
       demand12m: 'Demand (12M)',
+      demand12mTooltip: 'Total demand from the last 12 months of historical data',
+      filterByQuality: 'Filter by quality',
+      filterByColor: 'Filter by color...',
       
       // Additional Missing Keys - Global Settings
       forecastParameters: 'Forecast Parameters',
@@ -3890,6 +3893,9 @@ const translations = {
       incoming: 'Yolda',
       inProduction: 'Üretimde',
       demand12m: 'Talep (12A)',
+      demand12mTooltip: 'Son 12 aylık tarihsel verilerdeki toplam talep',
+      filterByQuality: 'Kaliteye göre filtrele',
+      filterByColor: 'Renk filtrele...',
       
       // Additional Missing Keys - Global Settings
       forecastParameters: 'Tahmin Parametreleri',
