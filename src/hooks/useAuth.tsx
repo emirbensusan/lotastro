@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 
 interface Profile {
   id: string;
@@ -24,6 +25,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Inner component that uses the session timeout hook
+const AuthProviderInner: React.FC<{ 
+  children: React.ReactNode;
+  signOut: () => Promise<void>;
+  isAuthenticated: boolean;
+}> = ({ children, signOut, isAuthenticated }) => {
+  // Session timeout handling
+  useSessionTimeout({
+    onTimeout: signOut,
+    isAuthenticated,
+  });
+
+  return <>{children}</>;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -33,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -104,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast({
@@ -113,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
     }
-  };
+  }, []);
 
   const hasRole = (role: string) => {
     return profile?.role === role;
@@ -130,7 +146,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     hasRole,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      <AuthProviderInner 
+        signOut={signOut} 
+        isAuthenticated={!!session}
+      >
+        {children}
+      </AuthProviderInner>
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
