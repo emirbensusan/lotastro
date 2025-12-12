@@ -541,6 +541,53 @@ export type Database = {
         }
         Relationships: []
       }
+      email_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          recipient: string
+          sent_at: string | null
+          status: string
+          subject: string
+          template_id: string | null
+          template_key: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient: string
+          sent_at?: string | null
+          status?: string
+          subject: string
+          template_id?: string | null
+          template_key?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          template_id?: string | null
+          template_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_settings: {
         Row: {
           description: string | null
@@ -1972,6 +2019,8 @@ export type Database = {
           aliases: string[] | null
           code: string
           created_at: string | null
+          critical_stock_threshold_meters: number | null
+          low_stock_threshold_meters: number | null
           unit: string
           updated_at: string | null
         }
@@ -1979,6 +2028,8 @@ export type Database = {
           aliases?: string[] | null
           code: string
           created_at?: string | null
+          critical_stock_threshold_meters?: number | null
+          low_stock_threshold_meters?: number | null
           unit?: string
           updated_at?: string | null
         }
@@ -1986,6 +2037,8 @@ export type Database = {
           aliases?: string[] | null
           code?: string
           created_at?: string | null
+          critical_stock_threshold_meters?: number | null
+          low_stock_threshold_meters?: number | null
           unit?: string
           updated_at?: string | null
         }
