@@ -766,15 +766,15 @@ const Admin: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="users">{t('userManagement')}</TabsTrigger>
-          <TabsTrigger value="permissions">{t('permissions')}</TabsTrigger>
-          <TabsTrigger value="security">{t('security')}</TabsTrigger>
-          <TabsTrigger value="catalog">{t('catalog.settings')}</TabsTrigger>
-          <TabsTrigger value="emailTemplates">{t('emailSettings.emailTemplates')}</TabsTrigger>
-          <TabsTrigger value="reminderSettings">{t('emailSettings.reminderSettings')}</TabsTrigger>
-          <TabsTrigger value="auditRetention">{t('auditRetention')}</TabsTrigger>
-          <TabsTrigger value="orderFlow">{t('orderFlowSettings')}</TabsTrigger>
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full">
+          <TabsTrigger value="users" className="flex-shrink-0">{t('userManagement')}</TabsTrigger>
+          <TabsTrigger value="permissions" className="flex-shrink-0">{t('permissions')}</TabsTrigger>
+          <TabsTrigger value="security" className="flex-shrink-0">{t('security')}</TabsTrigger>
+          <TabsTrigger value="catalog" className="flex-shrink-0">{t('catalog.settings')}</TabsTrigger>
+          <TabsTrigger value="emailTemplates" className="flex-shrink-0">{t('emailSettings.emailTemplates')}</TabsTrigger>
+          <TabsTrigger value="reminderSettings" className="flex-shrink-0">{t('emailSettings.reminderSettings')}</TabsTrigger>
+          <TabsTrigger value="auditRetention" className="flex-shrink-0">{t('auditRetention')}</TabsTrigger>
+          <TabsTrigger value="orderFlow" className="flex-shrink-0">{t('orderFlowSettings')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
