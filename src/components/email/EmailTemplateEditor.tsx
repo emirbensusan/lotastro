@@ -14,8 +14,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
+import { 
   Bold, Italic, Link as LinkIcon, List, ListOrdered, Heading2, 
-  Code, Undo, Redo, AlertCircle, RotateCcw, Eye, Send, History 
+  Code, Undo, Redo, AlertCircle, RotateCcw, Eye, Send, History, ChevronDown, Variable
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
@@ -80,10 +88,11 @@ const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
   sendingTest,
   hasChanges
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [htmlMode, setHtmlMode] = useState(false);
   const [previewLang, setPreviewLang] = useState<'en' | 'tr'>('en');
   const [showPreview, setShowPreview] = useState(false);
+  const [lastFocusedTarget, setLastFocusedTarget] = useState<'subject_en' | 'subject_tr' | 'body_en' | 'body_tr'>('body_en');
   const subjectEnRef = useRef<HTMLInputElement>(null);
   const subjectTrRef = useRef<HTMLInputElement>(null);
   
@@ -437,12 +446,65 @@ const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
         </div>
       </div>
 
-      {/* Variables panel */}
+      {/* Variables panel with Insert Variable dropdown */}
       <div className="mt-4 p-4 border rounded-lg bg-muted/30">
         <div className="flex items-center justify-between mb-3">
-          <Label className="text-sm font-medium">Available Variables</Label>
-          <span className="text-xs text-muted-foreground">Click to insert at cursor</span>
+          <Label className="text-sm font-medium">
+            {language === 'tr' ? 'Kullanılabilir Değişkenler' : 'Available Variables'}
+          </Label>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {language === 'tr' ? 'İmleçten ekle için tıklayın' : 'Click to insert at cursor'}
+            </span>
+            
+            {/* Insert Variable Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8">
+                  <Variable className="h-4 w-4 mr-2" />
+                  {language === 'tr' ? 'Değişken Ekle' : 'Insert Variable'}
+                  <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 max-h-80 overflow-y-auto">
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  {language === 'tr' 
+                    ? `Son odaklanan alana eklenecek: ${lastFocusedTarget.replace('_', ' ').toUpperCase()}`
+                    : `Will insert into: ${lastFocusedTarget.replace('_', ' ').toUpperCase()}`
+                  }
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {template.variables_meta?.map((v) => (
+                  <DropdownMenuItem 
+                    key={v.name}
+                    onClick={() => insertVariable(v.name, lastFocusedTarget)}
+                    className="flex flex-col items-start py-2"
+                  >
+                    <div className="flex items-center gap-2 w-full">
+                      <code className="text-sm font-medium text-primary">{`{${v.name}}`}</code>
+                      {v.required && (
+                        <Badge variant="destructive" className="text-xs h-4 px-1">
+                          {language === 'tr' ? 'Zorunlu' : 'Required'}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground mt-0.5">{v.description}</span>
+                    <span className="text-xs text-muted-foreground/70 italic">
+                      {language === 'tr' ? 'Örnek:' : 'Example:'} {v.example}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+                {(!template.variables_meta || template.variables_meta.length === 0) && (
+                  <DropdownMenuItem disabled>
+                    {language === 'tr' ? 'Bu şablon için değişken tanımlı değil' : 'No variables defined for this template'}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
+        
+        {/* Quick variable badges */}
         <div className="flex flex-wrap gap-2">
           <TooltipProvider>
             {template.variables_meta?.map((v) => (
@@ -452,17 +514,8 @@ const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
                     variant={v.required ? "default" : "secondary"}
                     className="cursor-pointer hover:bg-primary/80 transition-colors"
                     onClick={() => {
-                      // Insert into the last focused field or default to body_en
-                      const activeElement = document.activeElement;
-                      if (activeElement === subjectEnRef.current) {
-                        insertVariable(v.name, 'subject_en');
-                      } else if (activeElement === subjectTrRef.current) {
-                        insertVariable(v.name, 'subject_tr');
-                      } else if (editorTr?.isFocused) {
-                        insertVariable(v.name, 'body_tr');
-                      } else {
-                        insertVariable(v.name, 'body_en');
-                      }
+                      // Insert into the last focused field
+                      insertVariable(v.name, lastFocusedTarget);
                     }}
                   >
                     {`{${v.name}}`}
@@ -471,7 +524,9 @@ const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
                   <p className="font-medium">{v.description}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Example: {v.example}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === 'tr' ? 'Örnek:' : 'Example:'} {v.example}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             ))}
