@@ -541,13 +541,100 @@ export type Database = {
         }
         Relationships: []
       }
+      email_alert_acknowledgments: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          email_log_id: string | null
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          email_log_id?: string | null
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          email_log_id?: string | null
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_alert_acknowledgments_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "email_alert_acknowledgments_email_log_id_fkey"
+            columns: ["email_log_id"]
+            isOneToOne: false
+            referencedRelation: "email_log"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_digest_configs: {
+        Row: {
+          cooldown_hours: number | null
+          created_at: string | null
+          digest_type: string
+          id: string
+          is_enabled: boolean | null
+          last_sent_at: string | null
+          recipients: Json | null
+          schedule_config: Json | null
+          schedule_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cooldown_hours?: number | null
+          created_at?: string | null
+          digest_type: string
+          id?: string
+          is_enabled?: boolean | null
+          last_sent_at?: string | null
+          recipients?: Json | null
+          schedule_config?: Json | null
+          schedule_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cooldown_hours?: number | null
+          created_at?: string | null
+          digest_type?: string
+          id?: string
+          is_enabled?: boolean | null
+          last_sent_at?: string | null
+          recipients?: Json | null
+          schedule_config?: Json | null
+          schedule_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       email_log: {
         Row: {
+          acknowledged_at: string | null
+          attachments: Json | null
+          clicked_at: string | null
           created_at: string
+          digest_type: string | null
           error_message: string | null
           id: string
           metadata: Json | null
+          next_retry_at: string | null
+          opened_at: string | null
           recipient: string
+          requires_acknowledgment: boolean | null
+          retry_count: number | null
+          schedule_id: string | null
           sent_at: string | null
           status: string
           subject: string
@@ -555,11 +642,20 @@ export type Database = {
           template_key: string | null
         }
         Insert: {
+          acknowledged_at?: string | null
+          attachments?: Json | null
+          clicked_at?: string | null
           created_at?: string
+          digest_type?: string | null
           error_message?: string | null
           id?: string
           metadata?: Json | null
+          next_retry_at?: string | null
+          opened_at?: string | null
           recipient: string
+          requires_acknowledgment?: boolean | null
+          retry_count?: number | null
+          schedule_id?: string | null
           sent_at?: string | null
           status?: string
           subject: string
@@ -567,11 +663,20 @@ export type Database = {
           template_key?: string | null
         }
         Update: {
+          acknowledged_at?: string | null
+          attachments?: Json | null
+          clicked_at?: string | null
           created_at?: string
+          digest_type?: string | null
           error_message?: string | null
           id?: string
           metadata?: Json | null
+          next_retry_at?: string | null
+          opened_at?: string | null
           recipient?: string
+          requires_acknowledgment?: boolean | null
+          retry_count?: number | null
+          schedule_id?: string | null
           sent_at?: string | null
           status?: string
           subject?: string
@@ -580,7 +685,228 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "email_log_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "email_schedules"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "email_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_recipient_preferences: {
+        Row: {
+          consent_given_at: string | null
+          consent_source: string | null
+          created_at: string | null
+          email: string
+          frequency: string | null
+          id: string
+          is_subscribed: boolean | null
+          template_category: string | null
+          unsubscribed_at: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          consent_given_at?: string | null
+          consent_source?: string | null
+          created_at?: string | null
+          email: string
+          frequency?: string | null
+          id?: string
+          is_subscribed?: boolean | null
+          template_category?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          consent_given_at?: string | null
+          consent_source?: string | null
+          created_at?: string | null
+          email?: string
+          frequency?: string | null
+          id?: string
+          is_subscribed?: boolean | null
+          template_category?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_recipient_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      email_recipients: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          recipient_type: string
+          recipient_value: string
+          schedule_id: string | null
+          template_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          recipient_type: string
+          recipient_value: string
+          schedule_id?: string | null
+          template_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          recipient_type?: string
+          recipient_value?: string
+          schedule_id?: string | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_recipients_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "email_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_recipients_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_report_configs: {
+        Row: {
+          columns: Json
+          comparison_period: string | null
+          created_at: string | null
+          created_by: string | null
+          filters: Json | null
+          grouping: Json | null
+          id: string
+          include_charts: boolean | null
+          is_system: boolean | null
+          name: string
+          output_formats: string[] | null
+          report_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          columns?: Json
+          comparison_period?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          filters?: Json | null
+          grouping?: Json | null
+          id?: string
+          include_charts?: boolean | null
+          is_system?: boolean | null
+          name: string
+          output_formats?: string[] | null
+          report_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          columns?: Json
+          comparison_period?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          filters?: Json | null
+          grouping?: Json | null
+          id?: string
+          include_charts?: boolean | null
+          is_system?: boolean | null
+          name?: string
+          output_formats?: string[] | null
+          report_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_report_configs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      email_schedules: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          last_run_at: string | null
+          last_run_status: string | null
+          name: string
+          next_run_at: string | null
+          schedule_config: Json
+          schedule_type: string
+          template_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          last_run_status?: string | null
+          name: string
+          next_run_at?: string | null
+          schedule_config?: Json
+          schedule_type?: string
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          last_run_status?: string | null
+          name?: string
+          next_run_at?: string | null
+          schedule_config?: Json
+          schedule_type?: string
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "email_schedules_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "email_templates"
@@ -710,10 +1036,16 @@ export type Database = {
           default_body_tr: string | null
           default_subject_en: string | null
           default_subject_tr: string | null
+          error_count: number | null
           id: string
           is_active: boolean | null
+          is_digest: boolean | null
           is_system: boolean | null
+          last_sent_at: string | null
           name: string
+          priority: number | null
+          retry_config: Json | null
+          send_count: number | null
           subject_en: string
           subject_tr: string
           template_key: string
@@ -731,10 +1063,16 @@ export type Database = {
           default_body_tr?: string | null
           default_subject_en?: string | null
           default_subject_tr?: string | null
+          error_count?: number | null
           id?: string
           is_active?: boolean | null
+          is_digest?: boolean | null
           is_system?: boolean | null
+          last_sent_at?: string | null
           name: string
+          priority?: number | null
+          retry_config?: Json | null
+          send_count?: number | null
           subject_en: string
           subject_tr: string
           template_key: string
@@ -752,10 +1090,16 @@ export type Database = {
           default_body_tr?: string | null
           default_subject_en?: string | null
           default_subject_tr?: string | null
+          error_count?: number | null
           id?: string
           is_active?: boolean | null
+          is_digest?: boolean | null
           is_system?: boolean | null
+          last_sent_at?: string | null
           name?: string
+          priority?: number | null
+          retry_config?: Json | null
+          send_count?: number | null
           subject_en?: string
           subject_tr?: string
           template_key?: string
@@ -2016,6 +2360,7 @@ export type Database = {
       }
       qualities: {
         Row: {
+          alerts_enabled: boolean | null
           aliases: string[] | null
           code: string
           created_at: string | null
@@ -2025,6 +2370,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          alerts_enabled?: boolean | null
           aliases?: string[] | null
           code: string
           created_at?: string | null
@@ -2034,6 +2380,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          alerts_enabled?: boolean | null
           aliases?: string[] | null
           code?: string
           created_at?: string | null
