@@ -56,3 +56,12 @@ verify_jwt = true
 
 [functions.cleanup-old-audit-logs]
 verify_jwt = false
+
+[functions.check-stock-alerts]
+verify_jwt = false
+
+[functions.send-forecast-digest]
+verify_jwt = false
+
+[functions.send-reservation-reminders]
+verify_jwt = false
