@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, Link2, ArrowRightLeft, Package } from 'lucide-react';
+import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, Link2, ArrowRightLeft, Package, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -20,6 +20,8 @@ import ReminderSettingsTab from '@/components/ReminderSettingsTab';
 import OrderFlowSettingsTab from '@/components/OrderFlowSettingsTab';
 import CatalogCustomFieldsAdmin from '@/components/catalog/CatalogCustomFieldsAdmin';
 import CatalogApprovalSettings from '@/components/catalog/CatalogApprovalSettings';
+import IPWhitelistTab from '@/components/IPWhitelistTab';
+import AuditRetentionSettings from '@/components/AuditRetentionSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import MigrationProgressDialog from '@/components/MigrationProgressDialog';

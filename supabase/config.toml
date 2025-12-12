@@ -53,3 +53,6 @@ verify_jwt = true
 
 [functions.migrate-catalog-items]
 verify_jwt = true
+
+[functions.cleanup-old-audit-logs]
+verify_jwt = false
