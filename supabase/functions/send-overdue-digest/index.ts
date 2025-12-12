@@ -7,43 +7,78 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-interface StockItem {
-  quality: string;
-  color: string;
-  total_meters: number;
-  available_meters: number;
-}
-
-interface QualityThreshold {
-  code: string;
-  low_stock_threshold_meters: number;
-  critical_stock_threshold_meters: number;
-  alerts_enabled: boolean;
-}
-
-// Generate HTML table for stock items
-function generateStockTable(items: { quality: string; color: string; stock: number; threshold: number }[]): string {
-  if (items.length === 0) {
-    return '<p style="color: #666; font-style: italic;">No items in this category.</p>';
+// Generate HTML table for overdue manufacturing orders
+function generateMOTable(orders: { 
+  mo_number: string; 
+  quality: string; 
+  color: string; 
+  ordered_amount: number;
+  supplier_name: string;
+  expected_date: string;
+  days_overdue: number;
+}[]): string {
+  if (orders.length === 0) {
+    return '<p style="color: #666; font-style: italic;">No overdue manufacturing orders.</p>';
   }
   
   return `
     <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
       <thead>
         <tr style="background: #f3f4f6;">
+          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">MO #</th>
           <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Quality</th>
           <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Color</th>
-          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">Current Stock</th>
-          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">Threshold</th>
+          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">Amount</th>
+          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Supplier</th>
+          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Expected</th>
+          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Overdue</th>
         </tr>
       </thead>
       <tbody>
-        ${items.map(item => `
+        ${orders.map(order => `
           <tr>
-            <td style="padding: 8px; border: 1px solid #e5e7eb;">${item.quality}</td>
-            <td style="padding: 8px; border: 1px solid #e5e7eb;">${item.color}</td>
-            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">${item.stock.toLocaleString()} m</td>
-            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">${item.threshold.toLocaleString()} m</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">${order.mo_number}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">${order.quality}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">${order.color}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">${order.ordered_amount.toLocaleString()}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">${order.supplier_name}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">${order.expected_date}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center; color: #dc2626; font-weight: bold;">${order.days_overdue} days</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// Generate HTML table for overdue orders
+function generateOrdersTable(orders: { 
+  order_number: string; 
+  customer_name: string; 
+  created_at: string;
+  days_old: number;
+}[]): string {
+  if (orders.length === 0) {
+    return '<p style="color: #666; font-style: italic;">No overdue orders.</p>';
+  }
+  
+  return `
+    <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+      <thead>
+        <tr style="background: #f3f4f6;">
+          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Order #</th>
+          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Customer</th>
+          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Created</th>
+          <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Age</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${orders.map(order => `
+          <tr>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">${order.order_number}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb;">${order.customer_name}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">${order.created_at}</td>
+            <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center; color: #f59e0b; font-weight: bold;">${order.days_old} days</td>
           </tr>
         `).join('')}
       </tbody>
@@ -72,7 +107,7 @@ async function resolveRecipients(supabase: any, recipientsConfig: string[]): Pro
     }
   }
   
-  return [...new Set(emails)]; // Remove duplicates
+  return [...new Set(emails)];
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -80,14 +115,14 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("check-stock-alerts: Starting DIGEST stock alert check");
+  console.log("send-overdue-digest: Starting overdue items digest");
 
-  // Validate CRON_SECRET for scheduled runs
+  // Validate CRON_SECRET
   const cronSecret = Deno.env.get("CRON_SECRET");
   const providedSecret = req.headers.get("x-cron-secret");
   
   if (cronSecret && providedSecret !== cronSecret) {
-    console.error("check-stock-alerts: Invalid or missing CRON_SECRET");
+    console.error("send-overdue-digest: Invalid or missing CRON_SECRET");
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -106,12 +141,12 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: digestConfig } = await supabase
       .from("email_digest_configs")
       .select("*")
-      .eq("digest_type", "stock_alerts")
+      .eq("digest_type", "overdue_digest")
       .single();
 
     if (!digestConfig?.is_enabled) {
-      console.log("check-stock-alerts: Stock alerts digest is disabled");
-      return new Response(JSON.stringify({ message: "Stock alerts digest disabled" }), {
+      console.log("send-overdue-digest: Overdue digest is disabled");
+      return new Response(JSON.stringify({ message: "Overdue digest disabled" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -122,7 +157,7 @@ const handler = async (req: Request): Promise<Response> => {
       const lastSent = new Date(digestConfig.last_sent_at);
       const cooldownMs = (digestConfig.cooldown_hours || 24) * 60 * 60 * 1000;
       if (Date.now() - lastSent.getTime() < cooldownMs) {
-        console.log("check-stock-alerts: Still in cooldown period");
+        console.log("send-overdue-digest: Still in cooldown period");
         return new Response(JSON.stringify({ message: "Cooldown period active" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -135,7 +170,7 @@ const handler = async (req: Request): Promise<Response> => {
     const recipients = await resolveRecipients(supabase, recipientsConfig);
 
     if (recipients.length === 0) {
-      console.log("check-stock-alerts: No recipients configured");
+      console.log("send-overdue-digest: No recipients configured");
       return new Response(JSON.stringify({ message: "No recipients configured" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -159,75 +194,78 @@ const handler = async (req: Request): Promise<Response> => {
       senderName = sender.name || senderName;
     }
 
-    // Get quality thresholds - ONLY for qualities with alerts_enabled
-    const { data: qualities, error: qualitiesError } = await supabase
-      .from("qualities")
-      .select("code, low_stock_threshold_meters, critical_stock_threshold_meters, alerts_enabled")
-      .eq("alerts_enabled", true);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    if (qualitiesError) {
-      console.error("check-stock-alerts: Error fetching qualities:", qualitiesError);
-      throw qualitiesError;
+    // Get overdue manufacturing orders
+    const { data: overdueMOs, error: moError } = await supabase
+      .from("manufacturing_orders")
+      .select(`
+        id,
+        mo_number,
+        quality,
+        color,
+        ordered_amount,
+        expected_completion_date,
+        supplier_id,
+        suppliers!manufacturing_orders_supplier_id_fkey (name)
+      `)
+      .not("status", "in", '("SHIPPED","CANCELLED")')
+      .not("expected_completion_date", "is", null)
+      .lt("expected_completion_date", today.toISOString().split("T")[0]);
+
+    if (moError) {
+      console.error("send-overdue-digest: Error fetching MOs:", moError);
+      throw moError;
     }
 
-    if (!qualities || qualities.length === 0) {
-      console.log("check-stock-alerts: No qualities have alerts enabled");
-      return new Response(JSON.stringify({ message: "No qualities have alerts enabled" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Get overdue orders (unfulfilled for more than 7 days)
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+
+    const { data: overdueOrders, error: ordersError } = await supabase
+      .from("orders")
+      .select("id, order_number, customer_name, created_at")
+      .is("fulfilled_at", null)
+      .lt("created_at", sevenDaysAgo.toISOString());
+
+    if (ordersError) {
+      console.error("send-overdue-digest: Error fetching orders:", ordersError);
+      throw ordersError;
     }
 
-    const thresholdMap = new Map<string, QualityThreshold>();
-    qualities.forEach((q: QualityThreshold) => {
-      thresholdMap.set(q.code.toUpperCase(), q);
+    // Process MOs
+    const moData = (overdueMOs || []).map((mo: any) => {
+      const expectedDate = new Date(mo.expected_completion_date);
+      const daysOverdue = Math.ceil((today.getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        mo_number: mo.mo_number,
+        quality: mo.quality,
+        color: mo.color,
+        ordered_amount: mo.ordered_amount,
+        supplier_name: mo.suppliers?.name || 'Unknown',
+        expected_date: expectedDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+        days_overdue: daysOverdue,
+      };
     });
 
-    // Get current stock levels
-    const { data: stockData, error: stockError } = await supabase
-      .rpc("get_inventory_pivot_summary");
+    // Process Orders
+    const ordersData = (overdueOrders || []).map((order: any) => {
+      const createdAt = new Date(order.created_at);
+      const daysOld = Math.ceil((today.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        order_number: order.order_number,
+        customer_name: order.customer_name,
+        created_at: createdAt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+        days_old: daysOld,
+      };
+    });
 
-    if (stockError) {
-      console.error("check-stock-alerts: Error fetching stock:", stockError);
-      throw stockError;
-    }
-
-    // Collect items by severity
-    const criticalItems: { quality: string; color: string; stock: number; threshold: number }[] = [];
-    const lowStockItems: { quality: string; color: string; stock: number; threshold: number }[] = [];
-
-    for (const item of stockData || []) {
-      const qualityKey = (item.quality || "").toUpperCase();
-      const thresholds = thresholdMap.get(qualityKey);
-      
-      if (!thresholds) continue; // Skip if quality doesn't have alerts enabled
-
-      const currentStock = item.available_meters || 0;
-      const lowThreshold = thresholds.low_stock_threshold_meters || 500;
-      const criticalThreshold = thresholds.critical_stock_threshold_meters || 100;
-
-      if (currentStock <= criticalThreshold) {
-        criticalItems.push({
-          quality: item.quality,
-          color: item.color,
-          stock: currentStock,
-          threshold: criticalThreshold,
-        });
-      } else if (currentStock <= lowThreshold) {
-        lowStockItems.push({
-          quality: item.quality,
-          color: item.color,
-          stock: currentStock,
-          threshold: lowThreshold,
-        });
-      }
-    }
-
-    const totalCount = criticalItems.length + lowStockItems.length;
+    const totalCount = moData.length + ordersData.length;
 
     if (totalCount === 0) {
-      console.log("check-stock-alerts: No stock alerts to send");
-      return new Response(JSON.stringify({ message: "No stock below thresholds" }), {
+      console.log("send-overdue-digest: No overdue items to send");
+      return new Response(JSON.stringify({ message: "No overdue items" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -237,12 +275,12 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: template } = await supabase
       .from("email_templates")
       .select("*")
-      .eq("template_key", "stock_digest")
+      .eq("template_key", "overdue_digest")
       .eq("is_active", true)
       .single();
 
     if (!template) {
-      console.error("check-stock-alerts: stock_digest template not found");
+      console.error("send-overdue-digest: overdue_digest template not found");
       return new Response(JSON.stringify({ error: "Template not found" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -250,29 +288,27 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Generate HTML tables
-    const criticalTable = generateStockTable(criticalItems);
-    const lowStockTable = generateStockTable(lowStockItems);
+    const moTable = generateMOTable(moData);
+    const ordersTable = generateOrdersTable(ordersData);
     const currentDate = new Date().toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
 
-    const appUrl = supabaseUrl.replace('.supabase.co', '').replace('https://', 'https://app.');
-
     // Replace template variables
     const subject = template.subject_en.replace("{date}", currentDate);
     const body = template.body_en
       .replace(/{date}/g, currentDate)
-      .replace(/{critical_count}/g, criticalItems.length.toString())
-      .replace(/{low_stock_count}/g, lowStockItems.length.toString())
+      .replace(/{overdue_mo_count}/g, moData.length.toString())
+      .replace(/{overdue_orders_count}/g, ordersData.length.toString())
       .replace(/{total_count}/g, totalCount.toString())
-      .replace(/{critical_items_table}/g, criticalTable)
-      .replace(/{low_stock_items_table}/g, lowStockTable)
+      .replace(/{mo_table}/g, moTable)
+      .replace(/{orders_table}/g, ordersTable)
       .replace(/{app_url}/g, "https://lotastro.lovable.app");
 
     if (!resend) {
-      console.log("check-stock-alerts: Resend not configured");
+      console.log("send-overdue-digest: Resend not configured");
       return new Response(JSON.stringify({ error: "Email service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -292,17 +328,17 @@ const handler = async (req: Request): Promise<Response> => {
       
       // Log the email
       await supabase.from("email_log").insert({
-        template_key: "stock_digest",
+        template_key: "overdue_digest",
         template_id: template.id,
         recipient: recipients.join(", "),
         subject,
         status,
         sent_at: status === "sent" ? new Date().toISOString() : null,
         error_message: emailError?.message || null,
-        digest_type: "stock_alerts",
+        digest_type: "overdue_digest",
         metadata: { 
-          critical_count: criticalItems.length, 
-          low_stock_count: lowStockItems.length,
+          overdue_mo_count: moData.length, 
+          overdue_orders_count: ordersData.length,
           total_count: totalCount,
         },
       });
@@ -312,7 +348,7 @@ const handler = async (req: Request): Promise<Response> => {
         await supabase
           .from("email_digest_configs")
           .update({ last_sent_at: new Date().toISOString() })
-          .eq("digest_type", "stock_alerts");
+          .eq("digest_type", "overdue_digest");
 
         // Update template send count
         await supabase
@@ -324,30 +360,30 @@ const handler = async (req: Request): Promise<Response> => {
           .eq("id", template.id);
       }
 
-      console.log(`check-stock-alerts: Digest ${status}. Critical: ${criticalItems.length}, Low: ${lowStockItems.length}`);
+      console.log(`send-overdue-digest: Digest ${status}. MOs: ${moData.length}, Orders: ${ordersData.length}`);
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           digest_sent: status === "sent",
-          critical_count: criticalItems.length,
-          low_stock_count: lowStockItems.length,
+          overdue_mo_count: moData.length,
+          overdue_orders_count: ordersData.length,
           total_count: totalCount,
           recipients: recipients.length,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } catch (emailErr: any) {
-      console.error("check-stock-alerts: Email send error:", emailErr);
+      console.error("send-overdue-digest: Email send error:", emailErr);
       
       await supabase.from("email_log").insert({
-        template_key: "stock_digest",
+        template_key: "overdue_digest",
         template_id: template.id,
         recipient: recipients.join(", "),
         subject,
         status: "failed",
         error_message: emailErr.message,
-        digest_type: "stock_alerts",
+        digest_type: "overdue_digest",
       });
 
       return new Response(
@@ -356,7 +392,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
   } catch (error: any) {
-    console.error("check-stock-alerts: Error:", error);
+    console.error("send-overdue-digest: Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
