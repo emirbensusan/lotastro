@@ -16,6 +16,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
 import EmailTemplatesTab from '@/components/EmailTemplatesTab';
+import { EmailDigestsTab } from '@/components/email/EmailDigestsTab';
 import ReportConfigurationTab from '@/components/email/ReportConfigurationTab';
 import ReminderSettingsTab from '@/components/ReminderSettingsTab';
 import OrderFlowSettingsTab from '@/components/OrderFlowSettingsTab';
@@ -773,6 +774,7 @@ const Admin: React.FC = () => {
           <TabsTrigger value="security" className="flex-shrink-0">{t('security')}</TabsTrigger>
           <TabsTrigger value="catalog" className="flex-shrink-0">{t('catalog.settings')}</TabsTrigger>
           <TabsTrigger value="emailTemplates" className="flex-shrink-0">{t('emailSettings.emailTemplates')}</TabsTrigger>
+          <TabsTrigger value="emailDigests" className="flex-shrink-0">{language === 'tr' ? 'E-posta Digest' : 'Email Digests'}</TabsTrigger>
           <TabsTrigger value="reportConfigs" className="flex-shrink-0">{language === 'tr' ? 'Rapor Ayarları' : 'Report Config'}</TabsTrigger>
           <TabsTrigger value="reminderSettings" className="flex-shrink-0">{t('emailSettings.reminderSettings')}</TabsTrigger>
           <TabsTrigger value="auditRetention" className="flex-shrink-0">{t('auditRetention')}</TabsTrigger>
@@ -1271,6 +1273,10 @@ const Admin: React.FC = () => {
 
         <TabsContent value="emailTemplates" className="space-y-6">
           <EmailTemplatesTab />
+        </TabsContent>
+
+        <TabsContent value="emailDigests" className="space-y-6">
+          <EmailDigestsTab />
         </TabsContent>
 
         <TabsContent value="reportConfigs" className="space-y-6">
