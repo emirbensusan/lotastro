@@ -65,3 +65,21 @@ verify_jwt = false
 
 [functions.send-reservation-reminders]
 verify_jwt = false
+
+[functions.send-overdue-digest]
+verify_jwt = false
+
+[functions.send-pending-approvals-digest]
+verify_jwt = false
+
+[functions.generate-report-attachment]
+verify_jwt = true
+
+[functions.process-email-retries]
+verify_jwt = false
+
+[functions.send-in-app-notification]
+verify_jwt = true
+
+[functions.test-extraction]
+verify_jwt = true
