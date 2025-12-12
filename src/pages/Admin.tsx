@@ -16,6 +16,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
 import EmailTemplatesTab from '@/components/EmailTemplatesTab';
+import ReportConfigurationTab from '@/components/email/ReportConfigurationTab';
 import ReminderSettingsTab from '@/components/ReminderSettingsTab';
 import OrderFlowSettingsTab from '@/components/OrderFlowSettingsTab';
 import CatalogCustomFieldsAdmin from '@/components/catalog/CatalogCustomFieldsAdmin';
@@ -55,7 +56,7 @@ const Admin: React.FC = () => {
   const { profile, hasRole, loading: authLoading } = useAuth();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -772,6 +773,7 @@ const Admin: React.FC = () => {
           <TabsTrigger value="security" className="flex-shrink-0">{t('security')}</TabsTrigger>
           <TabsTrigger value="catalog" className="flex-shrink-0">{t('catalog.settings')}</TabsTrigger>
           <TabsTrigger value="emailTemplates" className="flex-shrink-0">{t('emailSettings.emailTemplates')}</TabsTrigger>
+          <TabsTrigger value="reportConfigs" className="flex-shrink-0">{language === 'tr' ? 'Rapor Ayarları' : 'Report Config'}</TabsTrigger>
           <TabsTrigger value="reminderSettings" className="flex-shrink-0">{t('emailSettings.reminderSettings')}</TabsTrigger>
           <TabsTrigger value="auditRetention" className="flex-shrink-0">{t('auditRetention')}</TabsTrigger>
           <TabsTrigger value="orderFlow" className="flex-shrink-0">{t('orderFlowSettings')}</TabsTrigger>
@@ -1269,6 +1271,10 @@ const Admin: React.FC = () => {
 
         <TabsContent value="emailTemplates" className="space-y-6">
           <EmailTemplatesTab />
+        </TabsContent>
+
+        <TabsContent value="reportConfigs" className="space-y-6">
+          <ReportConfigurationTab />
         </TabsContent>
 
         <TabsContent value="reminderSettings" className="space-y-6">
