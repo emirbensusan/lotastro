@@ -766,12 +766,14 @@ const Admin: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="users">{t('userManagement')}</TabsTrigger>
           <TabsTrigger value="permissions">{t('permissions')}</TabsTrigger>
+          <TabsTrigger value="security">{t('security')}</TabsTrigger>
           <TabsTrigger value="catalog">{t('catalog.settings')}</TabsTrigger>
           <TabsTrigger value="emailTemplates">{t('emailSettings.emailTemplates')}</TabsTrigger>
           <TabsTrigger value="reminderSettings">{t('emailSettings.reminderSettings')}</TabsTrigger>
+          <TabsTrigger value="auditRetention">{t('auditRetention')}</TabsTrigger>
           <TabsTrigger value="orderFlow">{t('orderFlowSettings')}</TabsTrigger>
         </TabsList>
 
@@ -1302,6 +1304,14 @@ const Admin: React.FC = () => {
 
         <TabsContent value="orderFlow" className="space-y-6">
           <OrderFlowSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <IPWhitelistTab />
+        </TabsContent>
+
+        <TabsContent value="auditRetention" className="space-y-6">
+          <AuditRetentionSettings />
         </TabsContent>
       </Tabs>
 
