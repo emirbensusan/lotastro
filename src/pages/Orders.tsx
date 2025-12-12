@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { toast } from "sonner";
-import { Truck, Plus, CheckCircle, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown, Layers } from 'lucide-react';
+import { Truck, Plus, CheckCircle, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown, Layers, Share2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
@@ -24,6 +24,7 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
 import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
 import { ViewDetailsButton } from '@/components/ui/view-details-button';
+import ShareOrderDialog from '@/components/ShareOrderDialog';
 
 interface Order {
   id: string;
@@ -63,6 +64,10 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
+  
+  // Share dialog state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [orderToShare, setOrderToShare] = useState<Order | null>(null);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -783,6 +788,18 @@ const Orders = () => {
                       >
                         <FileText className="h-3 w-3" />
                       </Button>
+                      {canCreateOrders && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setOrderToShare(order);
+                            setShareDialogOpen(true);
+                          }}
+                        >
+                          <Share2 className="h-3 w-3" />
+                        </Button>
+                      )}
                       {!order.fulfilled_at && canFulfillOrders && (
                         <Button
                           variant="outline"
@@ -928,6 +945,16 @@ const Orders = () => {
           setShowBulkUpload(false);
         }}
       />
+
+      {/* Share Order Dialog */}
+      {orderToShare && (
+        <ShareOrderDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          orderId={orderToShare.id}
+          orderNumber={orderToShare.order_number}
+        />
+      )}
     </div>
   );
 };

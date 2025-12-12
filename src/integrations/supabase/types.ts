@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_ip_whitelist: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          ip_address: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          ip_address: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          ip_address?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_usage: {
         Row: {
           created_at: string
@@ -1628,6 +1658,41 @@ export type Database = {
           },
         ]
       }
+      order_shares: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          order_id: string
+          shared_by_user_id: string
+          shared_with_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          order_id: string
+          shared_by_user_id: string
+          shared_with_user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          order_id?: string
+          shared_by_user_id?: string
+          shared_with_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_shares_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
@@ -2459,6 +2524,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_ip_whitelisted: { Args: { check_ip: string }; Returns: boolean }
       log_audit_action: {
         Args: {
           p_action: Database["public"]["Enums"]["audit_action_type"]
