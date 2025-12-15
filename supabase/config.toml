@@ -83,3 +83,6 @@ verify_jwt = true
 
 [functions.test-extraction]
 verify_jwt = true
+
+[functions.stock-take-ocr]
+verify_jwt = true
