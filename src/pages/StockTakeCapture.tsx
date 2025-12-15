@@ -44,7 +44,7 @@ const StockTakeCapture = () => {
   const { t } = useLanguage();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   
-  const { uploadAndProcessImage, progress, isUploading, resetProgress } = useStockTakeUpload();
+  const { uploadAndProcessImage, progress, isUploading, ocrTimedOut, resetProgress, skipOCR } = useStockTakeUpload();
   
   // Use the session management hook with timeout handling
   const {
@@ -77,12 +77,22 @@ const StockTakeCapture = () => {
     processImage(imageDataUrl);
   }, [session, captureSequence]);
 
+  // State for current roll being processed
+  const [currentRollId, setCurrentRollId] = useState<string | null>(null);
+  const [currentStoragePath, setCurrentStoragePath] = useState<string | null>(null);
+
   // Process captured image
   const processImage = async (imageDataUrl: string) => {
-    if (!session) return;
+    if (!session || !user) return;
 
     try {
-      const result = await uploadAndProcessImage(imageDataUrl, session.id, captureSequence);
+      const result = await uploadAndProcessImage(
+        imageDataUrl, 
+        session.id, 
+        captureSequence,
+        user.id,
+        true // Use async OCR
+      );
       
       if (!result.upload.success) {
         toast({
@@ -91,6 +101,14 @@ const StockTakeCapture = () => {
           variant: 'destructive',
         });
         return;
+      }
+
+      // Store roll info for later update
+      if (result.rollId) {
+        setCurrentRollId(result.rollId);
+      }
+      if (result.upload.storagePath) {
+        setCurrentStoragePath(result.upload.storagePath);
       }
 
       // Prepare OCR data for confirmation
@@ -106,7 +124,7 @@ const StockTakeCapture = () => {
           rawText: ocr.ocr?.rawText || '',
         });
       } else {
-        // OCR failed, set empty data for manual entry
+        // OCR failed or timed out, set empty data for manual entry
         setOcrData({
           quality: '',
           color: '',
@@ -114,7 +132,7 @@ const StockTakeCapture = () => {
           meters: null,
           confidence: { overallScore: 0, level: 'low' },
           isLikelyLabel: false,
-          rawText: '',
+          rawText: ocr?.timedOut ? 'OCR_TIMEOUT' : '',
         });
       }
       
@@ -127,6 +145,21 @@ const StockTakeCapture = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  // Handle proceeding with manual entry when OCR times out
+  const handleProceedManual = () => {
+    skipOCR();
+    setOcrData({
+      quality: '',
+      color: '',
+      lotNumber: '',
+      meters: null,
+      confidence: { overallScore: 0, level: 'low' },
+      isLikelyLabel: false,
+      rawText: 'MANUAL_ENTRY',
+    });
+    setShowOCRConfirm(true);
   };
 
   // Handle OCR confirmation
@@ -143,35 +176,58 @@ const StockTakeCapture = () => {
     if (!session) return;
 
     try {
-      // Insert count roll record
-      const { error } = await supabase
-        .from('count_rolls')
-        .insert({
-          session_id: session.id,
-          capture_sequence: captureSequence,
-          photo_path: `${session.id}/${captureSequence}_${Date.now()}.jpg`,
-          photo_hash_sha256: '', // Will be filled by edge function
-          counter_quality: confirmedData.quality.toUpperCase(),
-          counter_color: confirmedData.color.toUpperCase(),
-          counter_lot_number: confirmedData.lotNumber.toUpperCase(),
-          counter_meters: confirmedData.meters,
-          captured_by: user!.id,
-          is_manual_entry: confirmedData.isManualEntry,
-          manual_edit_reason: confirmedData.editReason as any,
-          manual_edit_reason_other: confirmedData.editReasonOther,
-          fields_manually_edited: confirmedData.fieldsEdited,
-          ocr_quality: ocrData?.quality,
-          ocr_color: ocrData?.color,
-          ocr_lot_number: ocrData?.lotNumber,
-          ocr_meters: ocrData?.meters,
-          ocr_confidence_score: ocrData?.confidence.overallScore,
-          ocr_confidence_level: ocrData?.confidence.level as any,
-          ocr_raw_text: ocrData?.rawText,
-          ocr_processed_at: new Date().toISOString(),
-          is_not_label_warning: !ocrData?.isLikelyLabel,
-        });
+      // Update existing roll record (created during upload)
+      if (currentRollId) {
+        const { error } = await supabase
+          .from('count_rolls')
+          .update({
+            counter_quality: confirmedData.quality.toUpperCase(),
+            counter_color: confirmedData.color.toUpperCase(),
+            counter_lot_number: confirmedData.lotNumber.toUpperCase(),
+            counter_meters: confirmedData.meters,
+            counter_confirmed_at: new Date().toISOString(),
+            is_manual_entry: confirmedData.isManualEntry,
+            manual_edit_reason: confirmedData.editReason as any,
+            manual_edit_reason_other: confirmedData.editReasonOther,
+            fields_manually_edited: confirmedData.fieldsEdited,
+            // Update OCR status if it was skipped
+            ocr_status: ocrData?.rawText === 'MANUAL_ENTRY' ? 'skipped' : undefined,
+          })
+          .eq('id', currentRollId);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Fallback: Insert new record (shouldn't happen in normal flow)
+        const { error } = await supabase
+          .from('count_rolls')
+          .insert({
+            session_id: session.id,
+            capture_sequence: captureSequence,
+            photo_path: currentStoragePath || `${session.id}/${captureSequence}_${Date.now()}.jpg`,
+            photo_hash_sha256: '',
+            counter_quality: confirmedData.quality.toUpperCase(),
+            counter_color: confirmedData.color.toUpperCase(),
+            counter_lot_number: confirmedData.lotNumber.toUpperCase(),
+            counter_meters: confirmedData.meters,
+            captured_by: user!.id,
+            is_manual_entry: confirmedData.isManualEntry,
+            manual_edit_reason: confirmedData.editReason as any,
+            manual_edit_reason_other: confirmedData.editReasonOther,
+            fields_manually_edited: confirmedData.fieldsEdited,
+            ocr_quality: ocrData?.quality,
+            ocr_color: ocrData?.color,
+            ocr_lot_number: ocrData?.lotNumber,
+            ocr_meters: ocrData?.meters,
+            ocr_confidence_score: ocrData?.confidence.overallScore,
+            ocr_confidence_level: ocrData?.confidence.level as any,
+            ocr_raw_text: ocrData?.rawText,
+            ocr_processed_at: new Date().toISOString(),
+            is_not_label_warning: !ocrData?.isLikelyLabel,
+            ocr_status: 'completed',
+          });
+
+        if (error) throw error;
+      }
 
       // Update session activity
       await supabase
@@ -189,6 +245,8 @@ const StockTakeCapture = () => {
       setCapturedImage(null);
       setOcrData(null);
       setShowOCRConfirm(false);
+      setCurrentRollId(null);
+      setCurrentStoragePath(null);
       resetProgress();
       
     } catch (error) {
@@ -323,7 +381,7 @@ const StockTakeCapture = () => {
       {isUploading && (
         <Card className="w-full max-w-sm">
           <CardContent className="pt-6">
-            <UploadProgressBar progress={progress} />
+            <UploadProgressBar progress={progress} onProceedManual={handleProceedManual} />
           </CardContent>
         </Card>
       )}

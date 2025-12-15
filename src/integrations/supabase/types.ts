@@ -532,6 +532,7 @@ export type Database = {
           ocr_processed_at: string | null
           ocr_quality: string | null
           ocr_raw_text: string | null
+          ocr_status: string | null
           original_roll_id: string | null
           photo_hash_perceptual: string | null
           photo_hash_sha256: string
@@ -579,6 +580,7 @@ export type Database = {
           ocr_processed_at?: string | null
           ocr_quality?: string | null
           ocr_raw_text?: string | null
+          ocr_status?: string | null
           original_roll_id?: string | null
           photo_hash_perceptual?: string | null
           photo_hash_sha256: string
@@ -626,6 +628,7 @@ export type Database = {
           ocr_processed_at?: string | null
           ocr_quality?: string | null
           ocr_raw_text?: string | null
+          ocr_status?: string | null
           original_roll_id?: string | null
           photo_hash_perceptual?: string | null
           photo_hash_sha256?: string
@@ -2194,6 +2197,56 @@ export type Database = {
             columns: ["manufacturing_order_id"]
             isOneToOne: false
             referencedRelation: "manufacturing_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ocr_jobs: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          image_path: string
+          max_attempts: number
+          ocr_result: Json | null
+          roll_id: string | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          image_path: string
+          max_attempts?: number
+          ocr_result?: Json | null
+          roll_id?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          image_path?: string
+          max_attempts?: number
+          ocr_result?: Json | null
+          roll_id?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocr_jobs_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: false
+            referencedRelation: "count_rolls"
             referencedColumns: ["id"]
           },
         ]
