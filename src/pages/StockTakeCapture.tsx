@@ -100,10 +100,27 @@ const StockTakeCapture = () => {
 
   // Handle photo capture
   const handleCapture = useCallback((imageDataUrl: string) => {
+    console.log('[StockTakeCapture] ========== HANDLE CAPTURE ==========');
+    console.log('[StockTakeCapture] Received imageDataUrl type:', typeof imageDataUrl);
+    console.log('[StockTakeCapture] Received imageDataUrl length:', imageDataUrl?.length || 0);
+    console.log('[StockTakeCapture] Received imageDataUrl prefix:', imageDataUrl?.substring(0, 50));
+    console.log('[StockTakeCapture] Is valid data URL?', imageDataUrl?.startsWith('data:image/'));
+    
+    if (!imageDataUrl || imageDataUrl.length < 100) {
+      console.error('[StockTakeCapture] ❌ Invalid image data received!');
+      toast({
+        title: 'Error',
+        description: 'Invalid image data received from camera/crop',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    console.log('[StockTakeCapture] ✅ Valid image data, proceeding...');
     setCapturedImage(imageDataUrl);
     setShowCamera(false);
     processImage(imageDataUrl);
-  }, [session, captureSequence]);
+  }, [session, captureSequence, toast]);
 
   // State for current roll being processed
   const [currentRollId, setCurrentRollId] = useState<string | null>(null);

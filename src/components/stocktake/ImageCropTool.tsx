@@ -168,41 +168,89 @@ export const ImageCropTool = ({ imageDataUrl, onConfirm, onCancel }: ImageCropTo
 
   // Confirm and crop the image
   const confirmCrop = useCallback(async () => {
-    if (!imageRef.current || !displaySize.width) return;
+    console.log('[ImageCropTool] ========== CROP CONFIRM START ==========');
+    console.log('[ImageCropTool] imageRef.current exists:', !!imageRef.current);
+    console.log('[ImageCropTool] displaySize:', displaySize);
+    console.log('[ImageCropTool] imageSize:', imageSize);
+    console.log('[ImageCropTool] cropRect:', cropRect);
     
-    // Calculate scale between display and actual image
-    const scaleX = imageSize.width / displaySize.width;
-    const scaleY = imageSize.height / displaySize.height;
+    if (!imageRef.current) {
+      console.error('[ImageCropTool] ❌ No image reference!');
+      return;
+    }
+    if (!displaySize.width) {
+      console.error('[ImageCropTool] ❌ displaySize.width is 0!');
+      return;
+    }
     
-    // Calculate actual crop coordinates
-    const actualCrop = {
-      x: cropRect.x * scaleX,
-      y: cropRect.y * scaleY,
-      width: cropRect.width * scaleX,
-      height: cropRect.height * scaleY,
-    };
-    
-    // Create canvas and crop
-    const canvas = document.createElement('canvas');
-    canvas.width = actualCrop.width;
-    canvas.height = actualCrop.height;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Fill white background
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw cropped portion
-    ctx.drawImage(
-      imageRef.current,
-      actualCrop.x, actualCrop.y, actualCrop.width, actualCrop.height,
-      0, 0, actualCrop.width, actualCrop.height
-    );
-    
-    const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-    onConfirm(croppedDataUrl);
+    try {
+      // Calculate scale between display and actual image
+      const scaleX = imageSize.width / displaySize.width;
+      const scaleY = imageSize.height / displaySize.height;
+      console.log('[ImageCropTool] Scale factors - X:', scaleX, 'Y:', scaleY);
+      
+      // Calculate actual crop coordinates
+      const actualCrop = {
+        x: Math.round(cropRect.x * scaleX),
+        y: Math.round(cropRect.y * scaleY),
+        width: Math.round(cropRect.width * scaleX),
+        height: Math.round(cropRect.height * scaleY),
+      };
+      console.log('[ImageCropTool] actualCrop:', actualCrop);
+      
+      // Validate crop dimensions
+      if (actualCrop.width <= 0 || actualCrop.height <= 0) {
+        console.error('[ImageCropTool] ❌ Invalid crop dimensions!');
+        return;
+      }
+      
+      // Create canvas and crop
+      const canvas = document.createElement('canvas');
+      canvas.width = actualCrop.width;
+      canvas.height = actualCrop.height;
+      console.log('[ImageCropTool] Canvas created:', canvas.width, 'x', canvas.height);
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('[ImageCropTool] ❌ Failed to get canvas 2d context!');
+        return;
+      }
+      
+      // Fill white background
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Check image is complete
+      console.log('[ImageCropTool] Image complete:', imageRef.current.complete);
+      console.log('[ImageCropTool] Image naturalWidth:', imageRef.current.naturalWidth);
+      console.log('[ImageCropTool] Image naturalHeight:', imageRef.current.naturalHeight);
+      
+      // Draw cropped portion
+      ctx.drawImage(
+        imageRef.current,
+        actualCrop.x, actualCrop.y, actualCrop.width, actualCrop.height,
+        0, 0, actualCrop.width, actualCrop.height
+      );
+      
+      // Convert to data URL
+      const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      
+      // Validate the result
+      console.log('[ImageCropTool] ========== CROP RESULT ==========');
+      console.log('[ImageCropTool] croppedDataUrl length:', croppedDataUrl.length);
+      console.log('[ImageCropTool] croppedDataUrl prefix:', croppedDataUrl.substring(0, 50));
+      
+      if (!croppedDataUrl || croppedDataUrl === 'data:,' || croppedDataUrl.length < 100) {
+        console.error('[ImageCropTool] ❌ Invalid cropped image data URL!');
+        console.error('[ImageCropTool] Full result:', croppedDataUrl);
+        return;
+      }
+      
+      console.log('[ImageCropTool] ✅ Crop successful, passing to onConfirm');
+      onConfirm(croppedDataUrl);
+    } catch (error) {
+      console.error('[ImageCropTool] ❌ Crop error:', error);
+    }
   }, [imageSize, displaySize, cropRect, onConfirm]);
 
   const handleSize = 'w-6 h-6 sm:w-5 sm:h-5';

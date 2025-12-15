@@ -401,8 +401,26 @@ export const useStockTakeUpload = () => {
           invertDetection: true,
         };
 
-        console.log('[useStockTakeUpload] Applying OCR preprocessing...');
+        console.log('[useStockTakeUpload] ========== OCR PREPROCESSING START ==========');
+        console.log('[useStockTakeUpload] Preprocessing options:', ocrPreprocessOptions);
+        console.log('[useStockTakeUpload] Input image length:', imageDataUrlForOCR.length);
+        console.log('[useStockTakeUpload] Input image prefix:', imageDataUrlForOCR.substring(0, 50));
+        
         const preprocessedImageUrl = await preprocessForOCR(imageDataUrlForOCR, ocrPreprocessOptions);
+        
+        console.log('[useStockTakeUpload] ========== OCR PREPROCESSING RESULT ==========');
+        console.log('[useStockTakeUpload] Preprocessed image length:', preprocessedImageUrl?.length || 0);
+        console.log('[useStockTakeUpload] Preprocessed image prefix:', preprocessedImageUrl?.substring(0, 50));
+        
+        if (!preprocessedImageUrl || preprocessedImageUrl.length < 100) {
+          console.error('[useStockTakeUpload] ❌ Preprocessing returned invalid image!');
+          // Fall back to original image
+          console.log('[useStockTakeUpload] Falling back to original image for OCR');
+        }
+        
+        const imageForOCR = (preprocessedImageUrl && preprocessedImageUrl.length > 100) 
+          ? preprocessedImageUrl 
+          : imageDataUrlForOCR;
         
         setProgress({
           stage: 'ocr',
@@ -411,8 +429,9 @@ export const useStockTakeUpload = () => {
           ocrProgress: 0,
         });
 
-        console.log('[useStockTakeUpload] Starting client-side OCR with preprocessed image...');
-        const clientOCRResult = await runOCR(preprocessedImageUrl);
+        console.log('[useStockTakeUpload] ========== STARTING OCR ==========');
+        console.log('[useStockTakeUpload] Image for OCR length:', imageForOCR.length);
+        const clientOCRResult = await runOCR(imageForOCR);
         const ocrResult = convertOCRResult(clientOCRResult);
 
         console.log('[useStockTakeUpload] Client OCR result:', {
