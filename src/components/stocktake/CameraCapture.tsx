@@ -140,6 +140,17 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
 
   // Handle crop confirm
   const handleCropConfirm = useCallback((croppedImageDataUrl: string) => {
+    console.log('[CameraCapture] ========== CROP CONFIRM RECEIVED ==========');
+    console.log('[CameraCapture] croppedImageDataUrl type:', typeof croppedImageDataUrl);
+    console.log('[CameraCapture] croppedImageDataUrl length:', croppedImageDataUrl?.length || 0);
+    console.log('[CameraCapture] croppedImageDataUrl prefix:', croppedImageDataUrl?.substring(0, 50));
+    
+    if (!croppedImageDataUrl || croppedImageDataUrl.length < 100) {
+      console.error('[CameraCapture] ❌ Invalid cropped image received!');
+      return;
+    }
+    
+    console.log('[CameraCapture] ✅ Valid cropped image, updating state');
     setShowCropTool(false);
     setCapturedImage(croppedImageDataUrl);
   }, []);
@@ -149,12 +160,21 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
     setShowCropTool(false);
   }, []);
 
-  // Confirm captured photo (skip cropping)
+  // Confirm captured photo (skip cropping) - with validation and logging
   const confirmPhoto = useCallback(() => {
-    if (capturedImage) {
-      stopCamera();
-      onCapture(capturedImage);
+    console.log('[CameraCapture] ========== CONFIRM PHOTO ==========');
+    console.log('[CameraCapture] capturedImage exists:', !!capturedImage);
+    console.log('[CameraCapture] capturedImage length:', capturedImage?.length || 0);
+    console.log('[CameraCapture] capturedImage prefix:', capturedImage?.substring(0, 50));
+    
+    if (!capturedImage || capturedImage.length < 100) {
+      console.error('[CameraCapture] ❌ No valid captured image to confirm!');
+      return;
     }
+    
+    console.log('[CameraCapture] ✅ Confirming photo, calling onCapture');
+    stopCamera();
+    onCapture(capturedImage);
   }, [capturedImage, onCapture]);
 
   // Retake photo
