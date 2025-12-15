@@ -9,6 +9,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import PasswordStrengthIndicator, { isPasswordValid } from '@/components/PasswordStrengthIndicator';
 
 const InviteAccept = () => {
   const [searchParams] = useSearchParams();
@@ -90,10 +91,10 @@ const InviteAccept = () => {
       return;
     }
 
-    if (password.length < 6) {
+    if (!isPasswordValid(password)) {
       toast({
         title: t('validationError') as string,
-        description: t('passwordMinLength') as string,
+        description: t('passwordNotMeetRequirements') as string,
         variant: 'destructive',
       });
       return;
@@ -282,9 +283,7 @@ const InviteAccept = () => {
                   )}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t('passwordRequirements')}
-              </p>
+              <PasswordStrengthIndicator password={password} />
             </div>
 
             <div className="space-y-2">
