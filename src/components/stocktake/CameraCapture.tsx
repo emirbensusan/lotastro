@@ -1,9 +1,10 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Camera, X, Zap, ZapOff, RotateCcw, Check } from 'lucide-react';
+import { Camera, X, Zap, ZapOff, RotateCcw, Check, Crop } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { captureVideoFrame, isIOS } from '@/utils/canvasPolyfill';
+import { ImageCropTool } from './ImageCropTool';
 
 interface CameraCaptureProps {
   onCapture: (imageDataUrl: string) => void;
@@ -18,6 +19,7 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
   const [isReady, setIsReady] = useState(false);
   const [flashMode, setFlashMode] = useState<'off' | 'on' | 'auto'>('auto');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [showCropTool, setShowCropTool] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
@@ -131,7 +133,23 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
     }
   }, [t]);
 
-  // Confirm captured photo
+  // Open crop tool
+  const openCropTool = useCallback(() => {
+    setShowCropTool(true);
+  }, []);
+
+  // Handle crop confirm
+  const handleCropConfirm = useCallback((croppedImageDataUrl: string) => {
+    setShowCropTool(false);
+    setCapturedImage(croppedImageDataUrl);
+  }, []);
+
+  // Handle crop cancel
+  const handleCropCancel = useCallback(() => {
+    setShowCropTool(false);
+  }, []);
+
+  // Confirm captured photo (skip cropping)
   const confirmPhoto = useCallback(() => {
     if (capturedImage) {
       stopCamera();
@@ -142,6 +160,7 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
   // Retake photo
   const retakePhoto = useCallback(() => {
     setCapturedImage(null);
+    setShowCropTool(false);
   }, []);
 
   // Switch camera
@@ -173,6 +192,17 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // Show crop tool
+  if (showCropTool && capturedImage) {
+    return (
+      <ImageCropTool
+        imageDataUrl={capturedImage}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+      />
     );
   }
 
@@ -249,17 +279,27 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
 
       {/* Bottom controls */}
       <div className="bg-black p-6 pb-safe">
-        {capturedImage ? (
+      {capturedImage ? (
           // Preview controls
-          <div className="flex justify-center items-center gap-8">
+          <div className="flex justify-center items-center gap-6">
             <Button
               variant="ghost"
               size="lg"
               className="text-white hover:bg-white/20 flex flex-col items-center gap-1 h-auto"
               onClick={retakePhoto}
             >
-              <RotateCcw className="h-8 w-8" />
+              <RotateCcw className="h-7 w-7" />
               <span className="text-xs">{String(t('stocktake.retake'))}</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="lg"
+              className="text-white hover:bg-white/20 flex flex-col items-center gap-1 h-auto"
+              onClick={openCropTool}
+            >
+              <Crop className="h-7 w-7" />
+              <span className="text-xs">{String(t('stocktake.cropImage'))}</span>
             </Button>
 
             <Button
