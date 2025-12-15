@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useStockTakeUpload } from '@/hooks/useStockTakeUpload';
 import { useStockTakeSession } from '@/hooks/useStockTakeSession';
 import { useUploadRetry } from '@/hooks/useUploadRetry';
+import { useStockTakeSettings } from '@/hooks/useStockTakeSettings';
 import { UploadProgressBar } from '@/components/stocktake/UploadProgressBar';
 import { CameraCapture } from '@/components/stocktake/CameraCapture';
 import { OCRConfirmDialog } from '@/components/stocktake/OCRConfirmDialog';
@@ -60,6 +61,9 @@ const StockTakeCapture = () => {
   
   const [lastRetryResult, setLastRetryResult] = useState<{ succeeded: number; failed: number } | null>(null);
   
+  // Fetch stock take settings (including session timeout)
+  const { settings: stockTakeSettings, isLoading: settingsLoading } = useStockTakeSettings();
+  
   // Use the session management hook with timeout handling
   const {
     session,
@@ -72,6 +76,7 @@ const StockTakeCapture = () => {
     keepSessionActive,
   } = useStockTakeSession({
     userId: user?.id,
+    timeoutMinutes: stockTakeSettings.session_timeout_minutes,
     onSessionExpired: () => navigate('/'),
   });
   
@@ -401,7 +406,7 @@ const StockTakeCapture = () => {
   }
 
   // Loading state
-  if (isLoading || permissionsLoading) {
+  if (isLoading || permissionsLoading || settingsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -451,7 +456,7 @@ const StockTakeCapture = () => {
               </div>
               <div className="flex items-start gap-3">
                 <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                <p className="text-sm">{String(t('stocktake.welcome.instruction3'))}</p>
+                <p className="text-sm">{String(t('stocktake.welcome.instruction3', { minutes: stockTakeSettings.session_timeout_minutes }))}</p>
               </div>
             </div>
 

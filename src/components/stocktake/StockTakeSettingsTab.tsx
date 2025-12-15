@@ -37,7 +37,7 @@ const DEFAULT_SETTINGS: StockTakeSettings = {
   ocr_timeout_seconds: 5,
   max_retry_attempts: 3,
   thumbnail_quality: 80,
-  session_timeout_minutes: 30,
+  session_timeout_minutes: 5,
   auto_approve_high_confidence: false,
   require_recount_reason: true,
   photo_retention_months: 12,
@@ -226,10 +226,11 @@ const StockTakeSettingsTab: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="5">5 {language === 'tr' ? 'dakika' : 'minutes'}</SelectItem>
+                  <SelectItem value="10">10 {language === 'tr' ? 'dakika' : 'minutes'}</SelectItem>
                   <SelectItem value="15">15 {language === 'tr' ? 'dakika' : 'minutes'}</SelectItem>
                   <SelectItem value="30">30 {language === 'tr' ? 'dakika' : 'minutes'}</SelectItem>
                   <SelectItem value="60">1 {language === 'tr' ? 'saat' : 'hour'}</SelectItem>
-                  <SelectItem value="120">2 {language === 'tr' ? 'saat' : 'hours'}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

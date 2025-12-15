@@ -3,8 +3,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 
-const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes inactivity timeout
-const WARNING_BEFORE_MS = 1 * 60 * 1000; // 1 minute before timeout warning
+const DEFAULT_TIMEOUT_MINUTES = 5;
+const WARNING_RATIO = 0.2; // Show warning when 20% time remaining
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
 const THROTTLE_MS = 1000; // Throttle activity updates
 
@@ -18,12 +18,17 @@ interface StockTakeSession {
 
 interface UseStockTakeSessionOptions {
   userId: string | undefined;
+  timeoutMinutes?: number;
   onSessionExpired?: () => void;
 }
 
-export const useStockTakeSession = ({ userId, onSessionExpired }: UseStockTakeSessionOptions) => {
+export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_MINUTES, onSessionExpired }: UseStockTakeSessionOptions) => {
   const { t } = useLanguage();
   const { toast } = useToast();
+  
+  // Calculate timeout values based on configurable minutes
+  const sessionTimeoutMs = timeoutMinutes * 60 * 1000;
+  const warningBeforeMs = Math.max(sessionTimeoutMs * WARNING_RATIO, 30 * 1000); // At least 30 seconds warning
   
   const [session, setSession] = useState<StockTakeSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,9 +85,9 @@ export const useStockTakeSession = ({ userId, onSessionExpired }: UseStockTakeSe
           duration: 30000,
         });
       }
-    }, SESSION_TIMEOUT_MS - WARNING_BEFORE_MS);
+    }, sessionTimeoutMs - warningBeforeMs);
 
-    // Set expiry timer (5 minutes)
+    // Set expiry timer
     timeoutRef.current = setTimeout(async () => {
       if (session) {
         // Mark session with inactivity note (keep status active but update notes)
@@ -105,8 +110,8 @@ export const useStockTakeSession = ({ userId, onSessionExpired }: UseStockTakeSe
 
         onSessionExpired?.();
       }
-    }, SESSION_TIMEOUT_MS);
-  }, [session, clearTimers, toast, t, onSessionExpired]);
+    }, sessionTimeoutMs);
+  }, [session, clearTimers, toast, t, onSessionExpired, sessionTimeoutMs, warningBeforeMs]);
 
   // Handle activity
   const handleActivity = useCallback(() => {
