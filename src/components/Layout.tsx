@@ -33,7 +33,8 @@ import {
   Factory,
   TrendingUp,
   BookOpen,
-  ClipboardCheck
+  ClipboardCheck,
+  FileSearch
 } from 'lucide-react';
 import { 
   Sidebar,
@@ -112,6 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: String(t('toolsAndUtilities')),
       items: [
         { path: '/stock-take', label: String(t('stocktake.title')), icon: ClipboardCheck, permission: { category: 'stocktake', action: 'start_session' } },
+        { path: '/stock-take-review', label: String(t('stocktake.review.navLabel')), icon: FileSearch, permission: { category: 'stocktake', action: 'review_sessions' } },
         { path: '/qr-scan', label: String(t('qrScan')), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
         { path: '/approvals', label: String(t('approvalRequests')), icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
       ]
