@@ -30,10 +30,17 @@ export interface ClientOCRResult {
 // Increased to 60 seconds for slower mobile devices
 const OCR_TIMEOUT_MS = 60000;
 
-// Exact CDN versions for Tesseract.js v5
-const TESSERACT_CDN = {
+// Primary CDN paths for Tesseract.js v5
+const TESSERACT_CDN_PRIMARY = {
   workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
   corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.0/tesseract-core.wasm.js',
+  langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+};
+
+// Fallback CDN paths using unpkg
+const TESSERACT_CDN_FALLBACK = {
+  workerPath: 'https://unpkg.com/tesseract.js@5.1.1/dist/worker.min.js',
+  corePath: 'https://unpkg.com/tesseract.js-core@5.1.0/tesseract-core.wasm.js',
   langPath: 'https://tessdata.projectnaptha.com/4.0.0',
 };
 
@@ -44,23 +51,69 @@ export const useClientOCR = () => {
   const workerRef = useRef<Tesseract.Worker | null>(null);
   const abortRef = useRef(false);
 
-  // Initialize Tesseract worker with exact CDN versions
+  // Test if a URL is reachable (HEAD request)
+  const testCDNAvailability = async (url: string): Promise<boolean> => {
+    try {
+      console.log('[useClientOCR] Testing CDN availability:', url);
+      const response = await fetch(url, { method: 'HEAD', mode: 'cors' });
+      const ok = response.ok;
+      console.log('[useClientOCR] CDN test result:', url, ok ? '✅ OK' : '❌ FAILED', response.status);
+      return ok;
+    } catch (err) {
+      console.error('[useClientOCR] CDN test error:', url, err);
+      return false;
+    }
+  };
+
+  // Initialize Tesseract worker with fallback CDNs
   const initWorker = useCallback(async () => {
     if (workerRef.current) {
       console.log('[useClientOCR] Reusing existing worker');
       return workerRef.current;
     }
 
-    console.log('[useClientOCR] Initializing Tesseract worker with CDN paths:', TESSERACT_CDN);
+    console.log('[useClientOCR] ========== WORKER INITIALIZATION ==========');
+    console.log('[useClientOCR] Browser:', navigator.userAgent);
+    console.log('[useClientOCR] Online:', navigator.onLine);
+    
+    if (!navigator.onLine) {
+      throw new Error('No internet connection - cannot initialize OCR');
+    }
+
     setProgressMessage('OCR modeli yükleniyor...');
     
+    // Try primary CDN first
+    let cdnConfig = TESSERACT_CDN_PRIMARY;
+    let cdnName = 'PRIMARY (jsdelivr)';
+    
+    // Quick availability check on primary worker path
+    const primaryAvailable = await testCDNAvailability(TESSERACT_CDN_PRIMARY.workerPath);
+    
+    if (!primaryAvailable) {
+      console.log('[useClientOCR] ⚠️ Primary CDN unavailable, trying fallback...');
+      cdnConfig = TESSERACT_CDN_FALLBACK;
+      cdnName = 'FALLBACK (unpkg)';
+      
+      const fallbackAvailable = await testCDNAvailability(TESSERACT_CDN_FALLBACK.workerPath);
+      if (!fallbackAvailable) {
+        console.error('[useClientOCR] ❌ Both CDNs unavailable!');
+        throw new Error('OCR CDN unavailable - please check your internet connection');
+      }
+    }
+
+    console.log('[useClientOCR] Using CDN:', cdnName);
+    console.log('[useClientOCR] CDN paths:', cdnConfig);
+    
     try {
+      console.log('[useClientOCR] Calling Tesseract.createWorker...');
+      const createStart = Date.now();
+      
       const worker = await Tesseract.createWorker('eng', 1, {
-        workerPath: TESSERACT_CDN.workerPath,
-        langPath: TESSERACT_CDN.langPath,
-        corePath: TESSERACT_CDN.corePath,
+        workerPath: cdnConfig.workerPath,
+        langPath: cdnConfig.langPath,
+        corePath: cdnConfig.corePath,
         logger: (m) => {
-          console.log('[Tesseract Logger]', m.status, m.progress);
+          console.log('[Tesseract Logger]', m.status, typeof m.progress === 'number' ? `${Math.round(m.progress * 100)}%` : '');
           if (m.status === 'recognizing text') {
             setProgress(Math.round(m.progress * 100));
             setProgressMessage('Metin tanınıyor...');
@@ -70,16 +123,27 @@ export const useClientOCR = () => {
           } else if (m.status === 'initializing api') {
             setProgress(5);
             setProgressMessage('OCR başlatılıyor...');
+          } else if (m.status === 'loading tesseract core') {
+            setProgress(2);
+            setProgressMessage('WASM modülü yükleniyor...');
           }
         },
       });
 
+      const createDuration = Date.now() - createStart;
+      console.log('[useClientOCR] ✅ Worker created in', createDuration, 'ms');
+      console.log('[useClientOCR] Worker object:', worker ? 'exists' : 'null');
+
       workerRef.current = worker;
-      console.log('[useClientOCR] ✅ Worker initialized successfully');
+      console.log('[useClientOCR] ========== WORKER READY ==========');
       return worker;
-    } catch (workerError) {
-      console.error('[useClientOCR] ❌ Failed to create worker:', workerError);
-      throw new Error(`Failed to initialize OCR worker: ${workerError}`);
+    } catch (workerError: any) {
+      console.error('[useClientOCR] ❌ Worker creation failed!');
+      console.error('[useClientOCR] Error name:', workerError?.name);
+      console.error('[useClientOCR] Error message:', workerError?.message);
+      console.error('[useClientOCR] Error stack:', workerError?.stack);
+      console.error('[useClientOCR] Full error object:', JSON.stringify(workerError, Object.getOwnPropertyNames(workerError)));
+      throw new Error(`Failed to initialize OCR worker: ${workerError?.message || workerError}`);
     }
   }, []);
 
