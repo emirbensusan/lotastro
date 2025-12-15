@@ -95,6 +95,14 @@ const defaultPermissions: Permission[] = [
   { categoryKey: 'categoryCatalog', actionKey: 'actionImportCatalog', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryCatalog', actionKey: 'actionExportCatalog', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryCatalog', actionKey: 'actionManageCustomFields', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+
+  // Stock Take / Inventory Counting
+  { categoryKey: 'categoryStocktake', actionKey: 'actionStartSession', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryStocktake', actionKey: 'actionCaptureRolls', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryStocktake', actionKey: 'actionViewOwnSessions', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryStocktake', actionKey: 'actionReviewSessions', warehouse_staff: false, accounting: false, senior_manager: true, admin: true },
+  { categoryKey: 'categoryStocktake', actionKey: 'actionApproveRolls', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryStocktake', actionKey: 'actionDeleteSessions', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
 ];
 
 const getRoleColor = (role: string) => {

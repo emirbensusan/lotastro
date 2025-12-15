@@ -1336,6 +1336,7 @@ const translations = {
     categoryAuditLogs: 'Audit Logs',
     categoryForecasting: 'Forecasting',
     categoryCatalog: 'Catalog',
+    categoryStocktake: 'Stock Counting',
     
     // User Management Actions
     actionViewUsers: 'View Users',
@@ -1404,6 +1405,14 @@ const translations = {
     actionImportCatalog: 'Import Catalog',
     actionExportCatalog: 'Export Catalog',
     actionManageCustomFields: 'Manage Custom Fields',
+    
+    // Stock Take Actions
+    actionStartSession: 'Start Count Sessions',
+    actionCaptureRolls: 'Capture Roll Photos',
+    actionViewOwnSessions: 'View Own Sessions',
+    actionReviewSessions: 'Review All Sessions',
+    actionApproveRolls: 'Approve/Reject Rolls',
+    actionDeleteSessions: 'Delete Sessions',
     
     // Manufacturing Orders
     manufacturingOrders: 'Manufacturing Orders',
@@ -3786,6 +3795,7 @@ const translations = {
     categoryAuditLogs: 'Denetim Kayıtları',
     categoryForecasting: 'Talep Tahmini',
     categoryCatalog: 'Katalog',
+    categoryStocktake: 'Stok Sayımı',
     
     // User Management Actions
     actionViewUsers: 'Kullanıcıları Görüntüle',
@@ -3854,6 +3864,14 @@ const translations = {
     actionImportCatalog: 'Kataloğu İçe Aktar',
     actionExportCatalog: 'Kataloğu Dışa Aktar',
     actionManageCustomFields: 'Özel Alanları Yönet',
+    
+    // Stock Take Actions
+    actionStartSession: 'Sayım Oturumu Başlat',
+    actionCaptureRolls: 'Rulo Fotoğrafı Çek',
+    actionViewOwnSessions: 'Kendi Oturumlarını Gör',
+    actionReviewSessions: 'Tüm Oturumları İncele',
+    actionApproveRolls: 'Ruloları Onayla/Reddet',
+    actionDeleteSessions: 'Oturumları Sil',
     
     // Manufacturing Orders
     manufacturingOrders: 'Üretim Siparişleri',
