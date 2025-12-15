@@ -1,11 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useImageCompression, PreprocessingOptions } from './useImageCompression';
+import { useClientOCR, type ClientOCRResult } from './useClientOCR';
 
 interface UploadProgress {
-  stage: 'compressing' | 'uploading' | 'queued' | 'processing' | 'complete' | 'error' | 'timeout';
+  stage: 'compressing' | 'uploading' | 'ocr' | 'complete' | 'error' | 'timeout';
   percent: number;
   message: string;
+  ocrProgress?: number; // 0-100 for OCR stage
 }
 
 interface UploadResult {
@@ -57,7 +59,6 @@ interface UploadAndOCRResult {
   upload: UploadResult;
   ocr: OCRResult | null;
   rollId?: string;
-  ocrJobId?: string;
 }
 
 // Default preprocessing settings (enabled by default)
@@ -70,23 +71,18 @@ const DEFAULT_PREPROCESSING: PreprocessingOptions = {
   sharpenLevel: 30,
 };
 
-// OCR timeout in milliseconds (5 seconds before showing manual entry option)
-const OCR_TIMEOUT_MS = 5000;
-// Max wait time for OCR polling (15 seconds total)
-const OCR_MAX_WAIT_MS = 15000;
-// Polling interval
-const OCR_POLL_INTERVAL_MS = 1000;
-
 export const useStockTakeUpload = () => {
   const [progress, setProgress] = useState<UploadProgress>({
     stage: 'compressing',
     percent: 0,
     message: '',
+    ocrProgress: 0,
   });
   const [isUploading, setIsUploading] = useState(false);
   const [ocrTimedOut, setOcrTimedOut] = useState(false);
   const [preprocessingSettings, setPreprocessingSettings] = useState<PreprocessingOptions>(DEFAULT_PREPROCESSING);
   const { compressImage, compressFromDataUrl, generateThumbnails, generateThumbnailsFromDataUrl } = useImageCompression();
+  const { runOCR, progress: ocrProgress, progressMessage: ocrMessage, terminateWorker, abortOCR } = useClientOCR();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch preprocessing settings from database
@@ -117,6 +113,17 @@ export const useStockTakeUpload = () => {
 
     fetchSettings();
   }, []);
+
+  // Update progress with OCR progress
+  useEffect(() => {
+    if (progress.stage === 'ocr') {
+      setProgress(prev => ({
+        ...prev,
+        ocrProgress,
+        message: ocrMessage || 'OCR işleniyor...',
+      }));
+    }
+  }, [ocrProgress, ocrMessage, progress.stage]);
 
   // Generate storage paths for all sizes
   const generateStoragePaths = useCallback((
@@ -190,7 +197,7 @@ export const useStockTakeUpload = () => {
         session_id: sessionId,
         capture_sequence: captureSequence,
         photo_path: storagePath,
-        photo_hash_sha256: '', // Will be updated by OCR worker
+        photo_hash_sha256: '', // Will be calculated later if needed
         counter_quality: '', // Will be updated after confirmation
         counter_color: '',
         counter_lot_number: '',
@@ -210,139 +217,32 @@ export const useStockTakeUpload = () => {
     return { rollId: data.id, error: null };
   }, []);
 
-  // Create OCR job in queue
-  const createOCRJob = useCallback(async (
-    rollId: string,
-    imagePath: string
-  ): Promise<{ jobId: string | null; error: Error | null }> => {
-    const { data, error } = await supabase
-      .from('ocr_jobs')
-      .insert({
-        roll_id: rollId,
-        image_path: imagePath,
-        status: 'pending',
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      console.error('[useStockTakeUpload] Create OCR job error:', error);
-      return { jobId: null, error };
+  // Convert ClientOCRResult to OCRResult format
+  const convertOCRResult = (clientResult: ClientOCRResult): OCRResult => {
+    if (!clientResult.success) {
+      return {
+        success: false,
+        error: clientResult.error,
+        timedOut: clientResult.timedOut,
+      };
     }
 
-    return { jobId: data.id, error: null };
-  }, []);
-
-  // Poll for OCR completion
-  const pollOCRResult = useCallback(async (
-    jobId: string,
-    timeoutMs: number = OCR_MAX_WAIT_MS
-  ): Promise<OCRResult> => {
-    const startTime = Date.now();
-    let showedTimeoutWarning = false;
-
-    while (Date.now() - startTime < timeoutMs) {
-      // Check if we should show timeout warning
-      if (!showedTimeoutWarning && Date.now() - startTime >= OCR_TIMEOUT_MS) {
-        showedTimeoutWarning = true;
-        setOcrTimedOut(true);
-        setProgress({
-          stage: 'timeout',
-          percent: 70,
-          message: 'OCR yavaş çalışıyor. Manuel giriş yapabilirsiniz.',
-        });
-      }
-
-      // Poll job status
-      const { data: job, error } = await supabase
-        .from('ocr_jobs')
-        .select('status, ocr_result, error_message')
-        .eq('id', jobId)
-        .single();
-
-      if (error) {
-        console.error('[useStockTakeUpload] Poll error:', error);
-        await new Promise(resolve => setTimeout(resolve, OCR_POLL_INTERVAL_MS));
-        continue;
-      }
-
-      if (job.status === 'completed' && job.ocr_result) {
-        setOcrTimedOut(false);
-        return job.ocr_result as unknown as OCRResult;
-      }
-
-      if (job.status === 'failed') {
-        setOcrTimedOut(false);
-        return { 
-          success: false, 
-          error: job.error_message || 'OCR processing failed' 
-        };
-      }
-
-      // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, OCR_POLL_INTERVAL_MS));
-    }
-
-    // Timeout - return partial result allowing manual entry
     return {
-      success: false,
-      error: 'OCR timeout - please enter data manually',
-      timedOut: true,
+      success: true,
+      ocr: clientResult.ocr,
+      extracted: clientResult.extracted,
+      confidence: clientResult.confidence,
+      validation: clientResult.validation,
     };
-  }, []);
+  };
 
-  // Trigger OCR worker (fire and forget for async processing)
-  const triggerOCRWorker = useCallback(async () => {
-    try {
-      // Fire and forget - don't await
-      supabase.functions.invoke('process-ocr-queue', {
-        body: { batch: 1 },
-      }).catch(err => {
-        console.warn('[useStockTakeUpload] OCR worker trigger failed:', err);
-      });
-    } catch (err) {
-      console.warn('[useStockTakeUpload] OCR worker trigger error:', err);
-    }
-  }, []);
-
-  // Run synchronous OCR (fallback for immediate results)
-  const runSyncOCR = useCallback(async (
-    imageBase64: string
-  ): Promise<OCRResult> => {
-    try {
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      const timeoutId = setTimeout(() => controller.abort(), OCR_TIMEOUT_MS);
-
-      const { data, error } = await supabase.functions.invoke('stock-take-ocr', {
-        body: { imageBase64 },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (error) {
-        console.error('[useStockTakeUpload] Sync OCR error:', error);
-        return { success: false, error: error.message };
-      }
-
-      return data as OCRResult;
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        return { success: false, error: 'OCR timeout', timedOut: true };
-      }
-      console.error('[useStockTakeUpload] Sync OCR exception:', err);
-      return { success: false, error: err.message };
-    }
-  }, []);
-
-  // Main function: compress, upload thumbnails, create roll, queue OCR
+  // Main function: compress, upload thumbnails, create roll, run client-side OCR
   const uploadAndProcessImage = useCallback(async (
     imageSource: File | Blob | string,
     sessionId: string,
     captureSequence: number,
     userId: string,
-    useAsyncOCR: boolean = true
+    runClientOCR: boolean = true
   ): Promise<UploadAndOCRResult> => {
     setIsUploading(true);
     setOcrTimedOut(false);
@@ -355,11 +255,12 @@ export const useStockTakeUpload = () => {
         message: preprocessingSettings.enabled 
           ? 'Görüntü ön işleme ve sıkıştırma...' 
           : 'Fotoğraf sıkıştırılıyor...',
+        ocrProgress: 0,
       });
 
       let thumbnails;
       let originalSize = 0;
-      let preprocessedForOCR;
+      let imageForOCR: string | Blob = imageSource;
       
       if (typeof imageSource === 'string') {
         // Data URL - get size estimate
@@ -370,19 +271,21 @@ export const useStockTakeUpload = () => {
         // Generate thumbnails (without preprocessing - for display)
         thumbnails = await generateThumbnailsFromDataUrl(imageSource);
         
-        // Generate preprocessed version for OCR (if enabled)
+        // For OCR, use preprocessed version if enabled
         if (preprocessingSettings.enabled) {
-          preprocessedForOCR = await compressFromDataUrl(imageSource, {}, preprocessingSettings);
-          console.log('[useStockTakeUpload] Preprocessing applied:', preprocessingSettings);
+          const preprocessedForOCR = await compressFromDataUrl(imageSource, {}, preprocessingSettings);
+          imageForOCR = preprocessedForOCR.base64;
+          console.log('[useStockTakeUpload] Preprocessing applied for OCR');
         }
       } else {
         originalSize = imageSource.size;
         thumbnails = await generateThumbnails(imageSource);
         
-        // Generate preprocessed version for OCR (if enabled)
+        // For OCR, use preprocessed version if enabled
         if (preprocessingSettings.enabled) {
-          preprocessedForOCR = await compressImage(imageSource, {}, preprocessingSettings);
-          console.log('[useStockTakeUpload] Preprocessing applied:', preprocessingSettings);
+          const preprocessedForOCR = await compressImage(imageSource, {}, preprocessingSettings);
+          imageForOCR = preprocessedForOCR.base64;
+          console.log('[useStockTakeUpload] Preprocessing applied for OCR');
         }
       }
 
@@ -399,6 +302,7 @@ export const useStockTakeUpload = () => {
         stage: 'uploading',
         percent: 30,
         message: 'Fotoğraflar yükleniyor...',
+        ocrProgress: 0,
       });
 
       // Stage 2: Upload all sizes to storage
@@ -424,11 +328,11 @@ export const useStockTakeUpload = () => {
 
       console.log('[useStockTakeUpload] All sizes uploaded:', storagePaths);
 
-      // Stage 3: Create roll record (use original path for OCR)
+      // Stage 3: Create roll record
       const { rollId, error: rollError } = await createRollRecord(
         sessionId,
         captureSequence,
-        storagePaths.original, // Primary path is original for OCR processing
+        storagePaths.original,
         userId
       );
 
@@ -453,55 +357,62 @@ export const useStockTakeUpload = () => {
 
       console.log('[useStockTakeUpload] Roll created:', rollId);
 
-      if (useAsyncOCR) {
-        // Async OCR path: create job and poll
+      // Stage 4: Run client-side OCR
+      if (runClientOCR) {
         setProgress({
-          stage: 'queued',
+          stage: 'ocr',
           percent: 50,
-          message: 'OCR kuyruğa eklendi...',
+          message: 'OCR başlatılıyor...',
+          ocrProgress: 0,
         });
 
-        // Create OCR job (uses original image path for best OCR quality)
-        const { jobId, error: jobError } = await createOCRJob(rollId, storagePaths.original);
-        
-        if (jobError || !jobId) {
-          console.warn('[useStockTakeUpload] Failed to create OCR job, proceeding without OCR');
-          // Return without OCR - user will need to enter manually
-          setProgress({
-            stage: 'complete',
-            percent: 100,
-            message: 'Tamamlandı - OCR kuyruk hatası',
-          });
+        console.log('[useStockTakeUpload] Starting client-side OCR...');
+        const clientOCRResult = await runOCR(imageForOCR);
+        const ocrResult = convertOCRResult(clientOCRResult);
 
-          return {
-            upload: {
-              success: true,
-              storagePath: storagePaths.original,
-              thumbPath: storagePaths.thumb,
-              mediumPath: storagePaths.medium,
-              originalSize,
-              compressedSize: thumbnails.original.size,
-            },
-            ocr: { success: false, error: 'OCR job creation failed' },
-            rollId,
-          };
+        console.log('[useStockTakeUpload] Client OCR result:', {
+          success: ocrResult.success,
+          quality: ocrResult.extracted?.quality,
+          color: ocrResult.extracted?.color,
+          lotNumber: ocrResult.extracted?.lotNumber,
+          meters: ocrResult.extracted?.meters,
+          confidence: ocrResult.confidence?.level,
+        });
+
+        // Update roll record with OCR results
+        if (ocrResult.success && ocrResult.extracted) {
+          await supabase
+            .from('count_rolls')
+            .update({
+              ocr_status: 'completed',
+              ocr_quality: ocrResult.extracted.quality,
+              ocr_color: ocrResult.extracted.color,
+              ocr_lot_number: ocrResult.extracted.lotNumber,
+              ocr_meters: ocrResult.extracted.meters,
+              ocr_confidence_score: ocrResult.confidence?.overallScore,
+              ocr_confidence_level: ocrResult.confidence?.level,
+              ocr_raw_text: ocrResult.ocr?.rawText?.substring(0, 1000), // Limit text size
+              ocr_processed_at: new Date().toISOString(),
+              is_not_label_warning: ocrResult.validation?.isLikelyLabel === false,
+            })
+            .eq('id', rollId);
+        } else {
+          await supabase
+            .from('count_rolls')
+            .update({
+              ocr_status: ocrResult.timedOut ? 'timeout' : 'failed',
+            })
+            .eq('id', rollId);
         }
 
-        console.log('[useStockTakeUpload] OCR job created:', jobId);
-
-        // Trigger OCR worker
-        triggerOCRWorker();
-
-        setProgress({
-          stage: 'processing',
-          percent: 60,
-          message: 'OCR işleniyor...',
-        });
-
-        // Poll for OCR result
-        const ocrResult = await pollOCRResult(jobId);
-
-        if (!ocrResult.timedOut) {
+        if (ocrResult.timedOut) {
+          setOcrTimedOut(true);
+          setProgress({
+            stage: 'timeout',
+            percent: 70,
+            message: 'OCR zaman aşımı. Manuel giriş yapabilirsiniz.',
+          });
+        } else {
           setProgress({
             stage: 'complete',
             percent: 100,
@@ -520,11 +431,9 @@ export const useStockTakeUpload = () => {
           },
           ocr: ocrResult,
           rollId,
-          ocrJobId: jobId,
         };
-
       } else {
-        // Sync OCR path (legacy) - not recommended, just return success
+        // Skip OCR - return success immediately
         setProgress({
           stage: 'complete',
           percent: 100,
@@ -568,12 +477,10 @@ export const useStockTakeUpload = () => {
     generateStoragePaths,
     uploadAllSizes, 
     createRollRecord,
-    createOCRJob,
-    triggerOCRWorker,
-    pollOCRResult,
     compressImage,
     compressFromDataUrl,
     preprocessingSettings,
+    runOCR,
   ]);
 
   // Reset progress state
@@ -582,23 +489,33 @@ export const useStockTakeUpload = () => {
       stage: 'compressing',
       percent: 0,
       message: '',
+      ocrProgress: 0,
     });
     setOcrTimedOut(false);
+    abortOCR();
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-  }, []);
+  }, [abortOCR]);
 
   // Skip OCR and proceed with manual entry
   const skipOCR = useCallback(() => {
     setOcrTimedOut(false);
+    abortOCR();
     setProgress({
       stage: 'complete',
       percent: 100,
       message: 'Manuel giriş için hazır',
     });
-  }, []);
+  }, [abortOCR]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      terminateWorker();
+    };
+  }, [terminateWorker]);
 
   return {
     uploadAndProcessImage,
