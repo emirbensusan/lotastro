@@ -496,6 +496,256 @@ export type Database = {
         }
         Relationships: []
       }
+      count_rolls: {
+        Row: {
+          admin_color: string | null
+          admin_lot_number: string | null
+          admin_meters: number | null
+          admin_notes: string | null
+          admin_quality: string | null
+          capture_sequence: number
+          captured_at: string
+          captured_by: string
+          counter_color: string
+          counter_confirmed_at: string
+          counter_lot_number: string
+          counter_meters: number
+          counter_quality: string
+          created_at: string
+          duplicate_of_roll_id: string | null
+          fields_manually_edited: string[] | null
+          id: string
+          is_manual_entry: boolean
+          is_not_label_warning: boolean
+          is_possible_duplicate: boolean
+          manual_edit_reason:
+            | Database["public"]["Enums"]["stock_take_edit_reason"]
+            | null
+          manual_edit_reason_other: string | null
+          ocr_color: string | null
+          ocr_confidence_level:
+            | Database["public"]["Enums"]["stock_take_confidence_level"]
+            | null
+          ocr_confidence_score: number | null
+          ocr_lot_number: string | null
+          ocr_meters: number | null
+          ocr_processed_at: string | null
+          ocr_quality: string | null
+          ocr_raw_text: string | null
+          original_roll_id: string | null
+          photo_hash_perceptual: string | null
+          photo_hash_sha256: string
+          photo_path: string
+          recount_reason: string | null
+          recount_version: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          session_id: string
+          status: Database["public"]["Enums"]["stock_take_roll_status"]
+          updated_at: string
+        }
+        Insert: {
+          admin_color?: string | null
+          admin_lot_number?: string | null
+          admin_meters?: number | null
+          admin_notes?: string | null
+          admin_quality?: string | null
+          capture_sequence: number
+          captured_at?: string
+          captured_by: string
+          counter_color: string
+          counter_confirmed_at?: string
+          counter_lot_number: string
+          counter_meters: number
+          counter_quality: string
+          created_at?: string
+          duplicate_of_roll_id?: string | null
+          fields_manually_edited?: string[] | null
+          id?: string
+          is_manual_entry?: boolean
+          is_not_label_warning?: boolean
+          is_possible_duplicate?: boolean
+          manual_edit_reason?:
+            | Database["public"]["Enums"]["stock_take_edit_reason"]
+            | null
+          manual_edit_reason_other?: string | null
+          ocr_color?: string | null
+          ocr_confidence_level?:
+            | Database["public"]["Enums"]["stock_take_confidence_level"]
+            | null
+          ocr_confidence_score?: number | null
+          ocr_lot_number?: string | null
+          ocr_meters?: number | null
+          ocr_processed_at?: string | null
+          ocr_quality?: string | null
+          ocr_raw_text?: string | null
+          original_roll_id?: string | null
+          photo_hash_perceptual?: string | null
+          photo_hash_sha256: string
+          photo_path: string
+          recount_reason?: string | null
+          recount_version?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id: string
+          status?: Database["public"]["Enums"]["stock_take_roll_status"]
+          updated_at?: string
+        }
+        Update: {
+          admin_color?: string | null
+          admin_lot_number?: string | null
+          admin_meters?: number | null
+          admin_notes?: string | null
+          admin_quality?: string | null
+          capture_sequence?: number
+          captured_at?: string
+          captured_by?: string
+          counter_color?: string
+          counter_confirmed_at?: string
+          counter_lot_number?: string
+          counter_meters?: number
+          counter_quality?: string
+          created_at?: string
+          duplicate_of_roll_id?: string | null
+          fields_manually_edited?: string[] | null
+          id?: string
+          is_manual_entry?: boolean
+          is_not_label_warning?: boolean
+          is_possible_duplicate?: boolean
+          manual_edit_reason?:
+            | Database["public"]["Enums"]["stock_take_edit_reason"]
+            | null
+          manual_edit_reason_other?: string | null
+          ocr_color?: string | null
+          ocr_confidence_level?:
+            | Database["public"]["Enums"]["stock_take_confidence_level"]
+            | null
+          ocr_confidence_score?: number | null
+          ocr_lot_number?: string | null
+          ocr_meters?: number | null
+          ocr_processed_at?: string | null
+          ocr_quality?: string | null
+          ocr_raw_text?: string | null
+          original_roll_id?: string | null
+          photo_hash_perceptual?: string | null
+          photo_hash_sha256?: string
+          photo_path?: string
+          recount_reason?: string | null
+          recount_version?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string
+          status?: Database["public"]["Enums"]["stock_take_roll_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "count_rolls_duplicate_of_roll_id_fkey"
+            columns: ["duplicate_of_roll_id"]
+            isOneToOne: false
+            referencedRelation: "count_rolls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "count_rolls_original_roll_id_fkey"
+            columns: ["original_roll_id"]
+            isOneToOne: false
+            referencedRelation: "count_rolls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "count_rolls_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "count_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      count_sessions: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          closed_at: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_activity_at: string
+          manual_entry_count: number
+          notes: string | null
+          ocr_high_confidence_count: number
+          ocr_low_confidence_count: number
+          ocr_medium_confidence_count: number
+          reconciled_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rolls_approved: number
+          rolls_pending_review: number
+          rolls_recount_requested: number
+          rolls_rejected: number
+          session_number: string
+          started_at: string
+          started_by: string
+          status: Database["public"]["Enums"]["stock_take_session_status"]
+          total_rolls_counted: number
+          updated_at: string
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          closed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          manual_entry_count?: number
+          notes?: string | null
+          ocr_high_confidence_count?: number
+          ocr_low_confidence_count?: number
+          ocr_medium_confidence_count?: number
+          reconciled_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rolls_approved?: number
+          rolls_pending_review?: number
+          rolls_recount_requested?: number
+          rolls_rejected?: number
+          session_number: string
+          started_at?: string
+          started_by: string
+          status?: Database["public"]["Enums"]["stock_take_session_status"]
+          total_rolls_counted?: number
+          updated_at?: string
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          closed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_activity_at?: string
+          manual_entry_count?: number
+          notes?: string | null
+          ocr_high_confidence_count?: number
+          ocr_low_confidence_count?: number
+          ocr_medium_confidence_count?: number
+          reconciled_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rolls_approved?: number
+          rolls_pending_review?: number
+          rolls_recount_requested?: number
+          rolls_rejected?: number
+          session_number?: string
+          started_at?: string
+          started_by?: string
+          status?: Database["public"]["Enums"]["stock_take_session_status"]
+          total_rolls_counted?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       demand_history: {
         Row: {
           amount: number
@@ -2803,6 +3053,7 @@ export type Database = {
           table_name: string
         }[]
       }
+      generate_count_session_number: { Args: never; Returns: string }
       generate_lastro_sku_code: { Args: never; Returns: string }
       generate_mo_number: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
@@ -2994,6 +3245,27 @@ export type Database = {
       order_line_type: "sample" | "standard"
       reservation_status: "active" | "released" | "converted" | "canceled"
       stock_status: "in_stock" | "out_of_stock" | "partially_fulfilled"
+      stock_take_confidence_level: "high" | "medium" | "low"
+      stock_take_edit_reason:
+        | "ocr_unreadable"
+        | "handwritten_label"
+        | "label_damaged"
+        | "wrong_extraction"
+        | "other"
+      stock_take_roll_status:
+        | "pending_review"
+        | "approved"
+        | "rejected"
+        | "recount_requested"
+        | "void_pending_admin"
+      stock_take_session_status:
+        | "draft"
+        | "active"
+        | "counting_complete"
+        | "reviewing"
+        | "reconciled"
+        | "closed"
+        | "cancelled"
       user_role: "warehouse_staff" | "accounting" | "admin" | "senior_manager"
     }
     CompositeTypes: {
@@ -3171,6 +3443,30 @@ export const Constants = {
       order_line_type: ["sample", "standard"],
       reservation_status: ["active", "released", "converted", "canceled"],
       stock_status: ["in_stock", "out_of_stock", "partially_fulfilled"],
+      stock_take_confidence_level: ["high", "medium", "low"],
+      stock_take_edit_reason: [
+        "ocr_unreadable",
+        "handwritten_label",
+        "label_damaged",
+        "wrong_extraction",
+        "other",
+      ],
+      stock_take_roll_status: [
+        "pending_review",
+        "approved",
+        "rejected",
+        "recount_requested",
+        "void_pending_admin",
+      ],
+      stock_take_session_status: [
+        "draft",
+        "active",
+        "counting_complete",
+        "reviewing",
+        "reconciled",
+        "closed",
+        "cancelled",
+      ],
       user_role: ["warehouse_staff", "accounting", "admin", "senior_manager"],
     },
   },
