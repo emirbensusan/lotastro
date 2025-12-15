@@ -32,7 +32,8 @@ import {
   PackageCheck,
   Factory,
   TrendingUp,
-  BookOpen
+  BookOpen,
+  ClipboardCheck
 } from 'lucide-react';
 import { 
   Sidebar,
@@ -110,6 +111,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     {
       label: String(t('toolsAndUtilities')),
       items: [
+        { path: '/stock-take', label: String(t('stocktake.title')), icon: ClipboardCheck, permission: { category: 'stocktake', action: 'start_session' } },
         { path: '/qr-scan', label: String(t('qrScan')), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
         { path: '/approvals', label: String(t('approvalRequests')), icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
       ]

@@ -37,6 +37,7 @@ import Forecast from "./pages/Forecast";
 import ForecastSettings from "./pages/ForecastSettings";
 import Catalog from "./pages/Catalog";
 import CatalogDetail from "./pages/CatalogDetail";
+import StockTakeCapture from "./pages/StockTakeCapture";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -198,6 +199,11 @@ const App = () => (
               <Route path="/audit-logs" element={
                 <ProtectedRoute>
                   <AuditLogs />
+                </ProtectedRoute>
+              } />
+              <Route path="/stock-take" element={
+                <ProtectedRoute>
+                  <StockTakeCapture />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
