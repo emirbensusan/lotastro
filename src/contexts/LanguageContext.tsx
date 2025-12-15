@@ -77,6 +77,13 @@ const translations = {
     cardView: 'Card View',
     tableView: 'Table View',
     
+    // Mobile features
+    pullToRefresh: 'Pull to refresh',
+    refreshing: 'Refreshing...',
+    releaseToRefresh: 'Release to refresh',
+    swipeToDelete: 'Swipe to delete',
+    swipeToAction: 'Swipe for actions',
+    
     // Common keys for forecast and other modules
     all: 'All',
     reviewed: 'Reviewed',
@@ -2573,6 +2580,13 @@ const translations = {
     switchView: 'Görünümü Değiştir',
     cardView: 'Kart Görünümü',
     tableView: 'Tablo Görünümü',
+    
+    // Mobile features
+    pullToRefresh: 'Yenilemek için çekin',
+    refreshing: 'Yenileniyor...',
+    releaseToRefresh: 'Yenilemek için bırakın',
+    swipeToDelete: 'Silmek için kaydırın',
+    swipeToAction: 'İşlem için kaydırın',
     
     // Inventory Stats
     physicalLots: 'Fiziki Lot Sayısı',
