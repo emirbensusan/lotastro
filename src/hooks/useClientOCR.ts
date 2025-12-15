@@ -44,7 +44,11 @@ export const useClientOCR = () => {
     setProgressMessage('OCR modeli yükleniyor...');
     
     const worker = await Tesseract.createWorker('eng', 1, {
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+      langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+      corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
       logger: (m) => {
+        console.log('[Tesseract]', m.status, m.progress);
         if (m.status === 'recognizing text') {
           setProgress(Math.round(m.progress * 100));
           setProgressMessage('Metin tanınıyor...');
@@ -59,12 +63,23 @@ export const useClientOCR = () => {
     });
 
     workerRef.current = worker;
-    console.log('[useClientOCR] Worker initialized');
+    console.log('[useClientOCR] Worker initialized successfully');
     return worker;
   }, []);
 
   // Run OCR on image
   const runOCR = useCallback(async (imageSource: string | Blob): Promise<ClientOCRResult> => {
+    console.log('[useClientOCR] Starting OCR...');
+    console.log('[useClientOCR] imageSource type:', typeof imageSource);
+    console.log('[useClientOCR] imageSource is Blob?', imageSource instanceof Blob);
+    
+    if (typeof imageSource === 'string') {
+      console.log('[useClientOCR] Data URL length:', imageSource.length);
+      console.log('[useClientOCR] Data URL prefix:', imageSource.substring(0, 100));
+    } else if (imageSource instanceof Blob) {
+      console.log('[useClientOCR] Blob size:', imageSource.size, 'type:', imageSource.type);
+    }
+    
     setIsProcessing(true);
     setProgress(0);
     abortRef.current = false;
@@ -94,12 +109,20 @@ export const useClientOCR = () => {
         // Convert blob to data URL if needed
         let imageData = imageSource;
         if (imageSource instanceof Blob) {
+          console.log('[useClientOCR] Converting Blob to data URL...');
           imageData = await new Promise<string>((resolve) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
+            reader.onloadend = () => {
+              const result = reader.result as string;
+              console.log('[useClientOCR] Blob converted, data URL length:', result.length);
+              resolve(result);
+            };
             reader.readAsDataURL(imageSource);
           });
         }
+
+        console.log('[useClientOCR] Final imageData length:', (imageData as string).length);
+        console.log('[useClientOCR] Final imageData prefix:', (imageData as string).substring(0, 100));
 
         if (abortRef.current) {
           return { success: false, error: 'OCR aborted', timedOut: true };
@@ -107,13 +130,16 @@ export const useClientOCR = () => {
 
         setProgressMessage('Metin tanınıyor...');
         
+        console.log('[useClientOCR] Calling worker.recognize()...');
         // Run recognition
         const result = await worker.recognize(imageData);
         
         const processingTimeMs = Date.now() - startTime;
         console.log('[useClientOCR] Recognition complete:', {
           confidence: result.data.confidence,
+          text: result.data.text.substring(0, 500),
           textLength: result.data.text.length,
+          words: result.data.words?.length || 0,
           processingTimeMs,
         });
 
