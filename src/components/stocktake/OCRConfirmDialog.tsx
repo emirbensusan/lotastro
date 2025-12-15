@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertTriangle, CheckCircle, Edit, RotateCcw } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Edit, RotateCcw, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface OCRData {
@@ -35,11 +35,26 @@ interface OCRData {
   rawText: string;
 }
 
+interface DuplicateWarning {
+  isDuplicate: boolean;
+  duplicateType: 'exact' | 'perceptual' | 'data_match' | null;
+  matchedRoll: {
+    id: string;
+    capture_sequence: number;
+    counter_quality: string;
+    counter_color: string;
+    counter_lot_number: string;
+    counter_meters: number;
+  } | null;
+  confidence: number;
+}
+
 interface OCRConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   imageUrl: string;
   ocrData: OCRData | null;
+  duplicateWarning?: DuplicateWarning | null;
   onConfirm: (data: {
     quality: string;
     color: string;
@@ -49,6 +64,7 @@ interface OCRConfirmDialogProps {
     editReason?: string;
     editReasonOther?: string;
     fieldsEdited?: string[];
+    acknowledgedDuplicate?: boolean;
   }) => void;
   onRetake: () => void;
 }
@@ -67,10 +83,12 @@ export const OCRConfirmDialog = ({
   onOpenChange,
   imageUrl,
   ocrData,
+  duplicateWarning,
   onConfirm,
   onRetake,
 }: OCRConfirmDialogProps) => {
   const { t } = useLanguage();
+  const [acknowledgedDuplicate, setAcknowledgedDuplicate] = useState(false);
   
   // Form state
   const [quality, setQuality] = useState('');
@@ -93,6 +111,7 @@ export const OCRConfirmDialog = ({
       setMeters(ocrData.meters?.toString() || '');
       setFieldsEdited(new Set());
       setShowEditMode(!ocrData.isLikelyLabel || ocrData.confidence.level === 'low');
+      setAcknowledgedDuplicate(false);
     }
   }, [ocrData]);
 
@@ -119,6 +138,11 @@ export const OCRConfirmDialog = ({
       return;
     }
 
+    // Require acknowledgment if duplicate detected
+    if (duplicateWarning?.isDuplicate && !acknowledgedDuplicate) {
+      return;
+    }
+
     onConfirm({
       quality: quality.trim().toUpperCase(),
       color: color.trim().toUpperCase(),
@@ -128,7 +152,17 @@ export const OCRConfirmDialog = ({
       editReason: isManualEntry ? editReason : undefined,
       editReasonOther: editReason === 'other' ? editReasonOther : undefined,
       fieldsEdited: Array.from(fieldsEdited),
+      acknowledgedDuplicate: duplicateWarning?.isDuplicate ? acknowledgedDuplicate : undefined,
     });
+  };
+
+  const getDuplicateTypeLabel = (type: string | null) => {
+    switch (type) {
+      case 'exact': return String(t('stocktake.duplicate.exactMatch'));
+      case 'perceptual': return String(t('stocktake.duplicate.similarImage'));
+      case 'data_match': return String(t('stocktake.duplicate.sameData'));
+      default: return String(t('stocktake.duplicate.possibleDuplicate'));
+    }
   };
 
   const getConfidenceBadge = () => {
@@ -196,7 +230,38 @@ export const OCRConfirmDialog = ({
             </div>
           )}
 
-          {/* Form fields */}
+          {/* Duplicate warning */}
+          {duplicateWarning?.isDuplicate && (
+            <div className="flex flex-col gap-2 p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
+              <div className="flex items-start gap-2">
+                <Copy className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                    {getDuplicateTypeLabel(duplicateWarning.duplicateType)}
+                  </p>
+                  {duplicateWarning.matchedRoll && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                      {String(t('stocktake.duplicate.matchedWith'))} #{duplicateWarning.matchedRoll.capture_sequence}: {duplicateWarning.matchedRoll.counter_quality} {duplicateWarning.matchedRoll.counter_color} - {duplicateWarning.matchedRoll.counter_meters}m
+                    </p>
+                  )}
+                  <p className="text-xs text-red-600 dark:text-red-400">
+                    {String(t('stocktake.duplicate.confidence'))}: {duplicateWarning.confidence}%
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acknowledgedDuplicate}
+                  onChange={(e) => setAcknowledgedDuplicate(e.target.checked)}
+                  className="rounded border-red-300"
+                />
+                <span className="text-xs text-red-700 dark:text-red-300">
+                  {String(t('stocktake.duplicate.acknowledgeAndContinue'))}
+                </span>
+              </label>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="quality" className="text-xs">
@@ -310,7 +375,7 @@ export const OCRConfirmDialog = ({
           
           <Button
             onClick={handleConfirm}
-            disabled={!isValid || (isManualEntry && !editReason)}
+            disabled={!isValid || (isManualEntry && !editReason) || (duplicateWarning?.isDuplicate && !acknowledgedDuplicate)}
             className="w-full sm:w-auto"
           >
             <CheckCircle className="h-4 w-4 mr-2" />

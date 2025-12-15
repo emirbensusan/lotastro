@@ -17,7 +17,8 @@ import {
   Image,
   Edit2,
   Save,
-  X
+  X,
+  Copy
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -65,6 +66,8 @@ interface CountRoll {
   status: string;
   is_manual_entry: boolean;
   is_not_label_warning: boolean;
+  is_possible_duplicate: boolean;
+  duplicate_of_roll_id: string | null;
   admin_quality: string | null;
   admin_color: string | null;
   admin_lot_number: string | null;
@@ -484,7 +487,7 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
                 ) : (
                   // View Mode
                   <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-wrap">
                       <span className="font-mono text-sm text-muted-foreground">#{roll.capture_sequence}</span>
                       {getStatusBadge(roll.status)}
                       {getConfidenceBadge(roll.ocr_confidence_level)}
@@ -493,6 +496,17 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
                         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                           <AlertTriangle className="h-3 w-3 mr-1" />
                           {String(t('stocktake.ocr.notLabelWarning'))}
+                        </Badge>
+                      )}
+                      {roll.is_possible_duplicate && (
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                          <Copy className="h-3 w-3 mr-1" />
+                          {String(t('stocktake.duplicate.duplicateRoll'))}
+                          {roll.duplicate_of_roll_id && (
+                            <span className="ml-1 text-xs">
+                              ({String(t('stocktake.duplicate.linkedTo'))} #{rolls.find(r => r.id === roll.duplicate_of_roll_id)?.capture_sequence || '?'})
+                            </span>
+                          )}
                         </Badge>
                       )}
                     </div>
