@@ -9,6 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useClientOCR } from '@/hooks/useClientOCR';
+import { preprocessForOCR } from '@/utils/ocrPreprocessing';
+import { useStockTakeSettings } from '@/hooks/useStockTakeSettings';
 import { 
   ArrowLeft, 
   CheckCircle, 
@@ -23,7 +26,9 @@ import {
   Download,
   Filter,
   CheckSquare,
-  Square
+  Square,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -59,6 +64,7 @@ import {
 } from '@/components/ui/table';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
+import { Progress } from '@/components/ui/progress';
 
 interface CountSession {
   id: string;
@@ -111,6 +117,8 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
   const { toast } = useToast();
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { runOCR, isProcessing: isOCRProcessing, progress: ocrProgress, terminateWorker } = useClientOCR();
+  const { settings: stockTakeSettings } = useStockTakeSettings();
   
   const [rolls, setRolls] = useState<CountRoll[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -120,6 +128,7 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showRecountDialog, setShowRecountDialog] = useState(false);
   const [showBulkApproveDialog, setShowBulkApproveDialog] = useState(false);
+  const [showBulkRerunOCRDialog, setShowBulkRerunOCRDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [recountReason, setRecountReason] = useState('');
   const [editingRollId, setEditingRollId] = useState<string | null>(null);
@@ -158,6 +167,11 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
     highConfidence: 0,
     readyForApproval: 0
   });
+
+  // Re-run OCR state
+  const [rerunningOCRRollId, setRerunningOCRRollId] = useState<string | null>(null);
+  const [isBulkRerunningOCR, setIsBulkRerunningOCR] = useState(false);
+  const [bulkRerunProgress, setBulkRerunProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
 
   // Fetch rolls with server-side pagination
   const fetchRolls = useCallback(async () => {
@@ -500,6 +514,238 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
     }
   };
 
+  // Re-run OCR for individual roll
+  const handleRerunOCR = async (roll: CountRoll) => {
+    setRerunningOCRRollId(roll.id);
+    try {
+      console.log('[StockTakeSessionDetail] Re-running OCR for roll:', roll.id);
+      
+      // Get the original photo path
+      let photoPath = roll.photo_path;
+      if (photoPath.includes('_medium.jpg')) {
+        photoPath = photoPath.replace('_medium.jpg', '_original.jpg');
+      } else if (photoPath.includes('_thumb.jpg')) {
+        photoPath = photoPath.replace('_thumb.jpg', '_original.jpg');
+      }
+      
+      // Get signed URL for the photo
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('stock-take-photos')
+        .createSignedUrl(photoPath, 60);
+      
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw new Error('Failed to get photo URL');
+      }
+      
+      // Load image as data URL
+      const response = await fetch(signedUrlData.signedUrl);
+      const blob = await response.blob();
+      const imageDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      
+      console.log('[StockTakeSessionDetail] Image loaded, length:', imageDataUrl.length);
+      
+      // Apply preprocessing if enabled
+      let processedImage = imageDataUrl;
+      if (stockTakeSettings.preprocessing_enabled) {
+        console.log('[StockTakeSessionDetail] Applying preprocessing...');
+        processedImage = await preprocessForOCR(imageDataUrl, {
+          enabled: stockTakeSettings.preprocessing_enabled,
+          grayscale: stockTakeSettings.preprocessing_grayscale,
+          contrast: stockTakeSettings.preprocessing_contrast,
+          contrastLevel: stockTakeSettings.preprocessing_contrast_level,
+          sharpen: stockTakeSettings.preprocessing_sharpen,
+          sharpenLevel: stockTakeSettings.preprocessing_sharpen_level,
+        });
+        console.log('[StockTakeSessionDetail] Preprocessing complete, length:', processedImage.length);
+      }
+      
+      // Run OCR
+      const ocrResult = await runOCR(processedImage);
+      console.log('[StockTakeSessionDetail] OCR result:', ocrResult);
+      
+      if (!ocrResult.success) {
+        throw new Error(ocrResult.error || 'OCR failed');
+      }
+      
+      // Calculate confidence level
+      const overallScore = ocrResult.confidence?.overallScore || 0;
+      let confidenceLevel: 'high' | 'medium' | 'low' = 'low';
+      if (overallScore >= 85) {
+        confidenceLevel = 'high';
+      } else if (overallScore >= 60) {
+        confidenceLevel = 'medium';
+      }
+      
+      // Update the roll with new OCR values
+      const { error: updateError } = await supabase
+        .from('count_rolls')
+        .update({
+          ocr_quality: ocrResult.extracted?.quality || null,
+          ocr_color: ocrResult.extracted?.color || null,
+          ocr_lot_number: ocrResult.extracted?.lotNumber || null,
+          ocr_meters: ocrResult.extracted?.meters ? parseFloat(String(ocrResult.extracted.meters)) : null,
+          ocr_confidence_score: overallScore || null,
+          ocr_confidence_level: confidenceLevel,
+          ocr_raw_text: ocrResult.ocr?.rawText || null,
+          ocr_processed_at: new Date().toISOString(),
+        })
+        .eq('id', roll.id);
+      
+      if (updateError) throw updateError;
+      
+      toast({
+        title: String(t('stocktake.review.rerunOCRSuccess')),
+        description: `${String(t('stocktake.review.ocrConfidence'))}: ${confidenceLevel}`,
+      });
+      
+      fetchRolls();
+    } catch (error) {
+      console.error('[StockTakeSessionDetail] Re-run OCR error:', error);
+      toast({
+        title: String(t('stocktake.review.rerunOCRFailed')),
+        variant: 'destructive',
+      });
+    } finally {
+      setRerunningOCRRollId(null);
+    }
+  };
+
+  // Bulk re-run OCR for all pending/failed rolls
+  const handleBulkRerunOCR = async () => {
+    setIsBulkRerunningOCR(true);
+    
+    // Get all rolls that could benefit from re-running OCR
+    const { data: rollsToProcess } = await supabase
+      .from('count_rolls')
+      .select('*')
+      .eq('session_id', session.id)
+      .or('ocr_confidence_level.eq.low,ocr_confidence_level.eq.medium,ocr_confidence_level.is.null')
+      .order('capture_sequence', { ascending: true });
+    
+    if (!rollsToProcess || rollsToProcess.length === 0) {
+      toast({ title: String(t('stocktake.review.noRollsToRerun')) });
+      setIsBulkRerunningOCR(false);
+      setShowBulkRerunOCRDialog(false);
+      return;
+    }
+    
+    setBulkRerunProgress({ current: 0, total: rollsToProcess.length, success: 0, failed: 0 });
+    
+    let successCount = 0;
+    let failedCount = 0;
+    
+    for (let i = 0; i < rollsToProcess.length; i++) {
+      const roll = rollsToProcess[i];
+      setBulkRerunProgress(prev => ({ ...prev, current: i + 1 }));
+      
+      try {
+        // Get the original photo path
+        let photoPath = roll.photo_path;
+        if (photoPath.includes('_medium.jpg')) {
+          photoPath = photoPath.replace('_medium.jpg', '_original.jpg');
+        } else if (photoPath.includes('_thumb.jpg')) {
+          photoPath = photoPath.replace('_thumb.jpg', '_original.jpg');
+        }
+        
+        // Get signed URL for the photo
+        const { data: signedUrlData } = await supabase.storage
+          .from('stock-take-photos')
+          .createSignedUrl(photoPath, 60);
+        
+        if (!signedUrlData?.signedUrl) {
+          failedCount++;
+          continue;
+        }
+        
+        // Load image as data URL
+        const response = await fetch(signedUrlData.signedUrl);
+        const blob = await response.blob();
+        const imageDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        
+        // Apply preprocessing if enabled
+        let processedImage = imageDataUrl;
+        if (stockTakeSettings.preprocessing_enabled) {
+          processedImage = await preprocessForOCR(imageDataUrl, {
+            enabled: stockTakeSettings.preprocessing_enabled,
+            grayscale: stockTakeSettings.preprocessing_grayscale,
+            contrast: stockTakeSettings.preprocessing_contrast,
+            contrastLevel: stockTakeSettings.preprocessing_contrast_level,
+            sharpen: stockTakeSettings.preprocessing_sharpen,
+            sharpenLevel: stockTakeSettings.preprocessing_sharpen_level,
+          });
+        }
+        
+        // Run OCR
+        const ocrResult = await runOCR(processedImage);
+        
+        if (!ocrResult.success) {
+          failedCount++;
+          continue;
+        }
+        
+        // Calculate confidence level
+        const overallScore = ocrResult.confidence?.overallScore || 0;
+        let confidenceLevel: 'high' | 'medium' | 'low' = 'low';
+        if (overallScore >= 85) {
+          confidenceLevel = 'high';
+        } else if (overallScore >= 60) {
+          confidenceLevel = 'medium';
+        }
+        
+        // Update the roll with new OCR values
+        await supabase
+          .from('count_rolls')
+          .update({
+            ocr_quality: ocrResult.extracted?.quality || null,
+            ocr_color: ocrResult.extracted?.color || null,
+            ocr_lot_number: ocrResult.extracted?.lotNumber || null,
+            ocr_meters: ocrResult.extracted?.meters ? parseFloat(String(ocrResult.extracted.meters)) : null,
+            ocr_confidence_score: overallScore || null,
+            ocr_confidence_level: confidenceLevel,
+            ocr_raw_text: ocrResult.ocr?.rawText || null,
+            ocr_processed_at: new Date().toISOString(),
+          })
+          .eq('id', roll.id);
+        
+        successCount++;
+        setBulkRerunProgress(prev => ({ ...prev, success: successCount }));
+      } catch (error) {
+        console.error('[StockTakeSessionDetail] Bulk re-run OCR error for roll:', roll.id, error);
+        failedCount++;
+        setBulkRerunProgress(prev => ({ ...prev, failed: failedCount }));
+      }
+    }
+    
+    toast({
+      title: String(t('stocktake.review.bulkRerunOCRComplete')),
+      description: `${successCount} ${String(t('success'))}, ${failedCount} ${String(t('stocktake.review.failed'))}`,
+    });
+    
+    setIsBulkRerunningOCR(false);
+    setShowBulkRerunOCRDialog(false);
+    terminateWorker();
+    fetchRolls();
+  };
+
+  // Count of rolls that could benefit from re-running OCR
+  const rollsNeedingOCR = useMemo(() => {
+    return rolls.filter(r => 
+      r.ocr_confidence_level === 'low' || 
+      r.ocr_confidence_level === 'medium' || 
+      !r.ocr_confidence_level
+    ).length;
+  }, [rolls]);
+
   const handleCompleteReview = async () => {
     try {
       const { error } = await supabase
@@ -621,6 +867,14 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
           <p className="text-muted-foreground">{String(t('stocktake.review.sessionReview'))}</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowBulkRerunOCRDialog(true)}
+            disabled={rollsNeedingOCR === 0 || isBulkRerunningOCR}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            {String(t('stocktake.review.rerunOCR'))} ({rollsNeedingOCR})
+          </Button>
           <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             {String(t('stocktake.review.exportData'))}
@@ -909,6 +1163,23 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
                           <Button size="sm" variant="ghost" onClick={() => handleStartEdit(roll)} title={String(t('edit'))}>
                             <Edit2 className="h-4 w-4" />
                           </Button>
+                          {/* Re-run OCR button for low/medium confidence */}
+                          {(roll.ocr_confidence_level === 'low' || roll.ocr_confidence_level === 'medium' || !roll.ocr_confidence_level) && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="text-amber-600"
+                              onClick={() => handleRerunOCR(roll)} 
+                              disabled={rerunningOCRRollId === roll.id}
+                              title={String(t('stocktake.review.rerunOCR'))}
+                            >
+                              {rerunningOCRRollId === roll.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
                           {roll.status === 'pending_review' && (
                             <>
                               <Button size="sm" variant="ghost" className="text-green-600" onClick={() => handleApprove(roll)} title={String(t('approve'))}>
@@ -1036,6 +1307,43 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
             <AlertDialogCancel>{String(t('cancel'))}</AlertDialogCancel>
             <AlertDialogAction onClick={handleRequestRecount}>
               {String(t('stocktake.review.requestRecount'))}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Re-run OCR Dialog */}
+      <AlertDialog open={showBulkRerunOCRDialog} onOpenChange={setShowBulkRerunOCRDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{String(t('stocktake.review.rerunOCRAll'))}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {String(t('stocktake.review.rerunOCRAllDesc')).replace('{count}', String(rollsNeedingOCR))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {isBulkRerunningOCR && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>{String(t('stocktake.review.rerunOCRProgress')).replace('{current}', String(bulkRerunProgress.current)).replace('{total}', String(bulkRerunProgress.total))}</span>
+                <span className="text-green-600">{bulkRerunProgress.success} ✓</span>
+              </div>
+              <Progress value={(bulkRerunProgress.current / Math.max(bulkRerunProgress.total, 1)) * 100} />
+            </div>
+          )}
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkRerunningOCR}>{String(t('cancel'))}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkRerunOCR} 
+              disabled={isBulkRerunningOCR}
+            >
+              {isBulkRerunningOCR ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              {String(t('stocktake.review.rerunOCR'))}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
