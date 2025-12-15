@@ -14,7 +14,7 @@ import { UploadProgressBar } from '@/components/stocktake/UploadProgressBar';
 import { CameraCapture } from '@/components/stocktake/CameraCapture';
 import { OCRConfirmDialog } from '@/components/stocktake/OCRConfirmDialog';
 import PendingUploadsIndicator from '@/components/stocktake/PendingUploadsIndicator';
-import { Camera, StopCircle, AlertTriangle, Play, ClipboardList, Clock, ArrowLeft } from 'lucide-react';
+import { Camera, StopCircle, AlertTriangle, Play, ClipboardList, Clock } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -472,15 +472,6 @@ const StockTakeCapture = () => {
                   ? String(t('stocktake.welcome.resumeButton'))
                   : String(t('stocktake.welcome.startButton'))
                 }
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                className="w-full"
-                onClick={() => navigate('/')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                {String(t('back'))}
               </Button>
             </div>
           </CardContent>

@@ -3,8 +3,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-const WARNING_BEFORE_MS = 5 * 60 * 1000; // 5 minutes before timeout
+const SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes inactivity timeout
+const WARNING_BEFORE_MS = 1 * 60 * 1000; // 1 minute before timeout warning
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
 const THROTTLE_MS = 1000; // Throttle activity updates
 
@@ -68,21 +68,21 @@ export const useStockTakeSession = ({ userId, onSessionExpired }: UseStockTakeSe
     warningShownRef.current = false;
     setIsExpiring(false);
 
-    // Set warning timer (25 minutes)
+    // Set warning timer (4 minutes - 1 minute before timeout)
     warningRef.current = setTimeout(() => {
       if (session && !warningShownRef.current) {
         warningShownRef.current = true;
         setIsExpiring(true);
         toast({
           title: String(t('stocktake.sessionExpiringSoon')),
-          description: String(t('stocktake.sessionExpiringDesc')).replace('{minutes}', '5'),
+          description: String(t('stocktake.sessionExpiringDesc')).replace('{minutes}', '1'),
           variant: 'destructive',
           duration: 30000,
         });
       }
     }, SESSION_TIMEOUT_MS - WARNING_BEFORE_MS);
 
-    // Set expiry timer (30 minutes)
+    // Set expiry timer (5 minutes)
     timeoutRef.current = setTimeout(async () => {
       if (session) {
         // Mark session with inactivity note (keep status active but update notes)
