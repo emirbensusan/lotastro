@@ -24,7 +24,95 @@ const DEFAULT_OPTIONS: CompressionOptions = {
   format: 'jpeg',
 };
 
+// Generate multiple sizes for thumbnails
+interface ThumbnailSizes {
+  thumb: Blob;      // 150px - for grids
+  medium: Blob;     // 800px - for review dialogs  
+  original: Blob;   // Full compressed - for evidence
+}
+
+const createResizedBlob = (
+  img: HTMLImageElement, 
+  maxWidth: number, 
+  maxHeight: number, 
+  quality: number,
+  format: 'jpeg' | 'webp'
+): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    let { width, height } = img;
+    
+    if (width > maxWidth || height > maxHeight) {
+      const ratio = Math.min(maxWidth / width, maxHeight / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      reject(new Error('Failed to get canvas context'));
+      return;
+    }
+    
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, width, height);
+    
+    const mimeType = format === 'webp' ? 'image/webp' : 'image/jpeg';
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('Failed to create blob'));
+          return;
+        }
+        resolve(blob);
+      },
+      mimeType,
+      quality
+    );
+  });
+};
+
 export const useImageCompression = () => {
+  // Generate all thumbnail sizes at once
+  const generateThumbnails = useCallback(async (
+    file: File | Blob,
+    options: CompressionOptions = {}
+  ): Promise<ThumbnailSizes> => {
+    const opts = { ...DEFAULT_OPTIONS, ...options };
+    
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      
+      img.onload = async () => {
+        URL.revokeObjectURL(url);
+        
+        try {
+          const [thumb, medium, original] = await Promise.all([
+            createResizedBlob(img, 150, 150, 0.7, opts.format!),
+            createResizedBlob(img, 800, 800, 0.8, opts.format!),
+            createResizedBlob(img, opts.maxWidth!, opts.maxHeight!, opts.quality!, opts.format!),
+          ]);
+          
+          resolve({ thumb, medium, original });
+        } catch (err) {
+          reject(err);
+        }
+      };
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image'));
+      };
+      
+      img.src = url;
+    });
+  }, []);
+  
   const compressImage = useCallback(async (
     file: File | Blob,
     options: CompressionOptions = {}
@@ -116,5 +204,15 @@ export const useImageCompression = () => {
     return compressImage(blob, options);
   }, [compressImage]);
 
-  return { compressImage, compressFromDataUrl };
+  // Generate thumbnails from data URL
+  const generateThumbnailsFromDataUrl = useCallback(async (
+    dataUrl: string,
+    options: CompressionOptions = {}
+  ): Promise<ThumbnailSizes> => {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    return generateThumbnails(blob, options);
+  }, [generateThumbnails]);
+
+  return { compressImage, compressFromDataUrl, generateThumbnails, generateThumbnailsFromDataUrl };
 };

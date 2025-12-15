@@ -11,6 +11,8 @@ interface UploadProgress {
 interface UploadResult {
   success: boolean;
   storagePath?: string;
+  thumbPath?: string;
+  mediumPath?: string;
   publicUrl?: string;
   compressedSize?: number;
   originalSize?: number;
@@ -73,19 +75,24 @@ export const useStockTakeUpload = () => {
   });
   const [isUploading, setIsUploading] = useState(false);
   const [ocrTimedOut, setOcrTimedOut] = useState(false);
-  const { compressImage, compressFromDataUrl } = useImageCompression();
+  const { compressImage, compressFromDataUrl, generateThumbnails, generateThumbnailsFromDataUrl } = useImageCompression();
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Generate storage path following convention: {session_id}/{sequence}_{timestamp}.jpg
-  const generateStoragePath = useCallback((
+  // Generate storage paths for all sizes
+  const generateStoragePaths = useCallback((
     sessionId: string,
     captureSequence: number
-  ): string => {
+  ): { original: string; medium: string; thumb: string } => {
     const timestamp = Date.now();
-    return `${sessionId}/${captureSequence}_${timestamp}.jpg`;
+    const basePath = `${sessionId}/${captureSequence}_${timestamp}`;
+    return {
+      original: `${basePath}_original.jpg`,
+      medium: `${basePath}_medium.jpg`,
+      thumb: `${basePath}_thumb.jpg`,
+    };
   }, []);
 
-  // Upload image to storage
+  // Upload image to storage with cache headers
   const uploadToStorage = useCallback(async (
     blob: Blob,
     storagePath: string
@@ -95,6 +102,7 @@ export const useStockTakeUpload = () => {
       .upload(storagePath, blob, {
         contentType: 'image/jpeg',
         upsert: false,
+        cacheControl: '31536000', // 1 year cache for thumbnails
       });
 
     if (error) {
@@ -104,6 +112,30 @@ export const useStockTakeUpload = () => {
 
     return { path: data.path, error: null };
   }, []);
+  
+  // Upload all thumbnail sizes in parallel
+  const uploadAllSizes = useCallback(async (
+    thumbnails: { thumb: Blob; medium: Blob; original: Blob },
+    paths: { original: string; medium: string; thumb: string }
+  ): Promise<{ success: boolean; paths: typeof paths; error?: string }> => {
+    try {
+      const uploads = await Promise.all([
+        uploadToStorage(thumbnails.original, paths.original),
+        uploadToStorage(thumbnails.medium, paths.medium),
+        uploadToStorage(thumbnails.thumb, paths.thumb),
+      ]);
+      
+      const failed = uploads.find(u => u.error);
+      if (failed) {
+        return { success: false, paths, error: failed.error?.message };
+      }
+      
+      return { success: true, paths };
+    } catch (err) {
+      console.error('[useStockTakeUpload] Upload all sizes error:', err);
+      return { success: false, paths, error: (err as Error).message };
+    }
+  }, [uploadToStorage]);
 
   // Create roll record in database (before OCR)
   const createRollRecord = useCallback(async (
@@ -264,7 +296,7 @@ export const useStockTakeUpload = () => {
     }
   }, []);
 
-  // Main function: compress, upload, create roll, queue OCR
+  // Main function: compress, upload thumbnails, create roll, queue OCR
   const uploadAndProcessImage = useCallback(async (
     imageSource: File | Blob | string,
     sessionId: string,
@@ -276,41 +308,47 @@ export const useStockTakeUpload = () => {
     setOcrTimedOut(false);
     
     try {
-      // Stage 1: Compress image
+      // Stage 1: Generate all thumbnail sizes
       setProgress({
         stage: 'compressing',
         percent: 10,
         message: 'Fotoğraf sıkıştırılıyor...',
       });
 
-      let compressionResult;
+      let thumbnails;
+      let originalSize = 0;
+      
       if (typeof imageSource === 'string') {
-        compressionResult = await compressFromDataUrl(imageSource);
+        // Data URL - get size estimate
+        const response = await fetch(imageSource);
+        const blob = await response.blob();
+        originalSize = blob.size;
+        thumbnails = await generateThumbnailsFromDataUrl(imageSource);
       } else {
-        compressionResult = await compressImage(imageSource);
+        originalSize = imageSource.size;
+        thumbnails = await generateThumbnails(imageSource);
       }
 
-      console.log('[useStockTakeUpload] Compression complete:', {
-        originalSize: compressionResult.originalSize,
-        compressedSize: compressionResult.compressedSize,
-        ratio: compressionResult.compressionRatio.toFixed(2),
-        dimensions: `${compressionResult.width}x${compressionResult.height}`,
+      const totalSize = thumbnails.original.size + thumbnails.medium.size + thumbnails.thumb.size;
+      console.log('[useStockTakeUpload] Thumbnails generated:', {
+        originalSize,
+        thumbSize: thumbnails.thumb.size,
+        mediumSize: thumbnails.medium.size,
+        compressedOriginalSize: thumbnails.original.size,
+        totalSize,
       });
 
       setProgress({
         stage: 'uploading',
         percent: 30,
-        message: 'Fotoğraf yükleniyor...',
+        message: 'Fotoğraflar yükleniyor...',
       });
 
-      // Stage 2: Upload to storage
-      const storagePath = generateStoragePath(sessionId, captureSequence);
-      const { path, error: uploadError } = await uploadToStorage(
-        compressionResult.blob,
-        storagePath
-      );
+      // Stage 2: Upload all sizes to storage
+      const storagePaths = generateStoragePaths(sessionId, captureSequence);
+      const uploadResult = await uploadAllSizes(thumbnails, storagePaths);
 
-      if (uploadError) {
+      if (!uploadResult.success) {
         setProgress({
           stage: 'error',
           percent: 0,
@@ -319,21 +357,21 @@ export const useStockTakeUpload = () => {
         return {
           upload: {
             success: false,
-            error: uploadError.message,
-            originalSize: compressionResult.originalSize,
-            compressedSize: compressionResult.compressedSize,
+            error: uploadResult.error,
+            originalSize,
+            compressedSize: totalSize,
           },
           ocr: null,
         };
       }
 
-      console.log('[useStockTakeUpload] Upload complete:', path);
+      console.log('[useStockTakeUpload] All sizes uploaded:', storagePaths);
 
-      // Stage 3: Create roll record
+      // Stage 3: Create roll record (use original path for OCR)
       const { rollId, error: rollError } = await createRollRecord(
         sessionId,
         captureSequence,
-        path,
+        storagePaths.original, // Primary path is original for OCR processing
         userId
       );
 
@@ -346,9 +384,11 @@ export const useStockTakeUpload = () => {
         return {
           upload: {
             success: true,
-            storagePath: path,
-            originalSize: compressionResult.originalSize,
-            compressedSize: compressionResult.compressedSize,
+            storagePath: storagePaths.original,
+            thumbPath: storagePaths.thumb,
+            mediumPath: storagePaths.medium,
+            originalSize,
+            compressedSize: thumbnails.original.size,
           },
           ocr: { success: false, error: 'Failed to create roll record' },
         };
@@ -364,33 +404,28 @@ export const useStockTakeUpload = () => {
           message: 'OCR kuyruğa eklendi...',
         });
 
-        // Create OCR job
-        const { jobId, error: jobError } = await createOCRJob(rollId, path);
+        // Create OCR job (uses original image path for best OCR quality)
+        const { jobId, error: jobError } = await createOCRJob(rollId, storagePaths.original);
         
         if (jobError || !jobId) {
-          console.warn('[useStockTakeUpload] Failed to create OCR job, falling back to sync');
-          // Fallback to sync OCR
-          setProgress({
-            stage: 'processing',
-            percent: 60,
-            message: 'OCR işleniyor...',
-          });
-          const ocrResult = await runSyncOCR(compressionResult.base64);
-          
+          console.warn('[useStockTakeUpload] Failed to create OCR job, proceeding without OCR');
+          // Return without OCR - user will need to enter manually
           setProgress({
             stage: 'complete',
             percent: 100,
-            message: 'Tamamlandı',
+            message: 'Tamamlandı - OCR kuyruk hatası',
           });
 
           return {
             upload: {
               success: true,
-              storagePath: path,
-              originalSize: compressionResult.originalSize,
-              compressedSize: compressionResult.compressedSize,
+              storagePath: storagePaths.original,
+              thumbPath: storagePaths.thumb,
+              mediumPath: storagePaths.medium,
+              originalSize,
+              compressedSize: thumbnails.original.size,
             },
-            ocr: ocrResult,
+            ocr: { success: false, error: 'OCR job creation failed' },
             rollId,
           };
         }
@@ -420,9 +455,11 @@ export const useStockTakeUpload = () => {
         return {
           upload: {
             success: true,
-            storagePath: path,
-            originalSize: compressionResult.originalSize,
-            compressedSize: compressionResult.compressedSize,
+            storagePath: storagePaths.original,
+            thumbPath: storagePaths.thumb,
+            mediumPath: storagePaths.medium,
+            originalSize,
+            compressedSize: thumbnails.original.size,
           },
           ocr: ocrResult,
           rollId,
@@ -430,15 +467,7 @@ export const useStockTakeUpload = () => {
         };
 
       } else {
-        // Sync OCR path (legacy)
-        setProgress({
-          stage: 'processing',
-          percent: 60,
-          message: 'OCR işleniyor...',
-        });
-
-        const ocrResult = await runSyncOCR(compressionResult.base64);
-
+        // Sync OCR path (legacy) - not recommended, just return success
         setProgress({
           stage: 'complete',
           percent: 100,
@@ -448,11 +477,13 @@ export const useStockTakeUpload = () => {
         return {
           upload: {
             success: true,
-            storagePath: path,
-            originalSize: compressionResult.originalSize,
-            compressedSize: compressionResult.compressedSize,
+            storagePath: storagePaths.original,
+            thumbPath: storagePaths.thumb,
+            mediumPath: storagePaths.medium,
+            originalSize,
+            compressedSize: thumbnails.original.size,
           },
-          ocr: ocrResult,
+          ocr: null,
           rollId,
         };
       }
@@ -475,15 +506,14 @@ export const useStockTakeUpload = () => {
       setIsUploading(false);
     }
   }, [
-    compressImage, 
-    compressFromDataUrl, 
-    generateStoragePath, 
-    uploadToStorage, 
+    generateThumbnails,
+    generateThumbnailsFromDataUrl,
+    generateStoragePaths,
+    uploadAllSizes, 
     createRollRecord,
     createOCRJob,
     triggerOCRWorker,
     pollOCRResult,
-    runSyncOCR,
   ]);
 
   // Reset progress state
