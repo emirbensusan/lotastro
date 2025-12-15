@@ -2524,6 +2524,18 @@ const translations = {
         bulkApproveSuccess: 'Rolls approved successfully',
         selectAllShortcut: 'Select all',
         approveShortcut: 'Approve selected',
+        // Re-run OCR
+        rerunOCR: 'Re-run OCR',
+        rerunOCRAll: 'Re-run All OCR',
+        rerunOCRAllDesc: 'Re-run OCR on {count} rolls with low/medium confidence. This may take a while.',
+        rerunOCRProgress: 'Processing {current} of {total}...',
+        rerunOCRSuccess: 'OCR completed successfully',
+        rerunOCRFailed: 'OCR failed for this roll',
+        noRollsToRerun: 'No rolls need OCR re-run',
+        bulkRerunOCRComplete: 'Bulk OCR re-run complete',
+        failed: 'failed',
+        exportComplete: 'Export complete',
+        viewPhoto: 'View Photo',
       },
       // Duplicate detection
       duplicate: {
@@ -5106,6 +5118,18 @@ const translations = {
         bulkApproveSuccess: 'Toplar başarıyla onaylandı',
         selectAllShortcut: 'Tümünü seç',
         approveShortcut: 'Seçilenleri onayla',
+        // Re-run OCR
+        rerunOCR: 'OCR Yeniden Çalıştır',
+        rerunOCRAll: 'Tüm OCR Yeniden Çalıştır',
+        rerunOCRAllDesc: 'Düşük/orta güvenli {count} topun OCR işlemini yeniden çalıştır. Bu biraz zaman alabilir.',
+        rerunOCRProgress: '{total} içinden {current} işleniyor...',
+        rerunOCRSuccess: 'OCR başarıyla tamamlandı',
+        rerunOCRFailed: 'Bu top için OCR başarısız oldu',
+        noRollsToRerun: 'Yeniden OCR gerektiren top yok',
+        bulkRerunOCRComplete: 'Toplu OCR yeniden çalıştırma tamamlandı',
+        failed: 'başarısız',
+        exportComplete: 'Dışa aktarma tamamlandı',
+        viewPhoto: 'Fotoğrafı Görüntüle',
       },
       // Duplicate detection
       duplicate: {
