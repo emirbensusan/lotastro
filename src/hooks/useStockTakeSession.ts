@@ -264,10 +264,46 @@ export const useStockTakeSession = ({ userId, onSessionExpired }: UseStockTakeSe
     }
   }, [session, clearTimers, toast, t]);
 
-  // Initialize session on mount
+  // Check for existing session on mount (but don't auto-create)
+  const [hasExistingSession, setHasExistingSession] = useState<boolean | null>(null);
+  
+  const checkExistingSession = useCallback(async () => {
+    if (!userId) {
+      setIsLoading(false);
+      return null;
+    }
+    
+    try {
+      const { data: existingSession, error } = await supabase
+        .from('count_sessions')
+        .select('*')
+        .eq('started_by', userId)
+        .in('status', ['draft', 'active'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (existingSession && !error) {
+        setHasExistingSession(true);
+        return existingSession as StockTakeSession;
+      } else {
+        setHasExistingSession(false);
+        return null;
+      }
+    } catch (error) {
+      setHasExistingSession(false);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
+
+  // Only check for existing session on mount - don't auto-create
   useEffect(() => {
     if (userId) {
-      loadOrCreateSession();
+      checkExistingSession();
+    } else {
+      setIsLoading(false);
     }
   }, [userId]);
 
@@ -298,7 +334,8 @@ export const useStockTakeSession = ({ userId, onSessionExpired }: UseStockTakeSe
     session,
     isLoading,
     isExpiring,
-    loadOrCreateSession,
+    hasExistingSession,
+    startSession: loadOrCreateSession,
     endSession,
     cancelSession,
     keepSessionActive,

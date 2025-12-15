@@ -2315,6 +2315,18 @@ const translations = {
       endSessionConfirmDesc: 'You have counted {count} rolls. The session will be submitted for admin review.',
       cancelSessionConfirmTitle: 'Cancel Stock Take Session?',
       cancelSessionConfirmDesc: 'All captured data in this session will be discarded. This cannot be undone.',
+      // Welcome screen
+      welcome: {
+        title: 'Stock Counting',
+        description: 'You are about to start a new counting session.',
+        resumeDescription: 'You have an active session. Resume counting to continue.',
+        instruction1: 'Take a photo of each roll label',
+        instruction2: 'Confirm or edit the OCR extracted data',
+        instruction3: 'Session expires after 30 minutes of inactivity',
+        startButton: 'Start New Session',
+        resumeButton: 'Resume Session',
+        starting: 'Starting session...',
+      },
       // Camera
       camera: {
         switchCamera: 'Switch Camera',
@@ -4822,6 +4834,18 @@ const translations = {
       endSessionConfirmDesc: '{count} top saydınız. Oturum yönetici incelemesi için gönderilecek.',
       cancelSessionConfirmTitle: 'Stok Sayımını İptal Et?',
       cancelSessionConfirmDesc: 'Bu oturumdaki tüm veriler silinecek. Bu işlem geri alınamaz.',
+      // Welcome screen
+      welcome: {
+        title: 'Stok Sayımı',
+        description: 'Yeni bir sayım oturumu başlatmak üzeresiniz.',
+        resumeDescription: 'Aktif bir oturumunuz var. Devam etmek için oturumu sürdürün.',
+        instruction1: 'Her top etiketinin fotoğrafını çekin',
+        instruction2: 'OCR ile çıkarılan verileri onaylayın veya düzenleyin',
+        instruction3: '30 dakika hareketsizlik sonrasında oturum sona erer',
+        startButton: 'Yeni Oturum Başlat',
+        resumeButton: 'Oturumu Devam Ettir',
+        starting: 'Oturum başlatılıyor...',
+      },
       // Camera
       camera: {
         switchCamera: 'Kamera Değiştir',
