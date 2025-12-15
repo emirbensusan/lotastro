@@ -262,32 +262,46 @@ export const useStockTakeUpload = () => {
       let originalSize = 0;
       let imageForOCR: string | Blob = imageSource;
       
+      console.log('[useStockTakeUpload] imageSource type:', typeof imageSource);
+      console.log('[useStockTakeUpload] imageSource is Blob?', imageSource instanceof Blob);
+      console.log('[useStockTakeUpload] imageSource is File?', imageSource instanceof File);
+      
       if (typeof imageSource === 'string') {
         // Data URL - get size estimate
+        console.log('[useStockTakeUpload] Processing data URL, length:', imageSource.length);
         const response = await fetch(imageSource);
         const blob = await response.blob();
         originalSize = blob.size;
+        console.log('[useStockTakeUpload] Converted to blob, size:', blob.size);
         
         // Generate thumbnails (without preprocessing - for display)
         thumbnails = await generateThumbnailsFromDataUrl(imageSource);
         
+        // TEMPORARILY DISABLED: Use original image for OCR to debug
         // For OCR, use preprocessed version if enabled
-        if (preprocessingSettings.enabled) {
-          const preprocessedForOCR = await compressFromDataUrl(imageSource, {}, preprocessingSettings);
-          imageForOCR = preprocessedForOCR.base64;
-          console.log('[useStockTakeUpload] Preprocessing applied for OCR');
-        }
+        // if (preprocessingSettings.enabled) {
+        //   const preprocessedForOCR = await compressFromDataUrl(imageSource, {}, preprocessingSettings);
+        //   imageForOCR = preprocessedForOCR.base64;
+        //   console.log('[useStockTakeUpload] Preprocessing applied for OCR');
+        // }
+        console.log('[useStockTakeUpload] Using ORIGINAL image for OCR (preprocessing disabled for debug)');
       } else {
         originalSize = imageSource.size;
+        console.log('[useStockTakeUpload] Processing Blob/File, size:', originalSize);
         thumbnails = await generateThumbnails(imageSource);
         
+        // TEMPORARILY DISABLED: Use original image for OCR to debug
         // For OCR, use preprocessed version if enabled
-        if (preprocessingSettings.enabled) {
-          const preprocessedForOCR = await compressImage(imageSource, {}, preprocessingSettings);
-          imageForOCR = preprocessedForOCR.base64;
-          console.log('[useStockTakeUpload] Preprocessing applied for OCR');
-        }
+        // if (preprocessingSettings.enabled) {
+        //   const preprocessedForOCR = await compressImage(imageSource, {}, preprocessingSettings);
+        //   imageForOCR = preprocessedForOCR.base64;
+        //   console.log('[useStockTakeUpload] Preprocessing applied for OCR');
+        // }
+        console.log('[useStockTakeUpload] Using ORIGINAL image for OCR (preprocessing disabled for debug)');
       }
+      
+      console.log('[useStockTakeUpload] imageForOCR type:', typeof imageForOCR);
+      console.log('[useStockTakeUpload] imageForOCR is Blob?', imageForOCR instanceof Blob);
 
       const totalSize = thumbnails.original.size + thumbnails.medium.size + thumbnails.thumb.size;
       console.log('[useStockTakeUpload] Thumbnails generated:', {
