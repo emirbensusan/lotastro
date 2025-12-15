@@ -2386,6 +2386,7 @@ const translations = {
         capture: 'Capture',
         cancel: 'Cancel',
         cameraError: 'Camera access error',
+        captureError: 'Failed to capture photo. Please try again.',
         noCameraAccess: 'Unable to access camera. Please check permissions.',
       },
       // OCR Confirm
@@ -4957,6 +4958,7 @@ const translations = {
         capture: 'Çek',
         cancel: 'İptal',
         cameraError: 'Kamera erişim hatası',
+        captureError: 'Fotoğraf çekilemedi. Lütfen tekrar deneyin.',
         noCameraAccess: 'Kameraya erişilemiyor. Lütfen izinleri kontrol edin.',
       },
       // OCR Confirm

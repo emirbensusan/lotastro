@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { safeToBlob, isIOS, getSafeCanvasDimensions } from '@/utils/canvasPolyfill';
 
 interface CompressionOptions {
   maxWidth?: number;
@@ -157,7 +158,7 @@ const applyPreprocessing = (
   }
 };
 
-const createResizedBlob = (
+const createResizedBlob = async (
   img: HTMLImageElement, 
   maxWidth: number, 
   maxHeight: number, 
@@ -165,47 +166,51 @@ const createResizedBlob = (
   format: 'jpeg' | 'webp',
   preprocessing?: PreprocessingOptions
 ): Promise<Blob> => {
-  return new Promise((resolve, reject) => {
-    let { width, height } = img;
-    
-    if (width > maxWidth || height > maxHeight) {
-      const ratio = Math.min(maxWidth / width, maxHeight / height);
-      width = Math.round(width * ratio);
-      height = Math.round(height * ratio);
-    }
-    
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      reject(new Error('Failed to get canvas context'));
-      return;
-    }
-    
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, 0, 0, width, height);
-    
-    // Apply preprocessing if provided (only for OCR-destined images, not thumbnails)
-    if (preprocessing) {
-      applyPreprocessing(ctx, width, height, preprocessing);
-    }
-    
-    const mimeType = format === 'webp' ? 'image/webp' : 'image/jpeg';
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error('Failed to create blob'));
-          return;
-        }
-        resolve(blob);
-      },
-      mimeType,
-      quality
-    );
-  });
+  let { width, height } = img;
+  
+  // Calculate target dimensions
+  if (width > maxWidth || height > maxHeight) {
+    const ratio = Math.min(maxWidth / width, maxHeight / height);
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+  
+  // On iOS, ensure canvas size is safe
+  if (isIOS()) {
+    const safeDims = getSafeCanvasDimensions(width, height);
+    width = safeDims.width;
+    height = safeDims.height;
+    console.log('[createResizedBlob] iOS safe dimensions:', { width, height });
+  }
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Failed to get canvas context');
+  }
+  
+  // iOS Safari workaround: fill with white first
+  if (isIOS()) {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, width, height);
+  }
+  
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, width, height);
+  
+  // Apply preprocessing if provided (only for OCR-destined images, not thumbnails)
+  if (preprocessing) {
+    applyPreprocessing(ctx, width, height, preprocessing);
+  }
+  
+  const mimeType = format === 'webp' ? 'image/webp' : 'image/jpeg';
+  
+  // Use iOS-safe blob conversion
+  return safeToBlob(canvas, mimeType, quality);
 };
 
 export const useImageCompression = () => {
@@ -260,7 +265,7 @@ export const useImageCompression = () => {
       img.onload = () => {
         URL.revokeObjectURL(url);
 
-        // Calculate new dimensions maintaining aspect ratio
+        // Calculate target dimensions
         let { width, height } = img;
         const maxWidth = opts.maxWidth!;
         const maxHeight = opts.maxHeight!;
@@ -269,6 +274,14 @@ export const useImageCompression = () => {
           const ratio = Math.min(maxWidth / width, maxHeight / height);
           width = Math.round(width * ratio);
           height = Math.round(height * ratio);
+        }
+
+        // On iOS, ensure canvas size is safe
+        if (isIOS()) {
+          const safeDims = getSafeCanvasDimensions(width, height);
+          width = safeDims.width;
+          height = safeDims.height;
+          console.log('[compressImage] iOS safe dimensions:', { width, height });
         }
 
         // Create canvas and draw resized image
@@ -282,6 +295,12 @@ export const useImageCompression = () => {
           return;
         }
 
+        // iOS Safari workaround: fill with white first
+        if (isIOS()) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+        }
+
         // Use high-quality image rendering
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
@@ -290,15 +309,11 @@ export const useImageCompression = () => {
         // Apply preprocessing for OCR
         applyPreprocessing(ctx, width, height, preprocessing);
 
-        // Convert to blob
+        // Convert to blob using iOS-safe method
         const mimeType = opts.format === 'webp' ? 'image/webp' : 'image/jpeg';
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('Failed to compress image'));
-              return;
-            }
-
+        
+        safeToBlob(canvas, mimeType, opts.quality!)
+          .then((blob) => {
             // Convert to base64
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -315,10 +330,8 @@ export const useImageCompression = () => {
             };
             reader.onerror = () => reject(new Error('Failed to read compressed image'));
             reader.readAsDataURL(blob);
-          },
-          mimeType,
-          opts.quality
-        );
+          })
+          .catch(reject);
       };
 
       img.onerror = () => {

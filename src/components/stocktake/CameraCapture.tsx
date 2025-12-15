@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Camera, X, Zap, ZapOff, RotateCcw, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { captureVideoFrame, isIOS } from '@/utils/canvasPolyfill';
 
 interface CameraCaptureProps {
   onCapture: (imageDataUrl: string) => void;
@@ -12,7 +13,6 @@ interface CameraCaptureProps {
 export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   
   const [isReady, setIsReady] = useState(false);
@@ -94,27 +94,42 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
     }
   }, [flashMode]);
 
-  // Capture photo
+  // Capture photo with iOS workarounds
   const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current) return;
 
     const video = videoRef.current;
-    const canvas = canvasRef.current;
     
-    // Set canvas size to video size
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    console.log('[CameraCapture] Capturing photo', {
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      isIOS: isIOS(),
+    });
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Draw video frame to canvas
-    ctx.drawImage(video, 0, 0);
-
-    // Get image as data URL (JPEG for smaller size)
-    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-    setCapturedImage(imageDataUrl);
-  }, []);
+    try {
+      // Use iOS-safe capture utility
+      const { dataUrl } = captureVideoFrame(video, 1600, 1600);
+      
+      // Validate the data URL
+      if (!dataUrl || dataUrl === 'data:,' || dataUrl.length < 1000) {
+        console.error('[CameraCapture] Invalid data URL generated', {
+          length: dataUrl?.length,
+          preview: dataUrl?.substring(0, 100),
+        });
+        setError(String(t('stocktake.captureError')));
+        return;
+      }
+      
+      console.log('[CameraCapture] Photo captured successfully', {
+        dataUrlLength: dataUrl.length,
+      });
+      
+      setCapturedImage(dataUrl);
+    } catch (err) {
+      console.error('[CameraCapture] Capture error:', err);
+      setError(String(t('stocktake.captureError')));
+    }
+  }, [t]);
 
   // Confirm captured photo
   const confirmPhoto = useCallback(() => {
@@ -283,9 +298,6 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
           </div>
         )}
       </div>
-
-      {/* Hidden canvas for capture */}
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 };
