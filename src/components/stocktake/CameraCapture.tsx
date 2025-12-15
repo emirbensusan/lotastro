@@ -162,7 +162,7 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div className="fixed inset-0 bg-black z-50 flex flex-col h-screen-safe">
       {/* Camera viewfinder or captured image */}
       <div className="flex-1 relative overflow-hidden">
         {capturedImage ? (
@@ -195,7 +195,7 @@ export const CameraCapture = ({ onCapture, onCancel }: CameraCaptureProps) => {
         )}
 
         {/* Top controls */}
-        <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-4 bg-gradient-to-b from-black/50 to-transparent">
+        <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-4 pt-safe bg-gradient-to-b from-black/50 to-transparent">
           <Button
             variant="ghost"
             size="icon"
