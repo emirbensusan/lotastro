@@ -131,14 +131,42 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
     }
   };
 
-  const loadPhotoUrl = async (roll: CountRoll) => {
+  // Get thumbnail URL (faster loading for grids)
+  const getThumbnailPath = (originalPath: string) => {
+    // Convert original path to thumbnail path
+    // Pattern: {session}/{seq}_{timestamp}_original.jpg -> {session}/{seq}_{timestamp}_thumb.jpg
+    if (originalPath.includes('_original.jpg')) {
+      return originalPath.replace('_original.jpg', '_thumb.jpg');
+    }
+    // Legacy path without size suffix - use as is
+    return originalPath;
+  };
+
+  const loadPhotoUrl = async (roll: CountRoll, size: 'thumb' | 'medium' | 'original' = 'medium') => {
     try {
+      let path = roll.photo_path;
+      
+      // Try to get the appropriate size
+      if (size === 'thumb') {
+        path = getThumbnailPath(roll.photo_path);
+      } else if (size === 'medium' && roll.photo_path.includes('_original.jpg')) {
+        path = roll.photo_path.replace('_original.jpg', '_medium.jpg');
+      }
+      
       const { data } = await supabase.storage
         .from('stock-take-photos')
-        .createSignedUrl(roll.photo_path, 3600);
+        .createSignedUrl(path, 3600);
       
       if (data?.signedUrl) {
         setPhotoUrl(data.signedUrl);
+      } else {
+        // Fallback to original path if sized version doesn't exist
+        const { data: fallbackData } = await supabase.storage
+          .from('stock-take-photos')
+          .createSignedUrl(roll.photo_path, 3600);
+        if (fallbackData?.signedUrl) {
+          setPhotoUrl(fallbackData.signedUrl);
+        }
       }
     } catch (error) {
       console.error('[StockTakeSessionDetail] Photo load error:', error);
@@ -148,7 +176,7 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
   const handleViewPhoto = (roll: CountRoll) => {
     setSelectedRoll(roll);
     setPhotoUrl(null);
-    loadPhotoUrl(roll);
+    loadPhotoUrl(roll, 'medium'); // Use medium size for review dialog
     setShowPhotoDialog(true);
   };
 

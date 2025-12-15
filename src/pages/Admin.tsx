@@ -27,6 +27,7 @@ import AuditRetentionSettings from '@/components/AuditRetentionSettings';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import MigrationProgressDialog from '@/components/MigrationProgressDialog';
+import StockTakeSettingsTab from '@/components/stocktake/StockTakeSettingsTab';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
@@ -779,6 +780,7 @@ const Admin: React.FC = () => {
           <TabsTrigger value="reminderSettings" className="flex-shrink-0">{t('emailSettings.reminderSettings')}</TabsTrigger>
           <TabsTrigger value="auditRetention" className="flex-shrink-0">{t('auditRetention')}</TabsTrigger>
           <TabsTrigger value="orderFlow" className="flex-shrink-0">{t('orderFlowSettings')}</TabsTrigger>
+          <TabsTrigger value="stocktake" className="flex-shrink-0">{language === 'tr' ? 'Stok Sayım' : 'Stock Take'}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -1316,6 +1318,10 @@ const Admin: React.FC = () => {
 
         <TabsContent value="orderFlow" className="space-y-6">
           <OrderFlowSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="stocktake" className="space-y-6">
+          <StockTakeSettingsTab />
         </TabsContent>
 
         <TabsContent value="security" className="space-y-6">
