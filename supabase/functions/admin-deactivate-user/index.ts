@@ -110,6 +110,49 @@ serve(async (req) => {
 
     const { userId } = parsedData;
 
+    // Check if target user is an admin
+    const { data: targetProfile, error: targetProfileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role, active')
+      .eq('user_id', userId)
+      .single();
+
+    if (targetProfileError) {
+      console.error('Target profile lookup failed:', targetProfileError.message);
+      return new Response(
+        JSON.stringify({ error: 'Target user not found' }),
+        { status: 404, headers: corsHeaders }
+      );
+    }
+
+    // If target user is an admin, check if they're the last active admin
+    if (targetProfile?.role === 'admin') {
+      const { data: activeAdmins, error: adminCountError } = await supabaseAdmin
+        .from('profiles')
+        .select('user_id')
+        .eq('role', 'admin')
+        .eq('active', true);
+
+      if (adminCountError) {
+        console.error('Failed to count active admins:', adminCountError.message);
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify admin count' }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+
+      if (activeAdmins && activeAdmins.length <= 1) {
+        console.error(`Cannot deactivate last active admin: ${userId}`);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Cannot deactivate the last active admin',
+            details: 'At least one admin must remain active in the system'
+          }),
+          { status: 409, headers: corsHeaders }
+        );
+      }
+    }
+
     console.log(`Admin ${user.email} attempting to deactivate user ${userId}`);
 
     // Log security event for audit trail
