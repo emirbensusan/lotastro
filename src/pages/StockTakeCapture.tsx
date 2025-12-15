@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,9 +9,11 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { useStockTakeUpload } from '@/hooks/useStockTakeUpload';
 import { useStockTakeSession } from '@/hooks/useStockTakeSession';
+import { useUploadRetry } from '@/hooks/useUploadRetry';
 import { UploadProgressBar } from '@/components/stocktake/UploadProgressBar';
 import { CameraCapture } from '@/components/stocktake/CameraCapture';
 import { OCRConfirmDialog } from '@/components/stocktake/OCRConfirmDialog';
+import PendingUploadsIndicator from '@/components/stocktake/PendingUploadsIndicator';
 import { Camera, StopCircle, AlertTriangle, Play, ClipboardList, Clock, ArrowLeft } from 'lucide-react';
 import {
   AlertDialog,
@@ -45,6 +47,18 @@ const StockTakeCapture = () => {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   
   const { uploadAndProcessImage, progress, isUploading, ocrTimedOut, resetProgress, skipOCR } = useStockTakeUpload();
+  
+  // Use retry/backup hook
+  const {
+    retryState,
+    backupBeforeUpload,
+    markUploadSuccess,
+    markUploadFailed,
+    retryFailedUploads,
+    pendingCount,
+  } = useUploadRetry();
+  
+  const [lastRetryResult, setLastRetryResult] = useState<{ succeeded: number; failed: number } | null>(null);
   
   // Use the session management hook with timeout handling
   const {
@@ -85,9 +99,17 @@ const StockTakeCapture = () => {
   const [currentRollId, setCurrentRollId] = useState<string | null>(null);
   const [currentStoragePath, setCurrentStoragePath] = useState<string | null>(null);
 
-  // Process captured image
+  // Process captured image with backup
   const processImage = async (imageDataUrl: string) => {
     if (!session || !user) return;
+
+    // Save backup before upload attempt
+    let backupId = '';
+    try {
+      backupId = await backupBeforeUpload(session.id, captureSequence, user.id, imageDataUrl);
+    } catch (err) {
+      console.warn('[StockTakeCapture] Backup failed, continuing without:', err);
+    }
 
     try {
       const result = await uploadAndProcessImage(
@@ -99,12 +121,21 @@ const StockTakeCapture = () => {
       );
       
       if (!result.upload.success) {
+        // Mark backup as failed for retry
+        if (backupId) {
+          await markUploadFailed(backupId, result.upload.error || 'Upload failed');
+        }
         toast({
           title: String(t('stocktake.uploadFailed')),
           description: result.upload.error,
           variant: 'destructive',
         });
         return;
+      }
+
+      // Upload succeeded - remove backup
+      if (backupId) {
+        await markUploadSuccess(backupId);
       }
 
       // Store roll info for later update
@@ -143,10 +174,44 @@ const StockTakeCapture = () => {
       setShowOCRConfirm(true);
     } catch (error) {
       console.error('[StockTakeCapture] Process error:', error);
+      // Mark backup as failed for retry
+      if (backupId) {
+        await markUploadFailed(backupId, (error as Error).message);
+      }
       toast({
         title: String(t('error')),
         description: String(t('stocktake.processingError')),
         variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle retry of failed uploads
+  const handleRetryUploads = async () => {
+    setLastRetryResult(null);
+    const result = await retryFailedUploads(async (upload) => {
+      if (!session) return false;
+      
+      try {
+        const uploadResult = await uploadAndProcessImage(
+          upload.imageDataUrl,
+          upload.sessionId,
+          upload.captureSequence,
+          upload.userId,
+          true
+        );
+        return uploadResult.upload.success;
+      } catch {
+        return false;
+      }
+    });
+    
+    setLastRetryResult(result);
+    
+    if (result.succeeded > 0) {
+      toast({
+        title: t('stocktake.retrySuccess') as string,
+        description: `${result.succeeded} ${t('stocktake.uploadsSucceeded')}`,
       });
     }
   };
@@ -469,6 +534,21 @@ const StockTakeCapture = () => {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Pending uploads indicator */}
+      {pendingCount > 0 && !isUploading && (
+        <div className="w-full max-w-sm">
+          <PendingUploadsIndicator
+            pendingCount={pendingCount}
+            isRetrying={retryState.isRetrying}
+            currentRetry={retryState.currentRetry}
+            maxRetries={retryState.maxRetries}
+            nextRetryIn={retryState.nextRetryIn}
+            lastRetryResult={lastRetryResult}
+            onRetryClick={handleRetryUploads}
+          />
+        </div>
       )}
 
       {/* Progress bar when uploading */}

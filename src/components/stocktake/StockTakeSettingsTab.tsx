@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Save, Camera, Clock, Image, FileSearch, Wand2, Sliders } from 'lucide-react';
+import { Loader2, Save, Camera, Clock, Image, FileSearch, Wand2, RefreshCw } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
 interface StockTakeSettings {
@@ -26,6 +26,11 @@ interface StockTakeSettings {
   preprocessing_contrast_level: number;
   preprocessing_sharpen: boolean;
   preprocessing_sharpen_level: number;
+  // Retry & backup settings
+  retry_enabled: boolean;
+  retry_max_attempts: number;
+  retry_base_delay_seconds: number;
+  backup_enabled: boolean;
 }
 
 const DEFAULT_SETTINGS: StockTakeSettings = {
@@ -43,6 +48,11 @@ const DEFAULT_SETTINGS: StockTakeSettings = {
   preprocessing_contrast_level: 20,
   preprocessing_sharpen: true,
   preprocessing_sharpen_level: 30,
+  // Retry & backup defaults - enabled
+  retry_enabled: true,
+  retry_max_attempts: 3,
+  retry_base_delay_seconds: 1,
+  backup_enabled: true,
 };
 
 const StockTakeSettingsTab: React.FC = () => {
@@ -422,6 +432,109 @@ const StockTakeSettingsTab: React.FC = () => {
                     />
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Retry & Backup Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5" />
+            {language === 'tr' ? 'Yeniden Deneme & Yedekleme' : 'Retry & Backup'}
+          </CardTitle>
+          <CardDescription>
+            {language === 'tr' 
+              ? 'Ağ hatalarında otomatik yeniden deneme ve yerel yedekleme ayarları' 
+              : 'Auto-retry on network failures and local backup settings'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Backup toggle */}
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
+            <div className="space-y-0.5">
+              <Label className="text-base font-medium">
+                {language === 'tr' ? 'Yerel Yedekleme' : 'Local Backup'}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {language === 'tr' 
+                  ? 'Yükleme öncesi fotoğrafları cihazda yedekle'
+                  : 'Backup photos locally before upload'}
+              </p>
+            </div>
+            <Switch
+              checked={settings.backup_enabled}
+              onCheckedChange={(v) => updateSetting('backup_enabled', v)}
+            />
+          </div>
+
+          {/* Retry toggle */}
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
+            <div className="space-y-0.5">
+              <Label className="text-base font-medium">
+                {language === 'tr' ? 'Otomatik Yeniden Deneme' : 'Auto Retry'}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {language === 'tr' 
+                  ? 'Başarısız yüklemeleri otomatik olarak yeniden dene'
+                  : 'Automatically retry failed uploads'}
+              </p>
+            </div>
+            <Switch
+              checked={settings.retry_enabled}
+              onCheckedChange={(v) => updateSetting('retry_enabled', v)}
+            />
+          </div>
+
+          {/* Retry options - only shown when enabled */}
+          {settings.retry_enabled && (
+            <div className="space-y-4 pl-4 border-l-2 border-primary/20">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{language === 'tr' ? 'Maksimum Deneme' : 'Max Attempts'}</Label>
+                  <Select
+                    value={String(settings.retry_max_attempts)}
+                    onValueChange={(v) => updateSetting('retry_max_attempts', parseInt(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="3">3</SelectItem>
+                      <SelectItem value="5">5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'tr' 
+                      ? 'Başarısız yükleme için maksimum deneme sayısı'
+                      : 'Maximum retry attempts for failed uploads'}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>{language === 'tr' ? 'Bekleme Süresi (sn)' : 'Base Delay (sec)'}</Label>
+                  <Select
+                    value={String(settings.retry_base_delay_seconds)}
+                    onValueChange={(v) => updateSetting('retry_base_delay_seconds', parseInt(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 {language === 'tr' ? 'saniye' : 'second'}</SelectItem>
+                      <SelectItem value="2">2 {language === 'tr' ? 'saniye' : 'seconds'}</SelectItem>
+                      <SelectItem value="5">5 {language === 'tr' ? 'saniye' : 'seconds'}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'tr' 
+                      ? 'Her deneme arasında bekleme süresi (üstel artış)'
+                      : 'Delay between retries (exponential backoff)'}
+                  </p>
+                </div>
               </div>
             </div>
           )}
