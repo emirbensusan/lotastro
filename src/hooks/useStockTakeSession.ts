@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 
 const DEFAULT_TIMEOUT_MINUTES = 5;
 const WARNING_RATIO = 0.2; // Show warning when 20% time remaining
-const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
+const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'touchstart', 'click'];
 const THROTTLE_MS = 1000; // Throttle activity updates
 
 interface StockTakeSession {
@@ -26,9 +26,9 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
   const { t } = useLanguage();
   const { toast } = useToast();
   
-  // Calculate timeout values based on configurable minutes
-  const sessionTimeoutMs = timeoutMinutes * 60 * 1000;
-  const warningBeforeMs = Math.max(sessionTimeoutMs * WARNING_RATIO, 30 * 1000); // At least 30 seconds warning
+  // Memoize timeout values to prevent recalculation on every render
+  const sessionTimeoutMs = useMemo(() => timeoutMinutes * 60 * 1000, [timeoutMinutes]);
+  const warningBeforeMs = useMemo(() => Math.max(sessionTimeoutMs * WARNING_RATIO, 30 * 1000), [sessionTimeoutMs]);
   
   const [session, setSession] = useState<StockTakeSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,9 +38,17 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
   const warningRef = useRef<NodeJS.Timeout | null>(null);
   const lastThrottleRef = useRef<number>(0);
   const warningShownRef = useRef<boolean>(false);
+  const timersActiveRef = useRef<boolean>(false); // Track if timers are already running
+  const sessionIdRef = useRef<string | null>(null); // Track session ID for timer callbacks
+
+  // Keep session ID ref in sync
+  useEffect(() => {
+    sessionIdRef.current = session?.id || null;
+  }, [session?.id]);
 
   // Clear all timers
   const clearTimers = useCallback(() => {
+    console.log('[Session] Clearing timers');
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -49,33 +57,52 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
       clearTimeout(warningRef.current);
       warningRef.current = null;
     }
+    timersActiveRef.current = false;
   }, []);
 
   // Update session activity in database
   const updateSessionActivity = useCallback(async () => {
-    if (!session) return;
+    if (!sessionIdRef.current) return;
     
+    console.log('[Session] Updating activity in DB for session:', sessionIdRef.current);
     try {
       await supabase
         .from('count_sessions')
         .update({ last_activity_at: new Date().toISOString() })
-        .eq('id', session.id);
+        .eq('id', sessionIdRef.current);
     } catch (error) {
       console.error('[useStockTakeSession] Failed to update activity:', error);
     }
-  }, [session]);
+  }, []);
 
-  // Reset timers on activity
+  // Reset timers on activity - use refs to avoid stale closure issues
   const resetTimers = useCallback(() => {
-    if (!session) return;
+    const currentSessionId = sessionIdRef.current;
+    if (!currentSessionId) {
+      console.log('[Session] No session to reset timers for');
+      return;
+    }
 
-    clearTimers();
+    console.log('[Session] Resetting timers for session:', currentSessionId, 'timeout:', sessionTimeoutMs, 'ms');
+    
+    // Clear existing timers
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    if (warningRef.current) {
+      clearTimeout(warningRef.current);
+    }
+    
     warningShownRef.current = false;
     setIsExpiring(false);
+    timersActiveRef.current = true;
 
-    // Set warning timer (4 minutes - 1 minute before timeout)
+    // Set warning timer
+    const warningDelay = sessionTimeoutMs - warningBeforeMs;
+    console.log('[Session] Warning timer set for', warningDelay, 'ms');
     warningRef.current = setTimeout(() => {
-      if (session && !warningShownRef.current) {
+      if (sessionIdRef.current && !warningShownRef.current) {
+        console.log('[Session] WARNING: Session expiring soon!');
         warningShownRef.current = true;
         setIsExpiring(true);
         toast({
@@ -85,22 +112,35 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
           duration: 30000,
         });
       }
-    }, sessionTimeoutMs - warningBeforeMs);
+    }, warningDelay);
 
-    // Set expiry timer
+    // Set expiry timer - ACTUALLY EXPIRE the session
+    console.log('[Session] Expiry timer set for', sessionTimeoutMs, 'ms');
     timeoutRef.current = setTimeout(async () => {
-      if (session) {
-        // Mark session with inactivity note (keep status active but update notes)
+      const expiredSessionId = sessionIdRef.current;
+      if (expiredSessionId) {
+        console.log('[Session] EXPIRED: Session', expiredSessionId, 'has timed out after', sessionTimeoutMs, 'ms');
+        
+        // Actually expire the session in database
         try {
           await supabase
             .from('count_sessions')
             .update({
-              notes: 'Session idle - last activity timeout reached',
+              status: 'cancelled',
+              cancelled_at: new Date().toISOString(),
+              cancellation_reason: 'Session expired due to inactivity',
+              notes: 'Auto-expired after ' + timeoutMinutes + ' minutes of inactivity',
             })
-            .eq('id', session.id);
+            .eq('id', expiredSessionId);
+          
+          console.log('[Session] Session marked as cancelled in database');
         } catch (error) {
-          console.error('[useStockTakeSession] Failed to pause session:', error);
+          console.error('[useStockTakeSession] Failed to expire session:', error);
         }
+
+        // Clear local session state
+        setSession(null);
+        timersActiveRef.current = false;
 
         toast({
           title: String(t('stocktake.sessionExpired')),
@@ -111,24 +151,27 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
         onSessionExpired?.();
       }
     }, sessionTimeoutMs);
-  }, [session, clearTimers, toast, t, onSessionExpired, sessionTimeoutMs, warningBeforeMs]);
+  }, [sessionTimeoutMs, warningBeforeMs, timeoutMinutes, toast, t, onSessionExpired]);
 
-  // Handle activity
+  // Handle activity - only reset if actually active
   const handleActivity = useCallback(() => {
     const now = Date.now();
     
     // Throttle activity updates
     if (now - lastThrottleRef.current < THROTTLE_MS) return;
+    
+    if (!sessionIdRef.current) return;
+    
+    console.log('[Session] Activity detected, resetting timers');
     lastThrottleRef.current = now;
 
-    if (session) {
-      updateSessionActivity();
-      resetTimers();
-    }
-  }, [session, updateSessionActivity, resetTimers]);
+    updateSessionActivity();
+    resetTimers();
+  }, [updateSessionActivity, resetTimers]);
 
   // Keep session active (manual trigger)
   const keepSessionActive = useCallback(() => {
+    console.log('[Session] Manual keep-alive triggered');
     handleActivity();
     setIsExpiring(false);
     warningShownRef.current = false;
@@ -152,6 +195,7 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
 
       if (existingSession && !fetchError) {
         // Resume existing session
+        console.log('[Session] Resuming existing session:', existingSession.id);
         const resumedSession = existingSession as StockTakeSession;
         setSession(resumedSession);
         
@@ -175,6 +219,7 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
         return resumedSession;
       } else {
         // Create new session
+        console.log('[Session] Creating new session');
         const { data: sessionNumber } = await supabase.rpc('generate_count_session_number');
         
         const { data: newSession, error: createError } = await supabase
@@ -191,6 +236,7 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
         if (createError) throw createError;
         
         const createdSession = newSession as StockTakeSession;
+        console.log('[Session] New session created:', createdSession.id);
         setSession(createdSession);
         
         toast({
@@ -319,8 +365,12 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
       return;
     }
 
-    // Initial timer setup
-    resetTimers();
+    console.log('[Session] Session active, setting up timers and listeners');
+    
+    // Initial timer setup - only if not already running
+    if (!timersActiveRef.current) {
+      resetTimers();
+    }
 
     // Add activity listeners
     ACTIVITY_EVENTS.forEach(event => {
@@ -328,12 +378,13 @@ export const useStockTakeSession = ({ userId, timeoutMinutes = DEFAULT_TIMEOUT_M
     });
 
     return () => {
+      console.log('[Session] Cleaning up listeners');
       clearTimers();
       ACTIVITY_EVENTS.forEach(event => {
         window.removeEventListener(event, handleActivity);
       });
     };
-  }, [session, handleActivity, resetTimers, clearTimers]);
+  }, [session?.id]); // Only depend on session.id, not the whole session object
 
   return {
     session,
