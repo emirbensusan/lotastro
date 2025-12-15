@@ -2433,6 +2433,15 @@ const translations = {
         sessionDeleted: 'Session deleted successfully',
         endSessionError: 'Failed to end session',
         deleteSessionError: 'Failed to delete session',
+        // New grid detail keys
+        capturedBy: 'Captured By',
+        capturedAt: 'Captured At',
+        ocrConfidence: 'OCR',
+        noRolls: 'No rolls found in this session',
+        exportData: 'Export Data',
+        exportingData: 'Exporting data...',
+        captureSequence: '#',
+        lotNumber: 'Lot Number',
       },
       // Duplicate detection
       duplicate: {
@@ -4914,6 +4923,15 @@ const translations = {
         sessionDeleted: 'Oturum başarıyla silindi',
         endSessionError: 'Oturum bitirilemedi',
         deleteSessionError: 'Oturum silinemedi',
+        // New grid detail keys
+        capturedBy: 'Çeken Kişi',
+        capturedAt: 'Çekim Zamanı',
+        ocrConfidence: 'OCR',
+        noRolls: 'Bu oturumda top bulunamadı',
+        exportData: 'Veri Dışa Aktar',
+        exportingData: 'Veri dışa aktarılıyor...',
+        captureSequence: '#',
+        lotNumber: 'Lot No',
       },
       // Duplicate detection
       duplicate: {
