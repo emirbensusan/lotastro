@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ProgressDialog } from '@/components/ui/progress-dialog';
@@ -22,6 +23,9 @@ import { getMinQualitiesForMultiOrder } from '@/components/OrderFlowSettingsTab'
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
 import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
+import { MobileDataCard } from '@/components/ui/mobile-data-card';
+import { ViewModeToggle } from '@/components/ui/view-mode-toggle';
+import { useViewMode } from '@/hooks/useViewMode';
 
 interface InventoryItem {
   quality: string;
@@ -56,6 +60,13 @@ const InventoryPivotTable = () => {
   const { t } = useLanguage();
   const { hasRole, profile } = useAuth();
   const { viewAsRole } = useViewAsRole();
+  
+  // View mode (table vs cards)
+  const { viewMode, setViewMode, isMobile } = useViewMode({
+    storageKey: 'inventory_view_mode',
+    defaultMobile: 'cards',
+    defaultDesktop: 'table'
+  });
   
   // Get the effective role (viewAsRole takes precedence)
   const getEffectiveRole = () => viewAsRole || profile?.role;
@@ -831,8 +842,13 @@ const InventoryPivotTable = () => {
 
       {/* Pivot Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>{t('stockOverview')}</CardTitle>
+          <ViewModeToggle 
+            viewMode={viewMode} 
+            onViewModeChange={setViewMode}
+            compact={isMobile}
+          />
         </CardHeader>
         <CardContent>
           {/* Top Pagination */}
@@ -843,6 +859,48 @@ const InventoryPivotTable = () => {
             onPageChange={setPage}
             onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
           />
+
+          {/* Mobile Card View */}
+          {viewMode === 'cards' ? (
+            <div className="mt-4 space-y-3">
+              {filteredData.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {searchTerm ? t('noSearchResults') : t('noInventoryData')}
+                </div>
+              ) : (
+                filteredData.map((item) => (
+                  <MobileDataCard
+                    key={item.normalized_quality}
+                    title={item.normalized_quality}
+                    subtitle={`${item.color_count} ${t('differentColors')}`}
+                    badge={
+                      item.available_meters > 100
+                        ? { label: `${item.available_meters.toLocaleString()}m`, className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }
+                        : item.available_meters > 0
+                        ? { label: `${item.available_meters.toLocaleString()}m`, className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' }
+                        : { label: `${item.available_meters.toLocaleString()}m`, className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }
+                    }
+                    fields={[
+                      { label: String(t('physicalMeters')), value: `${item.total_meters.toLocaleString()}m`, priority: 'primary' },
+                      { label: String(t('available')), value: `${item.available_meters.toLocaleString()}m`, priority: 'primary' },
+                      { label: String(t('incoming')), value: `${item.incoming_meters.toLocaleString()}m`, priority: 'secondary' },
+                      { label: String(t('reserved')), value: `${item.total_reserved_meters.toLocaleString()}m`, priority: 'secondary' },
+                      { label: String(t('rolls')), value: item.total_rolls.toLocaleString(), priority: 'tertiary' },
+                      { label: String(t('lots')), value: String(item.lot_count), priority: 'tertiary' },
+                    ]}
+                    onClick={() => navigateToQualityDetails(item.normalized_quality)}
+                    checkbox={bulkSelectionMode ? (
+                      <Checkbox
+                        checked={selectedQualitiesForBulk.has(item.normalized_quality)}
+                        onCheckedChange={() => handleSelectItem(item.normalized_quality)}
+                      />
+                    ) : undefined}
+                  />
+                ))
+              )}
+            </div>
+          ) : (
+            /* Desktop Table View */
 
           <Table className="mt-4">
             <TableHeader>
@@ -1092,6 +1150,7 @@ const InventoryPivotTable = () => {
               )}
             </TableBody>
           </Table>
+          )}
 
           {/* Bottom Pagination */}
           <DataTablePagination

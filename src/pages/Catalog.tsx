@@ -26,6 +26,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import CatalogColumnSelector from '@/components/catalog/CatalogColumnSelector';
 import CatalogBulkUpload from '@/components/catalog/CatalogBulkUpload';
+import { MobileDataCard } from '@/components/ui/mobile-data-card';
+import { ViewModeToggle } from '@/components/ui/view-mode-toggle';
+import { useViewMode } from '@/hooks/useViewMode';
 
 interface CatalogItem {
   id: string;
@@ -106,6 +109,13 @@ const Catalog: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // View mode (table vs cards)
+  const { viewMode, setViewMode, isMobile } = useViewMode({
+    storageKey: 'catalog_view_mode',
+    defaultMobile: 'cards',
+    defaultDesktop: 'table'
+  });
   
   // Check if returning from detail page
   const isReturning = searchParams.get('loaded') === 'true';
@@ -478,6 +488,11 @@ const Catalog: React.FC = () => {
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
+          <ViewModeToggle 
+            viewMode={viewMode} 
+            onViewModeChange={setViewMode}
+            compact={isMobile}
+          />
           <Button 
             variant="outline" 
             size="sm"
@@ -585,6 +600,27 @@ const Catalog: React.FC = () => {
                   {t('catalog.createFirst')}
                 </Button>
               )}
+            </div>
+          ) : viewMode === 'cards' ? (
+            /* Mobile Card View */
+            <div className="p-3 space-y-3">
+              {items.map((item) => (
+                <MobileDataCard
+                  key={item.id}
+                  title={item.code}
+                  subtitle={item.color_name}
+                  badge={{ 
+                    label: STATUS_LABELS[item.status] || item.status, 
+                    className: STATUS_COLORS[item.status] || '' 
+                  }}
+                  fields={[
+                    { label: String(t('catalog.columns.type')), value: TYPE_LABELS[item.type] || item.type, priority: 'primary' },
+                    { label: 'SKU', value: item.lastro_sku_code, priority: 'primary' },
+                    { label: String(t('catalog.columns.suppliers')), value: item.suppliers || '-', priority: 'secondary' },
+                  ]}
+                  onClick={() => handleRowClick(item)}
+                />
+              ))}
             </div>
           ) : (
             <div className="overflow-x-auto">

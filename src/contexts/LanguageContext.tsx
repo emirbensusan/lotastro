@@ -70,6 +70,13 @@ const translations = {
     'table.sortDesc': 'Sort Descending',
     'table.clearSort': 'Clear Sort',
     
+    // View mode toggle
+    viewAsTable: 'View as Table',
+    viewAsCards: 'View as Cards',
+    switchView: 'Switch View',
+    cardView: 'Card View',
+    tableView: 'Table View',
+    
     // Common keys for forecast and other modules
     all: 'All',
     reviewed: 'Reviewed',
@@ -2559,6 +2566,13 @@ const translations = {
     ordersAndReservations: 'Siparişler ve Rezerveler',
     toolsAndUtilities: 'Araçlar',
     reportsAndAdmin: 'Raporlar ve Yönetici',
+    
+    // View mode toggle
+    viewAsTable: 'Tablo Görünümü',
+    viewAsCards: 'Kart Görünümü',
+    switchView: 'Görünümü Değiştir',
+    cardView: 'Kart Görünümü',
+    tableView: 'Tablo Görünümü',
     
     // Inventory Stats
     physicalLots: 'Fiziki Lot Sayısı',
