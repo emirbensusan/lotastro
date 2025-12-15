@@ -260,48 +260,55 @@ export const useStockTakeUpload = () => {
 
       let thumbnails;
       let originalSize = 0;
-      let imageForOCR: string | Blob = imageSource;
+      let imageDataUrlForOCR: string;
       
+      console.log('[useStockTakeUpload] ========== Phase 2: Image Passing ==========');
       console.log('[useStockTakeUpload] imageSource type:', typeof imageSource);
       console.log('[useStockTakeUpload] imageSource is Blob?', imageSource instanceof Blob);
       console.log('[useStockTakeUpload] imageSource is File?', imageSource instanceof File);
       
       if (typeof imageSource === 'string') {
-        // Data URL - get size estimate
-        console.log('[useStockTakeUpload] Processing data URL, length:', imageSource.length);
+        // Already a data URL - use it directly for OCR (no conversion!)
+        console.log('[useStockTakeUpload] ✅ Received data URL directly, length:', imageSource.length);
+        console.log('[useStockTakeUpload] Data URL prefix:', imageSource.substring(0, 50));
+        
+        // Store original data URL for OCR - NO CONVERSION
+        imageDataUrlForOCR = imageSource;
+        
+        // Get size estimate for logging
         const response = await fetch(imageSource);
         const blob = await response.blob();
         originalSize = blob.size;
-        console.log('[useStockTakeUpload] Converted to blob, size:', blob.size);
+        console.log('[useStockTakeUpload] Original blob size:', blob.size);
         
-        // Generate thumbnails (without preprocessing - for display)
+        // Generate thumbnails for storage (separate from OCR image)
         thumbnails = await generateThumbnailsFromDataUrl(imageSource);
-        
-        // TEMPORARILY DISABLED: Use original image for OCR to debug
-        // For OCR, use preprocessed version if enabled
-        // if (preprocessingSettings.enabled) {
-        //   const preprocessedForOCR = await compressFromDataUrl(imageSource, {}, preprocessingSettings);
-        //   imageForOCR = preprocessedForOCR.base64;
-        //   console.log('[useStockTakeUpload] Preprocessing applied for OCR');
-        // }
-        console.log('[useStockTakeUpload] Using ORIGINAL image for OCR (preprocessing disabled for debug)');
       } else {
+        // Blob/File - convert to data URL for OCR
         originalSize = imageSource.size;
-        console.log('[useStockTakeUpload] Processing Blob/File, size:', originalSize);
-        thumbnails = await generateThumbnails(imageSource);
+        console.log('[useStockTakeUpload] Received Blob/File, converting to data URL. Size:', originalSize);
         
-        // TEMPORARILY DISABLED: Use original image for OCR to debug
-        // For OCR, use preprocessed version if enabled
-        // if (preprocessingSettings.enabled) {
-        //   const preprocessedForOCR = await compressImage(imageSource, {}, preprocessingSettings);
-        //   imageForOCR = preprocessedForOCR.base64;
-        //   console.log('[useStockTakeUpload] Preprocessing applied for OCR');
-        // }
-        console.log('[useStockTakeUpload] Using ORIGINAL image for OCR (preprocessing disabled for debug)');
+        // Convert Blob to data URL for OCR
+        imageDataUrlForOCR = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            console.log('[useStockTakeUpload] ✅ Blob converted to data URL, length:', result.length);
+            resolve(result);
+          };
+          reader.onerror = () => reject(new Error('Failed to convert blob to data URL'));
+          reader.readAsDataURL(imageSource);
+        });
+        
+        thumbnails = await generateThumbnails(imageSource);
       }
       
-      console.log('[useStockTakeUpload] imageForOCR type:', typeof imageForOCR);
-      console.log('[useStockTakeUpload] imageForOCR is Blob?', imageForOCR instanceof Blob);
+      // Log final OCR image data
+      console.log('[useStockTakeUpload] imageDataUrlForOCR ready:');
+      console.log('[useStockTakeUpload] - Type:', typeof imageDataUrlForOCR);
+      console.log('[useStockTakeUpload] - Length:', imageDataUrlForOCR.length);
+      console.log('[useStockTakeUpload] - Prefix:', imageDataUrlForOCR.substring(0, 50));
+      console.log('[useStockTakeUpload] - Is valid data URL?', imageDataUrlForOCR.startsWith('data:image/'));
 
       const totalSize = thumbnails.original.size + thumbnails.medium.size + thumbnails.thumb.size;
       console.log('[useStockTakeUpload] Thumbnails generated:', {
@@ -380,8 +387,8 @@ export const useStockTakeUpload = () => {
           ocrProgress: 0,
         });
 
-        console.log('[useStockTakeUpload] Starting client-side OCR...');
-        const clientOCRResult = await runOCR(imageForOCR);
+        console.log('[useStockTakeUpload] Starting client-side OCR with data URL...');
+        const clientOCRResult = await runOCR(imageDataUrlForOCR);
         const ocrResult = convertOCRResult(clientOCRResult);
 
         console.log('[useStockTakeUpload] Client OCR result:', {
