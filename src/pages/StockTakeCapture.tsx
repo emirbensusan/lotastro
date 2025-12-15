@@ -11,11 +11,12 @@ import { useStockTakeUpload } from '@/hooks/useStockTakeUpload';
 import { useStockTakeSession } from '@/hooks/useStockTakeSession';
 import { useUploadRetry } from '@/hooks/useUploadRetry';
 import { useStockTakeSettings } from '@/hooks/useStockTakeSettings';
+import { useClientOCR } from '@/hooks/useClientOCR';
 import { UploadProgressBar } from '@/components/stocktake/UploadProgressBar';
 import { CameraCapture } from '@/components/stocktake/CameraCapture';
 import { OCRConfirmDialog } from '@/components/stocktake/OCRConfirmDialog';
 import PendingUploadsIndicator from '@/components/stocktake/PendingUploadsIndicator';
-import { Camera, StopCircle, AlertTriangle, Play, ClipboardList, Clock } from 'lucide-react';
+import { Camera, StopCircle, AlertTriangle, Play, ClipboardList, Clock, FlaskConical } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,6 +90,10 @@ const StockTakeCapture = () => {
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [captureSequence, setCaptureSequence] = useState(1);
+  
+  // OCR test state
+  const [isTestingOCR, setIsTestingOCR] = useState(false);
+  const { runOCR, isProcessing: isOCRProcessing, progress: ocrProgress, progressMessage } = useClientOCR();
 
   // Check permissions - use database format (no underscores)
   const canStartSession = hasPermission('stocktake', 'startsession');
@@ -424,6 +429,79 @@ const StockTakeCapture = () => {
     }
   };
 
+  // TEST OCR: Generate a test image with text and run OCR on it
+  const handleTestOCR = async () => {
+    setIsTestingOCR(true);
+    console.log('[StockTakeCapture] ========== TEST OCR START ==========');
+    
+    try {
+      // Create a canvas with test text
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        console.error('[StockTakeCapture] Failed to get canvas context');
+        toast({ title: 'Error', description: 'Failed to create test image', variant: 'destructive' });
+        return;
+      }
+
+      // White background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, 400, 200);
+      
+      // Black text
+      ctx.fillStyle = 'black';
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText('Quality: A800', 20, 40);
+      ctx.fillText('Color: RED 1234', 20, 80);
+      ctx.fillText('Lot: LOT-2024-001', 20, 120);
+      ctx.fillText('Meters: 500', 20, 160);
+      
+      // Convert to data URL
+      const testImageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      console.log('[StockTakeCapture] Test image created, length:', testImageDataUrl.length);
+      console.log('[StockTakeCapture] Test image preview (first 100 chars):', testImageDataUrl.substring(0, 100));
+      
+      // Run OCR
+      console.log('[StockTakeCapture] Calling runOCR on test image...');
+      const result = await runOCR(testImageDataUrl);
+      
+      console.log('[StockTakeCapture] ========== TEST OCR RESULT ==========');
+      console.log('[StockTakeCapture] Success:', result.success);
+      console.log('[StockTakeCapture] Raw Text:', result.ocr?.rawText);
+      console.log('[StockTakeCapture] Extracted:', result.extracted);
+      console.log('[StockTakeCapture] Confidence:', result.confidence);
+      console.log('[StockTakeCapture] Error:', result.error);
+      console.log('[StockTakeCapture] Full result:', JSON.stringify(result, null, 2));
+      
+      // Show result in toast
+      if (result.success && result.ocr?.rawText) {
+        toast({
+          title: '✅ OCR Test SUCCESS',
+          description: `Extracted: "${result.ocr.rawText.substring(0, 80)}..."`,
+        });
+      } else {
+        toast({
+          title: '❌ OCR Test FAILED',
+          description: result.error || 'No text extracted - check console',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('[StockTakeCapture] Test OCR error:', error);
+      toast({
+        title: 'Test Error',
+        description: (error as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTestingOCR(false);
+      console.log('[StockTakeCapture] ========== TEST OCR END ==========');
+    }
+  };
+
   // Welcome screen - shown when no active session
   if (!session && !isStartingSession) {
     return (
@@ -478,6 +556,30 @@ const StockTakeCapture = () => {
                   : String(t('stocktake.welcome.startButton'))
                 }
               </Button>
+              
+              {/* TEST OCR Button - Debug only */}
+              <Button 
+                variant="outline"
+                size="lg"
+                className="w-full h-12 border-dashed border-amber-500 text-amber-600 hover:bg-amber-50"
+                onClick={handleTestOCR}
+                disabled={isTestingOCR}
+              >
+                {isTestingOCR ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 mr-2" />
+                    Testing OCR... ({Math.round(ocrProgress)}%)
+                  </>
+                ) : (
+                  <>
+                    <FlaskConical className="h-4 w-4 mr-2" />
+                    🧪 Test OCR (Debug)
+                  </>
+                )}
+              </Button>
+              {isTestingOCR && progressMessage && (
+                <p className="text-xs text-center text-muted-foreground">{progressMessage}</p>
+              )}
             </div>
           </CardContent>
         </Card>
