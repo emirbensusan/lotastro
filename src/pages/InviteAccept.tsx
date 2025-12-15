@@ -224,13 +224,6 @@ const InviteAccept = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <img 
-              src="/lotastro-logo.svg" 
-              alt="LotAstro Logo" 
-              className="w-16 h-16 object-contain"
-            />
-          </div>
           <CardTitle className="text-2xl font-bold text-primary">{t('welcomeToLotAstro')}</CardTitle>
           <CardDescription>
             {mode === 'token' && invitation?.role 
