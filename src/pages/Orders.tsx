@@ -26,6 +26,9 @@ import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table
 import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
 import { ViewDetailsButton } from '@/components/ui/view-details-button';
 import ShareOrderDialog from '@/components/ShareOrderDialog';
+import { MobileDataCard } from '@/components/ui/mobile-data-card';
+import { ViewModeToggle } from '@/components/ui/view-mode-toggle';
+import { useViewMode } from '@/hooks/useViewMode';
 
 interface Order {
   id: string;
@@ -58,6 +61,14 @@ const Orders = () => {
   const { hasPermission } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // View mode (table vs cards)
+  const { viewMode, setViewMode, isMobile } = useViewMode({
+    storageKey: 'orders_view_mode',
+    defaultMobile: 'cards',
+    defaultDesktop: 'table'
+  });
+  
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -673,16 +684,21 @@ const Orders = () => {
       {canUseAIExtraction && <AIOrderInput />}
       
       <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
+        <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div>
               <CardTitle>{t('allOrders')}</CardTitle>
               <CardDescription>
                 {t('viewManageOrders')}
               </CardDescription>
             </div>
-            <TableExportButton onExport={handleExport} />
-          </div>
+            <div className="flex items-center gap-2">
+              <ViewModeToggle 
+                viewMode={viewMode} 
+                onViewModeChange={setViewMode}
+                compact={isMobile}
+              />
+              <TableExportButton onExport={handleExport} />
+            </div>
         </CardHeader>
         <CardContent>
           {/* Top Pagination */}
@@ -693,6 +709,38 @@ const Orders = () => {
             onPageChange={setPage}
             onPageSizeChange={setPageSize}
           />
+
+          {/* Mobile Card View */}
+          {viewMode === 'cards' ? (
+            <div className="mt-4 space-y-3">
+              {orders.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {t('noOrdersFound')}
+                </div>
+              ) : (
+                orders.map((order) => (
+                  <MobileDataCard
+                    key={order.id}
+                    title={order.order_number}
+                    subtitle={order.customer_name}
+                    badge={
+                      order.fulfilled_at
+                        ? { label: String(t('fulfilled')), className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }
+                        : { label: String(t('pending')), variant: 'secondary' }
+                    }
+                    fields={[
+                      { label: String(t('lotsCount')), value: String(order.order_lots.length), priority: 'primary' },
+                      { label: String(t('created')), value: new Date(order.created_at).toLocaleDateString(), priority: 'primary' },
+                    ]}
+                    onClick={() => setSelectedOrder(order)}
+                    onAction={!order.fulfilled_at && canFulfillOrders ? () => handleFulfillOrder(order.id) : undefined}
+                    actionLabel={!order.fulfilled_at && canFulfillOrders ? String(t('fulfill')) : undefined}
+                  />
+                ))
+              )}
+            </div>
+          ) : (
+            /* Desktop Table View */
 
           <Table>
             <TableHeader>
@@ -848,6 +896,7 @@ const Orders = () => {
               ))}
             </TableBody>
           </Table>
+          )}
 
           {/* Bottom Pagination */}
           <DataTablePagination
