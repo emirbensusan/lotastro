@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,7 +20,10 @@ import {
   Save,
   X,
   Copy,
-  Download
+  Download,
+  Filter,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -38,6 +42,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -94,17 +105,21 @@ interface Props {
   onBack: () => void;
 }
 
+type FilterMode = 'all' | 'pending' | 'high_confidence' | 'ready_for_approval';
+
 export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
   const { toast } = useToast();
   const { t } = useLanguage();
   const { user } = useAuth();
   
   const [rolls, setRolls] = useState<CountRoll[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRoll, setSelectedRoll] = useState<CountRoll | null>(null);
   const [showPhotoDialog, setShowPhotoDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showRecountDialog, setShowRecountDialog] = useState(false);
+  const [showBulkApproveDialog, setShowBulkApproveDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [recountReason, setRecountReason] = useState('');
   const [editingRollId, setEditingRollId] = useState<string | null>(null);
@@ -117,7 +132,14 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
   });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   
-  // Pagination
+  // Bulk selection
+  const [selectedRollIds, setSelectedRollIds] = useState<Set<string>>(new Set());
+  const [isBulkApproving, setIsBulkApproving] = useState(false);
+  
+  // Smart filtering
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  
+  // Pagination - server-side
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   
@@ -127,19 +149,77 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
     direction: 'asc'
   });
 
-  useEffect(() => {
-    fetchRolls();
-  }, [session.id]);
+  // Stats tracking
+  const [stats, setStats] = useState({
+    total: 0,
+    approved: 0,
+    pending: 0,
+    rejected: 0,
+    highConfidence: 0,
+    readyForApproval: 0
+  });
 
-  const fetchRolls = async () => {
+  // Fetch rolls with server-side pagination
+  const fetchRolls = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch rolls
-      const { data: rollsData, error } = await supabase
+      // Build query with filters
+      let query = supabase
         .from('count_rolls')
-        .select('*')
-        .eq('session_id', session.id)
-        .order('capture_sequence', { ascending: true });
+        .select('*', { count: 'exact' })
+        .eq('session_id', session.id);
+
+      // Apply filter mode
+      if (filterMode === 'pending') {
+        query = query.eq('status', 'pending_review');
+      } else if (filterMode === 'high_confidence') {
+        query = query.eq('ocr_confidence_level', 'high');
+      } else if (filterMode === 'ready_for_approval') {
+        query = query
+          .eq('status', 'pending_review')
+          .eq('ocr_confidence_level', 'high')
+          .eq('is_manual_entry', false)
+          .eq('is_possible_duplicate', false);
+      }
+
+      // Apply sorting
+      if (currentSort?.direction) {
+        const ascending = currentSort.direction === 'asc';
+        switch (currentSort.key) {
+          case 'capture_sequence':
+            query = query.order('capture_sequence', { ascending });
+            break;
+          case 'captured_at':
+            query = query.order('captured_at', { ascending });
+            break;
+          case 'quality':
+            query = query.order('counter_quality', { ascending });
+            break;
+          case 'color':
+            query = query.order('counter_color', { ascending });
+            break;
+          case 'lot_number':
+            query = query.order('counter_lot_number', { ascending });
+            break;
+          case 'meters':
+            query = query.order('counter_meters', { ascending });
+            break;
+          case 'status':
+            query = query.order('status', { ascending });
+            break;
+          default:
+            query = query.order('capture_sequence', { ascending: true });
+        }
+      } else {
+        query = query.order('capture_sequence', { ascending: true });
+      }
+
+      // Apply pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data: rollsData, error, count } = await query;
 
       if (error) throw error;
 
@@ -158,6 +238,29 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
       }));
 
       setRolls(rollsWithProfiles as CountRoll[]);
+      setTotalCount(count || 0);
+
+      // Fetch stats separately (unfiltered counts)
+      const { data: statsData } = await supabase
+        .from('count_rolls')
+        .select('status, ocr_confidence_level, is_manual_entry, is_possible_duplicate')
+        .eq('session_id', session.id);
+
+      if (statsData) {
+        const total = statsData.length;
+        const approved = statsData.filter(r => r.status === 'approved').length;
+        const pending = statsData.filter(r => r.status === 'pending_review').length;
+        const rejected = statsData.filter(r => r.status === 'rejected').length;
+        const highConfidence = statsData.filter(r => r.ocr_confidence_level === 'high').length;
+        const readyForApproval = statsData.filter(r => 
+          r.status === 'pending_review' && 
+          r.ocr_confidence_level === 'high' && 
+          !r.is_manual_entry && 
+          !r.is_possible_duplicate
+        ).length;
+        
+        setStats({ total, approved, pending, rejected, highConfidence, readyForApproval });
+      }
     } catch (error) {
       console.error('[StockTakeSessionDetail] Fetch error:', error);
       toast({
@@ -168,64 +271,86 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session.id, filterMode, currentSort, page, pageSize, t, toast]);
 
-  // Sorted and paginated data
-  const sortedRolls = useMemo(() => {
-    if (!currentSort || !currentSort.direction) return rolls;
-    
-    return [...rolls].sort((a, b) => {
-      let aVal: any, bVal: any;
-      
-      switch (currentSort.key) {
-        case 'capture_sequence':
-          aVal = a.capture_sequence;
-          bVal = b.capture_sequence;
-          break;
-        case 'captured_at':
-          aVal = new Date(a.captured_at).getTime();
-          bVal = new Date(b.captured_at).getTime();
-          break;
-        case 'quality':
-          aVal = (a.admin_quality || a.counter_quality || '').toLowerCase();
-          bVal = (b.admin_quality || b.counter_quality || '').toLowerCase();
-          break;
-        case 'color':
-          aVal = (a.admin_color || a.counter_color || '').toLowerCase();
-          bVal = (b.admin_color || b.counter_color || '').toLowerCase();
-          break;
-        case 'lot_number':
-          aVal = (a.admin_lot_number || a.counter_lot_number || '').toLowerCase();
-          bVal = (b.admin_lot_number || b.counter_lot_number || '').toLowerCase();
-          break;
-        case 'meters':
-          aVal = a.admin_meters ?? a.counter_meters ?? 0;
-          bVal = b.admin_meters ?? b.counter_meters ?? 0;
-          break;
-        case 'status':
-          aVal = a.status;
-          bVal = b.status;
-          break;
-        default:
-          return 0;
-      }
-      
-      if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }, [rolls, currentSort]);
+  useEffect(() => {
+    fetchRolls();
+  }, [fetchRolls]);
 
-  const paginatedRolls = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return sortedRolls.slice(start, start + pageSize);
-  }, [sortedRolls, page, pageSize]);
+  // Reset page when filter changes
+  useEffect(() => {
+    setPage(1);
+    setSelectedRollIds(new Set());
+  }, [filterMode]);
 
   const handleSort = (key: string, direction: SortDirection) => {
     if (direction === null) {
       setCurrentSort(null);
     } else {
       setCurrentSort({ key, direction });
+    }
+    setPage(1);
+  };
+
+  // Bulk selection handlers
+  const handleSelectAll = () => {
+    if (selectedRollIds.size === rolls.length) {
+      setSelectedRollIds(new Set());
+    } else {
+      setSelectedRollIds(new Set(rolls.map(r => r.id)));
+    }
+  };
+
+  const handleSelectRoll = (rollId: string) => {
+    const newSelected = new Set(selectedRollIds);
+    if (newSelected.has(rollId)) {
+      newSelected.delete(rollId);
+    } else {
+      newSelected.add(rollId);
+    }
+    setSelectedRollIds(newSelected);
+  };
+
+  const handleSelectReadyForApproval = () => {
+    const readyRolls = rolls.filter(r => 
+      r.status === 'pending_review' && 
+      r.ocr_confidence_level === 'high' && 
+      !r.is_manual_entry && 
+      !r.is_possible_duplicate
+    );
+    setSelectedRollIds(new Set(readyRolls.map(r => r.id)));
+  };
+
+  // Bulk approval
+  const handleBulkApprove = async () => {
+    if (selectedRollIds.size === 0) return;
+    
+    setIsBulkApproving(true);
+    try {
+      const { error } = await supabase
+        .from('count_rolls')
+        .update({
+          status: 'approved',
+          reviewed_by: user?.id,
+          reviewed_at: new Date().toISOString(),
+        })
+        .in('id', Array.from(selectedRollIds));
+
+      if (error) throw error;
+
+      toast({
+        title: String(t('stocktake.review.bulkApproveSuccess')),
+        description: `${selectedRollIds.size} ${String(t('stocktake.review.rollsApproved'))}`,
+      });
+      
+      setSelectedRollIds(new Set());
+      setShowBulkApproveDialog(false);
+      fetchRolls();
+    } catch (error) {
+      console.error('[StockTakeSessionDetail] Bulk approve error:', error);
+      toast({ title: String(t('error')), variant: 'destructive' });
+    } finally {
+      setIsBulkApproving(false);
     }
   };
 
@@ -375,32 +500,6 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
     }
   };
 
-  const handleApproveAll = async () => {
-    const pendingRolls = rolls.filter(r => r.status === 'pending_review');
-    
-    try {
-      const { error } = await supabase
-        .from('count_rolls')
-        .update({
-          status: 'approved',
-          reviewed_by: user?.id,
-          reviewed_at: new Date().toISOString(),
-        })
-        .in('id', pendingRolls.map(r => r.id));
-
-      if (error) throw error;
-
-      toast({
-        title: String(t('stocktake.review.allApproved')),
-        description: `${pendingRolls.length} ${String(t('stocktake.review.rollsApproved'))}`,
-      });
-      fetchRolls();
-    } catch (error) {
-      console.error('[StockTakeSessionDetail] Approve all error:', error);
-      toast({ title: String(t('error')), variant: 'destructive' });
-    }
-  };
-
   const handleCompleteReview = async () => {
     try {
       const { error } = await supabase
@@ -423,10 +522,18 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
     }
   };
 
-  const handleExport = () => {
-    const csvData = rolls.map(roll => ({
+  const handleExport = async () => {
+    // Fetch all rolls for export (not just current page)
+    const { data: allRolls } = await supabase
+      .from('count_rolls')
+      .select('*')
+      .eq('session_id', session.id)
+      .order('capture_sequence', { ascending: true });
+
+    if (!allRolls) return;
+
+    const csvData = allRolls.map(roll => ({
       [String(t('stocktake.review.captureSequence'))]: roll.capture_sequence,
-      [String(t('stocktake.review.capturedBy'))]: roll.counter_profile?.full_name || roll.counter_profile?.email || '-',
       [String(t('stocktake.review.capturedAt'))]: format(new Date(roll.captured_at), 'dd/MM/yyyy HH:mm'),
       [String(t('quality'))]: roll.admin_quality || roll.counter_quality,
       [String(t('color'))]: roll.admin_color || roll.counter_color,
@@ -479,8 +586,28 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
     return roll.counter_profile?.full_name || roll.counter_profile?.email || '-';
   };
 
-  const pendingCount = rolls.filter(r => r.status === 'pending_review').length;
-  const canComplete = pendingCount === 0 && rolls.length > 0;
+  const canComplete = stats.pending === 0 && stats.total > 0;
+  const selectedPendingCount = Array.from(selectedRollIds).filter(id => {
+    const roll = rolls.find(r => r.id === id);
+    return roll?.status === 'pending_review';
+  }).length;
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        handleSelectAll();
+      }
+      if (e.ctrlKey && e.key === 'Enter' && selectedPendingCount > 0) {
+        e.preventDefault();
+        setShowBulkApproveDialog(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [rolls, selectedRollIds, selectedPendingCount]);
 
   return (
     <div className="container mx-auto p-4 space-y-4">
@@ -498,12 +625,6 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
             <Download className="h-4 w-4 mr-2" />
             {String(t('stocktake.review.exportData'))}
           </Button>
-          {pendingCount > 0 && (
-            <Button variant="outline" onClick={handleApproveAll}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {String(t('stocktake.review.approveAll'))} ({pendingCount})
-            </Button>
-          )}
           <Button onClick={handleCompleteReview} disabled={!canComplete}>
             <CheckCircle className="h-4 w-4 mr-2" />
             {String(t('stocktake.review.completeReview'))}
@@ -512,38 +633,117 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold">{rolls.length}</p>
+            <p className="text-2xl font-bold">{stats.total}</p>
             <p className="text-sm text-muted-foreground">{String(t('stocktake.review.totalCounted'))}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{rolls.filter(r => r.status === 'approved').length}</p>
+            <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
             <p className="text-sm text-muted-foreground">{String(t('stocktake.review.approved'))}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
+            <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
             <p className="text-sm text-muted-foreground">{String(t('stocktake.review.pending'))}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-red-600">{rolls.filter(r => r.status === 'rejected').length}</p>
+            <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
             <p className="text-sm text-muted-foreground">{String(t('stocktake.review.rejected'))}</p>
           </CardContent>
         </Card>
+        <Card className="border-green-200 bg-green-50/50">
+          <CardContent className="pt-4 text-center">
+            <p className="text-2xl font-bold text-green-700">{stats.highConfidence}</p>
+            <p className="text-sm text-green-600">{String(t('stocktake.review.highConfidence'))}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="pt-4 text-center">
+            <p className="text-2xl font-bold text-primary">{stats.readyForApproval}</p>
+            <p className="text-sm text-primary/80">{String(t('stocktake.review.readyForApproval'))}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bulk Actions Bar */}
+      <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/50 rounded-lg">
+        {/* Filter */}
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={filterMode} onValueChange={(v) => setFilterMode(v as FilterMode)}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{String(t('stocktake.review.filterAll'))}</SelectItem>
+              <SelectItem value="pending">{String(t('stocktake.review.filterPending'))}</SelectItem>
+              <SelectItem value="high_confidence">{String(t('stocktake.review.filterHighConfidence'))}</SelectItem>
+              <SelectItem value="ready_for_approval">{String(t('stocktake.review.filterReadyForApproval'))}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Selection controls */}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleSelectAll}>
+            {selectedRollIds.size === rolls.length ? (
+              <><Square className="h-4 w-4 mr-2" />{String(t('stocktake.review.deselectAll'))}</>
+            ) : (
+              <><CheckSquare className="h-4 w-4 mr-2" />{String(t('stocktake.review.selectAll'))}</>
+            )}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleSelectReadyForApproval}>
+            <CheckCircle className="h-4 w-4 mr-2" />
+            {String(t('stocktake.review.selectReady'))}
+          </Button>
+        </div>
+
+        {/* Selected count and bulk action */}
+        {selectedRollIds.size > 0 && (
+          <>
+            <div className="h-6 w-px bg-border" />
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{selectedRollIds.size} {String(t('stocktake.review.selected'))}</Badge>
+              {selectedPendingCount > 0 && (
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={() => setShowBulkApproveDialog(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  {String(t('stocktake.review.approveSelected'))} ({selectedPendingCount})
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+
+        <div className="flex-1" />
+
+        {/* Keyboard hints */}
+        <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+          <kbd className="px-1.5 py-0.5 bg-background border rounded text-[10px]">Shift+A</kbd>
+          <span>{String(t('stocktake.review.selectAllShortcut'))}</span>
+          <kbd className="px-1.5 py-0.5 bg-background border rounded text-[10px]">Ctrl+Enter</kbd>
+          <span>{String(t('stocktake.review.approveShortcut'))}</span>
+        </div>
       </div>
 
       {/* Top Pagination */}
       <DataTablePagination
         page={page}
         pageSize={pageSize}
-        totalCount={rolls.length}
+        totalCount={totalCount}
         onPageChange={setPage}
         onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         pageSizeOptions={[10, 20, 50, 100]}
@@ -559,6 +759,12 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={rolls.length > 0 && selectedRollIds.size === rolls.length}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
                 <SortableTableHead
                   label="#"
                   sortKey="capture_sequence"
@@ -607,11 +813,20 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedRolls.map((roll) => (
-                <TableRow key={roll.id} className={roll.is_not_label_warning ? 'bg-amber-50' : ''}>
+              {rolls.map((roll) => (
+                <TableRow 
+                  key={roll.id} 
+                  className={`${roll.is_not_label_warning ? 'bg-amber-50' : ''} ${selectedRollIds.has(roll.id) ? 'bg-primary/5' : ''}`}
+                >
                   {editingRollId === roll.id ? (
                     // Edit mode - inline editing
                     <>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedRollIds.has(roll.id)}
+                          onCheckedChange={() => handleSelectRoll(roll.id)}
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-sm">#{roll.capture_sequence}</TableCell>
                       <TableCell>{getCounterName(roll)}</TableCell>
                       <TableCell>{format(new Date(roll.captured_at), 'dd/MM/yyyy HH:mm')}</TableCell>
@@ -660,6 +875,12 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
                   ) : (
                     // View mode
                     <>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedRollIds.has(roll.id)}
+                          onCheckedChange={() => handleSelectRoll(roll.id)}
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-sm">
                         #{roll.capture_sequence}
                         {roll.is_manual_entry && (
@@ -707,9 +928,9 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
                   )}
                 </TableRow>
               ))}
-              {paginatedRolls.length === 0 && (
+              {rolls.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                     {String(t('stocktake.review.noRolls'))}
                   </TableCell>
                 </TableRow>
@@ -723,7 +944,7 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
       <DataTablePagination
         page={page}
         pageSize={pageSize}
-        totalCount={rolls.length}
+        totalCount={totalCount}
         onPageChange={setPage}
         onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         pageSizeOptions={[10, 20, 50, 100]}
@@ -746,6 +967,33 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Approve Dialog */}
+      <AlertDialog open={showBulkApproveDialog} onOpenChange={setShowBulkApproveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{String(t('stocktake.review.bulkApproveTitle'))}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {String(t('stocktake.review.bulkApproveDesc')).replace('{count}', String(selectedPendingCount))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkApproving}>{String(t('cancel'))}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkApprove} 
+              disabled={isBulkApproving}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isBulkApproving ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              {String(t('stocktake.review.approveSelected'))}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Reject Dialog */}
       <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
