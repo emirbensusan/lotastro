@@ -46,6 +46,7 @@ const defaultPermissions: Permission[] = [
   { categoryKey: 'categoryInventory', actionKey: 'actionReceiveIncoming', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryInventory', actionKey: 'actionUnreceiveIncoming', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
   { categoryKey: 'categoryInventory', actionKey: 'actionDeleteIncoming', warehouse_staff: false, accounting: false, senior_manager: false, admin: true },
+  { categoryKey: 'categoryInventory', actionKey: 'actionViewLotQueue', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
 
   // Order Management
   { categoryKey: 'categoryOrders', actionKey: 'actionViewOrders', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
@@ -54,6 +55,7 @@ const defaultPermissions: Permission[] = [
   { categoryKey: 'categoryOrders', actionKey: 'actionDeleteOrders', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryOrders', actionKey: 'actionFulfillOrders', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
   { categoryKey: 'categoryOrders', actionKey: 'actionPrintOrderDocs', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },
+  { categoryKey: 'categoryOrders', actionKey: 'actionUseAIExtraction', warehouse_staff: false, accounting: true, senior_manager: true, admin: true },
 
   // Supplier Management (Admin Only)
   { categoryKey: 'categorySuppliers', actionKey: 'actionViewSuppliers', warehouse_staff: true, accounting: true, senior_manager: true, admin: true },

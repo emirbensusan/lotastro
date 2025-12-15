@@ -1382,6 +1382,7 @@ const translations = {
     actionReceiveIncoming: 'Receive Incoming Stock',
     actionUnreceiveIncoming: 'Unreceive Incoming Stock',
     actionDeleteIncoming: 'Delete Incoming Stock Entry',
+    actionViewLotQueue: 'View Lot Queue',
     
     // Order Actions
     actionViewOrders: 'View Orders',
@@ -1390,6 +1391,7 @@ const translations = {
     actionDeleteOrders: 'Delete Orders',
     actionFulfillOrders: 'Fulfill Orders',
     actionPrintOrderDocs: 'Print Order Documents',
+    actionUseAIExtraction: 'Use AI Order Extraction',
     
     // Supplier Actions
     actionViewSuppliers: 'View Suppliers',
@@ -3926,6 +3928,7 @@ const translations = {
     actionReceiveIncoming: 'Gelen Stoğu Teslim Al',
     actionUnreceiveIncoming: 'Gelen Stok Teslimini İptal Et',
     actionDeleteIncoming: 'Gelen Stok Kaydını Sil',
+    actionViewLotQueue: 'Lot Kuyruğunu Görüntüle',
     
     // Order Actions
     actionViewOrders: 'Siparişleri Görüntüle',
@@ -3934,6 +3937,7 @@ const translations = {
     actionDeleteOrders: 'Siparişleri Sil',
     actionFulfillOrders: 'Siparişleri Teslim Et',
     actionPrintOrderDocs: 'Sipariş Belgelerini Yazdır',
+    actionUseAIExtraction: 'AI Sipariş Çıkarma Kullan',
     
     // Supplier Actions
     actionViewSuppliers: 'Tedarikçileri Görüntüle',

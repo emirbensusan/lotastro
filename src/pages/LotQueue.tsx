@@ -149,7 +149,7 @@ const LotQueue = () => {
     );
   }
 
-  if (!hasPermission('inventory', 'createlotentries')) {
+  if (!hasPermission('inventory', 'viewlotqueue')) {
     return (
       <Card>
         <CardContent className="p-6">

@@ -19,6 +19,7 @@ import OrderBulkUpload from '@/components/OrderBulkUpload';
 import AIOrderInput from '@/components/AIOrderInput';
 import { InlineEditableField } from '@/components/InlineEditableField';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
@@ -54,6 +55,7 @@ const Orders = () => {
   const { logAction } = useAuditLog();
   const { clearCart } = usePOCart();
   const { t } = useLanguage();
+  const { hasPermission } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -530,6 +532,7 @@ const Orders = () => {
   const canCreateOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
   const canFulfillOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
   const canDeleteOrders = profile?.role === 'admin' || profile?.role === 'accounting' || profile?.role === 'senior_manager';
+  const canUseAIExtraction = hasPermission('orders', 'useaiextraction');
 
   if (loading && orders.length === 0) {
     return (
@@ -667,7 +670,7 @@ const Orders = () => {
       </Dialog>
 
       {/* AI Order Input */}
-      {canCreateOrders && <AIOrderInput />}
+      {canUseAIExtraction && <AIOrderInput />}
       
       <Card>
         <CardHeader>
