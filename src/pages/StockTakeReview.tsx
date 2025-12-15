@@ -58,7 +58,7 @@ const StockTakeReview = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedSession, setSelectedSession] = useState<CountSession | null>(null);
 
-  const canReview = hasPermission('stocktake', 'review_sessions');
+  const canReview = hasPermission('stocktake', 'reviewsessions');
 
   useEffect(() => {
     if (!permissionsLoading) {
