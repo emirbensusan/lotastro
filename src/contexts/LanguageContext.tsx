@@ -7,7 +7,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 interface LanguageContextType {
   language: 'en' | 'tr';
   setLanguage: (lang: 'en' | 'tr') => void;
-  t: (key: string) => string | string[];
+  t: (key: string, params?: Record<string, string | number>) => string | string[];
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -2374,7 +2374,7 @@ const translations = {
         resumeDescription: 'You have an active session. Resume counting to continue.',
         instruction1: 'Take a photo of each roll label',
         instruction2: 'Confirm or edit the OCR extracted data',
-        instruction3: 'Session expires after 30 minutes of inactivity',
+        instruction3: 'Session expires after {{minutes}} minutes of inactivity',
         startButton: 'Start New Session',
         resumeButton: 'Resume Session',
         starting: 'Starting session...',
@@ -4945,7 +4945,7 @@ const translations = {
         resumeDescription: 'Aktif bir oturumunuz var. Devam etmek için oturumu sürdürün.',
         instruction1: 'Her top etiketinin fotoğrafını çekin',
         instruction2: 'OCR ile çıkarılan verileri onaylayın veya düzenleyin',
-        instruction3: '30 dakika hareketsizlik sonrasında oturum sona erer',
+        instruction3: '{{minutes}} dakika hareketsizlik sonrasında oturum sona erer',
         startButton: 'Yeni Oturum Başlat',
         resumeButton: 'Oturumu Devam Ettir',
         starting: 'Oturum başlatılıyor...',
@@ -5141,8 +5141,10 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     document.documentElement.lang = language;
   }, [language]);
 
-  const t = (key: string): string | string[] => {
+  const t = (key: string, params?: Record<string, string | number>): string | string[] => {
     // Try nested key resolution first (e.g., "aiOrder.title" -> translations[language].aiOrder.title)
+    let result: any;
+    
     if (key.includes('.')) {
       const keys = key.split('.');
       let value: any = translations[language];
@@ -5157,22 +5159,31 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
       }
       
       if (value !== undefined) {
-        return value;
+        result = value;
       }
     }
     
     // Fallback to flat key lookup for backward compatibility
-    const translation = translations[language][key];
+    if (result === undefined) {
+      result = translations[language][key];
+    }
     
     // Missing key detection
-    if (translation === undefined) {
+    if (result === undefined) {
       if (process.env.NODE_ENV === 'development') {
         console.warn('[i18n] Missing translation key:', key);
       }
       return `{{missing:${key}}}`;
     }
     
-    return translation;
+    // Replace placeholders with params if provided
+    if (typeof result === 'string' && params) {
+      for (const [paramKey, paramValue] of Object.entries(params)) {
+        result = result.replace(new RegExp(`\\{\\{${paramKey}\\}\\}`, 'g'), String(paramValue));
+      }
+    }
+    
+    return result;
   };
 
   return (
