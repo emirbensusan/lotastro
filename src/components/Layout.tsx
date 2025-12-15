@@ -255,14 +255,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen bg-background flex w-full">
+      <div className="min-h-screen-safe bg-background flex w-full">
         {/* Desktop Sidebar - direct flex child, no wrapper */}
         <AppSidebar />
 
         {/* Main content area including header */}
-        <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-screen-safe min-w-0 overflow-hidden">
           {/* Top Navigation - sticky within content flow */}
-          <header className="sticky top-0 z-50 border-b bg-card shrink-0">
+          <header className="sticky top-0 z-50 border-b bg-card shrink-0 pt-safe">
             <div className="flex h-12 items-center justify-between px-3 md:px-4">
               <div className="flex items-center space-x-2">
                 {/* Desktop Sidebar Toggle */}
@@ -275,7 +275,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       <Menu className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="w-64 p-4">
+                  <SheetContent side="left" className="w-64 p-4 pt-safe">
                     <div className="mb-4">
                       <h2 className="text-lg font-semibold text-primary">LotAstro</h2>
                     </div>

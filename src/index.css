@@ -6,6 +6,57 @@
 All colors MUST be HSL.
 */
 
+/* Safe area insets for notched devices (iPhone X+) */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --vh: 1vh;
+}
+
+/* Safe area utility classes */
+@layer utilities {
+  .pt-safe {
+    padding-top: max(0.5rem, var(--safe-area-inset-top));
+  }
+  
+  .pb-safe {
+    padding-bottom: max(1rem, var(--safe-area-inset-bottom));
+  }
+  
+  .pl-safe {
+    padding-left: max(0.5rem, var(--safe-area-inset-left));
+  }
+  
+  .pr-safe {
+    padding-right: max(0.5rem, var(--safe-area-inset-right));
+  }
+  
+  .px-safe {
+    padding-left: max(0.5rem, var(--safe-area-inset-left));
+    padding-right: max(0.5rem, var(--safe-area-inset-right));
+  }
+  
+  .py-safe {
+    padding-top: max(0.5rem, var(--safe-area-inset-top));
+    padding-bottom: max(1rem, var(--safe-area-inset-bottom));
+  }
+  
+  /* 100vh fix for iOS Safari */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: calc(var(--vh, 1vh) * 100);
+  }
+  
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh;
+    height: calc(var(--vh, 1vh) * 100);
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
