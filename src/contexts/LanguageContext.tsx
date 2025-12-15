@@ -1157,6 +1157,8 @@ const translations = {
     // Admin Panel - User Management
     adminPanel: 'Admin Panel',
     addUser: 'Add User',
+    inviteUser: 'Invite User',
+    noUserSelected: 'No user selected for editing',
     activeSystemUsers: 'Active system users',
     admins: 'Admins',
     administratorAccounts: 'Administrator accounts',
@@ -3780,6 +3782,8 @@ const translations = {
     // Admin Panel - User Management
     adminPanel: 'Yönetim Paneli',
     addUser: 'Kullanıcı Ekle',
+    inviteUser: 'Kullanıcı Davet Et',
+    noUserSelected: 'Düzenleme için kullanıcı seçilmedi',
     activeSystemUsers: 'Aktif sistem kullanıcıları',
     admins: 'Yöneticiler',
     administratorAccounts: 'Yönetici hesapları',

@@ -65,11 +65,6 @@ const Admin: React.FC = () => {
   const [invitationsLoading, setInvitationsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
-  const [newProfile, setNewProfile] = useState({
-    email: '',
-    full_name: '',
-    role: 'warehouse_staff' as UserRole
-  });
   const [activeTab, setActiveTab] = useState('users');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<Profile | null>(null);
@@ -758,13 +753,21 @@ const Admin: React.FC = () => {
     return <div className="text-sm text-muted-foreground">{t('notAuthorizedAccess')}</div>;
   }
 
+  const scrollToInviteSection = () => {
+    setActiveTab('users');
+    setTimeout(() => {
+      document.getElementById('invite-section')?.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('invite-email')?.focus();
+    }, 100);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">{t('settingsPanel')}</h1>
-        <Button onClick={() => setDialogOpen(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          {t('addUser')}
+        <Button onClick={scrollToInviteSection} className="flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          {t('inviteUser')}
         </Button>
       </div>
 
@@ -861,7 +864,7 @@ const Admin: React.FC = () => {
       </div>
 
       {/* User Invitations */}
-      <Card>
+      <Card id="invite-section">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Invite New Users</CardTitle>
@@ -1333,140 +1336,71 @@ const Admin: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Edit/Add User Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* Edit User Dialog - only for existing users */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open);
+        if (!open) setEditingProfile(null);
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {editingProfile ? t('editUser') : t('addNewUser')}
-            </DialogTitle>
+            <DialogTitle>{t('editUser')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="email">{t('email')}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={editingProfile ? editingProfile.email : newProfile.email}
-                onChange={(e) => {
-                  if (editingProfile) {
-                    setEditingProfile({ ...editingProfile, email: e.target.value });
-                  } else {
-                    setNewProfile({ ...newProfile, email: e.target.value });
-                  }
-                }}
-                disabled={!!editingProfile}
-              />
+          {editingProfile ? (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email">{t('email')}</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={editingProfile.email}
+                  disabled
+                />
+              </div>
+              <div>
+                <Label htmlFor="full_name">{t('fullName')}</Label>
+                <Input
+                  id="full_name"
+                  value={editingProfile.full_name}
+                  onChange={(e) => setEditingProfile({ ...editingProfile, full_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="role">{t('role')}</Label>
+                <Select 
+                  value={editingProfile.role}
+                  onValueChange={(value: UserRole) => setEditingProfile({ ...editingProfile, role: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="warehouse_staff">{t('warehouseStaffRole')}</SelectItem>
+                    <SelectItem value="accounting">{t('accountingRole')}</SelectItem>
+                    <SelectItem value="senior_manager">{t('seniorManagerRole')}</SelectItem>
+                    <SelectItem value="admin">{t('adminRole')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => {
+                  setDialogOpen(false);
+                  setEditingProfile(null);
+                }}>
+                  {t('cancel')}
+                </Button>
+                <Button onClick={() => updateProfile(editingProfile.id, {
+                  full_name: editingProfile.full_name,
+                  role: editingProfile.role
+                })}>
+                  {t('update')}
+                </Button>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="full_name">{t('fullName')}</Label>
-              <Input
-                id="full_name"
-                value={editingProfile ? editingProfile.full_name : newProfile.full_name}
-                onChange={(e) => {
-                  if (editingProfile) {
-                    setEditingProfile({ ...editingProfile, full_name: e.target.value });
-                  } else {
-                    setNewProfile({ ...newProfile, full_name: e.target.value });
-                  }
-                }}
-              />
-            </div>
-            <div>
-              <Label htmlFor="role">{t('role')}</Label>
-              <Select 
-                value={editingProfile ? editingProfile.role : newProfile.role}
-                onValueChange={(value: UserRole) => {
-                  if (editingProfile) {
-                    setEditingProfile({ ...editingProfile, role: value });
-                  } else {
-                    setNewProfile({ ...newProfile, role: value });
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="warehouse_staff">{t('warehouseStaffRole')}</SelectItem>
-                  <SelectItem value="accounting">{t('accountingRole')}</SelectItem>
-                  <SelectItem value="senior_manager">{t('seniorManagerRole')}</SelectItem>
-                  <SelectItem value="admin">{t('adminRole')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => {
-                setDialogOpen(false);
-                setEditingProfile(null);
-                setNewProfile({ email: '', full_name: '', role: 'warehouse_staff' as UserRole });
-              }}>
-                {t('cancel')}
-              </Button>
-              <Button onClick={async () => {
-                if (editingProfile) {
-                  updateProfile(editingProfile.id, {
-                    full_name: editingProfile.full_name,
-                    role: editingProfile.role
-                  });
-                } else {
-                  // Create new user
-                  try {
-                    setLoading(true);
-                    
-                    // Generate a cryptographically secure temporary password
-                    const generateSecurePassword = () => {
-                      const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-                      const array = new Uint8Array(16);
-                      crypto.getRandomValues(array);
-                      let password = '';
-                      for (let i = 0; i < array.length; i++) {
-                        password += charset[array[i] % charset.length];
-                      }
-                      return password;
-                    };
-                    const tempPassword = generateSecurePassword();
-                    
-                    const { data, error } = await supabase.auth.signUp({
-                      email: newProfile.email,
-                      password: tempPassword,
-                      options: {
-                        emailRedirectTo: 'https://depo.lotastro.com/auth',
-                        data: {
-                          full_name: newProfile.full_name,
-                          role: newProfile.role
-                        }
-                      }
-                    });
-
-                    if (error) throw error;
-
-                    toast({
-                      title: t('userCreatedSuccessfully') as string,
-                      description: (t('userCreatedTempPassword') as string).replace('{password}', tempPassword),
-                    });
-
-                    setDialogOpen(false);
-                    setNewProfile({ email: '', full_name: '', role: 'warehouse_staff' });
-                    fetchProfiles();
-                    
-                  } catch (error: any) {
-                    toast({
-                      title: t('userCreationFailed') as string,
-                      description: error.message || (t('failedToCreateUser') as string),
-                      variant: 'destructive',
-                    });
-                  } finally {
-                    setLoading(false);
-                  }
-                }
-              }}>
-                {editingProfile ? t('update') : t('create')}
-              </Button>
-            </div>
-          </div>
-          </DialogContent>
-        </Dialog>
+          ) : (
+            <p className="text-muted-foreground">{t('noUserSelected')}</p>
+          )}
+        </DialogContent>
+      </Dialog>
 
         {/* Change Password Dialog */}
         <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
