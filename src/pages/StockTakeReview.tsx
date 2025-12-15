@@ -1,24 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { ViewDetailsButton } from '@/components/ui/view-details-button';
+import { TableExportButton, exportToCSV } from '@/components/ui/table-export-button';
+import { SortableTableHead, SortDirection } from '@/components/ui/sortable-table-head';
 import { 
   CheckCircle, 
   XCircle, 
   AlertTriangle, 
   Clock, 
   Search,
-  Eye,
-  RotateCcw,
   FileCheck,
-  Users
+  Users,
+  StopCircle,
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { StockTakeSessionDetail } from '@/components/stocktake/StockTakeSessionDetail';
@@ -55,30 +76,39 @@ const StockTakeReview = () => {
   const [sessions, setSessions] = useState<CountSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedSession, setSelectedSession] = useState<CountSession | null>(null);
+  
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  
+  // Sorting state
+  const [currentSort, setCurrentSort] = useState<{ key: string; direction: SortDirection } | null>({
+    key: 'started_at',
+    direction: 'desc'
+  });
+  
+  // Dialog state
+  const [endSessionDialog, setEndSessionDialog] = useState<CountSession | null>(null);
+  const [deleteSessionDialog, setDeleteSessionDialog] = useState<CountSession | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const canReview = hasPermission('stocktake', 'reviewsessions');
+  const canDelete = hasPermission('stocktake', 'deletesessions');
 
   useEffect(() => {
     if (!permissionsLoading) {
       fetchSessions();
     }
-  }, [permissionsLoading, statusFilter]);
+  }, [permissionsLoading]);
 
   const fetchSessions = async () => {
     setIsLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('count_sessions')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter as any);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
       
@@ -111,12 +141,87 @@ const StockTakeReview = () => {
     }
   };
 
+  const handleEndSession = async () => {
+    if (!endSessionDialog) return;
+    
+    setIsProcessing(true);
+    try {
+      const { error } = await supabase
+        .from('count_sessions')
+        .update({
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          cancellation_reason: 'Ended by admin',
+        })
+        .eq('id', endSessionDialog.id);
+
+      if (error) throw error;
+
+      toast({
+        title: String(t('success')),
+        description: String(t('stocktake.review.sessionEnded')),
+      });
+
+      fetchSessions();
+    } catch (error) {
+      console.error('[StockTakeReview] End session error:', error);
+      toast({
+        title: String(t('error')),
+        description: String(t('stocktake.review.endSessionError')),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+      setEndSessionDialog(null);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    if (!deleteSessionDialog) return;
+    
+    setIsProcessing(true);
+    try {
+      // First delete related count_rolls
+      const { error: rollsError } = await supabase
+        .from('count_rolls')
+        .delete()
+        .eq('session_id', deleteSessionDialog.id);
+
+      if (rollsError) throw rollsError;
+
+      // Then delete the session
+      const { error: sessionError } = await supabase
+        .from('count_sessions')
+        .delete()
+        .eq('id', deleteSessionDialog.id);
+
+      if (sessionError) throw sessionError;
+
+      toast({
+        title: String(t('success')),
+        description: String(t('stocktake.review.sessionDeleted')),
+      });
+
+      fetchSessions();
+    } catch (error) {
+      console.error('[StockTakeReview] Delete session error:', error);
+      toast({
+        title: String(t('error')),
+        description: String(t('stocktake.review.deleteSessionError')),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+      setDeleteSessionDialog(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode }> = {
       draft: { variant: 'outline', icon: <Clock className="h-3 w-3" /> },
       active: { variant: 'default', icon: <Clock className="h-3 w-3" /> },
       counting_complete: { variant: 'secondary', icon: <FileCheck className="h-3 w-3" /> },
-      reviewing: { variant: 'secondary', icon: <Eye className="h-3 w-3" /> },
+      reviewing: { variant: 'secondary', icon: <FileCheck className="h-3 w-3" /> },
       reconciled: { variant: 'default', icon: <CheckCircle className="h-3 w-3" /> },
       closed: { variant: 'outline', icon: <CheckCircle className="h-3 w-3" /> },
       cancelled: { variant: 'destructive', icon: <XCircle className="h-3 w-3" /> },
@@ -132,15 +237,112 @@ const StockTakeReview = () => {
     );
   };
 
-  const filteredSessions = sessions.filter(session => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      session.session_number.toLowerCase().includes(query) ||
-      session.starter_profile?.full_name?.toLowerCase().includes(query) ||
-      session.starter_profile?.email?.toLowerCase().includes(query)
-    );
-  });
+  // Filtering
+  const filteredSessions = useMemo(() => {
+    return sessions.filter(session => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        session.session_number.toLowerCase().includes(query) ||
+        session.starter_profile?.full_name?.toLowerCase().includes(query) ||
+        session.starter_profile?.email?.toLowerCase().includes(query)
+      );
+    });
+  }, [sessions, searchQuery]);
+
+  // Sorting
+  const sortedSessions = useMemo(() => {
+    if (!currentSort || !currentSort.direction) return filteredSessions;
+
+    return [...filteredSessions].sort((a, b) => {
+      let aVal: any;
+      let bVal: any;
+
+      switch (currentSort.key) {
+        case 'session_number':
+          aVal = a.session_number;
+          bVal = b.session_number;
+          break;
+        case 'counter':
+          aVal = a.starter_profile?.full_name || a.starter_profile?.email || '';
+          bVal = b.starter_profile?.full_name || b.starter_profile?.email || '';
+          break;
+        case 'started_at':
+          aVal = new Date(a.started_at).getTime();
+          bVal = new Date(b.started_at).getTime();
+          break;
+        case 'status':
+          aVal = a.status;
+          bVal = b.status;
+          break;
+        case 'total_rolls_counted':
+          aVal = a.total_rolls_counted;
+          bVal = b.total_rolls_counted;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredSessions, currentSort]);
+
+  // Pagination
+  const paginatedSessions = useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    return sortedSessions.slice(startIndex, startIndex + pageSize);
+  }, [sortedSessions, page, pageSize]);
+
+  const handleSort = useCallback((key: string, direction: SortDirection) => {
+    if (direction === null) {
+      setCurrentSort(null);
+    } else {
+      setCurrentSort({ key, direction });
+    }
+  }, []);
+
+  // Export handler
+  const handleExport = useCallback(() => {
+    const exportData = sortedSessions.map(session => ({
+      session_number: session.session_number,
+      counter: session.starter_profile?.full_name || session.starter_profile?.email || '-',
+      started_at: format(new Date(session.started_at), 'dd/MM/yyyy HH:mm'),
+      completed_at: session.completed_at ? format(new Date(session.completed_at), 'dd/MM/yyyy HH:mm') : '-',
+      status: session.status,
+      total_rolls: session.total_rolls_counted,
+      approved: session.rolls_approved,
+      pending: session.rolls_pending_review,
+      rejected: session.rolls_rejected,
+      high_ocr: session.ocr_high_confidence_count,
+      medium_ocr: session.ocr_medium_confidence_count,
+      low_ocr: session.ocr_low_confidence_count,
+      manual: session.manual_entry_count,
+    }));
+
+    const columns = [
+      { key: 'session_number' as const, label: String(t('stocktake.review.sessionNumber')) },
+      { key: 'counter' as const, label: String(t('stocktake.review.counter')) },
+      { key: 'started_at' as const, label: String(t('stocktake.review.startedAt')) },
+      { key: 'completed_at' as const, label: String(t('stocktake.review.completedAt')) },
+      { key: 'status' as const, label: String(t('status')) },
+      { key: 'total_rolls' as const, label: String(t('stocktake.review.totalCounted')) },
+      { key: 'approved' as const, label: String(t('stocktake.review.approved')) },
+      { key: 'pending' as const, label: String(t('stocktake.review.pending')) },
+      { key: 'rejected' as const, label: String(t('stocktake.review.rejected')) },
+      { key: 'high_ocr' as const, label: String(t('stocktake.review.highOCR')) },
+      { key: 'medium_ocr' as const, label: String(t('stocktake.review.mediumOCR')) },
+      { key: 'low_ocr' as const, label: String(t('stocktake.review.lowOCR')) },
+      { key: 'manual' as const, label: String(t('stocktake.review.manualEntry')) },
+    ];
+
+    exportToCSV(exportData, columns, `stock-take-sessions-${format(new Date(), 'yyyy-MM-dd')}`);
+  }, [sortedSessions, t]);
+
+  const canEndSession = (status: string) => {
+    return ['draft', 'active', 'counting_complete', 'reviewing'].includes(status);
+  };
 
   // Permission check
   if (!permissionsLoading && !canReview) {
@@ -173,6 +375,9 @@ const StockTakeReview = () => {
         <div>
           <h1 className="text-2xl font-bold">{String(t('stocktake.review.title'))}</h1>
           <p className="text-muted-foreground">{String(t('stocktake.review.description'))}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <TableExportButton onExport={handleExport} />
         </div>
       </div>
 
@@ -232,7 +437,7 @@ const StockTakeReview = () => {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Search */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -243,22 +448,27 @@ const StockTakeReview = () => {
             className="pl-10"
           />
         </div>
-        <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-full md:w-auto">
-          <TabsList>
-            <TabsTrigger value="all">{String(t('all'))}</TabsTrigger>
-            <TabsTrigger value="counting_complete">{String(t('stocktake.review.status.counting_complete'))}</TabsTrigger>
-            <TabsTrigger value="reviewing">{String(t('stocktake.review.status.reviewing'))}</TabsTrigger>
-            <TabsTrigger value="reconciled">{String(t('stocktake.review.status.reconciled'))}</TabsTrigger>
-          </TabsList>
-        </Tabs>
       </div>
 
-      {/* Sessions List */}
+      {/* Top Pagination */}
+      <DataTablePagination
+        page={page}
+        pageSize={pageSize}
+        totalCount={sortedSessions.length}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        pageSizeOptions={[5, 10, 20, 50]}
+      />
+
+      {/* Sessions Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
-      ) : filteredSessions.length === 0 ? (
+      ) : paginatedSessions.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <FileCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -266,70 +476,188 @@ const StockTakeReview = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredSessions.map((session) => (
-            <Card key={session.id} className="hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => setSelectedSession(session)}>
-              <CardContent className="p-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  {/* Session Info */}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-semibold">{session.session_number}</span>
-                      {getStatusBadge(session.status)}
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableTableHead
+                  label={String(t('stocktake.review.sessionNumber'))}
+                  sortKey="session_number"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                />
+                <SortableTableHead
+                  label={String(t('stocktake.review.counter'))}
+                  sortKey="counter"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                />
+                <SortableTableHead
+                  label={String(t('stocktake.review.startedAt'))}
+                  sortKey="started_at"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                />
+                <SortableTableHead
+                  label={String(t('status'))}
+                  sortKey="status"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                />
+                <SortableTableHead
+                  label={String(t('stocktake.review.totalCounted'))}
+                  sortKey="total_rolls_counted"
+                  currentSort={currentSort}
+                  onSort={handleSort}
+                />
+                <TableHead className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
+                  {String(t('stocktake.review.rollStats'))}
+                </TableHead>
+                <TableHead className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
+                  {String(t('stocktake.review.ocrStats'))}
+                </TableHead>
+                <TableHead className="h-8 px-2 text-right align-middle font-medium text-muted-foreground">
+                  {String(t('actions'))}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedSessions.map((session) => (
+                <TableRow key={session.id}>
+                  <TableCell className="px-2 py-1 font-mono font-medium">
+                    {session.session_number}
+                  </TableCell>
+                  <TableCell className="px-2 py-1">
+                    {session.starter_profile?.full_name || session.starter_profile?.email || '-'}
+                  </TableCell>
+                  <TableCell className="px-2 py-1 text-sm">
+                    {format(new Date(session.started_at), 'dd/MM/yyyy HH:mm')}
+                  </TableCell>
+                  <TableCell className="px-2 py-1">
+                    {getStatusBadge(session.status)}
+                  </TableCell>
+                  <TableCell className="px-2 py-1 text-center font-semibold">
+                    {session.total_rolls_counted}
+                  </TableCell>
+                  <TableCell className="px-2 py-1">
+                    <div className="flex gap-2 text-xs">
+                      <span className="text-green-600" title={String(t('stocktake.review.approved'))}>
+                        ✓ {session.rolls_approved}
+                      </span>
+                      <span className="text-amber-600" title={String(t('stocktake.review.pending'))}>
+                        ⏳ {session.rolls_pending_review}
+                      </span>
+                      <span className="text-red-600" title={String(t('stocktake.review.rejected'))}>
+                        ✗ {session.rolls_rejected}
+                      </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {String(t('stocktake.review.startedBy'))}: {session.starter_profile?.full_name || session.starter_profile?.email || '-'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(session.started_at), 'dd/MM/yyyy HH:mm')}
-                      {session.completed_at && ` - ${format(new Date(session.completed_at), 'dd/MM/yyyy HH:mm')}`}
-                    </p>
-                  </div>
-
-                  {/* Roll Stats */}
-                  <div className="flex flex-wrap gap-4">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold">{session.total_rolls_counted}</p>
-                      <p className="text-xs text-muted-foreground">{String(t('stocktake.review.totalCounted'))}</p>
+                  </TableCell>
+                  <TableCell className="px-2 py-1">
+                    <div className="flex gap-1">
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs px-1">
+                        {session.ocr_high_confidence_count}
+                      </Badge>
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs px-1">
+                        {session.ocr_medium_confidence_count}
+                      </Badge>
+                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs px-1">
+                        {session.ocr_low_confidence_count}
+                      </Badge>
                     </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-green-600">{session.rolls_approved}</p>
-                      <p className="text-xs text-muted-foreground">{String(t('stocktake.review.approved'))}</p>
+                  </TableCell>
+                  <TableCell className="px-2 py-1 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <ViewDetailsButton
+                        onClick={() => setSelectedSession(session)}
+                        showLabel={false}
+                      />
+                      {canEndSession(session.status) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEndSessionDialog(session)}
+                          className="h-8 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          title={String(t('stocktake.review.endSession'))}
+                        >
+                          <StopCircle className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteSessionDialog(session)}
+                          className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title={String(t('stocktake.review.deleteSession'))}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-amber-600">{session.rolls_pending_review}</p>
-                      <p className="text-xs text-muted-foreground">{String(t('stocktake.review.pending'))}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-red-600">{session.rolls_rejected}</p>
-                      <p className="text-xs text-muted-foreground">{String(t('stocktake.review.rejected'))}</p>
-                    </div>
-                  </div>
-
-                  {/* OCR Stats */}
-                  <div className="flex gap-2">
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      {session.ocr_high_confidence_count} {String(t('stocktake.review.high'))}
-                    </Badge>
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                      {session.ocr_medium_confidence_count} {String(t('stocktake.review.medium'))}
-                    </Badge>
-                    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                      {session.ocr_low_confidence_count} {String(t('stocktake.review.low'))}
-                    </Badge>
-                  </div>
-
-                  {/* Action */}
-                  <Button variant="outline" size="sm">
-                    <Eye className="h-4 w-4 mr-2" />
-                    {String(t('stocktake.review.viewDetails'))}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
+
+      {/* Bottom Pagination */}
+      <DataTablePagination
+        page={page}
+        pageSize={pageSize}
+        totalCount={sortedSessions.length}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        pageSizeOptions={[5, 10, 20, 50]}
+      />
+
+      {/* End Session Dialog */}
+      <AlertDialog open={!!endSessionDialog} onOpenChange={() => setEndSessionDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{String(t('stocktake.review.endSessionTitle'))}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {String(t('stocktake.review.confirmEndSession'))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>{String(t('cancel'))}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleEndSession} 
+              disabled={isProcessing}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isProcessing ? String(t('loading')) : String(t('stocktake.review.endSession'))}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Session Dialog */}
+      <AlertDialog open={!!deleteSessionDialog} onOpenChange={() => setDeleteSessionDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{String(t('stocktake.review.deleteSessionTitle'))}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {String(t('stocktake.review.confirmDeleteSession'))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>{String(t('cancel'))}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteSession} 
+              disabled={isProcessing}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isProcessing ? String(t('loading')) : String(t('delete'))}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
