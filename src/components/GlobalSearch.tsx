@@ -3,11 +3,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Search, Package, Truck, Building2 } from 'lucide-react';
-
+import { Search, Package, Truck, Building2, X } from 'lucide-react';
 interface SearchResult {
   id: string;
   type: 'lot' | 'order' | 'supplier' | 'quality' | 'quality-color';
@@ -256,64 +256,124 @@ const GlobalSearch: React.FC = () => {
     setQuery('');
   };
 
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+
+  const handleMobileResultClick = (result: SearchResult) => {
+    navigate(result.path);
+    setMobileSheetOpen(false);
+    setIsOpen(false);
+    setQuery('');
+  };
+
+  const SearchResults = ({ onResultClick }: { onResultClick: (result: SearchResult) => void }) => (
+    <>
+      {loading ? (
+        <div className="py-4 text-center text-muted-foreground">
+          {t('loading')}
+        </div>
+      ) : results.length > 0 ? (
+        <div className="space-y-1">
+          {results.map((result) => (
+            <Button
+              key={`${result.type}-${result.id}`}
+              variant="ghost"
+              className="w-full justify-start h-auto p-3"
+              onClick={() => onResultClick(result)}
+            >
+              <div className="flex items-center space-x-3 w-full">
+                <div className="flex-shrink-0">
+                  {getIcon(result.type)}
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <div className="font-medium truncate">{result.title}</div>
+                  <div className="text-sm text-muted-foreground truncate">
+                    {result.subtitle}
+                  </div>
+                </div>
+                <Badge variant={getBadgeVariant(result.type)} className="flex-shrink-0">
+                  {getBadgeText(result.type)}
+                </Badge>
+              </div>
+            </Button>
+          ))}
+        </div>
+      ) : query.length > 2 ? (
+        <div className="py-4 text-center text-muted-foreground">
+          No results found for "{query}"
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
-    <div ref={searchRef} className="relative w-96">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-        <Input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          placeholder={t('searchPlaceholder') as string}
-          className="pl-10"
-        />
+    <>
+      {/* Desktop Search - hidden on mobile */}
+      <div ref={searchRef} className="relative hidden sm:block w-48 md:w-64 lg:w-80">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+            placeholder={t('searchPlaceholder') as string}
+            className="pl-10 h-8"
+          />
+        </div>
+
+        {isOpen && (query.length > 2 || results.length > 0) && (
+          <Card className="absolute top-full mt-1 w-full z-50 max-h-96 overflow-y-auto">
+            <CardContent className="p-2">
+              <SearchResults onResultClick={handleResultClick} />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {isOpen && (query.length > 2 || results.length > 0) && (
-        <Card className="absolute top-full mt-1 w-full z-50 max-h-96 overflow-y-auto">
-          <CardContent className="p-2">
-            {loading ? (
-              <div className="py-4 text-center text-muted-foreground">
-                {t('loading')}
-              </div>
-            ) : results.length > 0 ? (
-              <div className="space-y-1">
-                {results.map((result) => (
-                  <Button
-                    key={`${result.type}-${result.id}`}
-                    variant="ghost"
-                    className="w-full justify-start h-auto p-3"
-                    onClick={() => handleResultClick(result)}
-                  >
-                    <div className="flex items-center space-x-3 w-full">
-                      <div className="flex-shrink-0">
-                        {getIcon(result.type)}
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="font-medium">{result.title}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {result.subtitle}
-                        </div>
-                      </div>
-                      <Badge variant={getBadgeVariant(result.type)}>
-                        {getBadgeText(result.type)}
-                      </Badge>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-            ) : query.length > 2 ? (
-              <div className="py-4 text-center text-muted-foreground">
-                No results found for "{query}"
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+      {/* Mobile Search - icon that opens sheet */}
+      <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="sm:hidden h-8 w-8">
+            <Search className="h-4 w-4" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="top" className="h-auto max-h-[80vh]">
+          <SheetHeader className="pb-2">
+            <SheetTitle>{t('search')}</SheetTitle>
+          </SheetHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setIsOpen(true);
+              }}
+              placeholder={t('searchPlaceholder') as string}
+              className="pl-10"
+              autoFocus
+            />
+            {query && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                onClick={() => setQuery('')}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+          {(query.length > 2 || results.length > 0) && (
+            <div className="mt-2 max-h-[50vh] overflow-y-auto">
+              <SearchResults onResultClick={handleMobileResultClick} />
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 };
 
