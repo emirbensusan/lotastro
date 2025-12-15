@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Save, Camera, Clock, Image, FileSearch } from 'lucide-react';
+import { Loader2, Save, Camera, Clock, Image, FileSearch, Wand2, Sliders } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 
 interface StockTakeSettings {
   ocr_timeout_seconds: number;
@@ -18,6 +19,13 @@ interface StockTakeSettings {
   auto_approve_high_confidence: boolean;
   require_recount_reason: boolean;
   photo_retention_months: number;
+  // Image preprocessing settings
+  preprocessing_enabled: boolean;
+  preprocessing_grayscale: boolean;
+  preprocessing_contrast: boolean;
+  preprocessing_contrast_level: number;
+  preprocessing_sharpen: boolean;
+  preprocessing_sharpen_level: number;
 }
 
 const DEFAULT_SETTINGS: StockTakeSettings = {
@@ -28,6 +36,13 @@ const DEFAULT_SETTINGS: StockTakeSettings = {
   auto_approve_high_confidence: false,
   require_recount_reason: true,
   photo_retention_months: 12,
+  // Preprocessing defaults - enabled
+  preprocessing_enabled: true,
+  preprocessing_grayscale: true,
+  preprocessing_contrast: true,
+  preprocessing_contrast_level: 20,
+  preprocessing_sharpen: true,
+  preprocessing_sharpen_level: 30,
 };
 
 const StockTakeSettingsTab: React.FC = () => {
@@ -285,6 +300,131 @@ const StockTakeSettingsTab: React.FC = () => {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Image Preprocessing Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wand2 className="h-5 w-5" />
+            {language === 'tr' ? 'Görüntü Ön İşleme' : 'Image Preprocessing'}
+          </CardTitle>
+          <CardDescription>
+            {language === 'tr' 
+              ? 'OCR doğruluğunu artırmak için görüntü işleme ayarları' 
+              : 'Image processing settings to improve OCR accuracy'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Master toggle */}
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
+            <div className="space-y-0.5">
+              <Label className="text-base font-medium">
+                {language === 'tr' ? 'Ön İşleme Etkin' : 'Preprocessing Enabled'}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {language === 'tr' 
+                  ? 'OCR öncesi görüntü iyileştirme uygula'
+                  : 'Apply image enhancement before OCR processing'}
+              </p>
+            </div>
+            <Switch
+              checked={settings.preprocessing_enabled}
+              onCheckedChange={(v) => updateSetting('preprocessing_enabled', v)}
+            />
+          </div>
+
+          {/* Individual preprocessing options - only shown when enabled */}
+          {settings.preprocessing_enabled && (
+            <div className="space-y-4 pl-4 border-l-2 border-primary/20">
+              {/* Grayscale */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>{language === 'tr' ? 'Gri Tonlama' : 'Grayscale Conversion'}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'tr' 
+                      ? 'Görüntüyü siyah-beyaza çevir (metin okunabilirliğini artırır)'
+                      : 'Convert image to black & white (improves text readability)'}
+                  </p>
+                </div>
+                <Switch
+                  checked={settings.preprocessing_grayscale}
+                  onCheckedChange={(v) => updateSetting('preprocessing_grayscale', v)}
+                />
+              </div>
+
+              {/* Contrast */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>{language === 'tr' ? 'Kontrast Artırma' : 'Contrast Enhancement'}</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'tr' 
+                        ? 'Metin ve arka plan arasındaki farkı artır'
+                        : 'Increase difference between text and background'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.preprocessing_contrast}
+                    onCheckedChange={(v) => updateSetting('preprocessing_contrast', v)}
+                  />
+                </div>
+                {settings.preprocessing_contrast && (
+                  <div className="space-y-2 pl-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm text-muted-foreground">
+                        {language === 'tr' ? 'Seviye' : 'Level'}: {settings.preprocessing_contrast_level}%
+                      </Label>
+                    </div>
+                    <Slider
+                      value={[settings.preprocessing_contrast_level]}
+                      onValueChange={([v]) => updateSetting('preprocessing_contrast_level', v)}
+                      min={10}
+                      max={50}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Sharpen */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>{language === 'tr' ? 'Keskinleştirme' : 'Sharpening'}</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'tr' 
+                        ? 'Bulanık görüntülerde metin kenarlarını belirginleştir'
+                        : 'Enhance text edges in blurry images'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.preprocessing_sharpen}
+                    onCheckedChange={(v) => updateSetting('preprocessing_sharpen', v)}
+                  />
+                </div>
+                {settings.preprocessing_sharpen && (
+                  <div className="space-y-2 pl-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm text-muted-foreground">
+                        {language === 'tr' ? 'Seviye' : 'Level'}: {settings.preprocessing_sharpen_level}%
+                      </Label>
+                    </div>
+                    <Slider
+                      value={[settings.preprocessing_sharpen_level]}
+                      onValueChange={([v]) => updateSetting('preprocessing_sharpen_level', v)}
+                      min={10}
+                      max={60}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
