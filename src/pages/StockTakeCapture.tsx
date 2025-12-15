@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { useStockTakeUpload } from '@/hooks/useStockTakeUpload';
+import { useStockTakeSession } from '@/hooks/useStockTakeSession';
 import { UploadProgressBar } from '@/components/stocktake/UploadProgressBar';
 import { CameraCapture } from '@/components/stocktake/CameraCapture';
 import { OCRConfirmDialog } from '@/components/stocktake/OCRConfirmDialog';
@@ -22,13 +23,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface CountSession {
-  id: string;
-  session_number: string;
-  status: string;
-  total_rolls_counted: number;
-}
 
 interface OCRData {
   quality: string;
@@ -52,8 +46,19 @@ const StockTakeCapture = () => {
   
   const { uploadAndProcessImage, progress, isUploading, resetProgress } = useStockTakeUpload();
   
-  const [session, setSession] = useState<CountSession | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use the session management hook with timeout handling
+  const {
+    session,
+    isLoading,
+    isExpiring,
+    endSession,
+    cancelSession,
+    keepSessionActive,
+  } = useStockTakeSession({
+    userId: user?.id,
+    onSessionExpired: () => navigate('/'),
+  });
+  
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [ocrData, setOcrData] = useState<OCRData | null>(null);
@@ -64,75 +69,6 @@ const StockTakeCapture = () => {
 
   // Check permissions
   const canStartSession = hasPermission('stocktake', 'start_session');
-
-  // Load or create session on mount
-  useEffect(() => {
-    if (!permissionsLoading && user) {
-      loadOrCreateSession();
-    }
-  }, [user, permissionsLoading]);
-
-  const loadOrCreateSession = async () => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      // Check for existing active session
-      const { data: existingSession, error: fetchError } = await supabase
-        .from('count_sessions')
-        .select('*')
-        .eq('started_by', user.id)
-        .in('status', ['draft', 'active'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (existingSession && !fetchError) {
-        setSession(existingSession as CountSession);
-        setCaptureSequence(existingSession.total_rolls_counted + 1);
-        
-        // Update status to active if draft
-        if (existingSession.status === 'draft') {
-          await supabase
-            .from('count_sessions')
-            .update({ status: 'active' })
-            .eq('id', existingSession.id);
-        }
-      } else {
-        // Create new session
-        const { data: sessionNumber } = await supabase.rpc('generate_count_session_number');
-        
-        const { data: newSession, error: createError } = await supabase
-          .from('count_sessions')
-          .insert({
-            session_number: sessionNumber,
-            started_by: user.id,
-            status: 'active',
-          })
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        
-        setSession(newSession as CountSession);
-        setCaptureSequence(1);
-        
-        toast({
-          title: String(t('stocktake.sessionStarted')),
-          description: `${String(t('stocktake.sessionNumber'))}: ${sessionNumber}`,
-        });
-      }
-    } catch (error) {
-      console.error('[StockTakeCapture] Error loading session:', error);
-      toast({
-        title: String(t('error')),
-        description: String(t('stocktake.sessionLoadError')),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Handle photo capture
   const handleCapture = useCallback((imageDataUrl: string) => {
@@ -367,6 +303,21 @@ const StockTakeCapture = () => {
           {String(t('stocktake.rollsCounted'))}: <span className="font-bold text-foreground">{captureSequence - 1}</span>
         </p>
       </div>
+
+      {/* Session expiring warning */}
+      {isExpiring && (
+        <Card className="w-full max-w-sm border-destructive bg-destructive/10">
+          <CardContent className="pt-4 pb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <span className="text-sm font-medium">{String(t('stocktake.sessionExpiringSoon'))}</span>
+            </div>
+            <Button size="sm" variant="outline" onClick={keepSessionActive}>
+              {String(t('stocktake.keepSessionActive'))}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Progress bar when uploading */}
       {isUploading && (
