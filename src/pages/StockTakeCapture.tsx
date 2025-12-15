@@ -12,7 +12,7 @@ import { useStockTakeSession } from '@/hooks/useStockTakeSession';
 import { UploadProgressBar } from '@/components/stocktake/UploadProgressBar';
 import { CameraCapture } from '@/components/stocktake/CameraCapture';
 import { OCRConfirmDialog } from '@/components/stocktake/OCRConfirmDialog';
-import { Camera, StopCircle, AlertTriangle } from 'lucide-react';
+import { Camera, StopCircle, AlertTriangle, Play, ClipboardList, Clock, ArrowLeft } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +51,8 @@ const StockTakeCapture = () => {
     session,
     isLoading,
     isExpiring,
+    hasExistingSession,
+    startSession,
     endSession,
     cancelSession,
     keepSessionActive,
@@ -58,6 +60,8 @@ const StockTakeCapture = () => {
     userId: user?.id,
     onSessionExpired: () => navigate('/'),
   });
+  
+  const [isStartingSession, setIsStartingSession] = useState(false);
   
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -336,6 +340,96 @@ const StockTakeCapture = () => {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Handle starting a new session
+  const handleStartSession = async () => {
+    setIsStartingSession(true);
+    try {
+      await startSession();
+    } finally {
+      setIsStartingSession(false);
+    }
+  };
+
+  // Welcome screen - shown when no active session
+  if (!session && !isStartingSession) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-8 pb-8 space-y-6">
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <ClipboardList className="h-8 w-8 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold">{String(t('stocktake.welcome.title'))}</h1>
+              <p className="text-muted-foreground">
+                {hasExistingSession 
+                  ? String(t('stocktake.welcome.resumeDescription'))
+                  : String(t('stocktake.welcome.description'))
+                }
+              </p>
+            </div>
+
+            {/* Instructions */}
+            <div className="space-y-3 bg-muted/50 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Camera className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm">{String(t('stocktake.welcome.instruction1'))}</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <ClipboardList className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm">{String(t('stocktake.welcome.instruction2'))}</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm">{String(t('stocktake.welcome.instruction3'))}</p>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="space-y-3">
+              <Button 
+                size="lg" 
+                className="w-full h-14 text-lg font-semibold"
+                onClick={handleStartSession}
+                disabled={isStartingSession}
+              >
+                {isStartingSession ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                ) : (
+                  <Play className="h-5 w-5 mr-2" />
+                )}
+                {hasExistingSession 
+                  ? String(t('stocktake.welcome.resumeButton'))
+                  : String(t('stocktake.welcome.startButton'))
+                }
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                className="w-full"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                {String(t('back'))}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Starting session loading state
+  if (isStartingSession) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <p className="text-muted-foreground">{String(t('stocktake.welcome.starting'))}</p>
       </div>
     );
   }
