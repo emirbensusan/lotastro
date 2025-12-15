@@ -263,16 +263,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="flex-1 flex flex-col min-h-screen-safe min-w-0 overflow-hidden">
           {/* Top Navigation - sticky within content flow */}
           <header className="sticky top-0 z-50 border-b bg-card shrink-0 pt-safe">
-            <div className="flex h-12 items-center justify-between px-3 md:px-4">
-              <div className="flex items-center space-x-2">
+            <div className="flex h-11 sm:h-12 items-center justify-between px-2 sm:px-3 md:px-4 gap-1 sm:gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-shrink">
                 {/* Desktop Sidebar Toggle */}
-                <SidebarTrigger className="hidden md:block" />
+                <SidebarTrigger className="hidden md:flex h-8 w-8" />
                 
                 {/* Mobile menu button */}
                 <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="sm" className="md:hidden">
-                      <Menu className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" className="md:hidden h-8 w-8 flex-shrink-0">
+                      <Menu className="h-4 w-4" />
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="left" className="w-64 p-4 pt-safe">
@@ -284,13 +284,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Sheet>
 
                 {/* LotAstro Logo */}
-                <div className="flex items-center space-x-2">
-                <img 
-                  src="/lotastro-logo.svg" 
-                  alt="LotAstro Logo" 
-                  className="w-8 h-8 object-contain"
-                />
-                  <h1 className="text-xl font-semibold text-primary">LotAstro</h1>
+                <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+                  <img 
+                    src="/lotastro-logo.svg" 
+                    alt="LotAstro Logo" 
+                    className="w-6 h-6 sm:w-8 sm:h-8 object-contain flex-shrink-0"
+                  />
+                  <h1 className="text-base sm:text-lg md:text-xl font-semibold text-primary truncate hidden xs:block sm:block">LotAstro</h1>
                 </div>
                 
                 {profile && (
@@ -298,12 +298,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     {profile.role === 'admin' ? (
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button variant="ghost" size="sm" className="p-0 h-auto">
-                            <Badge className={getRoleBadgeColor(effectiveRole!, isViewingAsOtherRole)}>
+                          <Button variant="ghost" size="sm" className="p-0 h-auto flex-shrink-0">
+                            <Badge className={`${getRoleBadgeColor(effectiveRole!, isViewingAsOtherRole)} text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5`}>
                               {isViewingAsOtherRole && (
-                                <span className="text-xs mr-1">👁️</span>
+                                <span className="text-[10px] mr-0.5 sm:mr-1">👁️</span>
                               )}
-                              {(effectiveRole || '').replace('_', ' ').toUpperCase()}
+                              <span className="hidden sm:inline">{(effectiveRole || '').replace('_', ' ').toUpperCase()}</span>
+                              <span className="sm:hidden">{(effectiveRole || '').charAt(0).toUpperCase()}</span>
                             </Badge>
                           </Button>
                         </PopoverTrigger>
@@ -344,19 +345,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </PopoverContent>
                       </Popover>
                     ) : (
-                      <Badge className={getRoleBadgeColor(profile.role)}>
-                        {profile.role.replace('_', ' ').toUpperCase()}
+                      <Badge className={`${getRoleBadgeColor(profile.role)} text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 flex-shrink-0`}>
+                        <span className="hidden sm:inline">{profile.role.replace('_', ' ').toUpperCase()}</span>
+                        <span className="sm:hidden">{profile.role.charAt(0).toUpperCase()}</span>
                       </Badge>
                     )}
                   </>
                 )}
               </div>
 
-              <div className="flex items-center space-x-2 md:space-x-4">
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <GlobalSearch />
                 
                 <Select value={language} onValueChange={(value: 'en' | 'tr') => setLanguage(value)}>
-                  <SelectTrigger className="w-16 md:w-20">
+                  <SelectTrigger className="w-12 sm:w-14 md:w-16 h-8 text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -369,15 +371,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {canCreateOrders && (
                   <Button 
                     variant="ghost" 
-                    size="sm" 
+                    size="icon"
                     onClick={() => setIsCartOpen(true)}
-                    className="relative"
+                    className="relative h-8 w-8"
                   >
                     <ShoppingCart className="h-4 w-4" />
                     {cartItemCount > 0 && (
                       <Badge 
                         variant="destructive" 
-                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                        className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-[10px]"
                       >
                         {cartItemCount}
                       </Badge>
@@ -385,12 +387,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </Button>
                 )}
                 
-                <span className="text-sm text-muted-foreground hidden md:block">
+                <span className="text-xs text-muted-foreground hidden lg:block max-w-24 truncate">
                   {profile?.full_name || profile?.email}
                 </span>
-                <Button variant="ghost" size="sm" onClick={signOut}>
-                  <LogOut className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">{t('signOut')}</span>
+                <Button variant="ghost" size="icon" onClick={signOut} className="h-8 w-8">
+                  <LogOut className="h-4 w-4" />
+                  <span className="sr-only">{t('signOut')}</span>
                 </Button>
               </div>
             </div>
