@@ -271,8 +271,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {/* Mobile menu button */}
                 <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="md:hidden h-8 w-8 flex-shrink-0">
-                      <Menu className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="md:hidden h-10 w-10 sm:h-8 sm:w-8 flex-shrink-0 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0">
+                      <Menu className="h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="left" className="w-64 p-4 pt-safe">
