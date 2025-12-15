@@ -236,13 +236,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Button
                   key={item.path}
                   variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-start min-h-touch"
                   onClick={() => {
                     navigate(item.path);
                     setSidebarOpen(false);
                   }}
                 >
-                  <Icon className="h-4 w-4 mr-2" />
+                  <Icon className="h-5 w-5 mr-3" />
                   {item.label}
                 </Button>
               );
