@@ -328,6 +328,7 @@ const translations = {
     acceptInvitationCreateAccount: 'Accept Invitation & Create Account',
     alreadyHaveAccount: 'Already have an account? Sign in',
     goToLogin: 'Go to Login',
+    passwordRequirements: 'Password must be at least 6 characters long',
     
     // 404 Not Found Page
     pageNotFound: 'Page not found',
@@ -2987,6 +2988,7 @@ const translations = {
     acceptInvitationCreateAccount: 'Daveti Kabul Et ve Hesap Oluştur',
     alreadyHaveAccount: 'Zaten hesabınız var mı? Giriş yapın',
     goToLogin: 'Giriş Sayfasına Git',
+    passwordRequirements: 'Şifre en az 6 karakter uzunluğunda olmalıdır',
     
     // 404 Not Found Page
     pageNotFound: 'Sayfa bulunamadı',
