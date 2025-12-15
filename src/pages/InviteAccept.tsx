@@ -282,6 +282,9 @@ const InviteAccept = () => {
                   )}
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t('passwordRequirements')}
+              </p>
             </div>
 
             <div className="space-y-2">
