@@ -67,8 +67,8 @@ const StockTakeCapture = () => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [captureSequence, setCaptureSequence] = useState(1);
 
-  // Check permissions
-  const canStartSession = hasPermission('stocktake', 'start_session');
+  // Check permissions - use database format (no underscores)
+  const canStartSession = hasPermission('stocktake', 'startsession');
 
   // Handle photo capture
   const handleCapture = useCallback((imageDataUrl: string) => {
