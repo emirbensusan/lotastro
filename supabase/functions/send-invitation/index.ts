@@ -155,9 +155,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Generate invite token and link
+    // Use SITE_URL environment variable for consistent redirect URLs
+    // This ensures invitation links always go to the configured production domain
     const inviteToken = crypto.randomUUID();
-    const origin = req.headers.get('origin') || req.headers.get('referer') || 'https://depo.lotastro.com';
-    const inviteLink = `${origin}/invite?token=${inviteToken}`;
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://depo.lotastro.com';
+    const inviteLink = `${siteUrl}/invite?token=${inviteToken}`;
 
     console.log('Sending invitation via Supabase auth...');
 
@@ -166,7 +168,7 @@ const handler = async (req: Request): Promise<Response> => {
       normalizedEmail,
       {
         data: { role, full_name: '' },
-        redirectTo: `${origin}/invite`
+        redirectTo: `${siteUrl}/invite`
       }
     );
 
