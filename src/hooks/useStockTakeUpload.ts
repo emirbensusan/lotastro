@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useImageCompression } from './useImageCompression';
+import { useImageCompression, PreprocessingOptions } from './useImageCompression';
 
 interface UploadProgress {
   stage: 'compressing' | 'uploading' | 'queued' | 'processing' | 'complete' | 'error' | 'timeout';
@@ -60,6 +60,16 @@ interface UploadAndOCRResult {
   ocrJobId?: string;
 }
 
+// Default preprocessing settings (enabled by default)
+const DEFAULT_PREPROCESSING: PreprocessingOptions = {
+  enabled: true,
+  grayscale: true,
+  contrast: true,
+  contrastLevel: 20,
+  sharpen: true,
+  sharpenLevel: 30,
+};
+
 // OCR timeout in milliseconds (5 seconds before showing manual entry option)
 const OCR_TIMEOUT_MS = 5000;
 // Max wait time for OCR polling (15 seconds total)
@@ -75,8 +85,38 @@ export const useStockTakeUpload = () => {
   });
   const [isUploading, setIsUploading] = useState(false);
   const [ocrTimedOut, setOcrTimedOut] = useState(false);
+  const [preprocessingSettings, setPreprocessingSettings] = useState<PreprocessingOptions>(DEFAULT_PREPROCESSING);
   const { compressImage, compressFromDataUrl, generateThumbnails, generateThumbnailsFromDataUrl } = useImageCompression();
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Fetch preprocessing settings from database
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('email_settings')
+          .select('setting_value')
+          .eq('setting_key', 'stocktake_settings')
+          .maybeSingle();
+
+        if (data && !error && data.setting_value) {
+          const settings = data.setting_value as any;
+          setPreprocessingSettings({
+            enabled: settings.preprocessing_enabled ?? true,
+            grayscale: settings.preprocessing_grayscale ?? true,
+            contrast: settings.preprocessing_contrast ?? true,
+            contrastLevel: settings.preprocessing_contrast_level ?? 20,
+            sharpen: settings.preprocessing_sharpen ?? true,
+            sharpenLevel: settings.preprocessing_sharpen_level ?? 30,
+          });
+        }
+      } catch (err) {
+        console.warn('[useStockTakeUpload] Failed to fetch preprocessing settings:', err);
+      }
+    };
+
+    fetchSettings();
+  }, []);
 
   // Generate storage paths for all sizes
   const generateStoragePaths = useCallback((
@@ -308,25 +348,42 @@ export const useStockTakeUpload = () => {
     setOcrTimedOut(false);
     
     try {
-      // Stage 1: Generate all thumbnail sizes
+      // Stage 1: Generate all thumbnail sizes with preprocessing for OCR
       setProgress({
         stage: 'compressing',
         percent: 10,
-        message: 'Fotoğraf sıkıştırılıyor...',
+        message: preprocessingSettings.enabled 
+          ? 'Görüntü ön işleme ve sıkıştırma...' 
+          : 'Fotoğraf sıkıştırılıyor...',
       });
 
       let thumbnails;
       let originalSize = 0;
+      let preprocessedForOCR;
       
       if (typeof imageSource === 'string') {
         // Data URL - get size estimate
         const response = await fetch(imageSource);
         const blob = await response.blob();
         originalSize = blob.size;
+        
+        // Generate thumbnails (without preprocessing - for display)
         thumbnails = await generateThumbnailsFromDataUrl(imageSource);
+        
+        // Generate preprocessed version for OCR (if enabled)
+        if (preprocessingSettings.enabled) {
+          preprocessedForOCR = await compressFromDataUrl(imageSource, {}, preprocessingSettings);
+          console.log('[useStockTakeUpload] Preprocessing applied:', preprocessingSettings);
+        }
       } else {
         originalSize = imageSource.size;
         thumbnails = await generateThumbnails(imageSource);
+        
+        // Generate preprocessed version for OCR (if enabled)
+        if (preprocessingSettings.enabled) {
+          preprocessedForOCR = await compressImage(imageSource, {}, preprocessingSettings);
+          console.log('[useStockTakeUpload] Preprocessing applied:', preprocessingSettings);
+        }
       }
 
       const totalSize = thumbnails.original.size + thumbnails.medium.size + thumbnails.thumb.size;
@@ -514,6 +571,9 @@ export const useStockTakeUpload = () => {
     createOCRJob,
     triggerOCRWorker,
     pollOCRResult,
+    compressImage,
+    compressFromDataUrl,
+    preprocessingSettings,
   ]);
 
   // Reset progress state
