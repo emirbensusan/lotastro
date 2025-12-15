@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useImageCompression, PreprocessingOptions } from './useImageCompression';
 import { useClientOCR, type ClientOCRResult } from './useClientOCR';
+import { preprocessForOCR, OCRPreprocessingOptions } from '@/utils/ocrPreprocessing';
 
 interface UploadProgress {
   stage: 'compressing' | 'uploading' | 'ocr' | 'complete' | 'error' | 'timeout';
@@ -383,12 +384,35 @@ export const useStockTakeUpload = () => {
         setProgress({
           stage: 'ocr',
           percent: 50,
+          message: 'Görüntü ön işleme yapılıyor...',
+          ocrProgress: 0,
+        });
+
+        // Apply preprocessing for OCR
+        const ocrPreprocessOptions: OCRPreprocessingOptions = {
+          enabled: preprocessingSettings.enabled,
+          grayscale: preprocessingSettings.grayscale,
+          contrast: preprocessingSettings.contrast,
+          contrastLevel: preprocessingSettings.contrastLevel,
+          sharpen: preprocessingSettings.sharpen,
+          sharpenLevel: preprocessingSettings.sharpenLevel,
+          binarize: false, // Keep off by default
+          noiseReduction: true,
+          invertDetection: true,
+        };
+
+        console.log('[useStockTakeUpload] Applying OCR preprocessing...');
+        const preprocessedImageUrl = await preprocessForOCR(imageDataUrlForOCR, ocrPreprocessOptions);
+        
+        setProgress({
+          stage: 'ocr',
+          percent: 55,
           message: 'OCR başlatılıyor...',
           ocrProgress: 0,
         });
 
-        console.log('[useStockTakeUpload] Starting client-side OCR with data URL...');
-        const clientOCRResult = await runOCR(imageDataUrlForOCR);
+        console.log('[useStockTakeUpload] Starting client-side OCR with preprocessed image...');
+        const clientOCRResult = await runOCR(preprocessedImageUrl);
         const ocrResult = convertOCRResult(clientOCRResult);
 
         console.log('[useStockTakeUpload] Client OCR result:', {
