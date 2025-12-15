@@ -315,6 +315,7 @@ const translations = {
     completeAccountSetup: 'Complete your account setup',
     invitationDetails: 'Invitation Details',
     createPassword: 'Create a password',
+    confirmPassword: 'Confirm Password',
     confirmYourPassword: 'Confirm your password',
     accountCreated: 'Account Created',
     accountCreatedSuccess: 'Your account has been created successfully.',
@@ -2973,6 +2974,7 @@ const translations = {
     completeAccountSetup: 'Hesap kurulumunuzu tamamlayın',
     invitationDetails: 'Davet Detayları',
     createPassword: 'Şifre oluşturun',
+    confirmPassword: 'Şifreyi Onayla',
     confirmYourPassword: 'Şifrenizi onaylayın',
     accountCreated: 'Hesap Oluşturuldu',
     accountCreatedSuccess: 'Hesabınız başarıyla oluşturuldu.',
@@ -5073,10 +5075,10 @@ interface LanguageProviderProps {
 }
 
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
-  // Initialize from localStorage, fallback to 'en'
+  // Initialize from localStorage, fallback to 'tr' (Turkish default)
   const [language, setLanguage] = useState<'en' | 'tr'>(() => {
     const saved = localStorage.getItem('lotastro-language');
-    return (saved === 'en' || saved === 'tr') ? saved : 'en';
+    return (saved === 'en' || saved === 'tr') ? saved : 'tr';
   });
 
   // Persist to localStorage whenever language changes
