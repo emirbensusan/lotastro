@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Package, Truck, AlertTriangle, TrendingUp, TruckIcon, Lock, PackageCheck, Calendar, Factory, Palette, BookOpen, PackageX } from 'lucide-react';
+import { Package, Truck, AlertTriangle, TrendingUp, TruckIcon, Lock, PackageCheck, Calendar, Factory, Palette, BookOpen, PackageX, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DashboardStats {
   totalLots: number;
@@ -30,6 +33,8 @@ const Dashboard = () => {
   const { profile } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const { success: hapticSuccess } = useHapticFeedback();
   const [stats, setStats] = useState<DashboardStats>({
     totalLots: 0,
     totalRolls: 0,
@@ -60,7 +65,7 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -153,7 +158,12 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    await fetchDashboardStats();
+    hapticSuccess();
+  }, [fetchDashboardStats, hapticSuccess]);
 
   const statCards = [
     {
@@ -263,7 +273,7 @@ const Dashboard = () => {
     );
   }
 
-  return (
+  const content = (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
@@ -491,6 +501,17 @@ const Dashboard = () => {
       </div>
     </div>
   );
+
+  // Wrap with pull-to-refresh on mobile
+  if (isMobile) {
+    return (
+      <PullToRefresh onRefresh={handleRefresh} className="h-full">
+        {content}
+      </PullToRefresh>
+    );
+  }
+
+  return content;
 };
 
 export default Dashboard;
