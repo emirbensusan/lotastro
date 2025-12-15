@@ -54,14 +54,14 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Verifying admin role for user:", user.email);
 
     // Verify user is admin
-    const { data: profile, error: profileError } = await supabase
+    const { data: adminProfile, error: adminProfileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('user_id', user.id)
       .single();
 
-    if (profileError || profile?.role !== 'admin') {
-      console.error('Admin check failed:', profileError);
+    if (adminProfileError || adminProfile?.role !== 'admin') {
+      console.error('Admin check failed:', adminProfileError);
       return new Response(
         JSON.stringify({ error: 'Admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -108,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ 
           error: 'User already exists',
           code: 'USER_EXISTS',
-          details: `A user with email ${email} already has an account. Use password reset or edit the existing user instead.`
+          details: `A user with email ${normalizedEmail} already has an account. Use password reset or edit the existing user instead.`
         }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -134,11 +134,24 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ 
           error: 'Auth user exists without profile',
           code: 'AUTH_ONLY_USER',
-          details: `User ${email} exists in authentication but has no profile. Click "Reconcile Users" to fix this issue, then try again.`,
+          details: `User ${normalizedEmail} exists in authentication but has no profile. Click "Reconcile Users" to fix this issue, then try again.`,
           userId: existingAuthUser.id
         }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check if there's already a pending invitation for this email
+    const { data: existingInvite } = await supabase
+      .from('user_invitations')
+      .select('id, status, invited_at')
+      .ilike('email', normalizedEmail)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (existingInvite) {
+      console.log('Pending invitation already exists, updating it:', existingInvite.id);
+      // Update existing invitation instead of creating duplicate
     }
 
     // Generate invite token and link
@@ -196,53 +209,75 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('Email sent successfully via Supabase');
     }
 
-    // Create profile for the invited user (even if email failed)
-    const userId = inviteData?.user?.id || crypto.randomUUID();
+    // IMPORTANT: Do NOT create a profile here!
+    // The profile will be created by the handle_new_user trigger when the user accepts the invitation
+    // Creating a profile here with a random UUID causes orphan profiles when email fails
     
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        user_id: userId,
-        email: normalizedEmail,
-        full_name: '',
-        role: role as any,
-        active: true
-      });
-
-    if (profileError) {
-      console.error('Error creating profile:', profileError);
-      // Don't fail completely - we can still proceed with invitation record
+    // Only store the userId if Supabase actually created the auth user
+    const userId = inviteData?.user?.id || null;
+    
+    if (userId) {
+      console.log("Supabase created auth user with ID:", userId);
     } else {
-      console.log("Profile created for invited user:", userId);
+      console.log("No auth user created yet - profile will be created when user accepts invitation");
     }
 
-    // Always create invitation record with tracking info
-    const { error: invitationError } = await supabase
-      .from('user_invitations')
-      .insert({
-        email: normalizedEmail,
-        role: role as any,
-        invited_by: user.id,
-        token: inviteToken,
-        status: 'pending',
-        email_sent: emailSent,
-        email_error: emailError,
-        last_attempt_at: new Date().toISOString(),
-        invite_link: inviteLink
-      });
+    // Create or update invitation record with tracking info
+    if (existingInvite) {
+      // Update existing pending invitation
+      const { error: updateError } = await supabase
+        .from('user_invitations')
+        .update({
+          role: role as any,
+          invited_by: user.id,
+          token: inviteToken,
+          email_sent: emailSent,
+          email_error: emailError,
+          last_attempt_at: new Date().toISOString(),
+          invite_link: inviteLink,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // Reset expiry to 7 days
+        })
+        .eq('id', existingInvite.id);
 
-    if (invitationError) {
-      console.error('Error creating invitation record:', invitationError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to create invitation record',
-          details: invitationError.message
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (updateError) {
+        console.error('Error updating invitation record:', updateError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to update invitation record',
+            details: updateError.message
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log(`Invitation updated for ${normalizedEmail} (email_sent: ${emailSent})`);
+    } else {
+      // Create new invitation record
+      const { error: invitationError } = await supabase
+        .from('user_invitations')
+        .insert({
+          email: normalizedEmail,
+          role: role as any,
+          invited_by: user.id,
+          token: inviteToken,
+          status: 'pending',
+          email_sent: emailSent,
+          email_error: emailError,
+          last_attempt_at: new Date().toISOString(),
+          invite_link: inviteLink
+        });
+
+      if (invitationError) {
+        console.error('Error creating invitation record:', invitationError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to create invitation record',
+            details: invitationError.message
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log(`Invitation created for ${normalizedEmail} (email_sent: ${emailSent})`);
     }
-
-    console.log(`Invitation created for ${normalizedEmail} (email_sent: ${emailSent})`);
 
     // If email failed, return error with invite link for manual sharing
     if (!emailSent) {
