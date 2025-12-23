@@ -1439,6 +1439,11 @@ const translations = {
     'scheduledReports.roleRecipients': 'Role-based Recipients',
     'scheduledReports.roleRecipientsHelp': 'All users with selected roles will receive this report',
     'scheduledReports.emailRecipients': 'Email Recipients',
+    'scheduledReports.sendNow': 'Send Now',
+    'scheduledReports.sendSuccess': 'Report sent successfully to {count} recipients',
+    'scheduledReports.sendError': 'Failed to send report',
+    'scheduledReports.noTemplateLinked': 'No report template linked to this schedule',
+    'scheduledReports.noRecipientsToSend': 'No recipients configured for this schedule',
 
     multipleSamples: 'Multiple Samples',
     multiOrderMinimum: 'Multi-quality orders require at least 2 different quality/color combinations',
@@ -3020,6 +3025,11 @@ const translations = {
     'scheduledReports.roleRecipients': 'Rol Tabanlı Alıcılar',
     'scheduledReports.roleRecipientsHelp': 'Seçilen rollere sahip tüm kullanıcılar bu raporu alacak',
     'scheduledReports.emailRecipients': 'E-posta Alıcıları',
+    'scheduledReports.sendNow': 'Şimdi Gönder',
+    'scheduledReports.sendSuccess': 'Rapor {count} alıcıya başarıyla gönderildi',
+    'scheduledReports.sendError': 'Rapor gönderilemedi',
+    'scheduledReports.noTemplateLinked': 'Bu zamanlamaya bağlı rapor şablonu yok',
+    'scheduledReports.noRecipientsToSend': 'Bu zamanlama için alıcı yapılandırılmamış',
     
     // Common
     search: 'Ara',

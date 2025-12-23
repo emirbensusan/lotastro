@@ -126,11 +126,13 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse request body for optional schedule_id (manual trigger)
+    // Parse request body for optional scheduleId (manual trigger)
     let specificScheduleId: string | null = null;
+    let isManualTrigger = false;
     try {
       const body = await req.json();
-      specificScheduleId = body?.schedule_id || null;
+      specificScheduleId = body?.scheduleId || body?.schedule_id || null;
+      isManualTrigger = body?.manual === true;
     } catch {
       // No body, process all due schedules
     }
@@ -155,7 +157,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     for (const schedule of schedules || []) {
       // Check if schedule should run now (unless manually triggered)
-      if (!specificScheduleId && !shouldRunSchedule(schedule, now)) {
+      if (!specificScheduleId && !isManualTrigger && !shouldRunSchedule(schedule, now)) {
         console.log(`send-scheduled-report: Skipping ${schedule.name} - not due`);
         continue;
       }
@@ -348,10 +350,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`send-scheduled-report: Completed. Processed ${results.length} schedules`);
 
+    const successResults = results.filter((r: any) => r.status === 'success');
+    const totalEmailsSent = successResults.reduce((sum: number, r: any) => sum + (r.recipients || 0), 0);
+
     return new Response(
       JSON.stringify({ 
         success: true,
         processed: results.length,
+        emailsSent: totalEmailsSent,
         results,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

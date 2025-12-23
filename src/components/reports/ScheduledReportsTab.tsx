@@ -112,6 +112,7 @@ const ScheduledReportsTab: React.FC = () => {
   const [reportConfigs, setReportConfigs] = useState<ReportConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingScheduleId, setSendingScheduleId] = useState<string | null>(null);
   
   // Edit dialog state
   const [editingSchedule, setEditingSchedule] = useState<EmailSchedule | null>(null);
@@ -397,6 +398,45 @@ const ScheduledReportsTab: React.FC = () => {
     }
   };
 
+  const handleSendNow = async (schedule: EmailSchedule) => {
+    if (!schedule.template_id) {
+      toast.error(String(t('scheduledReports.noTemplateLinked')));
+      return;
+    }
+    
+    const recipientCounts = getRecipientsCount(schedule.id);
+    if (recipientCounts.total === 0) {
+      toast.error(String(t('scheduledReports.noRecipientsToSend')));
+      return;
+    }
+
+    setSendingScheduleId(schedule.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-scheduled-report', {
+        body: { 
+          scheduleId: schedule.id,
+          manual: true 
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(
+          String(t('scheduledReports.sendSuccess')).replace('{count}', String(data.emailsSent || 0))
+        );
+        fetchData(); // Refresh to update last_run_at
+      } else {
+        throw new Error(data?.error || 'Unknown error');
+      }
+    } catch (error: any) {
+      console.error('Error sending report:', error);
+      toast.error(String(t('scheduledReports.sendError')));
+    } finally {
+      setSendingScheduleId(null);
+    }
+  };
+
   const addEmail = () => {
     const email = formData.newEmail.trim();
     if (email && !formData.emails.includes(email) && email.includes('@')) {
@@ -617,6 +657,19 @@ const ScheduledReportsTab: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleSendNow(schedule)}
+                            disabled={sendingScheduleId === schedule.id || !schedule.template_id}
+                            title={String(t('scheduledReports.sendNow'))}
+                          >
+                            {sendingScheduleId === schedule.id ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <SendHorizontal className="h-4 w-4" />
+                            )}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
