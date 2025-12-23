@@ -3,12 +3,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, Calendar, FileText, Mail, Settings } from 'lucide-react';
 import ViewReportsTab from '@/components/reports/ViewReportsTab';
 import ReportSettingsTab from '@/components/reports/ReportSettingsTab';
 import ReportTemplatesTab from '@/components/reports/ReportTemplatesTab';
 import DigestsTab from '@/components/reports/DigestsTab';
+import ScheduledReportsTab from '@/components/reports/ScheduledReportsTab';
 
 const Reports: React.FC = () => {
   const { loading: authLoading } = useAuth();
@@ -71,22 +71,7 @@ const Reports: React.FC = () => {
         {canManageReports && (
           <>
             <TabsContent value="scheduled" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    {t('scheduledReports')}
-                  </CardTitle>
-                  <CardDescription>
-                    {t('scheduledReportsDescription')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm">
-                    {t('comingSoon')} - {t('scheduledReportsPlaceholder')}
-                  </p>
-                </CardContent>
-              </Card>
+              <ScheduledReportsTab />
             </TabsContent>
 
             <TabsContent value="templates" className="mt-6">
