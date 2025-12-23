@@ -2975,6 +2975,65 @@ export type Database = {
           },
         ]
       }
+      scheduled_reports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_enabled: boolean
+          last_sent_at: string | null
+          name: string
+          next_run_at: string | null
+          output_format: string
+          recipients: Json
+          report_config_id: string | null
+          report_type: string
+          schedule_config: Json
+          schedule_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          last_sent_at?: string | null
+          name: string
+          next_run_at?: string | null
+          output_format?: string
+          recipients?: Json
+          report_config_id?: string | null
+          report_type: string
+          schedule_config?: Json
+          schedule_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          last_sent_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          output_format?: string
+          recipients?: Json
+          report_config_id?: string | null
+          report_type?: string
+          schedule_config?: Json
+          schedule_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_reports_report_config_id_fkey"
+            columns: ["report_config_id"]
+            isOneToOne: false
+            referencedRelation: "email_report_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           created_at: string
