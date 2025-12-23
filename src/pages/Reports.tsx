@@ -8,6 +8,7 @@ import { BarChart3, Calendar, FileText, Mail, Settings } from 'lucide-react';
 import ViewReportsTab from '@/components/reports/ViewReportsTab';
 import ReportSettingsTab from '@/components/reports/ReportSettingsTab';
 import ReportTemplatesTab from '@/components/reports/ReportTemplatesTab';
+import DigestsTab from '@/components/reports/DigestsTab';
 
 const Reports: React.FC = () => {
   const { loading: authLoading } = useAuth();
@@ -93,22 +94,7 @@ const Reports: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="digests" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Mail className="h-5 w-5" />
-                    {t('emailDigests')}
-                  </CardTitle>
-                  <CardDescription>
-                    {t('emailDigestsDescription')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm">
-                    {t('comingSoon')} - {t('emailDigestsPlaceholder')}
-                  </p>
-                </CardContent>
-              </Card>
+              <DigestsTab />
             </TabsContent>
 
             <TabsContent value="settings" className="mt-6">
