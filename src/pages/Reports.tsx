@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, Calendar, FileText, Mail, Settings } from 'lucide-react';
 import ViewReportsTab from '@/components/reports/ViewReportsTab';
+import ReportSettingsTab from '@/components/reports/ReportSettingsTab';
 
 const Reports: React.FC = () => {
   const { loading: authLoading } = useAuth();
@@ -125,22 +126,7 @@ const Reports: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="settings" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    {t('reportSettings')}
-                  </CardTitle>
-                  <CardDescription>
-                    {t('reportSettingsDescription')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm">
-                    {t('comingSoon')} - {t('reportSettingsPlaceholder')}
-                  </p>
-                </CardContent>
-              </Card>
+              <ReportSettingsTab />
             </TabsContent>
           </>
         )}
