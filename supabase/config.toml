@@ -89,3 +89,6 @@ verify_jwt = true
 
 [functions.process-ocr-queue]
 verify_jwt = false
+
+[functions.send-scheduled-report]
+verify_jwt = false
