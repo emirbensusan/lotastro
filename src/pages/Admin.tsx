@@ -10,14 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Plus, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, Link2, ArrowRightLeft, Package, Clock } from 'lucide-react';
+import { Users, Settings, Database, Shield, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, ArrowRightLeft, Package, Link2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import InteractivePermissionsTab from '@/components/InteractivePermissionsTab';
 import EmailTemplatesTab from '@/components/EmailTemplatesTab';
-import { EmailDigestsTab } from '@/components/email/EmailDigestsTab';
-import ReportConfigurationTab from '@/components/email/ReportConfigurationTab';
 import ReminderSettingsTab from '@/components/ReminderSettingsTab';
 import OrderFlowSettingsTab from '@/components/OrderFlowSettingsTab';
 import CatalogCustomFieldsAdmin from '@/components/catalog/CatalogCustomFieldsAdmin';
@@ -778,8 +776,6 @@ const Admin: React.FC = () => {
           <TabsTrigger value="security" className="flex-shrink-0">{t('security')}</TabsTrigger>
           <TabsTrigger value="catalog" className="flex-shrink-0">{t('catalog.settings')}</TabsTrigger>
           <TabsTrigger value="emailTemplates" className="flex-shrink-0">{t('emailSettings.emailTemplates')}</TabsTrigger>
-          <TabsTrigger value="emailDigests" className="flex-shrink-0">{language === 'tr' ? 'E-posta Digest' : 'Email Digests'}</TabsTrigger>
-          <TabsTrigger value="reportConfigs" className="flex-shrink-0">{language === 'tr' ? 'Rapor Ayarları' : 'Report Config'}</TabsTrigger>
           <TabsTrigger value="reminderSettings" className="flex-shrink-0">{t('emailSettings.reminderSettings')}</TabsTrigger>
           <TabsTrigger value="auditRetention" className="flex-shrink-0">{t('auditRetention')}</TabsTrigger>
           <TabsTrigger value="orderFlow" className="flex-shrink-0">{t('orderFlowSettings')}</TabsTrigger>
@@ -1278,14 +1274,6 @@ const Admin: React.FC = () => {
 
         <TabsContent value="emailTemplates" className="space-y-6">
           <EmailTemplatesTab />
-        </TabsContent>
-
-        <TabsContent value="emailDigests" className="space-y-6">
-          <EmailDigestsTab />
-        </TabsContent>
-
-        <TabsContent value="reportConfigs" className="space-y-6">
-          <ReportConfigurationTab />
         </TabsContent>
 
         <TabsContent value="reminderSettings" className="space-y-6">
