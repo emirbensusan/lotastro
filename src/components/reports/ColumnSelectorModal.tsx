@@ -91,14 +91,79 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
   const [validatingColumns, setValidatingColumns] = useState<Set<string>>(new Set());
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [validatingAll, setValidatingAll] = useState(false);
 
   // Reset pending selections when modal opens
   useEffect(() => {
     if (open) {
       setPendingSelections(new Set(selectedColumns.map(c => `${c.table}.${c.key}`)));
       setValidationCache({});
+      setValidatingAll(false);
     }
   }, [open, selectedColumns]);
+
+  // Eager validation: validate all columns when selection changes
+  useEffect(() => {
+    if (!open) return;
+    
+    if (pendingSelections.size === 0) {
+      setValidationCache({});
+      setValidatingAll(false);
+      return;
+    }
+
+    const validateAllColumns = async () => {
+      setValidatingAll(true);
+      
+      // Get tables from currently pending selections
+      const selectedTables = Array.from(pendingSelections).map(key => key.split('.')[0]);
+      const uniqueSelectedTables = [...new Set(selectedTables)];
+      
+      // Get all unique tables from available columns
+      const allTables = [...new Set(allColumns.map(c => c.table))];
+      const tablesToValidate = allTables.filter(t => !uniqueSelectedTables.includes(t));
+      
+      const newCache: Record<string, { canJoin: boolean; error?: string }> = {};
+      
+      // Columns from selected tables are always compatible
+      uniqueSelectedTables.forEach(table => {
+        allColumns
+          .filter(c => c.table === table)
+          .forEach(c => {
+            newCache[`${c.table}.${c.key}`] = { canJoin: true };
+          });
+      });
+      
+      // Validate each unselected table's compatibility
+      for (const table of tablesToValidate) {
+        try {
+          const sampleColumn = allColumns.find(c => c.table === table);
+          if (!sampleColumn) continue;
+          
+          const result = await onValidateColumn(sampleColumn);
+          
+          // Apply result to all columns in this table
+          allColumns
+            .filter(c => c.table === table)
+            .forEach(c => {
+              newCache[`${c.table}.${c.key}`] = result;
+            });
+        } catch (error) {
+          // On error, mark as cannot join
+          allColumns
+            .filter(c => c.table === table)
+            .forEach(c => {
+              newCache[`${c.table}.${c.key}`] = { canJoin: false, error: 'Validation failed' };
+            });
+        }
+      }
+      
+      setValidationCache(newCache);
+      setValidatingAll(false);
+    };
+
+    validateAllColumns();
+  }, [pendingSelections, open, allColumns, onValidateColumn]);
 
   // Deduplicate columns by name (keeping track of which tables they appear in)
   const deduplicatedColumns = useMemo((): DeduplicatedColumn[] => {
@@ -441,9 +506,13 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
                     <TooltipProvider delayDuration={200}>
                       {filteredColumns.map((col) => {
                         const isPending = isColumnPending(col);
-                        const validation = canColumnBeJoined(col);
-                        const isValidating = validatingColumns.has(`${col.primaryTable}.${col.key}`);
-                        const isDisabled = !validation.canJoin && !isPending;
+                        const cacheKey = `${col.primaryTable}.${col.key}`;
+                        const cachedValidation = validationCache[cacheKey];
+                        const isValidating = validatingAll || validatingColumns.has(cacheKey);
+                        // Column is disabled if: has pending selections, this column isn't pending, and validation says cannot join
+                        const isDisabled = pendingSelections.size > 0 && 
+                          !isPending && 
+                          cachedValidation?.canJoin === false;
                         const Icon = TypeIcon(col.type);
                         
                         return (
@@ -490,7 +559,7 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
                             <TooltipContent side="bottom" className="max-w-xs">
                               {isDisabled ? (
                                 <p className="text-destructive">
-                                  {validation.error || (language === 'tr' ? 'Bu sütun seçili sütunlarla birleştirilemez' : 'This column cannot be joined with selected columns')}
+                                  {cachedValidation?.error || (language === 'tr' ? 'Bu sütun seçili sütunlarla birleştirilemez' : 'This column cannot be joined with selected columns')}
                                 </p>
                               ) : (
                                 <div className="space-y-1">
@@ -518,10 +587,26 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
           <div className="w-72 shrink-0 flex flex-col border rounded-lg overflow-hidden">
             <div className="p-3 border-b bg-muted/50">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium text-sm">
-                  {language === 'tr' ? 'Seçili Sütunlar' : 'Selected Columns'}
-                </h4>
-                <Badge variant="secondary">{pendingColumnsArray.length}</Badge>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-sm">
+                    {language === 'tr' ? 'Seçili Sütunlar' : 'Selected Columns'}
+                  </h4>
+                  <Badge variant="secondary">{pendingColumnsArray.length}</Badge>
+                </div>
+                {pendingColumnsArray.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      setPendingSelections(new Set());
+                      setValidationCache({});
+                    }}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    {language === 'tr' ? 'Temizle' : 'Clear'}
+                  </Button>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {language === 'tr' ? 'Sıralamak için sürükleyin' : 'Drag to reorder'}
@@ -586,19 +671,6 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
               </div>
             </ScrollArea>
             
-            {/* Clear All button */}
-            {pendingColumnsArray.length > 0 && (
-              <div className="p-2 border-t">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs h-7 text-muted-foreground hover:text-destructive"
-                  onClick={() => setPendingSelections(new Set())}
-                >
-                  {language === 'tr' ? 'Tümünü Temizle' : 'Clear All'}
-                </Button>
-              </div>
-            )}
           </div>
         </div>
 
