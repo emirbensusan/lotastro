@@ -16,8 +16,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   GripVertical, Plus, X, Database, Columns, ArrowUpDown, 
   Palette, Save, FileSpreadsheet, Mail,
-  Search, Loader2, Calculator, Edit, Trash2, Filter, ChevronUp, ChevronDown, Eye
+  Search, Loader2, Calculator, Edit, Trash2, Filter, ChevronUp, ChevronDown, Eye,
+  Clock, Calendar, Users, Globe
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { CalculatedFieldBuilder, CalculatedField } from './CalculatedFieldBuilder';
 import { FilterBuilder, FilterGroup } from './FilterBuilder';
 import { StyleBuilder, ReportStyling, DEFAULT_REPORT_STYLING } from './StyleBuilder';
@@ -62,6 +64,20 @@ interface SortConfig {
   priority: number;
 }
 
+interface ScheduleConfig {
+  enabled: boolean;
+  schedule_type: 'daily' | 'weekly' | 'monthly';
+  hour: number;
+  minute: number;
+  timezone: string;
+  day_of_week?: number;
+  day_of_month?: number;
+  recipients: {
+    roles: string[];
+    emails: string[];
+  };
+}
+
 interface ReportConfig {
   id?: string;
   name: string;
@@ -75,6 +91,7 @@ interface ReportConfig {
   output_formats: string[];
   include_charts: boolean;
   schedule_id?: string | null;
+  schedule_config?: ScheduleConfig;
 }
 
 interface ReportBuilderProps {
@@ -89,6 +106,49 @@ const OUTPUT_FORMATS = [
   { key: 'excel', labelEn: 'Excel File', labelTr: 'Excel Dosyası', icon: FileSpreadsheet },
   { key: 'csv', labelEn: 'CSV File', labelTr: 'CSV Dosyası', icon: FileSpreadsheet },
 ];
+
+const TIMEZONES = [
+  { value: 'Europe/Istanbul', label: 'Istanbul (GMT+3)' },
+  { value: 'Europe/London', label: 'London (GMT+0/+1)' },
+  { value: 'Europe/Paris', label: 'Paris (GMT+1/+2)' },
+  { value: 'Europe/Berlin', label: 'Berlin (GMT+1/+2)' },
+  { value: 'America/New_York', label: 'New York (GMT-5/-4)' },
+  { value: 'America/Los_Angeles', label: 'Los Angeles (GMT-8/-7)' },
+  { value: 'Asia/Dubai', label: 'Dubai (GMT+4)' },
+  { value: 'Asia/Shanghai', label: 'Shanghai (GMT+8)' },
+  { value: 'UTC', label: 'UTC (GMT+0)' },
+];
+
+const DAYS_OF_WEEK = [
+  { value: 0, labelEn: 'Sunday', labelTr: 'Pazar' },
+  { value: 1, labelEn: 'Monday', labelTr: 'Pazartesi' },
+  { value: 2, labelEn: 'Tuesday', labelTr: 'Salı' },
+  { value: 3, labelEn: 'Wednesday', labelTr: 'Çarşamba' },
+  { value: 4, labelEn: 'Thursday', labelTr: 'Perşembe' },
+  { value: 5, labelEn: 'Friday', labelTr: 'Cuma' },
+  { value: 6, labelEn: 'Saturday', labelTr: 'Cumartesi' },
+];
+
+const ROLES = [
+  { value: 'admin', labelEn: 'Admin', labelTr: 'Yönetici' },
+  { value: 'senior_manager', labelEn: 'Senior Manager', labelTr: 'Üst Düzey Yönetici' },
+  { value: 'accounting', labelEn: 'Accounting', labelTr: 'Muhasebe' },
+  { value: 'warehouse_staff', labelEn: 'Warehouse Staff', labelTr: 'Depo Personeli' },
+];
+
+const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
+  enabled: false,
+  schedule_type: 'weekly',
+  hour: 8,
+  minute: 0,
+  timezone: 'Europe/Istanbul',
+  day_of_week: 1,
+  day_of_month: 1,
+  recipients: {
+    roles: ['admin'],
+    emails: [],
+  },
+};
 
 export const ReportBuilder: React.FC<ReportBuilderProps> = ({
   open,
@@ -136,6 +196,10 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
   // Styling state
   const [reportStyling, setReportStyling] = useState<ReportStyling>(DEFAULT_REPORT_STYLING);
 
+  // Schedule state
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig>(DEFAULT_SCHEDULE_CONFIG);
+  const [newRecipientEmail, setNewRecipientEmail] = useState('');
+
   // Fetch data sources on mount
   useEffect(() => {
     if (open) {
@@ -156,6 +220,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
       setFilterGroups(editingConfig.filters || []);
       setSortConfigs(editingConfig.sorting || []);
       setReportStyling(editingConfig.styling || DEFAULT_REPORT_STYLING);
+      setScheduleConfig(editingConfig.schedule_config || DEFAULT_SCHEDULE_CONFIG);
       
       // Fetch columns for the selected data source
       if (editingConfig.data_source) {
@@ -173,6 +238,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
       setFilterGroups([]);
       setSortConfigs([]);
       setReportStyling(DEFAULT_REPORT_STYLING);
+      setScheduleConfig(DEFAULT_SCHEDULE_CONFIG);
       setActiveTab('datasource');
     }
   }, [editingConfig, open]);
@@ -351,6 +417,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
         styling: reportStyling,
         output_formats: outputFormats,
         include_charts: includeCharts,
+        schedule_config: scheduleConfig.enabled ? scheduleConfig : undefined,
       };
       
       await onSave(config);
@@ -419,34 +486,38 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
           {/* Main Configuration Panel */}
           <div className={`flex-1 overflow-hidden ${showPreview ? 'w-3/5' : 'w-full'}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="datasource" className="flex items-center gap-2">
                 <Database className="h-4 w-4" />
-                <span className="hidden lg:inline">{t('reportBuilder.dataSource')}</span>
+                <span className="hidden xl:inline">{t('reportBuilder.dataSource')}</span>
               </TabsTrigger>
               <TabsTrigger value="columns" className="flex items-center gap-2" disabled={!selectedDataSource}>
                 <Columns className="h-4 w-4" />
-                <span className="hidden lg:inline">{t('reportBuilder.columns')}</span>
+                <span className="hidden xl:inline">{t('reportBuilder.columns')}</span>
               </TabsTrigger>
               <TabsTrigger value="calculated" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <Calculator className="h-4 w-4" />
-                <span className="hidden lg:inline">{t('reportBuilder.calculated')}</span>
+                <span className="hidden xl:inline">{t('reportBuilder.calculated')}</span>
               </TabsTrigger>
               <TabsTrigger value="filters" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <Filter className="h-4 w-4" />
-                <span className="hidden lg:inline">{t('reportBuilder.filters')}</span>
+                <span className="hidden xl:inline">{t('reportBuilder.filters')}</span>
               </TabsTrigger>
               <TabsTrigger value="sorting" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <ArrowUpDown className="h-4 w-4" />
-                <span className="hidden lg:inline">{t('reportBuilder.sorting')}</span>
+                <span className="hidden xl:inline">{t('reportBuilder.sorting')}</span>
               </TabsTrigger>
               <TabsTrigger value="styling" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <Palette className="h-4 w-4" />
-                <span className="hidden lg:inline">{t('reportBuilder.styling')}</span>
+                <span className="hidden xl:inline">{t('reportBuilder.styling')}</span>
               </TabsTrigger>
               <TabsTrigger value="output" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <FileSpreadsheet className="h-4 w-4" />
-                <span className="hidden lg:inline">{t('reportBuilder.output')}</span>
+                <span className="hidden xl:inline">{t('reportBuilder.output')}</span>
+              </TabsTrigger>
+              <TabsTrigger value="schedule" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
+                <Clock className="h-4 w-4" />
+                <span className="hidden xl:inline">{language === 'tr' ? 'Zamanlama' : 'Schedule'}</span>
               </TabsTrigger>
             </TabsList>
 
@@ -953,6 +1024,329 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
                   />
                 </div>
               </div>
+            </TabsContent>
+
+            {/* Schedule Tab */}
+            <TabsContent value="schedule" className="flex-1 overflow-hidden mt-4">
+              <ScrollArea className="h-[450px]">
+                <div className="space-y-6 pr-4">
+                  {/* Enable/Disable Scheduling */}
+                  <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                    <div className="space-y-0.5">
+                      <Label className="text-base font-medium">
+                        {language === 'tr' ? 'Otomatik Zamanlama' : 'Automatic Scheduling'}
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {language === 'tr' 
+                          ? 'Bu raporu belirli zamanlarda otomatik olarak gönder' 
+                          : 'Automatically send this report at scheduled times'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={scheduleConfig.enabled}
+                      onCheckedChange={(enabled) => 
+                        setScheduleConfig({ ...scheduleConfig, enabled })
+                      }
+                    />
+                  </div>
+
+                  {scheduleConfig.enabled && (
+                    <>
+                      <Separator />
+
+                      {/* Schedule Frequency */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-5 w-5 text-muted-foreground" />
+                          <Label className="text-base font-medium">
+                            {language === 'tr' ? 'Sıklık' : 'Frequency'}
+                          </Label>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>{language === 'tr' ? 'Zamanlama Tipi' : 'Schedule Type'}</Label>
+                            <Select
+                              value={scheduleConfig.schedule_type}
+                              onValueChange={(value: 'daily' | 'weekly' | 'monthly') => 
+                                setScheduleConfig({ ...scheduleConfig, schedule_type: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="daily">
+                                  {language === 'tr' ? 'Günlük' : 'Daily'}
+                                </SelectItem>
+                                <SelectItem value="weekly">
+                                  {language === 'tr' ? 'Haftalık' : 'Weekly'}
+                                </SelectItem>
+                                <SelectItem value="monthly">
+                                  {language === 'tr' ? 'Aylık' : 'Monthly'}
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {scheduleConfig.schedule_type === 'weekly' && (
+                            <div className="space-y-2">
+                              <Label>{language === 'tr' ? 'Gün' : 'Day'}</Label>
+                              <Select
+                                value={String(scheduleConfig.day_of_week || 1)}
+                                onValueChange={(value) => 
+                                  setScheduleConfig({ ...scheduleConfig, day_of_week: parseInt(value) })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DAYS_OF_WEEK.map((day) => (
+                                    <SelectItem key={day.value} value={String(day.value)}>
+                                      {language === 'tr' ? day.labelTr : day.labelEn}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {scheduleConfig.schedule_type === 'monthly' && (
+                            <div className="space-y-2">
+                              <Label>{language === 'tr' ? 'Ayın Günü' : 'Day of Month'}</Label>
+                              <Select
+                                value={String(scheduleConfig.day_of_month || 1)}
+                                onValueChange={(value) => 
+                                  setScheduleConfig({ ...scheduleConfig, day_of_month: parseInt(value) })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                                    <SelectItem key={day} value={String(day)}>
+                                      {day}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label>{language === 'tr' ? 'Saat' : 'Hour'}</Label>
+                            <Select
+                              value={String(scheduleConfig.hour)}
+                              onValueChange={(value) => 
+                                setScheduleConfig({ ...scheduleConfig, hour: parseInt(value) })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                                  <SelectItem key={hour} value={String(hour)}>
+                                    {String(hour).padStart(2, '0')}:00
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>{language === 'tr' ? 'Dakika' : 'Minute'}</Label>
+                            <Select
+                              value={String(scheduleConfig.minute)}
+                              onValueChange={(value) => 
+                                setScheduleConfig({ ...scheduleConfig, minute: parseInt(value) })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[0, 15, 30, 45].map((minute) => (
+                                  <SelectItem key={minute} value={String(minute)}>
+                                    :{String(minute).padStart(2, '0')}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="flex items-center gap-1">
+                              <Globe className="h-4 w-4" />
+                              {language === 'tr' ? 'Saat Dilimi' : 'Timezone'}
+                            </Label>
+                            <Select
+                              value={scheduleConfig.timezone}
+                              onValueChange={(value) => 
+                                setScheduleConfig({ ...scheduleConfig, timezone: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {TIMEZONES.map((tz) => (
+                                  <SelectItem key={tz.value} value={tz.value}>
+                                    {tz.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Recipients */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-5 w-5 text-muted-foreground" />
+                          <Label className="text-base font-medium">
+                            {language === 'tr' ? 'Alıcılar' : 'Recipients'}
+                          </Label>
+                        </div>
+
+                        {/* Role Recipients */}
+                        <div className="space-y-2">
+                          <Label className="text-sm text-muted-foreground">
+                            {language === 'tr' ? 'Role Göre' : 'By Role'}
+                          </Label>
+                          <div className="flex flex-wrap gap-2">
+                            {ROLES.map((role) => {
+                              const isSelected = scheduleConfig.recipients.roles.includes(role.value);
+                              return (
+                                <div
+                                  key={role.value}
+                                  className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-colors ${
+                                    isSelected
+                                      ? 'border-primary bg-primary/5'
+                                      : 'border-border hover:border-primary/50'
+                                  }`}
+                                  onClick={() => {
+                                    const newRoles = isSelected
+                                      ? scheduleConfig.recipients.roles.filter(r => r !== role.value)
+                                      : [...scheduleConfig.recipients.roles, role.value];
+                                    setScheduleConfig({
+                                      ...scheduleConfig,
+                                      recipients: { ...scheduleConfig.recipients, roles: newRoles }
+                                    });
+                                  }}
+                                >
+                                  <Checkbox checked={isSelected} />
+                                  <span className="text-sm">
+                                    {language === 'tr' ? role.labelTr : role.labelEn}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Email Recipients */}
+                        <div className="space-y-2">
+                          <Label className="text-sm text-muted-foreground">
+                            {language === 'tr' ? 'E-posta Adresleri' : 'Email Addresses'}
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="email"
+                              value={newRecipientEmail}
+                              onChange={(e) => setNewRecipientEmail(e.target.value)}
+                              placeholder={language === 'tr' ? 'E-posta ekle...' : 'Add email...'}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const email = newRecipientEmail.trim();
+                                  if (email && email.includes('@') && !scheduleConfig.recipients.emails.includes(email)) {
+                                    setScheduleConfig({
+                                      ...scheduleConfig,
+                                      recipients: {
+                                        ...scheduleConfig.recipients,
+                                        emails: [...scheduleConfig.recipients.emails, email]
+                                      }
+                                    });
+                                    setNewRecipientEmail('');
+                                  }
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                const email = newRecipientEmail.trim();
+                                if (email && email.includes('@') && !scheduleConfig.recipients.emails.includes(email)) {
+                                  setScheduleConfig({
+                                    ...scheduleConfig,
+                                    recipients: {
+                                      ...scheduleConfig.recipients,
+                                      emails: [...scheduleConfig.recipients.emails, email]
+                                    }
+                                  });
+                                  setNewRecipientEmail('');
+                                }
+                              }}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {scheduleConfig.recipients.emails.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {scheduleConfig.recipients.emails.map((email) => (
+                                <Badge
+                                  key={email}
+                                  variant="secondary"
+                                  className="flex items-center gap-1 pr-1"
+                                >
+                                  <Mail className="h-3 w-3" />
+                                  {email}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0 hover:bg-destructive/20"
+                                    onClick={() => {
+                                      setScheduleConfig({
+                                        ...scheduleConfig,
+                                        recipients: {
+                                          ...scheduleConfig.recipients,
+                                          emails: scheduleConfig.recipients.emails.filter(e => e !== email)
+                                        }
+                                      });
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Recipients Summary */}
+                        {(scheduleConfig.recipients.roles.length > 0 || scheduleConfig.recipients.emails.length > 0) && (
+                          <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                            {language === 'tr' 
+                              ? `${scheduleConfig.recipients.roles.length} rol ve ${scheduleConfig.recipients.emails.length} e-posta adresi seçildi`
+                              : `${scheduleConfig.recipients.roles.length} role(s) and ${scheduleConfig.recipients.emails.length} email address(es) selected`}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
             </TabsContent>
           </Tabs>
           </div>

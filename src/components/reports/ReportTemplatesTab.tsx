@@ -60,6 +60,20 @@ interface ReportStyling {
   conditionalRules: any[];
 }
 
+interface ScheduleConfig {
+  enabled: boolean;
+  schedule_type: 'daily' | 'weekly' | 'monthly';
+  hour: number;
+  minute: number;
+  timezone: string;
+  day_of_week?: number;
+  day_of_month?: number;
+  recipients: {
+    roles: string[];
+    emails: string[];
+  };
+}
+
 interface ReportBuilderConfig {
   id?: string;
   name: string;
@@ -73,6 +87,7 @@ interface ReportBuilderConfig {
   output_formats: string[];
   include_charts: boolean;
   schedule_id?: string | null;
+  schedule_config?: ScheduleConfig;
 }
 
 const OUTPUT_FORMATS = [
@@ -208,6 +223,8 @@ const ReportTemplatesTab: React.FC = () => {
       created_by: user.user?.id || null,
     };
 
+    let reportConfigId: string | undefined = config.id;
+
     if (config.id) {
       const { error } = await supabase
         .from('email_report_configs')
@@ -216,11 +233,104 @@ const ReportTemplatesTab: React.FC = () => {
 
       if (error) throw error;
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('email_report_configs')
-        .insert(payload as any);
+        .insert(payload as any)
+        .select('id')
+        .single();
 
       if (error) throw error;
+      reportConfigId = data?.id;
+    }
+
+    // Handle schedule creation/update if enabled
+    if (config.schedule_config?.enabled && reportConfigId) {
+      const schedulePayload = {
+        name: `${config.name} - Scheduled Report`,
+        description: `Auto-generated schedule for report: ${config.name}`,
+        schedule_type: config.schedule_config.schedule_type,
+        schedule_config: {
+          hour: config.schedule_config.hour,
+          minute: config.schedule_config.minute,
+          timezone: config.schedule_config.timezone,
+          day_of_week: config.schedule_config.day_of_week,
+          day_of_month: config.schedule_config.day_of_month,
+        },
+        is_active: true,
+        created_by: user.user?.id || null,
+      };
+
+      // Check if there's an existing schedule linked to this report config
+      // We use the template_id field to link schedules to report configs
+      const { data: existingSchedule } = await supabase
+        .from('email_schedules')
+        .select('id')
+        .eq('template_id', reportConfigId)
+        .maybeSingle();
+
+      let scheduleId: string | undefined;
+
+      if (existingSchedule) {
+        // Update existing schedule
+        const { error: updateError } = await supabase
+          .from('email_schedules')
+          .update({
+            ...schedulePayload,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingSchedule.id);
+
+        if (updateError) {
+          console.error('Error updating schedule:', updateError);
+        } else {
+          scheduleId = existingSchedule.id;
+        }
+      } else {
+        // Create new schedule and link it
+        const { data: newSchedule, error: insertError } = await supabase
+          .from('email_schedules')
+          .insert({
+            ...schedulePayload,
+            template_id: reportConfigId,
+          })
+          .select('id')
+          .single();
+
+        if (insertError) {
+          console.error('Error creating schedule:', insertError);
+        } else {
+          scheduleId = newSchedule?.id;
+        }
+      }
+
+      // Handle recipients if schedule was created/updated
+      if (scheduleId && config.schedule_config.recipients) {
+        // Delete existing recipients
+        await supabase
+          .from('email_recipients')
+          .delete()
+          .eq('schedule_id', scheduleId);
+
+        // Insert new recipients
+        const newRecipients = [
+          ...config.schedule_config.recipients.roles.map(role => ({
+            schedule_id: scheduleId,
+            recipient_type: 'role',
+            recipient_value: role,
+            is_active: true,
+          })),
+          ...config.schedule_config.recipients.emails.map(email => ({
+            schedule_id: scheduleId,
+            recipient_type: 'email',
+            recipient_value: email,
+            is_active: true,
+          })),
+        ];
+
+        if (newRecipients.length > 0) {
+          await supabase.from('email_recipients').insert(newRecipients);
+        }
+      }
     }
 
     toast({
