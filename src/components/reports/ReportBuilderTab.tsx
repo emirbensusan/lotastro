@@ -190,7 +190,7 @@ const ReportBuilderTab: React.FC = () => {
       
       const { data, error } = await supabase.functions.invoke('get-report-schema', {
         body: { 
-          mode: 'validateColumnCompatibility',
+          mode: 'getJoinPath',
           tables: selectedTables,
         },
       });
@@ -198,7 +198,7 @@ const ReportBuilderTab: React.FC = () => {
       if (error) throw error;
 
       setValidation({
-        isValid: data.canJoin,
+        isValid: data.canJoin === true,
         joinPath: data.joinPath || [],
         error: data.error,
       });
@@ -232,30 +232,25 @@ const ReportBuilderTab: React.FC = () => {
     }));
   }, [selectedColumns]);
 
-  const handleValidateColumn = useCallback(async (column: CSColumnDefinition): Promise<{ canJoin: boolean; error?: string }> => {
-    if (selectedColumns.length === 0) {
-      return { canJoin: true };
-    }
-
-    const selectedTables = [...new Set(selectedColumns.map(c => c.table))];
-    if (selectedTables.includes(column.table)) {
+  const handleValidateTables = useCallback(async (tables: string[]): Promise<{ canJoin: boolean; error?: string }> => {
+    if (tables.length <= 1) {
       return { canJoin: true };
     }
 
     try {
       const { data, error } = await supabase.functions.invoke('get-report-schema', {
         body: { 
-          mode: 'validateColumnCompatibility',
-          tables: [...selectedTables, column.table],
+          mode: 'getJoinPath',
+          tables: tables,
         },
       });
 
       if (error) throw error;
-      return { canJoin: data.canJoin, error: data.error };
+      return { canJoin: data.canJoin === true, error: data.error };
     } catch (error) {
       return { canJoin: false, error: 'Validation failed' };
     }
-  }, [selectedColumns]);
+  }, []);
 
   const handleColumnsChange = useCallback((newColumns: CSSelectedColumn[]) => {
     setSelectedColumns(newColumns as SelectedColumn[]);
@@ -749,7 +744,7 @@ const ReportBuilderTab: React.FC = () => {
         allColumns={modalColumns}
         selectedColumns={modalSelectedColumns}
         onColumnsChange={handleColumnsChange}
-        onValidateColumn={handleValidateColumn}
+        onValidateTables={handleValidateTables}
         loading={loading}
       />
     </div>

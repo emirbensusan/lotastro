@@ -53,7 +53,7 @@ interface ColumnSelectorModalProps {
   allColumns: ColumnDefinition[];
   selectedColumns: SelectedColumn[];
   onColumnsChange: (columns: SelectedColumn[]) => void;
-  onValidateColumn: (column: ColumnDefinition) => Promise<{ canJoin: boolean; error?: string }>;
+  onValidateTables: (tables: string[]) => Promise<{ canJoin: boolean; error?: string }>;
   loading?: boolean;
 }
 
@@ -80,7 +80,7 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
   allColumns,
   selectedColumns,
   onColumnsChange,
-  onValidateColumn,
+  onValidateTables,
   loading = false,
 }) => {
   const { language } = useLanguage();
@@ -134,13 +134,11 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
           });
       });
       
-      // Validate each unselected table's compatibility
+      // Validate each unselected table's compatibility by calling API with combined tables
       for (const table of tablesToValidate) {
         try {
-          const sampleColumn = allColumns.find(c => c.table === table);
-          if (!sampleColumn) continue;
-          
-          const result = await onValidateColumn(sampleColumn);
+          // Pass all selected tables + the candidate table to validate join path
+          const result = await onValidateTables([...uniqueSelectedTables, table]);
           
           // Apply result to all columns in this table
           allColumns
@@ -163,7 +161,7 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
     };
 
     validateAllColumns();
-  }, [pendingSelections, open, allColumns, onValidateColumn]);
+  }, [pendingSelections, open, allColumns, onValidateTables]);
 
   // Deduplicate columns by name (keeping track of which tables they appear in)
   const deduplicatedColumns = useMemo((): DeduplicatedColumn[] => {
@@ -273,13 +271,11 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
     setValidatingColumns(prev => new Set(prev).add(cacheKey));
     
     try {
-      const result = await onValidateColumn({
-        key: col.key,
-        labelEn: col.labelEn,
-        labelTr: col.labelTr,
-        type: col.type,
-        table: col.primaryTable,
-      });
+      // Get tables from pending selections and add candidate table
+      const selectedTables = Array.from(pendingSelections).map(key => key.split('.')[0]);
+      const uniqueSelectedTables = [...new Set(selectedTables)];
+      
+      const result = await onValidateTables([...uniqueSelectedTables, col.primaryTable]);
       
       setValidationCache(prev => ({
         ...prev,
@@ -292,7 +288,7 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
         return next;
       });
     }
-  }, [pendingSelections, isColumnPending, validationCache, validatingColumns, onValidateColumn]);
+  }, [pendingSelections, isColumnPending, validationCache, validatingColumns, onValidateTables]);
 
   // Toggle column selection
   const toggleColumn = useCallback(async (col: DeduplicatedColumn) => {
@@ -323,13 +319,11 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
       if (!validationCache[cacheKey] && pendingSelections.size > 0) {
         setValidatingColumns(prev => new Set(prev).add(cacheKey));
         try {
-          const result = await onValidateColumn({
-            key: col.key,
-            labelEn: col.labelEn,
-            labelTr: col.labelTr,
-            type: col.type,
-            table: col.primaryTable,
-          });
+          // Get tables from pending selections and add candidate table
+          const selectedTables = Array.from(pendingSelections).map(key => key.split('.')[0]);
+          const uniqueSelectedTables = [...new Set(selectedTables)];
+          
+          const result = await onValidateTables([...uniqueSelectedTables, col.primaryTable]);
           
           setValidationCache(prev => ({
             ...prev,
@@ -351,7 +345,7 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
       // Add to pending
       setPendingSelections(prev => new Set(prev).add(fullKey));
     }
-  }, [isColumnPending, canColumnBeJoined, validationCache, pendingSelections, onValidateColumn]);
+  }, [isColumnPending, canColumnBeJoined, validationCache, pendingSelections, onValidateTables]);
 
   // Handle adding selected columns
   const handleAddSelected = useCallback(() => {
