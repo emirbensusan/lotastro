@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,6 @@ import {
   FileText, Plus, Edit, Trash2, Copy, 
   FileSpreadsheet, Mail, Database
 } from 'lucide-react';
-import { ReportBuilder } from './ReportBuilder';
 
 interface ReportConfig {
   id: string;
@@ -30,66 +30,6 @@ interface ReportConfig {
   updated_at: string;
 }
 
-interface SortConfig {
-  column: string;
-  direction: 'asc' | 'desc';
-  priority: number;
-}
-
-interface FilterGroup {
-  id: string;
-  logic: 'AND' | 'OR';
-  conditions: {
-    id: string;
-    column: string;
-    operator: string;
-    value: string;
-    value2?: string;
-  }[];
-}
-
-interface ReportStyling {
-  headerBackgroundColor: string;
-  headerTextColor: string;
-  headerFontWeight: 'normal' | 'bold';
-  alternateRowColors: boolean;
-  evenRowColor: string;
-  oddRowColor: string;
-  borderStyle: 'none' | 'light' | 'medium' | 'heavy';
-  fontSize: 'small' | 'medium' | 'large';
-  conditionalRules: any[];
-}
-
-interface ScheduleConfig {
-  enabled: boolean;
-  schedule_type: 'daily' | 'weekly' | 'monthly';
-  hour: number;
-  minute: number;
-  timezone: string;
-  day_of_week?: number;
-  day_of_month?: number;
-  recipients: {
-    roles: string[];
-    emails: string[];
-  };
-}
-
-interface ReportBuilderConfig {
-  id?: string;
-  name: string;
-  data_source: string;
-  selected_joins: string[];
-  columns_config: any[];
-  calculated_fields?: any[];
-  sorting: SortConfig[];
-  filters: FilterGroup[];
-  styling?: ReportStyling;
-  output_formats: string[];
-  include_charts: boolean;
-  schedule_id?: string | null;
-  schedule_config?: ScheduleConfig;
-}
-
 const OUTPUT_FORMATS = [
   { key: 'html', labelEn: 'HTML Email', labelTr: 'HTML E-posta', icon: Mail },
   { key: 'csv', labelEn: 'CSV File', labelTr: 'CSV Dosyası', icon: FileSpreadsheet },
@@ -97,12 +37,11 @@ const OUTPUT_FORMATS = [
 ];
 
 const ReportTemplatesTab: React.FC = () => {
+  const navigate = useNavigate();
   const { language, t } = useLanguage();
   const { toast } = useToast();
   const [configs, setConfigs] = useState<ReportConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [builderOpen, setBuilderOpen] = useState(false);
-  const [editingConfig, setEditingConfig] = useState<ReportBuilderConfig | null>(null);
 
   useEffect(() => {
     fetchConfigs();
@@ -139,40 +78,15 @@ const ReportTemplatesTab: React.FC = () => {
   };
 
   const handleCreateNew = () => {
-    setEditingConfig(null);
-    setBuilderOpen(true);
+    navigate('/reports/builder');
   };
 
   const handleEdit = (config: ReportConfig) => {
-    // Convert to ReportBuilderConfig format
-    const builderConfig: ReportBuilderConfig = {
-      id: config.id,
-      name: config.name,
-      data_source: config.data_source || config.report_type || '',
-      selected_joins: config.selected_joins || [],
-      columns_config: config.columns_config || [],
-      sorting: [],
-      filters: Array.isArray(config.filters) ? config.filters as FilterGroup[] : [],
-      output_formats: config.output_formats || ['html'],
-      include_charts: config.include_charts || false,
-    };
-    setEditingConfig(builderConfig);
-    setBuilderOpen(true);
+    navigate(`/reports/builder/${config.id}`);
   };
 
   const handleDuplicate = (config: ReportConfig) => {
-    const builderConfig: ReportBuilderConfig = {
-      name: `${config.name} (${String(t('copy'))})`,
-      data_source: config.data_source || config.report_type || '',
-      selected_joins: config.selected_joins || [],
-      columns_config: config.columns_config || [],
-      sorting: [],
-      filters: Array.isArray(config.filters) ? config.filters as FilterGroup[] : [],
-      output_formats: config.output_formats || ['html'],
-      include_charts: config.include_charts || false,
-    };
-    setEditingConfig(builderConfig);
-    setBuilderOpen(true);
+    navigate(`/reports/builder?duplicate=${config.id}`);
   };
 
   const handleDelete = async (id: string) => {
@@ -201,159 +115,6 @@ const ReportTemplatesTab: React.FC = () => {
         variant: 'destructive',
       });
     }
-  };
-
-  const handleSaveReport = async (config: ReportBuilderConfig) => {
-    const { data: user } = await supabase.auth.getUser();
-    
-    // Build the payload for the new schema (Phase 9 refinements)
-    const payload: Record<string, unknown> = {
-      name: config.name,
-      report_type: config.data_source, // Keep for backward compatibility
-      data_source: config.data_source,
-      selected_joins: config.selected_joins,
-      columns_config: config.columns_config,
-      calculated_fields: config.calculated_fields || [],
-      columns: config.columns_config.map(c => c.key), // Keep for backward compatibility
-      filters: config.filters || [],
-      sorting: config.sorting || [], // New in Phase 9
-      styling: config.styling || null,
-      schedule_config: config.schedule_config || null, // New in Phase 9
-      include_charts: config.include_charts || false,
-      output_formats: config.output_formats || ['html'],
-      is_system: false,
-      created_by: user.user?.id || null,
-    };
-
-    let reportConfigId: string | undefined = config.id;
-
-    if (config.id) {
-      const { error } = await supabase
-        .from('email_report_configs')
-        .update({
-          ...payload,
-          updated_at: new Date().toISOString(),
-        } as any)
-        .eq('id', config.id);
-
-      if (error) throw error;
-    } else {
-      const { data, error } = await supabase
-        .from('email_report_configs')
-        .insert(payload as any)
-        .select('id')
-        .single();
-
-      if (error) throw error;
-      reportConfigId = data?.id;
-    }
-
-    // Handle schedule creation/update if enabled
-    if (config.schedule_config?.enabled && reportConfigId) {
-      const schedulePayload = {
-        name: `${config.name} - Scheduled Report`,
-        description: `Auto-generated schedule for report: ${config.name}`,
-        schedule_type: config.schedule_config.schedule_type,
-        schedule_config: {
-          hour: config.schedule_config.hour,
-          minute: config.schedule_config.minute,
-          timezone: config.schedule_config.timezone,
-          day_of_week: config.schedule_config.day_of_week,
-          day_of_month: config.schedule_config.day_of_month,
-        },
-        is_active: true,
-        created_by: user.user?.id || null,
-      };
-
-      // Check if there's an existing schedule linked to this report config
-      // Use report_config_id for bidirectional linking (Phase 9)
-      // Note: report_config_id is a new column added in Phase 9 migration
-      const scheduleQuery = supabase
-        .from('email_schedules')
-        .select('id');
-      
-      // Use dynamic column access for the new report_config_id column
-      const { data: existingSchedule } = await (scheduleQuery as any)
-        .eq('report_config_id', reportConfigId)
-        .maybeSingle();
-
-      let scheduleId: string | undefined;
-
-      if (existingSchedule) {
-        // Update existing schedule
-        const { error: updateError } = await supabase
-          .from('email_schedules')
-          .update({
-            ...schedulePayload,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingSchedule.id);
-
-        if (updateError) {
-          console.error('Error updating schedule:', updateError);
-        } else {
-          scheduleId = existingSchedule.id;
-        }
-      } else {
-        // Create new schedule and link it bidirectionally
-        const { data: newSchedule, error: insertError } = await supabase
-          .from('email_schedules')
-          .insert({
-            ...schedulePayload,
-            report_config_id: reportConfigId,
-          } as any)
-          .select('id')
-          .single();
-
-        if (insertError) {
-          console.error('Error creating schedule:', insertError);
-        } else {
-          scheduleId = newSchedule?.id;
-          
-          // Update report config with schedule_id for bidirectional link
-          await supabase
-            .from('email_report_configs')
-            .update({ schedule_id: scheduleId } as any)
-            .eq('id', reportConfigId as string);
-        }
-      }
-
-      // Handle recipients if schedule was created/updated
-      if (scheduleId && config.schedule_config.recipients) {
-        // Delete existing recipients
-        await supabase
-          .from('email_recipients')
-          .delete()
-          .eq('schedule_id', scheduleId);
-
-        // Insert new recipients
-        const newRecipients = [
-          ...config.schedule_config.recipients.roles.map(role => ({
-            schedule_id: scheduleId,
-            recipient_type: 'role',
-            recipient_value: role,
-            is_active: true,
-          })),
-          ...config.schedule_config.recipients.emails.map(email => ({
-            schedule_id: scheduleId,
-            recipient_type: 'email',
-            recipient_value: email,
-            is_active: true,
-          })),
-        ];
-
-        if (newRecipients.length > 0) {
-          await supabase.from('email_recipients').insert(newRecipients);
-        }
-      }
-    }
-
-    toast({
-      title: String(t('saved')),
-      description: String(t('reportTemplates.saveSuccess')),
-    });
-    
-    fetchConfigs();
   };
 
   const getDataSourceLabel = (config: ReportConfig) => {
@@ -479,14 +240,6 @@ const ReportTemplatesTab: React.FC = () => {
           </div>
         )}
       </CardContent>
-
-      {/* Report Builder Dialog */}
-      <ReportBuilder
-        open={builderOpen}
-        onClose={() => setBuilderOpen(false)}
-        onSave={handleSaveReport}
-        editingConfig={editingConfig}
-      />
     </Card>
   );
 };

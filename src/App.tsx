@@ -17,6 +17,7 @@ import LotSelection from "./pages/LotSelection";
 import LotQueue from "./pages/LotQueue";
 import QRScan from "./pages/QRScan";
 import Reports from "./pages/Reports";
+import ReportBuilderPage from "./pages/ReportBuilder";
 import Admin from "./pages/Admin";
 import Approvals from "./pages/Approvals";
 import AuditLogs from "./pages/AuditLogs";
@@ -145,6 +146,16 @@ const App = () => (
               <Route path="/reports" element={
                 <ProtectedRoute>
                   <Reports />
+                </ProtectedRoute>
+              } />
+              <Route path="/reports/builder" element={
+                <ProtectedRoute>
+                  <ReportBuilderPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/reports/builder/:id" element={
+                <ProtectedRoute>
+                  <ReportBuilderPage />
                 </ProtectedRoute>
               } />
               <Route path="/suppliers" element={
