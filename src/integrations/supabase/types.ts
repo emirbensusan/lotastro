@@ -2799,6 +2799,118 @@ export type Database = {
           },
         ]
       }
+      report_executions: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          executed_at: string
+          executed_by: string
+          execution_type: string
+          file_path: string | null
+          file_size_bytes: number | null
+          id: string
+          metadata: Json | null
+          output_format: string
+          report_config_id: string | null
+          row_count: number | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          executed_at?: string
+          executed_by: string
+          execution_type?: string
+          file_path?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          metadata?: Json | null
+          output_format?: string
+          report_config_id?: string | null
+          row_count?: number | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          executed_at?: string
+          executed_by?: string
+          execution_type?: string
+          file_path?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          metadata?: Json | null
+          output_format?: string
+          report_config_id?: string | null
+          row_count?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_executions_report_config_id_fkey"
+            columns: ["report_config_id"]
+            isOneToOne: false
+            referencedRelation: "email_report_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_shares: {
+        Row: {
+          access_count: number | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          last_accessed_at: string | null
+          permissions: string
+          report_config_id: string
+          share_token: string
+          share_type: string
+          shared_by: string
+          shared_with: string | null
+        }
+        Insert: {
+          access_count?: number | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_accessed_at?: string | null
+          permissions?: string
+          report_config_id: string
+          share_token: string
+          share_type?: string
+          shared_by: string
+          shared_with?: string | null
+        }
+        Update: {
+          access_count?: number | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_accessed_at?: string | null
+          permissions?: string
+          report_config_id?: string
+          share_token?: string
+          share_type?: string
+          shared_by?: string
+          shared_with?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_shares_report_config_id_fkey"
+            columns: ["report_config_id"]
+            isOneToOne: false
+            referencedRelation: "email_report_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservation_lines: {
         Row: {
           color: string

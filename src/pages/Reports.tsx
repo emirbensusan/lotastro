@@ -3,12 +3,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Calendar, FileText, Mail, Settings } from 'lucide-react';
+import { BarChart3, Calendar, FileText, Mail, Settings, History } from 'lucide-react';
 import ViewReportsTab from '@/components/reports/ViewReportsTab';
 import ReportSettingsTab from '@/components/reports/ReportSettingsTab';
 import ReportTemplatesTab from '@/components/reports/ReportTemplatesTab';
 import DigestsTab from '@/components/reports/DigestsTab';
 import ScheduledReportsTab from '@/components/reports/ScheduledReportsTab';
+import ReportExecutionHistory from '@/components/reports/ReportExecutionHistory';
 
 const Reports: React.FC = () => {
   const { loading: authLoading } = useAuth();
@@ -40,6 +41,11 @@ const Reports: React.FC = () => {
           </TabsTrigger>
           {canManageReports && (
             <>
+              <TabsTrigger value="history" className="flex items-center gap-2">
+                <History className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('executionHistory')}</span>
+                <span className="sm:hidden">{t('history')}</span>
+              </TabsTrigger>
               <TabsTrigger value="scheduled" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('scheduledReports')}</span>
@@ -70,6 +76,10 @@ const Reports: React.FC = () => {
 
         {canManageReports && (
           <>
+            <TabsContent value="history" className="mt-6">
+              <ReportExecutionHistory />
+            </TabsContent>
+
             <TabsContent value="scheduled" className="mt-6">
               <ScheduledReportsTab />
             </TabsContent>

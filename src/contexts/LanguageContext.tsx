@@ -133,6 +133,8 @@ const translations = {
     // Common - Additional keys
     filters: 'Filters',
     dateRange: 'Date Range',
+    executionHistory: 'Execution History',
+    history: 'History',
     
     // Missing common keys (avoiding duplicates)
     selected: 'Selected',
@@ -2931,6 +2933,8 @@ const translations = {
     deleteIncomingNote: 'Yoldaki envanter kaydı silindi - Fatura {invoice}, {quality}, {meters}m',
     
     // Reports
+    executionHistory: 'Çalıştırma Geçmişi',
+    history: 'Geçmiş',
     reportsAndAnalytics: 'Raporlar ve Analitik',
     pickDateRange: 'Tarih aralığı seç',
     totalLots: 'Lot Sayısı',

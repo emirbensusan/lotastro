@@ -10,8 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   FileText, Plus, Edit, Trash2, Copy, 
-  FileSpreadsheet, Mail, Database
+  FileSpreadsheet, Mail, Database, Share2, History
 } from 'lucide-react';
+import RunReportButton from './RunReportButton';
+import ReportShareDialog from './ReportShareDialog';
 
 interface ReportConfig {
   id: string;
@@ -42,6 +44,8 @@ const ReportTemplatesTab: React.FC = () => {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<ReportConfig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<ReportConfig | null>(null);
 
   useEffect(() => {
     fetchConfigs();
@@ -219,10 +223,35 @@ const ReportTemplatesTab: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        <RunReportButton
+                          reportId={config.id}
+                          reportName={config.name}
+                          variant="outline"
+                          size="sm"
+                        />
                         <Button variant="outline" size="sm" onClick={() => handleEdit(config)}>
                           <Edit className="h-3 w-3 mr-1" />
                           {t('edit')}
                         </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => {
+                                  setSelectedReport(config);
+                                  setShareDialogOpen(true);
+                                }}
+                              >
+                                <Share2 className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {language === 'tr' ? 'Paylaş' : 'Share'}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                         <Button variant="ghost" size="sm" onClick={() => handleDuplicate(config)}>
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -240,6 +269,16 @@ const ReportTemplatesTab: React.FC = () => {
           </div>
         )}
       </CardContent>
+
+      {/* Share Dialog */}
+      {selectedReport && (
+        <ReportShareDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          reportId={selectedReport.id}
+          reportName={selectedReport.name}
+        />
+      )}
     </Card>
   );
 };
