@@ -678,6 +678,8 @@ const ReportBuilderPage: React.FC = () => {
                   <ScheduleTab
                     scheduleConfig={scheduleConfig}
                     onScheduleConfigChange={setScheduleConfig}
+                    reportName={reportName}
+                    reportId={editingId}
                   />
                 </TabsContent>
               </div>
