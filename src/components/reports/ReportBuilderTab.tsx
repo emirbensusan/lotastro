@@ -13,7 +13,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ColumnBrowser, TableDefinition, TableRelationship as CBTableRelationship, ColumnDefinition as CBColumnDefinition } from './ColumnBrowser';
+import { ColumnBrowserGrid, TableDefinition, ColumnDefinition as CBColumnDefinition, SelectedColumn as CBSelectedColumn } from './ColumnBrowserGrid';
 import { JoinPathDisplay, TableRelationship as JPTableRelationship } from './JoinPathDisplay';
 import { TimePeriodComparison, ComparisonConfig } from './TimePeriodComparison';
 import { FilterBuilder, FilterGroup } from './FilterBuilder';
@@ -237,36 +237,40 @@ const ReportBuilderTab: React.FC = () => {
     return Array.from(tableMap.values());
   }, [allColumns, tables]);
 
-  // Convert relationships for ColumnBrowser
-  const cbRelationships = useMemo((): CBTableRelationship[] => {
-    return relationships.map(r => ({
-      ...r,
-      type: r.type as 'one-to-many' | 'many-to-one' | 'one-to-one',
-    }));
-  }, [relationships]);
-
-  // Convert selected columns for ColumnBrowser
-  const cbSelectedColumns = useMemo((): CBColumnDefinition[] => {
+  // Convert selected columns for ColumnBrowserGrid
+  const cbSelectedColumns = useMemo((): CBSelectedColumn[] => {
     return selectedColumns.map(c => ({
       key: c.key,
       labelEn: c.labelEn,
       labelTr: c.labelTr,
       type: c.type as 'text' | 'number' | 'date' | 'currency' | 'boolean',
       table: c.table,
+      sortOrder: c.sortOrder,
     }));
   }, [selectedColumns]);
 
-  const handleColumnToggle = useCallback((column: CBColumnDefinition) => {
-    const exists = selectedColumns.find(c => c.key === column.key);
-    if (exists) {
-      setSelectedColumns(prev => prev.filter(c => c.key !== column.key));
-    } else {
-      setSelectedColumns(prev => [...prev, { 
-        ...column,
-        type: column.type,
-      } as SelectedColumn]);
-    }
+  // Handle adding a column
+  const handleColumnAdd = useCallback((column: CBColumnDefinition) => {
+    if (selectedColumns.find(c => c.key === column.key)) return;
+    setSelectedColumns(prev => [...prev, { 
+      ...column,
+      type: column.type,
+    } as SelectedColumn]);
   }, [selectedColumns]);
+
+  // Handle column sort toggle
+  const handleColumnSortToggle = useCallback((columnKey: string) => {
+    setSelectedColumns(prev => prev.map(col => {
+      if (col.key !== columnKey) return col;
+      const currentSort = col.sortOrder;
+      let newSort: 'asc' | 'desc' | undefined;
+      if (!currentSort) newSort = 'asc';
+      else if (currentSort === 'asc') newSort = 'desc';
+      else newSort = undefined;
+      return { ...col, sortOrder: newSort };
+    }));
+  }, []);
+
 
   const handleValidateColumn = useCallback(async (column: CBColumnDefinition): Promise<{ canJoin: boolean; error?: string }> => {
     if (selectedColumns.length === 0) {
@@ -559,13 +563,15 @@ const ReportBuilderTab: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* Columns Tab - Column Browser */}
+        {/* Columns Tab - Column Browser Grid */}
         <TabsContent value="columns" className="mt-6">
-          <ColumnBrowser
+          <ColumnBrowserGrid
             tables={tableDefinitions}
-            relationships={cbRelationships}
             selectedColumns={cbSelectedColumns}
-            onColumnToggle={handleColumnToggle}
+            onColumnAdd={handleColumnAdd}
+            onColumnRemove={handleColumnRemove}
+            onReorderColumns={handleReorderColumns}
+            onColumnSortToggle={handleColumnSortToggle}
             onValidateColumn={handleValidateColumn}
             validationErrors={validationErrors}
             loading={validating}
