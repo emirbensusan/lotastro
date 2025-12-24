@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.send-scheduled-report]
 verify_jwt = false
+
+[functions.get-report-schema]
+verify_jwt = true

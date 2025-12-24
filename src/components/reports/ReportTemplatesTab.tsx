@@ -19,6 +19,7 @@ import {
   FileText, Plus, Edit, Trash2, GripVertical, Save, X, Copy, 
   FileSpreadsheet, FileJson, Link, Mail, Columns, Settings
 } from 'lucide-react';
+import { ReportBuilder } from './ReportBuilder';
 
 interface ReportColumn {
   key: string;
