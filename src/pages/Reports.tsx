@@ -3,18 +3,19 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Calendar, FileText, Mail, Settings, History } from 'lucide-react';
+import { BarChart3, Calendar, FileText, Mail, Settings, History, PlusCircle } from 'lucide-react';
 import ViewReportsTab from '@/components/reports/ViewReportsTab';
 import ReportSettingsTab from '@/components/reports/ReportSettingsTab';
 import ReportTemplatesTab from '@/components/reports/ReportTemplatesTab';
 import DigestsTab from '@/components/reports/DigestsTab';
 import ScheduledReportsTab from '@/components/reports/ScheduledReportsTab';
 import ReportExecutionHistory from '@/components/reports/ReportExecutionHistory';
+import ReportBuilderTab from '@/components/reports/ReportBuilderTab';
 
 const Reports: React.FC = () => {
   const { loading: authLoading } = useAuth();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   if (authLoading || permissionsLoading) {
     return <div className="text-sm text-muted-foreground">{t('loading')}</div>;
@@ -41,6 +42,11 @@ const Reports: React.FC = () => {
           </TabsTrigger>
           {canManageReports && (
             <>
+              <TabsTrigger value="builder" className="flex items-center gap-2">
+                <PlusCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">{language === 'tr' ? 'Rapor Oluştur' : 'Build Report'}</span>
+                <span className="sm:hidden">{language === 'tr' ? 'Oluştur' : 'Build'}</span>
+              </TabsTrigger>
               <TabsTrigger value="history" className="flex items-center gap-2">
                 <History className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('executionHistory')}</span>
@@ -76,6 +82,10 @@ const Reports: React.FC = () => {
 
         {canManageReports && (
           <>
+            <TabsContent value="builder" className="mt-6">
+              <ReportBuilderTab />
+            </TabsContent>
+
             <TabsContent value="history" className="mt-6">
               <ReportExecutionHistory />
             </TabsContent>
