@@ -5,3 +5,4 @@ export { CalculatedFieldsTab } from './CalculatedFieldsTab';
 export { SortingTab } from './SortingTab';
 export { OutputTab } from './OutputTab';
 export { ScheduleTab } from './ScheduleTab';
+export { ColumnBrowserTab } from './ColumnBrowserTab';
