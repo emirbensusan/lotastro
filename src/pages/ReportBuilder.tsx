@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Database, Columns, ArrowUpDown, Palette, Save, FileSpreadsheet,
-  Loader2, Calculator, Filter, Eye, EyeOff, Clock, ArrowLeft, PanelRightClose, PanelRight
+  Loader2, Calculator, Filter, Eye, EyeOff, Clock, ArrowLeft, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -443,12 +443,12 @@ const ReportBuilderPage: React.FC = () => {
           >
             {showPreview ? (
               <>
-                <PanelRightClose className="h-4 w-4 mr-2" />
+                <ChevronDown className="h-4 w-4 mr-2" />
                 {language === 'tr' ? 'Önizlemeyi Gizle' : 'Hide Preview'}
               </>
             ) : (
               <>
-                <PanelRight className="h-4 w-4 mr-2" />
+                <ChevronUp className="h-4 w-4 mr-2" />
                 {language === 'tr' ? 'Önizlemeyi Göster' : 'Show Preview'}
               </>
             )}
@@ -462,9 +462,9 @@ const ReportBuilderPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Configuration Panel */}
-        <div className={`flex-1 flex flex-col overflow-hidden ${showPreview ? 'w-3/5' : 'w-full'}`}>
+        <div className={`flex-1 flex flex-col overflow-hidden ${showPreview ? 'min-h-0' : ''}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
             <div className="border-b px-4">
               <TabsList className="h-12 bg-transparent p-0 gap-1">
@@ -627,9 +627,9 @@ const ReportBuilderPage: React.FC = () => {
           </Tabs>
         </div>
 
-        {/* Preview Panel */}
+        {/* Preview Panel - Below Configuration */}
         {showPreview && (
-          <div className="w-2/5 border-l bg-muted/30 overflow-hidden flex flex-col">
+          <div className="h-80 border-t bg-muted/30 overflow-hidden flex flex-col shrink-0">
             <div className="p-3 border-b bg-background flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Eye className="h-4 w-4 text-muted-foreground" />
