@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { GripVertical, Plus, X, Search, Columns, ArrowUpDown } from 'lucide-react';
+import { GripVertical, Plus, X, Search, Columns, ArrowUpDown, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ColumnDefinition, SelectedColumn, getColumnLabel } from '../reportBuilderTypes';
 
@@ -12,6 +12,7 @@ interface ColumnsTabProps {
   filteredAvailableColumns: ColumnDefinition[];
   selectedColumns: SelectedColumn[];
   columnSearch: string;
+  loading?: boolean;
   onColumnSearchChange: (search: string) => void;
   onAddColumn: (column: ColumnDefinition) => void;
   onRemoveColumn: (columnKey: string) => void;
@@ -24,6 +25,7 @@ export const ColumnsTab: React.FC<ColumnsTabProps> = ({
   filteredAvailableColumns,
   selectedColumns,
   columnSearch,
+  loading = false,
   onColumnSearchChange,
   onAddColumn,
   onRemoveColumn,
@@ -95,40 +97,57 @@ export const ColumnsTab: React.FC<ColumnsTabProps> = ({
         </div>
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-1">
-            {filteredAvailableColumns.map((col) => {
-              const isSelected = selectedColumns.some(c => c.key === col.key);
-              return (
-                <div
-                  key={col.key}
-                  draggable={!isSelected}
-                  onDragStart={(e) => handleDragStart(e, col.key)}
-                  onDragEnd={handleDragEnd}
-                  className={`flex items-center justify-between p-2 rounded-md text-sm ${
-                    isSelected
-                      ? 'bg-muted text-muted-foreground'
-                      : 'hover:bg-muted/50 cursor-grab active:cursor-grabbing'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {!isSelected && <GripVertical className="h-4 w-4 text-muted-foreground" />}
-                    <span>{getColumnLabel(col, language)}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {col.type}
-                    </Badge>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                <p className="text-sm">{t('loading')}</p>
+              </div>
+            ) : filteredAvailableColumns.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Columns className="h-8 w-8 mb-2" />
+                <p className="text-sm">
+                  {availableColumns.length === 0
+                    ? (language === 'tr' ? 'Önce veri kaynağı seçin' : 'Select a data source first')
+                    : (language === 'tr' ? 'Sütun bulunamadı' : 'No columns found')
+                  }
+                </p>
+              </div>
+            ) : (
+              filteredAvailableColumns.map((col) => {
+                const isSelected = selectedColumns.some(c => c.key === col.key);
+                return (
+                  <div
+                    key={col.key}
+                    draggable={!isSelected}
+                    onDragStart={(e) => handleDragStart(e, col.key)}
+                    onDragEnd={handleDragEnd}
+                    className={`flex items-center justify-between p-2 rounded-md text-sm ${
+                      isSelected
+                        ? 'bg-muted text-muted-foreground'
+                        : 'hover:bg-muted/50 cursor-grab active:cursor-grabbing'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {!isSelected && <GripVertical className="h-4 w-4 text-muted-foreground" />}
+                      <span>{getColumnLabel(col, language)}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {col.type}
+                      </Badge>
+                    </div>
+                    {!isSelected && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onAddColumn(col)}
+                        className="h-7 w-7 p-0"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                  {!isSelected && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onAddColumn(col)}
-                      className="h-7 w-7 p-0"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </ScrollArea>
       </div>

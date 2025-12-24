@@ -48,6 +48,7 @@ const ReportBuilderPage: React.FC = () => {
 
   // Loading state
   const [loading, setLoading] = useState(false);
+  const [columnsLoading, setColumnsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
@@ -119,23 +120,33 @@ const ReportBuilderPage: React.FC = () => {
   };
 
   const fetchDataSourceColumns = async (dataSourceKey: string, includeJoins: boolean = false) => {
+    setColumnsLoading(true);
     try {
       console.log('[ReportBuilder] Fetching columns for:', dataSourceKey, 'includeJoins:', includeJoins);
-      const response = await supabase.functions.invoke('get-report-schema', {
+      
+      const { data, error } = await supabase.functions.invoke('get-report-schema', {
         body: { dataSource: dataSourceKey, includeJoins },
       });
       
-      console.log('[ReportBuilder] Column response:', response);
+      console.log('[ReportBuilder] Raw response - data:', data, 'error:', error);
       
-      if (response.error) {
-        console.error('[ReportBuilder] Error from edge function:', response.error);
-        throw response.error;
+      if (error) {
+        console.error('[ReportBuilder] Error from edge function:', error);
+        throw new Error(error.message || 'Failed to fetch columns');
       }
       
-      const columns = response.data?.columns || [];
-      const joins = response.data?.availableJoins || [];
+      if (!data) {
+        console.error('[ReportBuilder] No data returned from edge function');
+        throw new Error('No data returned from edge function');
+      }
       
-      console.log('[ReportBuilder] Setting columns:', columns.length, 'joins:', joins.length);
+      // Handle both direct response and wrapped response
+      const responseData = data.data ? data.data : data;
+      const columns: ColumnDefinition[] = responseData.columns || [];
+      const joins: JoinDefinition[] = responseData.availableJoins || [];
+      
+      console.log('[ReportBuilder] Parsed columns:', columns.length, 'joins:', joins.length);
+      console.log('[ReportBuilder] First column sample:', columns[0]);
       
       setAvailableColumns(columns);
       setAvailableJoins(joins);
@@ -146,6 +157,8 @@ const ReportBuilderPage: React.FC = () => {
         description: language === 'tr' ? 'Sütunlar yüklenemedi' : 'Failed to load columns',
         variant: 'destructive',
       });
+    } finally {
+      setColumnsLoading(false);
     }
   };
 
@@ -574,6 +587,7 @@ const ReportBuilderPage: React.FC = () => {
                     filteredAvailableColumns={filteredAvailableColumns}
                     selectedColumns={selectedColumns}
                     columnSearch={columnSearch}
+                    loading={columnsLoading}
                     onColumnSearchChange={setColumnSearch}
                     onAddColumn={handleAddColumn}
                     onRemoveColumn={handleRemoveColumn}
