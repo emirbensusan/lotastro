@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { CalculatedFieldBuilder, CalculatedField } from './CalculatedFieldBuilder';
 import { FilterBuilder, FilterGroup } from './FilterBuilder';
+import { StyleBuilder, ReportStyling, DEFAULT_REPORT_STYLING } from './StyleBuilder';
 
 interface ColumnDefinition {
   key: string;
@@ -69,6 +70,7 @@ interface ReportConfig {
   calculated_fields?: CalculatedField[];
   sorting: SortConfig[];
   filters: FilterGroup[];
+  styling?: ReportStyling;
   output_formats: string[];
   include_charts: boolean;
   schedule_id?: string | null;
@@ -129,6 +131,9 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
   
   // Sort configuration state
   const [sortConfigs, setSortConfigs] = useState<SortConfig[]>([]);
+  
+  // Styling state
+  const [reportStyling, setReportStyling] = useState<ReportStyling>(DEFAULT_REPORT_STYLING);
 
   // Fetch data sources on mount
   useEffect(() => {
@@ -149,6 +154,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
       setIncludeCharts(editingConfig.include_charts || false);
       setFilterGroups(editingConfig.filters || []);
       setSortConfigs(editingConfig.sorting || []);
+      setReportStyling(editingConfig.styling || DEFAULT_REPORT_STYLING);
       
       // Fetch columns for the selected data source
       if (editingConfig.data_source) {
@@ -165,6 +171,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
       setIncludeCharts(false);
       setFilterGroups([]);
       setSortConfigs([]);
+      setReportStyling(DEFAULT_REPORT_STYLING);
       setActiveTab('datasource');
     }
   }, [editingConfig, open]);
@@ -340,6 +347,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
               .filter(c => c.sortOrder)
               .map((c, index) => ({ column: c.key, direction: c.sortOrder!, priority: index })),
         filters: filterGroups,
+        styling: reportStyling,
         output_formats: outputFormats,
         include_charts: includeCharts,
       };
@@ -391,30 +399,34 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
 
         <div className="flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="datasource" className="flex items-center gap-2">
                 <Database className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('reportBuilder.dataSource')}</span>
+                <span className="hidden lg:inline">{t('reportBuilder.dataSource')}</span>
               </TabsTrigger>
               <TabsTrigger value="columns" className="flex items-center gap-2" disabled={!selectedDataSource}>
                 <Columns className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('reportBuilder.columns')}</span>
+                <span className="hidden lg:inline">{t('reportBuilder.columns')}</span>
               </TabsTrigger>
               <TabsTrigger value="calculated" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <Calculator className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('reportBuilder.calculated')}</span>
+                <span className="hidden lg:inline">{t('reportBuilder.calculated')}</span>
               </TabsTrigger>
               <TabsTrigger value="filters" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <Filter className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('reportBuilder.filters')}</span>
+                <span className="hidden lg:inline">{t('reportBuilder.filters')}</span>
               </TabsTrigger>
               <TabsTrigger value="sorting" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <ArrowUpDown className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('reportBuilder.sorting')}</span>
+                <span className="hidden lg:inline">{t('reportBuilder.sorting')}</span>
+              </TabsTrigger>
+              <TabsTrigger value="styling" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
+                <Palette className="h-4 w-4" />
+                <span className="hidden lg:inline">{t('reportBuilder.styling')}</span>
               </TabsTrigger>
               <TabsTrigger value="output" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
-                <Palette className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('reportBuilder.output')}</span>
+                <FileSpreadsheet className="h-4 w-4" />
+                <span className="hidden lg:inline">{t('reportBuilder.output')}</span>
               </TabsTrigger>
             </TabsList>
 
@@ -862,6 +874,15 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
                   </ScrollArea>
                 </div>
               </div>
+            </TabsContent>
+
+            {/* Styling Tab */}
+            <TabsContent value="styling" className="flex-1 overflow-hidden mt-4">
+              <StyleBuilder
+                styling={reportStyling}
+                onChange={setReportStyling}
+                availableColumns={availableColumns}
+              />
             </TabsContent>
 
             {/* Output Tab */}
