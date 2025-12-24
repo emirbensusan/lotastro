@@ -4,16 +4,15 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { 
   Columns, Filter, ArrowUpDown, Palette, Save, Calculator, 
   Loader2, FileSpreadsheet, Clock, Play, ChevronDown, ChevronUp,
-  AlertCircle, CheckCircle2, X
+  AlertCircle, CheckCircle2, X, Plus, GripVertical
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ColumnBrowserGrid, TableDefinition, ColumnDefinition as CBColumnDefinition, SelectedColumn as CBSelectedColumn } from './ColumnBrowserGrid';
+import { ColumnSelectorModal, ColumnDefinition as CSColumnDefinition, SelectedColumn as CSSelectedColumn } from './ColumnSelectorModal';
 import { JoinPathDisplay, TableRelationship as JPTableRelationship } from './JoinPathDisplay';
 import { TimePeriodComparison, ComparisonConfig } from './TimePeriodComparison';
 import { FilterBuilder, FilterGroup } from './FilterBuilder';
@@ -30,6 +29,7 @@ import {
   DEFAULT_SCHEDULE_CONFIG,
   DEFAULT_REPORT_STYLING,
 } from './reportBuilderTypes';
+import { cn } from '@/lib/utils';
 
 interface TableFromAPI {
   table: string;
@@ -57,10 +57,11 @@ const ReportBuilderTab: React.FC = () => {
   const { toast } = useToast();
 
   // UI State
-  const [activeTab, setActiveTab] = useState('columns');
+  const [activeTab, setActiveTab] = useState('filters');
   const [showPreview, setShowPreview] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [columnModalOpen, setColumnModalOpen] = useState(false);
 
   // Schema data
   const [allColumns, setAllColumns] = useState<ColumnDefinition[]>([]);
@@ -71,7 +72,6 @@ const ReportBuilderTab: React.FC = () => {
   const [selectedColumns, setSelectedColumns] = useState<SelectedColumn[]>([]);
   const [validation, setValidation] = useState<ValidationResult>({ isValid: true, joinPath: [] });
   const [validating, setValidating] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Report configuration
   const [reportName, setReportName] = useState('');
@@ -113,6 +113,10 @@ const ReportBuilderTab: React.FC = () => {
       showPercentage: true,
     },
   });
+
+  // Drag state for selected columns reordering
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Fetch schema on mount
   useEffect(() => {
@@ -206,73 +210,29 @@ const ReportBuilderTab: React.FC = () => {
     }
   };
 
-  // Convert columns to table definitions for ColumnBrowser
-  const tableDefinitions = useMemo((): TableDefinition[] => {
-    const tableMap = new Map<string, TableDefinition>();
-    
-    allColumns.forEach(col => {
-      if (!tableMap.has(col.table)) {
-        const tableInfo = tables.find(t => t.key === col.table);
-        tableMap.set(col.table, {
-          table: col.table,
-          labelEn: tableInfo?.labelEn || col.table,
-          labelTr: tableInfo?.labelTr || col.table,
-          descriptionEn: tableInfo?.descriptionEn || '',
-          descriptionTr: tableInfo?.descriptionTr || '',
-          columns: [],
-          columnCount: 0,
-        });
-      }
-      const tableDef = tableMap.get(col.table)!;
-      tableDef.columns.push({
-        key: col.key,
-        labelEn: col.labelEn,
-        labelTr: col.labelTr,
-        type: col.type as 'text' | 'number' | 'date' | 'currency' | 'boolean',
-        table: col.table,
-      });
-      tableDef.columnCount = tableDef.columns.length;
-    });
-    
-    return Array.from(tableMap.values());
-  }, [allColumns, tables]);
+  // Convert columns for ColumnSelectorModal
+  const modalColumns = useMemo((): CSColumnDefinition[] => {
+    return allColumns.map(col => ({
+      key: col.key,
+      labelEn: col.labelEn,
+      labelTr: col.labelTr,
+      type: col.type as 'text' | 'number' | 'date' | 'currency' | 'boolean',
+      table: col.table,
+    }));
+  }, [allColumns]);
 
-  // Convert selected columns for ColumnBrowserGrid
-  const cbSelectedColumns = useMemo((): CBSelectedColumn[] => {
-    return selectedColumns.map(c => ({
-      key: c.key,
-      labelEn: c.labelEn,
-      labelTr: c.labelTr,
-      type: c.type as 'text' | 'number' | 'date' | 'currency' | 'boolean',
-      table: c.table,
-      sortOrder: c.sortOrder,
+  const modalSelectedColumns = useMemo((): CSSelectedColumn[] => {
+    return selectedColumns.map(col => ({
+      key: col.key,
+      labelEn: col.labelEn,
+      labelTr: col.labelTr,
+      type: col.type as 'text' | 'number' | 'date' | 'currency' | 'boolean',
+      table: col.table,
+      sortOrder: col.sortOrder,
     }));
   }, [selectedColumns]);
 
-  // Handle adding a column
-  const handleColumnAdd = useCallback((column: CBColumnDefinition) => {
-    if (selectedColumns.find(c => c.key === column.key)) return;
-    setSelectedColumns(prev => [...prev, { 
-      ...column,
-      type: column.type,
-    } as SelectedColumn]);
-  }, [selectedColumns]);
-
-  // Handle column sort toggle
-  const handleColumnSortToggle = useCallback((columnKey: string) => {
-    setSelectedColumns(prev => prev.map(col => {
-      if (col.key !== columnKey) return col;
-      const currentSort = col.sortOrder;
-      let newSort: 'asc' | 'desc' | undefined;
-      if (!currentSort) newSort = 'asc';
-      else if (currentSort === 'asc') newSort = 'desc';
-      else newSort = undefined;
-      return { ...col, sortOrder: newSort };
-    }));
-  }, []);
-
-
-  const handleValidateColumn = useCallback(async (column: CBColumnDefinition): Promise<{ canJoin: boolean; error?: string }> => {
+  const handleValidateColumn = useCallback(async (column: CSColumnDefinition): Promise<{ canJoin: boolean; error?: string }> => {
     if (selectedColumns.length === 0) {
       return { canJoin: true };
     }
@@ -297,13 +257,46 @@ const ReportBuilderTab: React.FC = () => {
     }
   }, [selectedColumns]);
 
-  const handleColumnRemove = useCallback((columnKey: string) => {
-    setSelectedColumns(prev => prev.filter(c => c.key !== columnKey));
+  const handleColumnsChange = useCallback((newColumns: CSSelectedColumn[]) => {
+    setSelectedColumns(newColumns as SelectedColumn[]);
   }, []);
 
-  const handleReorderColumns = useCallback((newColumns: SelectedColumn[]) => {
-    setSelectedColumns(newColumns);
+  const handleColumnRemove = useCallback((columnKey: string, table: string) => {
+    setSelectedColumns(prev => prev.filter(c => !(c.key === columnKey && c.table === table)));
   }, []);
+
+  const handleColumnSortToggle = useCallback((columnKey: string, table: string) => {
+    setSelectedColumns(prev => prev.map(col => {
+      if (col.key !== columnKey || col.table !== table) return col;
+      const currentSort = col.sortOrder;
+      let newSort: 'asc' | 'desc' | undefined;
+      if (!currentSort) newSort = 'asc';
+      else if (currentSort === 'asc') newSort = 'desc';
+      else newSort = undefined;
+      return { ...col, sortOrder: newSort };
+    }));
+  }, []);
+
+  // Drag handlers for selected columns reordering
+  const handleDragStart = useCallback((index: number) => {
+    setDraggedIndex(index);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
+      const newColumns = [...selectedColumns];
+      const [removed] = newColumns.splice(draggedIndex, 1);
+      newColumns.splice(dragOverIndex > draggedIndex ? dragOverIndex - 1 : dragOverIndex, 0, removed);
+      setSelectedColumns(newColumns);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, [draggedIndex, dragOverIndex, selectedColumns]);
 
   const handleSave = async () => {
     if (!reportName.trim()) {
@@ -413,6 +406,9 @@ const ReportBuilderTab: React.FC = () => {
   // Get selected tables for JoinPathDisplay
   const selectedTables = useMemo(() => [...new Set(selectedColumns.map(c => c.table))], [selectedColumns]);
 
+  const getLabel = (item: { labelEn: string; labelTr: string }) => 
+    language === 'tr' ? item.labelTr : item.labelEn;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -423,7 +419,7 @@ const ReportBuilderTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Report Name */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <FileSpreadsheet className="h-6 w-6 text-primary" />
@@ -453,94 +449,152 @@ const ReportBuilderTab: React.FC = () => {
             {showPreview ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             {language === 'tr' ? 'Önizleme' : 'Preview'}
           </Button>
-          <Button onClick={handleSave} disabled={saving || !validation.isValid}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            {language === 'tr' ? 'Kaydet' : 'Save'}
-          </Button>
         </div>
       </div>
 
-      {/* Validation Status */}
-      {selectedColumns.length > 0 && (
-        <Card className={validation.isValid ? 'border-green-500/50 bg-green-500/5' : 'border-destructive/50 bg-destructive/5'}>
-          <CardContent className="py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {validating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : validation.isValid ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                )}
-                <span className={`text-sm font-medium ${validation.isValid ? 'text-green-700' : 'text-destructive'}`}>
-                  {validating 
-                    ? (language === 'tr' ? 'Doğrulanıyor...' : 'Validating...')
-                    : validation.isValid 
-                      ? (language === 'tr' ? 'Sütunlar birleştirilebilir' : 'Columns can be joined')
-                      : (validation.error || (language === 'tr' ? 'Sütunlar birleştirilemez' : 'Columns cannot be joined'))
-                  }
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  {selectedColumns.length} {language === 'tr' ? 'sütun' : 'columns'}
-                </Badge>
-                <Badge variant="outline">
-                  {selectedTables.length} {language === 'tr' ? 'tablo' : 'tables'}
-                </Badge>
-              </div>
+      {/* Selected Columns Card with Save Button */}
+      <Card>
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CardTitle className="text-sm font-medium">
+                {language === 'tr' ? 'Seçili Sütunlar' : 'Selected Columns'}
+              </CardTitle>
+              {selectedColumns.length > 0 && (
+                <>
+                  <Badge variant="secondary">
+                    {selectedColumns.length} {language === 'tr' ? 'sütun' : 'columns'}
+                  </Badge>
+                  <Badge variant="outline">
+                    {selectedTables.length} {language === 'tr' ? 'tablo' : 'tables'}
+                  </Badge>
+                </>
+              )}
+              {/* Validation Status */}
+              {selectedColumns.length > 1 && (
+                <div className="flex items-center gap-1.5">
+                  {validating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  ) : validation.isValid ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                  )}
+                  <span className={cn(
+                    "text-xs",
+                    validation.isValid ? "text-green-600" : "text-destructive"
+                  )}>
+                    {validating 
+                      ? (language === 'tr' ? 'Doğrulanıyor...' : 'Validating...')
+                      : validation.isValid 
+                        ? (language === 'tr' ? 'Birleştirilebilir' : 'Can be joined')
+                        : (language === 'tr' ? 'Birleştirilemez' : 'Cannot be joined')
+                    }
+                  </span>
+                </div>
+              )}
             </div>
-            
-            {/* Join Path Display */}
-            {validation.joinPath.length > 0 && (
-              <div className="mt-3">
-                <JoinPathDisplay 
-                  joinPath={validation.joinPath}
-                  selectedTables={selectedTables}
-                  canJoin={validation.isValid}
-                  error={validation.error}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Selected Columns Preview */}
-      {selectedColumns.length > 0 && (
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium">
-              {language === 'tr' ? 'Seçili Sütunlar' : 'Selected Columns'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-2">
-            <div className="flex flex-wrap gap-2">
-              {selectedColumns.map((col) => (
-                <Badge key={col.key} variant="secondary" className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">{col.table}.</span>
-                  {language === 'tr' ? col.labelTr : col.labelEn}
-                  <button
-                    onClick={() => handleColumnRemove(col.key)}
-                    className="ml-1 hover:bg-muted rounded-full p-0.5"
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setColumnModalOpen(true)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                {language === 'tr' ? 'Sütun Ekle' : 'Add Columns'}
+              </Button>
+              <Button 
+                onClick={handleSave} 
+                disabled={saving || !validation.isValid || selectedColumns.length === 0}
+                size="sm"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                {language === 'tr' ? 'Kaydet' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="py-3">
+          {selectedColumns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+              <Columns className="h-8 w-8 mb-2" />
+              <p className="text-sm">
+                {language === 'tr' ? 'Henüz sütun seçilmedi' : 'No columns selected yet'}
+              </p>
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="mt-2"
+                onClick={() => setColumnModalOpen(true)}
+              >
+                {language === 'tr' ? 'Sütun eklemek için tıklayın' : 'Click to add columns'}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {/* Draggable column chips */}
+              <div className="flex flex-wrap gap-2">
+                {selectedColumns.map((col, index) => (
+                  <div
+                    key={`${col.table}.${col.key}`}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2 py-1 rounded-md text-sm bg-primary/5 border transition-all group cursor-grab active:cursor-grabbing",
+                      dragOverIndex === index ? "border-primary shadow-sm" : "border-transparent",
+                      draggedIndex === index && "opacity-50"
+                    )}
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+                    <GripVertical className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{col.table}.</span>
+                    <span className="font-medium">{getLabel(col)}</span>
+                    {col.sortOrder && (
+                      <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                        {col.sortOrder === 'asc' ? '↑' : '↓'}
+                      </Badge>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleColumnSortToggle(col.key, col.table)}
+                      className={cn(
+                        "h-5 w-5 p-0",
+                        col.sortOrder ? "text-primary" : "opacity-0 group-hover:opacity-100"
+                      )}
+                    >
+                      <ArrowUpDown className="h-3 w-3" />
+                    </Button>
+                    <button
+                      onClick={() => handleColumnRemove(col.key, col.table)}
+                      className="ml-0.5 hover:bg-muted rounded-full p-0.5 opacity-0 group-hover:opacity-100"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Join Path Display */}
+              {validation.joinPath.length > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  <JoinPathDisplay 
+                    joinPath={validation.joinPath}
+                    selectedTables={selectedTables}
+                    canJoin={validation.isValid}
+                    error={validation.error}
+                  />
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-flex md:grid-cols-none">
-          <TabsTrigger value="columns" className="flex items-center gap-2">
-            <Columns className="h-4 w-4" />
-            <span className="hidden sm:inline">{language === 'tr' ? 'Sütunlar' : 'Columns'}</span>
-          </TabsTrigger>
           <TabsTrigger value="filters" className="flex items-center gap-2">
             <Filter className="h-4 w-4" />
             <span className="hidden sm:inline">{language === 'tr' ? 'Filtreler' : 'Filters'}</span>
@@ -562,21 +616,6 @@ const ReportBuilderTab: React.FC = () => {
             <span className="hidden sm:inline">{language === 'tr' ? 'Stil' : 'Style'}</span>
           </TabsTrigger>
         </TabsList>
-
-        {/* Columns Tab - Column Browser Grid */}
-        <TabsContent value="columns" className="mt-6">
-          <ColumnBrowserGrid
-            tables={tableDefinitions}
-            selectedColumns={cbSelectedColumns}
-            onColumnAdd={handleColumnAdd}
-            onColumnRemove={handleColumnRemove}
-            onReorderColumns={handleReorderColumns}
-            onColumnSortToggle={handleColumnSortToggle}
-            onValidateColumn={handleValidateColumn}
-            validationErrors={validationErrors}
-            loading={validating}
-          />
-        </TabsContent>
 
         {/* Filters Tab */}
         <TabsContent value="filters" className="mt-6">
@@ -702,6 +741,17 @@ const ReportBuilderTab: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Column Selector Modal */}
+      <ColumnSelectorModal
+        open={columnModalOpen}
+        onOpenChange={setColumnModalOpen}
+        allColumns={modalColumns}
+        selectedColumns={modalSelectedColumns}
+        onColumnsChange={handleColumnsChange}
+        onValidateColumn={handleValidateColumn}
+        loading={loading}
+      />
     </div>
   );
 };
