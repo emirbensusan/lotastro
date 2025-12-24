@@ -34,9 +34,12 @@ interface ReportConfig {
   id: string;
   name: string;
   report_type: string;
+  data_source?: string;
   columns: string[];
+  columns_config?: any[];
   output_formats: string[];
   include_charts: boolean;
+  styling?: any;
 }
 
 // Check if a schedule should run now
@@ -208,17 +211,31 @@ const handler = async (req: Request): Promise<Response> => {
         let reportType = 'inventory_stock'; // Default
         let reportTitle = schedule.name;
         let outputFormat: 'html' | 'excel' | 'csv' = 'html';
+        let configId: string | null = null;
+        let isDynamicReport = false;
 
         if (schedule.template_id) {
           const { data: reportConfig } = await supabase
             .from("email_report_configs")
             .select("*")
             .eq("id", schedule.template_id)
-            .single();
+            .maybeSingle();
 
           if (reportConfig) {
-            reportType = reportConfig.report_type;
+            configId = reportConfig.id;
             reportTitle = reportConfig.name;
+            
+            // Check if this is a dynamic report (has data_source or columns_config)
+            isDynamicReport = !!(reportConfig.data_source || (reportConfig.columns_config && reportConfig.columns_config.length > 0));
+            
+            if (isDynamicReport) {
+              // Use dynamic report config
+              reportType = reportConfig.data_source || reportConfig.report_type;
+            } else {
+              // Legacy report type
+              reportType = reportConfig.report_type;
+            }
+            
             // Use first output format or default to html
             const formats = reportConfig.output_formats || ['html'];
             outputFormat = formats.includes('excel') ? 'excel' : 
@@ -226,18 +243,31 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
 
-        // Generate report
+        console.log(`send-scheduled-report: Report config - type=${reportType}, isDynamic=${isDynamicReport}, configId=${configId}`);
+
+        // Generate report using the updated edge function
+        const reportPayload: any = {
+          format: 'html', // Always generate HTML for email body
+        };
+        
+        if (isDynamicReport && configId) {
+          // Use dynamic config
+          reportPayload.config_id = configId;
+        } else {
+          // Use legacy report type
+          reportPayload.report_type = reportType;
+          if (configId) {
+            reportPayload.config_id = configId;
+          }
+        }
+
         const reportResponse = await fetch(`${supabaseUrl}/functions/v1/generate-report-attachment`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${supabaseServiceKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            report_type: reportType,
-            format: 'html', // Always generate HTML for email body
-            config_id: schedule.template_id,
-          }),
+          body: JSON.stringify(reportPayload),
         });
 
         if (!reportResponse.ok) {
@@ -249,17 +279,26 @@ const handler = async (req: Request): Promise<Response> => {
         // Generate attachment if needed
         let attachments: any[] = [];
         if (outputFormat !== 'html') {
+          const attachmentPayload: any = {
+            format: outputFormat,
+          };
+          
+          if (isDynamicReport && configId) {
+            attachmentPayload.config_id = configId;
+          } else {
+            attachmentPayload.report_type = reportType;
+            if (configId) {
+              attachmentPayload.config_id = configId;
+            }
+          }
+          
           const attachmentResponse = await fetch(`${supabaseUrl}/functions/v1/generate-report-attachment`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${supabaseServiceKey}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              report_type: reportType,
-              format: outputFormat,
-              config_id: schedule.template_id,
-            }),
+            body: JSON.stringify(attachmentPayload),
           });
 
           if (attachmentResponse.ok) {
