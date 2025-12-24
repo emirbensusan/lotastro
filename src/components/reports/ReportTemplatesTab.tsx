@@ -48,6 +48,18 @@ interface FilterGroup {
   }[];
 }
 
+interface ReportStyling {
+  headerBackgroundColor: string;
+  headerTextColor: string;
+  headerFontWeight: 'normal' | 'bold';
+  alternateRowColors: boolean;
+  evenRowColor: string;
+  oddRowColor: string;
+  borderStyle: 'none' | 'light' | 'medium' | 'heavy';
+  fontSize: 'small' | 'medium' | 'large';
+  conditionalRules: any[];
+}
+
 interface ReportBuilderConfig {
   id?: string;
   name: string;
@@ -57,6 +69,7 @@ interface ReportBuilderConfig {
   calculated_fields?: any[];
   sorting: SortConfig[];
   filters: FilterGroup[];
+  styling?: ReportStyling;
   output_formats: string[];
   include_charts: boolean;
   schedule_id?: string | null;
@@ -179,7 +192,7 @@ const ReportTemplatesTab: React.FC = () => {
     const { data: user } = await supabase.auth.getUser();
     
     // Build the payload for the new schema
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: config.name,
       report_type: config.data_source, // Keep for backward compatibility
       data_source: config.data_source,
@@ -187,7 +200,8 @@ const ReportTemplatesTab: React.FC = () => {
       columns_config: config.columns_config,
       calculated_fields: config.calculated_fields || [],
       columns: config.columns_config.map(c => c.key), // Keep for backward compatibility
-      filters: config.filters || {},
+      filters: config.filters || [],
+      styling: config.styling || null,
       include_charts: config.include_charts || false,
       output_formats: config.output_formats || ['html'],
       is_system: false,
@@ -197,14 +211,14 @@ const ReportTemplatesTab: React.FC = () => {
     if (config.id) {
       const { error } = await supabase
         .from('email_report_configs')
-        .update(payload)
+        .update(payload as any)
         .eq('id', config.id);
 
       if (error) throw error;
     } else {
       const { error } = await supabase
         .from('email_report_configs')
-        .insert(payload);
+        .insert(payload as any);
 
       if (error) throw error;
     }
