@@ -30,6 +30,24 @@ interface ReportConfig {
   updated_at: string;
 }
 
+interface SortConfig {
+  column: string;
+  direction: 'asc' | 'desc';
+  priority: number;
+}
+
+interface FilterGroup {
+  id: string;
+  logic: 'AND' | 'OR';
+  conditions: {
+    id: string;
+    column: string;
+    operator: string;
+    value: string;
+    value2?: string;
+  }[];
+}
+
 interface ReportBuilderConfig {
   id?: string;
   name: string;
@@ -37,8 +55,8 @@ interface ReportBuilderConfig {
   selected_joins: string[];
   columns_config: any[];
   calculated_fields?: any[];
-  sorting: { column: string; direction: 'asc' | 'desc' }[];
-  filters: Record<string, any>;
+  sorting: SortConfig[];
+  filters: FilterGroup[];
   output_formats: string[];
   include_charts: boolean;
   schedule_id?: string | null;
@@ -106,7 +124,7 @@ const ReportTemplatesTab: React.FC = () => {
       selected_joins: config.selected_joins || [],
       columns_config: config.columns_config || [],
       sorting: [],
-      filters: config.filters || {},
+      filters: Array.isArray(config.filters) ? config.filters as FilterGroup[] : [],
       output_formats: config.output_formats || ['html'],
       include_charts: config.include_charts || false,
     };
@@ -121,7 +139,7 @@ const ReportTemplatesTab: React.FC = () => {
       selected_joins: config.selected_joins || [],
       columns_config: config.columns_config || [],
       sorting: [],
-      filters: config.filters || {},
+      filters: Array.isArray(config.filters) ? config.filters as FilterGroup[] : [],
       output_formats: config.output_formats || ['html'],
       include_charts: config.include_charts || false,
     };
