@@ -12,6 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CalculatedField } from '@/components/reports/CalculatedFieldBuilder';
+import { PageLayoutConfig, BrandingConfig, ChartConfig } from '@/components/reports/tabs/OutputTab';
 import { FilterGroup, FilterBuilder } from '@/components/reports/FilterBuilder';
 import { ReportStyling, StyleBuilder } from '@/components/reports/StyleBuilder';
 import { ReportPreview } from '@/components/reports/ReportPreview';
@@ -67,6 +68,25 @@ const ReportBuilderPage: React.FC = () => {
   const [reportName, setReportName] = useState('');
   const [outputFormats, setOutputFormats] = useState<string[]>(['html']);
   const [includeCharts, setIncludeCharts] = useState(false);
+  const [pageLayout, setPageLayout] = useState<PageLayoutConfig>({
+    orientation: 'portrait',
+    pageSize: 'a4',
+    margins: 'normal',
+    showPageNumbers: true,
+    showDate: true,
+    showTotalRecords: true,
+  });
+  const [branding, setBranding] = useState<BrandingConfig>({
+    showLogo: false,
+    companyName: '',
+    reportFooter: '',
+    primaryColor: '#1e40af',
+  });
+  const [chartConfig, setChartConfig] = useState<ChartConfig>({
+    chartType: 'bar',
+    showLegend: true,
+    showDataLabels: false,
+  });
 
   // Calculated fields state
   const [calculatedFields, setCalculatedFields] = useState<CalculatedField[]>([]);
@@ -643,8 +663,14 @@ const ReportBuilderPage: React.FC = () => {
                   <OutputTab
                     outputFormats={outputFormats}
                     includeCharts={includeCharts}
+                    pageLayout={pageLayout}
+                    branding={branding}
+                    chartConfig={chartConfig}
                     onOutputFormatsChange={setOutputFormats}
                     onIncludeChartsChange={setIncludeCharts}
+                    onPageLayoutChange={setPageLayout}
+                    onBrandingChange={setBranding}
+                    onChartConfigChange={setChartConfig}
                   />
                 </TabsContent>
 
