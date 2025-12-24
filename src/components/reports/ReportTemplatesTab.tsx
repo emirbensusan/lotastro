@@ -36,6 +36,7 @@ interface ReportBuilderConfig {
   data_source: string;
   selected_joins: string[];
   columns_config: any[];
+  calculated_fields?: any[];
   sorting: { column: string; direction: 'asc' | 'desc' }[];
   filters: Record<string, any>;
   output_formats: string[];
@@ -166,6 +167,7 @@ const ReportTemplatesTab: React.FC = () => {
       data_source: config.data_source,
       selected_joins: config.selected_joins,
       columns_config: config.columns_config,
+      calculated_fields: config.calculated_fields || [],
       columns: config.columns_config.map(c => c.key), // Keep for backward compatibility
       filters: config.filters || {},
       include_charts: config.include_charts || false,
