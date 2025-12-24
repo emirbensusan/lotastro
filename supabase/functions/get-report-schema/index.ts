@@ -280,9 +280,23 @@ serve(async (req) => {
       );
     }
 
+    // Parse from body or query params
     const url = new URL(req.url);
-    const dataSourceKey = url.searchParams.get('dataSource');
-    const includeJoins = url.searchParams.get('includeJoins') === 'true';
+    let dataSourceKey = url.searchParams.get('dataSource');
+    let includeJoins = url.searchParams.get('includeJoins') === 'true';
+    
+    // If POST request, also check body
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        if (body.dataSource) dataSourceKey = body.dataSource;
+        if (body.includeJoins !== undefined) includeJoins = body.includeJoins === true;
+      } catch {
+        // Body parsing failed, use query params
+      }
+    }
+    
+    console.log('Request params:', { dataSourceKey, includeJoins });
 
     // If a specific data source is requested, return its columns
     if (dataSourceKey) {
