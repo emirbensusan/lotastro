@@ -137,7 +137,7 @@ const ScheduledReportsTab: React.FC = () => {
   }>({
     name: '',
     description: '',
-    template_id: '',
+    template_id: 'none',
     is_active: true,
     schedule_type: 'daily',
     hour: 8,
@@ -230,7 +230,7 @@ const ScheduledReportsTab: React.FC = () => {
     setFormData({
       name: '',
       description: '',
-      template_id: '',
+      template_id: 'none',
       is_active: true,
       schedule_type: 'daily',
       hour: 8,
@@ -258,7 +258,7 @@ const ScheduledReportsTab: React.FC = () => {
     setFormData({
       name: schedule.name,
       description: schedule.description || '',
-      template_id: schedule.template_id || '',
+      template_id: schedule.template_id || 'none',
       is_active: schedule.is_active,
       schedule_type: schedule.schedule_type || 'daily',
       hour: config.hour ?? 8,
@@ -300,7 +300,7 @@ const ScheduledReportsTab: React.FC = () => {
           .insert({
             name: formData.name,
             description: formData.description || null,
-            template_id: formData.template_id || null,
+            template_id: formData.template_id === 'none' ? null : formData.template_id,
             schedule_type: formData.schedule_type,
             schedule_config: scheduleConfig as Json,
             is_active: formData.is_active,
@@ -318,7 +318,7 @@ const ScheduledReportsTab: React.FC = () => {
           .update({
             name: formData.name,
             description: formData.description || null,
-            template_id: formData.template_id || null,
+            template_id: formData.template_id === 'none' ? null : formData.template_id,
             schedule_type: formData.schedule_type,
             schedule_config: scheduleConfig as Json,
             is_active: formData.is_active,
@@ -752,7 +752,7 @@ const ScheduledReportsTab: React.FC = () => {
                       <SelectValue placeholder={String(t('scheduledReports.selectTemplate'))} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">{t('scheduledReports.noTemplate')}</SelectItem>
+                      <SelectItem value="none">{t('scheduledReports.noTemplate')}</SelectItem>
                       {reportConfigs.map(config => (
                         <SelectItem key={config.id} value={config.id}>
                           {config.name}
