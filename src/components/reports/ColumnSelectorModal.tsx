@@ -503,10 +503,14 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
                         const cacheKey = `${col.primaryTable}.${col.key}`;
                         const cachedValidation = validationCache[cacheKey];
                         const isValidating = validatingAll || validatingColumns.has(cacheKey);
-                        // Column is disabled if: has pending selections, this column isn't pending, and validation says cannot join
+                        // Column is disabled if:
+                        // 1. There are pending selections AND
+                        // 2. This column isn't pending AND
+                        // 3. Either: still validating OR not yet validated OR explicitly cannot join
                         const isDisabled = pendingSelections.size > 0 && 
                           !isPending && 
-                          cachedValidation?.canJoin === false;
+                          (isValidating || !cachedValidation || cachedValidation.canJoin === false);
+                        const isIncompatible = cachedValidation?.canJoin === false;
                         const Icon = TypeIcon(col.type);
                         
                         return (
@@ -514,17 +518,18 @@ export const ColumnSelectorModal: React.FC<ColumnSelectorModalProps> = ({
                             <TooltipTrigger asChild>
                               <button
                                 onClick={() => !isDisabled && toggleColumn(col)}
-                                onMouseEnter={() => validateColumnOnHover(col)}
-                                disabled={isDisabled || isValidating}
+                                onMouseEnter={() => !isDisabled && validateColumnOnHover(col)}
+                                disabled={isDisabled}
                                 className={cn(
                                   "relative flex flex-col items-start p-2 rounded-md border text-left transition-all",
-                                  "hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                                   isPending 
-                                    ? "bg-primary/10 border-primary ring-1 ring-primary/50" 
+                                    ? "bg-primary/10 border-primary ring-1 ring-primary/50 hover:shadow-sm" 
                                     : isDisabled
-                                      ? "bg-muted/50 border-muted text-muted-foreground cursor-not-allowed opacity-50"
-                                      : "bg-card border-border hover:bg-accent/50",
-                                  isValidating && "animate-pulse"
+                                      ? isIncompatible
+                                        ? "bg-destructive/5 border-destructive/30 text-muted-foreground cursor-not-allowed opacity-50" // Incompatible
+                                        : "bg-muted/30 border-muted text-muted-foreground cursor-wait opacity-60" // Still loading
+                                      : "bg-card border-border hover:bg-accent/50 hover:shadow-sm"
                                 )}
                               >
                                 {/* Selection indicator */}
