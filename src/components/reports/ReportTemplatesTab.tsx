@@ -206,7 +206,7 @@ const ReportTemplatesTab: React.FC = () => {
   const handleSaveReport = async (config: ReportBuilderConfig) => {
     const { data: user } = await supabase.auth.getUser();
     
-    // Build the payload for the new schema
+    // Build the payload for the new schema (Phase 9 refinements)
     const payload: Record<string, unknown> = {
       name: config.name,
       report_type: config.data_source, // Keep for backward compatibility
@@ -216,7 +216,9 @@ const ReportTemplatesTab: React.FC = () => {
       calculated_fields: config.calculated_fields || [],
       columns: config.columns_config.map(c => c.key), // Keep for backward compatibility
       filters: config.filters || [],
+      sorting: config.sorting || [], // New in Phase 9
       styling: config.styling || null,
+      schedule_config: config.schedule_config || null, // New in Phase 9
       include_charts: config.include_charts || false,
       output_formats: config.output_formats || ['html'],
       is_system: false,
@@ -228,7 +230,10 @@ const ReportTemplatesTab: React.FC = () => {
     if (config.id) {
       const { error } = await supabase
         .from('email_report_configs')
-        .update(payload as any)
+        .update({
+          ...payload,
+          updated_at: new Date().toISOString(),
+        } as any)
         .eq('id', config.id);
 
       if (error) throw error;
@@ -261,11 +266,15 @@ const ReportTemplatesTab: React.FC = () => {
       };
 
       // Check if there's an existing schedule linked to this report config
-      // We use the template_id field to link schedules to report configs
-      const { data: existingSchedule } = await supabase
+      // Use report_config_id for bidirectional linking (Phase 9)
+      // Note: report_config_id is a new column added in Phase 9 migration
+      const scheduleQuery = supabase
         .from('email_schedules')
-        .select('id')
-        .eq('template_id', reportConfigId)
+        .select('id');
+      
+      // Use dynamic column access for the new report_config_id column
+      const { data: existingSchedule } = await (scheduleQuery as any)
+        .eq('report_config_id', reportConfigId)
         .maybeSingle();
 
       let scheduleId: string | undefined;
@@ -286,13 +295,13 @@ const ReportTemplatesTab: React.FC = () => {
           scheduleId = existingSchedule.id;
         }
       } else {
-        // Create new schedule and link it
+        // Create new schedule and link it bidirectionally
         const { data: newSchedule, error: insertError } = await supabase
           .from('email_schedules')
           .insert({
             ...schedulePayload,
-            template_id: reportConfigId,
-          })
+            report_config_id: reportConfigId,
+          } as any)
           .select('id')
           .single();
 
@@ -300,6 +309,12 @@ const ReportTemplatesTab: React.FC = () => {
           console.error('Error creating schedule:', insertError);
         } else {
           scheduleId = newSchedule?.id;
+          
+          // Update report config with schedule_id for bidirectional link
+          await supabase
+            .from('email_report_configs')
+            .update({ schedule_id: scheduleId } as any)
+            .eq('id', reportConfigId as string);
         }
       }
 

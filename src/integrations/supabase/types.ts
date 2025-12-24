@@ -1057,15 +1057,21 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           data_source: string | null
+          description: string | null
           filters: Json | null
+          generation_count: number | null
           grouping: Json | null
           id: string
           include_charts: boolean | null
           is_system: boolean | null
+          last_generated_at: string | null
           name: string
           output_formats: string[] | null
           report_type: string
+          schedule_config: Json | null
+          schedule_id: string | null
           selected_joins: Json | null
+          sorting: Json | null
           styling: Json | null
           updated_at: string | null
         }
@@ -1077,15 +1083,21 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           data_source?: string | null
+          description?: string | null
           filters?: Json | null
+          generation_count?: number | null
           grouping?: Json | null
           id?: string
           include_charts?: boolean | null
           is_system?: boolean | null
+          last_generated_at?: string | null
           name: string
           output_formats?: string[] | null
           report_type: string
+          schedule_config?: Json | null
+          schedule_id?: string | null
           selected_joins?: Json | null
+          sorting?: Json | null
           styling?: Json | null
           updated_at?: string | null
         }
@@ -1097,15 +1109,21 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           data_source?: string | null
+          description?: string | null
           filters?: Json | null
+          generation_count?: number | null
           grouping?: Json | null
           id?: string
           include_charts?: boolean | null
           is_system?: boolean | null
+          last_generated_at?: string | null
           name?: string
           output_formats?: string[] | null
           report_type?: string
+          schedule_config?: Json | null
+          schedule_id?: string | null
           selected_joins?: Json | null
+          sorting?: Json | null
           styling?: Json | null
           updated_at?: string | null
         }
@@ -1116,6 +1134,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "email_report_configs_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "email_schedules"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1130,6 +1155,7 @@ export type Database = {
           last_run_status: string | null
           name: string
           next_run_at: string | null
+          report_config_id: string | null
           schedule_config: Json
           schedule_type: string
           template_id: string | null
@@ -1145,6 +1171,7 @@ export type Database = {
           last_run_status?: string | null
           name: string
           next_run_at?: string | null
+          report_config_id?: string | null
           schedule_config?: Json
           schedule_type?: string
           template_id?: string | null
@@ -1160,6 +1187,7 @@ export type Database = {
           last_run_status?: string | null
           name?: string
           next_run_at?: string | null
+          report_config_id?: string | null
           schedule_config?: Json
           schedule_type?: string
           template_id?: string | null
@@ -1172,6 +1200,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "email_schedules_report_config_id_fkey"
+            columns: ["report_config_id"]
+            isOneToOne: false
+            referencedRelation: "email_report_configs"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "email_schedules_template_id_fkey"
