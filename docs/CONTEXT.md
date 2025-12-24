@@ -754,7 +754,31 @@ await logAction(
 
 ---
 
-## 14. Future Considerations
+## 14. Deployment Model
+
+### Current Architecture
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| **Tenant Model** | Single-Tenant | One organization per deployment |
+| **Multi-Tenant Support** | ❌ Not Implemented | No `tenant_id`, `org_id` columns |
+| **Data Isolation** | N/A | All data in single workspace |
+| **Scalability** | Supabase-Managed | Horizontal scaling available |
+
+### Production Readiness
+
+| Category | Score | Status |
+|----------|-------|--------|
+| Overall | 2.9/5 | ⚠️ Conditionally Ready |
+| Security | 2.5/5 | Critical gaps exist |
+| Compliance | 1.5/5 | Missing legal pages |
+| Infrastructure | 3.5/5 | Good foundation |
+
+See [PRODUCTION-READINESS.md](./PRODUCTION-READINESS.md) for full assessment.
+
+---
+
+## 15. Future Considerations
 
 ### Planned Modules
 
@@ -772,6 +796,8 @@ await logAction(
 - Component refactoring for reusability
 - Test coverage improvement
 - Documentation expansion
+- XSS vulnerability remediation (P0)
+- CRON security hardening (P0)
 
 ### Scalability
 
@@ -779,3 +805,12 @@ await logAction(
 - CDN for static assets
 - Connection pooling (Supavisor)
 - Read replicas for heavy queries
+
+---
+
+## Appendix: Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2025-01-10 | Initial context documentation |
+| 1.1.0 | 2025-01-10 | Added deployment model, production readiness status, tenant assessment |

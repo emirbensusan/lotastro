@@ -15,6 +15,7 @@
 | **In Progress** | 🔄 | Currently under development |
 | **Planned** | 📅 | Scheduled for future development |
 | **Backlog** | 📋 | Requested but not yet scheduled |
+| **Critical Gap** | 🔴 | Security/compliance blocker |
 
 ---
 
@@ -29,8 +30,10 @@
 | Auto Session Refresh | ✅ Complete | JWT auto-refresh via Supabase |
 | Session Timeout | ✅ Complete | Configurable inactivity logout |
 | Password Strength Indicator | ✅ Complete | Real-time strength feedback |
-| MFA (Multi-Factor) | 📅 Planned | Two-factor authentication |
+| MFA (Multi-Factor) | 🔴 Critical Gap | Two-factor authentication - P1 priority |
 | SSO Integration | 📅 Planned | Google/Microsoft SSO |
+| Login Rate Limiting | 🔴 Critical Gap | Brute force protection - P1 priority |
+| Password Attempt Lockout | 🔴 Critical Gap | Account protection - P1 priority |
 
 ### User Management
 
@@ -566,7 +569,46 @@
 
 ---
 
-## 20. Feature Request Process
+## 20. Security & Compliance Features
+
+### Security Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| JWT Authentication | ✅ Complete | Supabase Auth |
+| RBAC Permissions | ✅ Complete | 4 roles, 13 categories |
+| Row Level Security | ✅ Complete | All tables protected |
+| Session Timeout | ✅ Complete | Configurable inactivity |
+| Password Strength | ✅ Complete | Enforced requirements |
+| IP Whitelist | ✅ Complete | Admin access control |
+| Audit Logging | ✅ Complete | Full action trail |
+| MFA/2FA | 🔴 Critical Gap | Not implemented - P1 |
+| Login Rate Limiting | 🔴 Critical Gap | Not implemented - P1 |
+| XSS Protection | 🔴 Critical Gap | DOMPurify needed - P0 |
+| CRON Security | 🔴 Critical Gap | Secret validation needed - P0 |
+
+### Compliance Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Terms of Service Page | 🔴 Critical Gap | Not implemented - P0 |
+| Privacy Policy Page | 🔴 Critical Gap | Not implemented - P0 |
+| Cookie Consent | 🔴 Critical Gap | Not implemented - P0 |
+| GDPR Data Export | 📅 Planned | Manual via admin only |
+| Right to Deletion | 🔶 Partial | admin-delete-user exists |
+| Audit Retention | ✅ Complete | Configurable cleanup |
+
+### Tenant Model
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Single-Tenant | ✅ Current | Single organization |
+| Multi-Tenant | ❌ Not Implemented | No tenant_id columns |
+| Tenant Isolation | N/A | Not applicable |
+
+---
+
+## 21. Feature Request Process
 
 ### How to Request Features
 
@@ -604,3 +646,12 @@ Screenshots, examples, etc.
 | Technical Feasibility | 20% |
 | Strategic Alignment | 15% |
 | Effort Required | 10% |
+
+---
+
+## Appendix: Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2025-01-10 | Initial feature inventory |
+| 1.1.0 | 2025-01-10 | Added security/compliance features, tenant model status |
