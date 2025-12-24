@@ -16,9 +16,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   GripVertical, Plus, X, Database, Columns, ArrowUpDown, 
   Palette, Save, FileSpreadsheet, Mail,
-  Search, Loader2, Calculator, Edit, Trash2
+  Search, Loader2, Calculator, Edit, Trash2, Filter, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { CalculatedFieldBuilder, CalculatedField } from './CalculatedFieldBuilder';
+import { FilterBuilder, FilterGroup } from './FilterBuilder';
 
 interface ColumnDefinition {
   key: string;
@@ -53,6 +54,12 @@ interface JoinDefinition {
   foreignColumn: string;
 }
 
+interface SortConfig {
+  column: string;
+  direction: 'asc' | 'desc';
+  priority: number;
+}
+
 interface ReportConfig {
   id?: string;
   name: string;
@@ -60,8 +67,8 @@ interface ReportConfig {
   selected_joins: string[];
   columns_config: SelectedColumn[];
   calculated_fields?: CalculatedField[];
-  sorting: { column: string; direction: 'asc' | 'desc' }[];
-  filters: Record<string, any>;
+  sorting: SortConfig[];
+  filters: FilterGroup[];
   output_formats: string[];
   include_charts: boolean;
   schedule_id?: string | null;
@@ -116,6 +123,12 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
   const [calculatedFields, setCalculatedFields] = useState<CalculatedField[]>([]);
   const [calcFieldBuilderOpen, setCalcFieldBuilderOpen] = useState(false);
   const [editingCalcField, setEditingCalcField] = useState<CalculatedField | null>(null);
+  
+  // Filter state
+  const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([]);
+  
+  // Sort configuration state
+  const [sortConfigs, setSortConfigs] = useState<SortConfig[]>([]);
 
   // Fetch data sources on mount
   useEffect(() => {
@@ -134,6 +147,8 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
       setCalculatedFields(editingConfig.calculated_fields || []);
       setOutputFormats(editingConfig.output_formats || ['html']);
       setIncludeCharts(editingConfig.include_charts || false);
+      setFilterGroups(editingConfig.filters || []);
+      setSortConfigs(editingConfig.sorting || []);
       
       // Fetch columns for the selected data source
       if (editingConfig.data_source) {
@@ -148,6 +163,8 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
       setCalculatedFields([]);
       setOutputFormats(['html']);
       setIncludeCharts(false);
+      setFilterGroups([]);
+      setSortConfigs([]);
       setActiveTab('datasource');
     }
   }, [editingConfig, open]);
@@ -317,10 +334,12 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
         selected_joins: selectedJoins,
         columns_config: selectedColumns,
         calculated_fields: calculatedFields,
-        sorting: selectedColumns
-          .filter(c => c.sortOrder)
-          .map(c => ({ column: c.key, direction: c.sortOrder! })),
-        filters: {},
+        sorting: sortConfigs.length > 0 
+          ? sortConfigs 
+          : selectedColumns
+              .filter(c => c.sortOrder)
+              .map((c, index) => ({ column: c.key, direction: c.sortOrder!, priority: index })),
+        filters: filterGroups,
         output_formats: outputFormats,
         include_charts: includeCharts,
       };
@@ -372,7 +391,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
 
         <div className="flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="datasource" className="flex items-center gap-2">
                 <Database className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('reportBuilder.dataSource')}</span>
@@ -384,6 +403,10 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
               <TabsTrigger value="calculated" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <Calculator className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('reportBuilder.calculated')}</span>
+              </TabsTrigger>
+              <TabsTrigger value="filters" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('reportBuilder.filters')}</span>
               </TabsTrigger>
               <TabsTrigger value="sorting" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <ArrowUpDown className="h-4 w-4" />
@@ -699,40 +722,144 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
               </div>
             </TabsContent>
 
+            {/* Filters Tab */}
+            <TabsContent value="filters" className="flex-1 overflow-hidden mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">{t('reportBuilder.filtersTitle')}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {t('reportBuilder.filtersDescription')}
+                    </p>
+                  </div>
+                </div>
+                <FilterBuilder
+                  filters={filterGroups}
+                  onChange={setFilterGroups}
+                  availableColumns={availableColumns}
+                />
+              </div>
+            </TabsContent>
+
             {/* Sorting Tab */}
             <TabsContent value="sorting" className="flex-1 overflow-hidden mt-4">
               <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  {t('reportBuilder.sortingDescription')}
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">{t('reportBuilder.sortingTitle')}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {t('reportBuilder.sortingDescription')}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Active Sort Rules */}
+                {sortConfigs.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    <Label className="text-sm font-medium">{t('reportBuilder.activeSortRules')}</Label>
+                    {sortConfigs.map((sortConfig, index) => {
+                      const col = selectedColumns.find(c => c.key === sortConfig.column) || availableColumns.find(c => c.key === sortConfig.column);
+                      return (
+                        <div
+                          key={sortConfig.column}
+                          className="flex items-center justify-between p-3 border rounded-lg bg-primary/5"
+                        >
+                          <div className="flex items-center gap-3">
+                            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
+                            <Badge variant="outline">{index + 1}</Badge>
+                            <span className="font-medium">{col ? getColumnLabel(col) : sortConfig.column}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSortConfigs(sortConfigs.map(sc => 
+                                  sc.column === sortConfig.column
+                                    ? { ...sc, direction: sc.direction === 'asc' ? 'desc' : 'asc' }
+                                    : sc
+                                ));
+                              }}
+                              className="h-8 gap-1"
+                            >
+                              {sortConfig.direction === 'asc' ? (
+                                <><ChevronUp className="h-4 w-4" /> {t('reportBuilder.ascending')}</>
+                              ) : (
+                                <><ChevronDown className="h-4 w-4" /> {t('reportBuilder.descending')}</>
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSortConfigs(sortConfigs.filter(sc => sc.column !== sortConfig.column));
+                              }}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Available Columns for Sorting */}
                 <div className="space-y-2">
-                  {selectedColumns.map((col, index) => (
-                    <div
-                      key={col.key}
-                      className="flex items-center justify-between p-3 border rounded-lg"
-                    >
-                      <span>{getColumnLabel(col)}</span>
-                      <Select
-                        value={col.sortOrder || 'none'}
-                        onValueChange={(value) => {
-                          setSelectedColumns(selectedColumns.map(c => 
-                            c.key === col.key 
-                              ? { ...c, sortOrder: value === 'none' ? null : value as 'asc' | 'desc' }
-                              : c
-                          ));
-                        }}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">{t('reportBuilder.noSort')}</SelectItem>
-                          <SelectItem value="asc">{t('reportBuilder.ascending')}</SelectItem>
-                          <SelectItem value="desc">{t('reportBuilder.descending')}</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  <Label className="text-sm font-medium">{t('reportBuilder.addSortColumn')}</Label>
+                  <ScrollArea className="h-[250px] border rounded-lg">
+                    <div className="p-2 space-y-1">
+                      {selectedColumns
+                        .filter(col => !sortConfigs.find(sc => sc.column === col.key))
+                        .map((col) => (
+                          <div
+                            key={col.key}
+                            className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{getColumnLabel(col)}</span>
+                              <Badge variant="outline" className="text-xs">{col.type}</Badge>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSortConfigs([
+                                    ...sortConfigs,
+                                    { column: col.key, direction: 'asc', priority: sortConfigs.length }
+                                  ]);
+                                }}
+                                className="h-7 gap-1"
+                              >
+                                <ChevronUp className="h-3 w-3" />
+                                {t('reportBuilder.asc')}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSortConfigs([
+                                    ...sortConfigs,
+                                    { column: col.key, direction: 'desc', priority: sortConfigs.length }
+                                  ]);
+                                }}
+                                className="h-7 gap-1"
+                              >
+                                <ChevronDown className="h-3 w-3" />
+                                {t('reportBuilder.desc')}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      {selectedColumns.filter(col => !sortConfigs.find(sc => sc.column === col.key)).length === 0 && (
+                        <p className="text-center text-sm text-muted-foreground py-4">
+                          {t('reportBuilder.allColumnsSorted')}
+                        </p>
+                      )}
                     </div>
-                  ))}
+                  </ScrollArea>
                 </div>
               </div>
             </TabsContent>
