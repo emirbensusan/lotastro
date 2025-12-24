@@ -16,11 +16,12 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   GripVertical, Plus, X, Database, Columns, ArrowUpDown, 
   Palette, Save, FileSpreadsheet, Mail,
-  Search, Loader2, Calculator, Edit, Trash2, Filter, ChevronUp, ChevronDown
+  Search, Loader2, Calculator, Edit, Trash2, Filter, ChevronUp, ChevronDown, Eye
 } from 'lucide-react';
 import { CalculatedFieldBuilder, CalculatedField } from './CalculatedFieldBuilder';
 import { FilterBuilder, FilterGroup } from './FilterBuilder';
 import { StyleBuilder, ReportStyling, DEFAULT_REPORT_STYLING } from './StyleBuilder';
+import { ReportPreview } from './ReportPreview';
 
 interface ColumnDefinition {
   key: string;
@@ -384,20 +385,39 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
     return language === 'tr' ? ds.descriptionTr : ds.descriptionEn;
   };
 
+  // State for showing/hiding preview
+  const [showPreview, setShowPreview] = useState(true);
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            {editingConfig ? t('reportBuilder.editReport') : t('reportBuilder.createReport')}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              {editingConfig ? t('reportBuilder.editReport') : t('reportBuilder.createReport')}
+            </DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              {showPreview 
+                ? (language === 'tr' ? 'Önizlemeyi Gizle' : 'Hide Preview')
+                : (language === 'tr' ? 'Önizlemeyi Göster' : 'Show Preview')
+              }
+            </Button>
+          </div>
           <DialogDescription>
             {t('reportBuilder.description')}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex gap-4">
+          {/* Main Configuration Panel */}
+          <div className={`flex-1 overflow-hidden ${showPreview ? 'w-3/5' : 'w-full'}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="datasource" className="flex items-center gap-2">
@@ -935,6 +955,22 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
               </div>
             </TabsContent>
           </Tabs>
+          </div>
+
+          {/* Live Preview Panel */}
+          {showPreview && selectedColumns.length > 0 && (
+            <div className="w-2/5 border rounded-lg overflow-hidden bg-background">
+              <ReportPreview
+                reportName={reportName}
+                selectedColumns={selectedColumns}
+                calculatedFields={calculatedFields}
+                styling={reportStyling}
+                sortConfigs={sortConfigs}
+                filterGroups={filterGroups}
+                includeCharts={includeCharts}
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter className="mt-4">
