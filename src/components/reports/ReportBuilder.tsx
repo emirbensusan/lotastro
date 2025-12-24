@@ -15,9 +15,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   GripVertical, Plus, X, Database, Columns, ArrowUpDown, 
-  Palette, Clock, Save, Eye, FileSpreadsheet, Mail,
-  ChevronRight, Search, Loader2
+  Palette, Save, FileSpreadsheet, Mail,
+  Search, Loader2, Calculator, Edit, Trash2
 } from 'lucide-react';
+import { CalculatedFieldBuilder, CalculatedField } from './CalculatedFieldBuilder';
 
 interface ColumnDefinition {
   key: string;
@@ -58,6 +59,7 @@ interface ReportConfig {
   data_source: string;
   selected_joins: string[];
   columns_config: SelectedColumn[];
+  calculated_fields?: CalculatedField[];
   sorting: { column: string; direction: 'asc' | 'desc' }[];
   filters: Record<string, any>;
   output_formats: string[];
@@ -109,6 +111,11 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
   const [reportName, setReportName] = useState('');
   const [outputFormats, setOutputFormats] = useState<string[]>(['html']);
   const [includeCharts, setIncludeCharts] = useState(false);
+  
+  // Calculated fields state
+  const [calculatedFields, setCalculatedFields] = useState<CalculatedField[]>([]);
+  const [calcFieldBuilderOpen, setCalcFieldBuilderOpen] = useState(false);
+  const [editingCalcField, setEditingCalcField] = useState<CalculatedField | null>(null);
 
   // Fetch data sources on mount
   useEffect(() => {
@@ -124,6 +131,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
       setSelectedDataSource(editingConfig.data_source);
       setSelectedJoins(editingConfig.selected_joins || []);
       setSelectedColumns(editingConfig.columns_config || []);
+      setCalculatedFields(editingConfig.calculated_fields || []);
       setOutputFormats(editingConfig.output_formats || ['html']);
       setIncludeCharts(editingConfig.include_charts || false);
       
@@ -137,6 +145,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
       setSelectedDataSource('');
       setSelectedJoins([]);
       setSelectedColumns([]);
+      setCalculatedFields([]);
       setOutputFormats(['html']);
       setIncludeCharts(false);
       setActiveTab('datasource');
@@ -307,6 +316,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
         data_source: selectedDataSource,
         selected_joins: selectedJoins,
         columns_config: selectedColumns,
+        calculated_fields: calculatedFields,
         sorting: selectedColumns
           .filter(c => c.sortOrder)
           .map(c => ({ column: c.key, direction: c.sortOrder! })),
@@ -362,7 +372,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
 
         <div className="flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="datasource" className="flex items-center gap-2">
                 <Database className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('reportBuilder.dataSource')}</span>
@@ -370,6 +380,10 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
               <TabsTrigger value="columns" className="flex items-center gap-2" disabled={!selectedDataSource}>
                 <Columns className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('reportBuilder.columns')}</span>
+              </TabsTrigger>
+              <TabsTrigger value="calculated" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
+                <Calculator className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('reportBuilder.calculated')}</span>
               </TabsTrigger>
               <TabsTrigger value="sorting" className="flex items-center gap-2" disabled={selectedColumns.length === 0}>
                 <ArrowUpDown className="h-4 w-4" />
@@ -599,6 +613,92 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
               </div>
             </TabsContent>
 
+            {/* Calculated Fields Tab */}
+            <TabsContent value="calculated" className="flex-1 overflow-hidden mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">{t('reportBuilder.calculatedFields')}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {t('reportBuilder.calculatedFieldsDescription')}
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      setEditingCalcField(null);
+                      setCalcFieldBuilderOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t('reportBuilder.addCalculatedField')}
+                  </Button>
+                </div>
+
+                {calculatedFields.length === 0 ? (
+                  <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                    <Calculator className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      {t('reportBuilder.noCalculatedFields')}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('reportBuilder.noCalculatedFieldsHint')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {calculatedFields.map((field) => (
+                      <div
+                        key={field.id}
+                        className="flex items-center justify-between p-3 border rounded-lg bg-muted/30"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Calculator className="h-4 w-4 text-primary" />
+                          <div>
+                            <span className="font-medium">
+                              {language === 'tr' ? field.labelTr : field.labelEn}
+                            </span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline" className="text-xs">
+                                {field.type.replace('_', ' ')}
+                              </Badge>
+                              {field.config.sourceColumn && (
+                                <span className="text-xs text-muted-foreground">
+                                  {field.config.sourceColumn}
+                                  {field.config.compareColumn && ` vs ${field.config.compareColumn}`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingCalcField(field);
+                              setCalcFieldBuilderOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setCalculatedFields(calculatedFields.filter(f => f.id !== field.id));
+                            }}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
             {/* Sorting Tab */}
             <TabsContent value="sorting" className="flex-1 overflow-hidden mt-4">
               <div className="space-y-4">
@@ -700,6 +800,24 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Calculated Field Builder Dialog */}
+      <CalculatedFieldBuilder
+        open={calcFieldBuilderOpen}
+        onClose={() => {
+          setCalcFieldBuilderOpen(false);
+          setEditingCalcField(null);
+        }}
+        onSave={(field) => {
+          if (editingCalcField) {
+            setCalculatedFields(calculatedFields.map(f => f.id === field.id ? field : f));
+          } else {
+            setCalculatedFields([...calculatedFields, field]);
+          }
+        }}
+        availableColumns={availableColumns}
+        editingField={editingCalcField}
+      />
     </Dialog>
   );
 };
