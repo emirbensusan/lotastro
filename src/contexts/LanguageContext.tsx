@@ -1493,6 +1493,8 @@ const translations = {
     'reportBuilder.desc': 'Desc',
     'reportBuilder.loadingColumns': 'Loading columns...',
     'reportBuilder.selectDataSourceFirst': 'Select a data source first',
+    'reportBuilder.outputFormats': 'Output Formats',
+    'reportBuilder.includeChartsDescription': 'Add chart visualization to summarize report data',
 
     multipleSamples: 'Multiple Samples',
     multiOrderMinimum: 'Multi-quality orders require at least 2 different quality/color combinations',
@@ -3128,6 +3130,8 @@ const translations = {
     'reportBuilder.desc': 'Aza',
     'reportBuilder.loadingColumns': 'Sütunlar yükleniyor...',
     'reportBuilder.selectDataSourceFirst': 'Önce bir veri kaynağı seçin',
+    'reportBuilder.outputFormats': 'Çıktı Formatları',
+    'reportBuilder.includeChartsDescription': 'Rapor verilerini özetlemek için grafik ekle',
     
     // Common
     search: 'Ara',
