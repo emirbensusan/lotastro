@@ -1050,10 +1050,13 @@ export type Database = {
       }
       email_report_configs: {
         Row: {
+          calculated_fields: Json | null
           columns: Json
+          columns_config: Json | null
           comparison_period: string | null
           created_at: string | null
           created_by: string | null
+          data_source: string | null
           filters: Json | null
           grouping: Json | null
           id: string
@@ -1062,13 +1065,18 @@ export type Database = {
           name: string
           output_formats: string[] | null
           report_type: string
+          selected_joins: Json | null
+          styling: Json | null
           updated_at: string | null
         }
         Insert: {
+          calculated_fields?: Json | null
           columns?: Json
+          columns_config?: Json | null
           comparison_period?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_source?: string | null
           filters?: Json | null
           grouping?: Json | null
           id?: string
@@ -1077,13 +1085,18 @@ export type Database = {
           name: string
           output_formats?: string[] | null
           report_type: string
+          selected_joins?: Json | null
+          styling?: Json | null
           updated_at?: string | null
         }
         Update: {
+          calculated_fields?: Json | null
           columns?: Json
+          columns_config?: Json | null
           comparison_period?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_source?: string | null
           filters?: Json | null
           grouping?: Json | null
           id?: string
@@ -1092,6 +1105,8 @@ export type Database = {
           name?: string
           output_formats?: string[] | null
           report_type?: string
+          selected_joins?: Json | null
+          styling?: Json | null
           updated_at?: string | null
         }
         Relationships: [
