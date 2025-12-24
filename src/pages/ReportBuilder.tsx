@@ -120,14 +120,32 @@ const ReportBuilderPage: React.FC = () => {
 
   const fetchDataSourceColumns = async (dataSourceKey: string, includeJoins: boolean = false) => {
     try {
+      console.log('[ReportBuilder] Fetching columns for:', dataSourceKey, 'includeJoins:', includeJoins);
       const response = await supabase.functions.invoke('get-report-schema', {
         body: { dataSource: dataSourceKey, includeJoins },
       });
-      if (response.error) throw response.error;
-      setAvailableColumns(response.data.columns || []);
-      setAvailableJoins(response.data.availableJoins || []);
+      
+      console.log('[ReportBuilder] Column response:', response);
+      
+      if (response.error) {
+        console.error('[ReportBuilder] Error from edge function:', response.error);
+        throw response.error;
+      }
+      
+      const columns = response.data?.columns || [];
+      const joins = response.data?.availableJoins || [];
+      
+      console.log('[ReportBuilder] Setting columns:', columns.length, 'joins:', joins.length);
+      
+      setAvailableColumns(columns);
+      setAvailableJoins(joins);
     } catch (error) {
-      console.error('Error fetching columns:', error);
+      console.error('[ReportBuilder] Error fetching columns:', error);
+      toast({
+        title: String(t('error')),
+        description: language === 'tr' ? 'Sütunlar yüklenemedi' : 'Failed to load columns',
+        variant: 'destructive',
+      });
     }
   };
 
