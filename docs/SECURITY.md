@@ -753,3 +753,129 @@ await supabase.rpc('log_audit_action', {
 | SSO integration | Medium | Planned |
 | Security dashboard | Medium | Planned |
 | Automated vulnerability scanning | Low | Planned |
+
+---
+
+## 13. Known Security Gaps
+
+> ⚠️ **Critical**: This section documents known security issues that require remediation.
+
+### 13.1 Critical Gaps (P0)
+
+| Issue | Location | Risk | Remediation |
+|-------|----------|------|-------------|
+| **Missing CRON_SECRET validation** | `cleanup-old-drafts/index.ts` | High - Unauthorized job execution | Add secret validation |
+| **Missing CRON_SECRET validation** | `send-mo-reminders/index.ts` | High - Unauthorized job execution | Add secret validation |
+| **CRON_SECRET not configured** | Supabase Secrets | High - Jobs will fail validation | Configure in dashboard |
+| **XSS vulnerability** | `EmailTemplateEditor.tsx` | Medium - Script injection | Add DOMPurify |
+| **XSS vulnerability** | `EmailTemplatePreview.tsx` | Medium - Script injection | Add DOMPurify |
+| **XSS vulnerability** | `VersionHistoryDrawer.tsx` | Medium - Script injection | Add DOMPurify |
+| **XSS vulnerability** | `InlineEditableField.tsx` | Medium - Script injection | Add DOMPurify |
+
+### 13.2 High Priority Gaps (P1)
+
+| Issue | Risk | Remediation | Status |
+|-------|------|-------------|--------|
+| **No MFA/2FA** | Account takeover | Implement TOTP | Planned |
+| **No login rate limiting** | Brute force attacks | Add attempt limiting | Planned |
+| **No password attempt lockout** | Credential stuffing | Add lockout policy | Planned |
+| **Overly permissive RLS on some tables** | Data exposure | Review and restrict | Pending Review |
+
+### 13.3 Medium Priority Gaps (P2)
+
+| Issue | Risk | Remediation | Status |
+|-------|------|-------------|--------|
+| **No security event dashboard** | Lack of visibility | Build monitoring UI | Planned |
+| **No automated vulnerability scanning** | Unknown vulnerabilities | Integrate scanner | Planned |
+| **No penetration testing** | Unknown attack vectors | Engage security firm | Planned |
+
+---
+
+## 14. Remediation Plan
+
+### Phase 0: Emergency Fixes (1-3 Days)
+
+**Target**: Eliminate critical vulnerabilities
+
+```typescript
+// CRON_SECRET validation pattern (required in all CRON functions)
+const cronSecret = Deno.env.get('CRON_SECRET');
+const requestSecret = req.headers.get('x-cron-secret');
+
+if (!cronSecret) {
+  console.error('CRON_SECRET not configured');
+  return new Response(
+    JSON.stringify({ error: 'Server configuration error' }),
+    { status: 503, headers: corsHeaders }
+  );
+}
+
+if (requestSecret !== cronSecret) {
+  console.warn('Unauthorized CRON attempt from:', req.headers.get('x-forwarded-for'));
+  return new Response(
+    JSON.stringify({ error: 'Unauthorized' }),
+    { status: 401, headers: corsHeaders }
+  );
+}
+```
+
+```typescript
+// XSS prevention pattern (required for dangerouslySetInnerHTML)
+import DOMPurify from 'dompurify';
+
+// Before rendering user-generated HTML
+const sanitizedHtml = DOMPurify.sanitize(userContent, {
+  ALLOWED_TAGS: ['b', 'i', 'u', 'a', 'p', 'br', 'ul', 'ol', 'li', 'strong', 'em'],
+  ALLOWED_ATTR: ['href', 'target', 'rel'],
+});
+
+<div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
+```
+
+### Phase 1: Security Hardening (1-2 Weeks)
+
+1. **MFA Implementation**
+   - Add TOTP support for admin accounts
+   - Optional for other roles
+   - Recovery code generation
+
+2. **Rate Limiting**
+   - Login: 5 attempts per 15 minutes per IP
+   - API: 100 requests per minute per user
+   - Password reset: 3 requests per hour per email
+
+3. **Account Lockout**
+   - Lock after 5 failed attempts
+   - 15-minute lockout duration
+   - Admin unlock capability
+
+### Phase 2: Security Visibility (1-3 Months)
+
+1. **Security Dashboard**
+   - Failed login heatmap
+   - Suspicious activity alerts
+   - RLS bypass attempt logging
+
+2. **Automated Scanning**
+   - Dependency vulnerability checks
+   - Static code analysis
+   - Regular security audits
+
+---
+
+## 15. Security Incident Log
+
+| Date | Incident | Severity | Resolution | Status |
+|------|----------|----------|------------|--------|
+| - | No incidents recorded | - | - | - |
+
+*This log should be updated whenever a security incident occurs.*
+
+---
+
+## Appendix: Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2025-01-10 | Initial security documentation |
+| 1.1.0 | 2025-01-10 | Added known security gaps, remediation plan, incident log |

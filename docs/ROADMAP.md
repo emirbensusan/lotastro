@@ -65,25 +65,69 @@
 
 ## 3. Roadmap Phases
 
-### Phase 1: NOW (Current Quarter - Q1 2025)
+### Phase 0: EMERGENCY (Immediate - 1-3 Days)
 
-**Theme**: Complete Core WMS, Stabilize Reports & Stock Take
+**Theme**: Critical Security & Compliance Fixes
+
+> ⚠️ **BLOCKER**: These items must be completed before production deployment with paying customers.
 
 | Feature | Priority | Effort | Owner | Status |
 |---------|----------|--------|-------|--------|
+| CRON_SECRET validation - cleanup-old-drafts | P0 | XS | Backend | 🔴 Not Started |
+| CRON_SECRET validation - send-mo-reminders | P0 | XS | Backend | 🔴 Not Started |
+| Configure CRON_SECRET in Supabase | P0 | XS | DevOps | 🔴 Not Started |
+| XSS fix - EmailTemplateEditor.tsx | P0 | S | Frontend | 🔴 Not Started |
+| XSS fix - EmailTemplatePreview.tsx | P0 | S | Frontend | 🔴 Not Started |
+| XSS fix - VersionHistoryDrawer.tsx | P0 | S | Frontend | 🔴 Not Started |
+| XSS fix - InlineEditableField.tsx | P0 | S | Frontend | 🔴 Not Started |
+| RLS review - rolls table | P0 | S | Backend | 🔴 Not Started |
+| RLS review - goods_in_receipts table | P0 | S | Backend | 🔴 Not Started |
+
+**Deliverables**:
+- [ ] All CRON endpoints protected with secret validation
+- [ ] XSS vulnerabilities patched with DOMPurify
+- [ ] RLS policies verified as restrictive
+
+**Risks Eliminated**:
+- CRON job abuse by unauthorized parties
+- XSS attacks via email template injection
+- Potential public data exposure
+
+---
+
+### Phase 1: NOW (Current Quarter - Q1 2025)
+
+**Theme**: Complete Core WMS, Stabilize Reports & Stock Take, Production Readiness
+
+| Feature | Priority | Effort | Owner | Status |
+|---------|----------|--------|-------|--------|
+| **Security & Compliance** | | | | |
+| Terms of Service page | P0 | S | Frontend | 📅 Planned |
+| Privacy Policy page | P0 | S | Frontend | 📅 Planned |
+| Cookie Consent banner | P0 | M | Frontend | 📅 Planned |
+| Login rate limiting | P1 | S | Backend | 📅 Planned |
+| MFA for admin accounts | P1 | L | Backend | 📅 Planned |
+| Password attempt lockout | P1 | S | Backend | 📅 Planned |
+| **Core Features** | | | | |
 | Reports Builder - Column Validation | P0 | S | Dev | 🔄 In Progress |
 | Reports Builder - Scheduling | P0 | M | Dev | 🔄 In Progress |
 | Reports Builder - Export Formats | P0 | M | Dev | 📅 Planned |
 | Stock Take - OCR Improvements | P0 | L | Dev | 🔄 In Progress |
 | Stock Take - Reconciliation | P0 | M | Dev | 📅 Planned |
 | Stock Take - Duplicate Detection | P1 | S | Dev | ✅ Complete |
+| **Operations** | | | | |
+| Disaster recovery testing | P1 | M | DevOps | 📅 Planned |
+| Incident response runbook | P1 | M | Ops | 📅 Planned |
 | Mobile UX Polish | P1 | M | Dev | 📅 Planned |
 | Performance Optimization | P1 | M | Dev | 📅 Planned |
 | Translation Cleanup | P2 | S | Dev | 📅 Planned |
 
 **Deliverables**:
+- [ ] Legal compliance pages (Terms, Privacy, Cookies)
+- [ ] Enhanced security (rate limiting, MFA)
 - [ ] Fully functional Reports Builder with scheduling
 - [ ] Stock Take with OCR and reconciliation
+- [ ] Documented disaster recovery procedure
 - [ ] Performance improvements (<2s page loads)
 - [ ] Mobile touch gesture refinements
 
@@ -355,6 +399,26 @@ EFFORT                   │                    EFFORT
 
 ## 8. Risk Assessment
 
+### Security Risks (NEW - Critical)
+
+| Risk | Probability | Impact | Mitigation | Status |
+|------|-------------|--------|------------|--------|
+| CRON job abuse | High | High | Add CRON_SECRET validation | 🔴 Open |
+| XSS via email templates | Medium | High | Add DOMPurify sanitization | 🔴 Open |
+| Account takeover (no MFA) | Medium | Critical | Implement MFA | 📅 Planned |
+| Brute force login | Medium | High | Add rate limiting | 📅 Planned |
+| Session hijacking | Low | Critical | Already using secure JWT | ✅ Mitigated |
+| Public data exposure | Medium | Critical | Review RLS policies | 🔴 Open |
+
+### Compliance Risks (NEW - Critical)
+
+| Risk | Probability | Impact | Mitigation | Status |
+|------|-------------|--------|------------|--------|
+| GDPR violation | High | Critical | Add legal pages, data export | 🔴 Open |
+| KVKK violation (Turkey) | High | Critical | Turkish compliance audit | 📅 Planned |
+| Missing audit trail | Low | High | Comprehensive logging exists | ✅ Mitigated |
+| Data retention violation | Low | Medium | Configurable retention | ✅ Mitigated |
+
 ### Technical Risks
 
 | Risk | Probability | Impact | Mitigation |
@@ -363,6 +427,7 @@ EFFORT                   │                    EFFORT
 | AI extraction costs | Medium | Medium | Token optimization, caching |
 | Performance at scale | Low | High | Database optimization, read replicas |
 | Third-party API changes | Low | Medium | Abstraction layers, monitoring |
+| Backup restore failure | Unknown | Critical | Test disaster recovery | 📅 Planned |
 
 ### Business Risks
 
@@ -372,14 +437,17 @@ EFFORT                   │                    EFFORT
 | Feature scope creep | High | Medium | Strict prioritization |
 | Resource constraints | Medium | Medium | Phased delivery |
 | Competitive pressure | Low | Medium | Focus on core differentiators |
+| Customer data request (GDPR) | High | Medium | Implement data export | 📅 Planned |
 
 ### Mitigation Strategies
 
-1. **Regular Testing**: Automated tests for critical paths
-2. **Monitoring**: Performance and error monitoring
-3. **Feedback Loops**: Regular user feedback sessions
-4. **Incremental Releases**: Small, frequent deployments
-5. **Documentation**: Comprehensive docs for maintainability
+1. **Security First**: Complete Phase 0 emergency fixes before production deployment
+2. **Regular Testing**: Automated tests for critical paths
+3. **Monitoring**: Performance and error monitoring
+4. **Feedback Loops**: Regular user feedback sessions
+5. **Incremental Releases**: Small, frequent deployments
+6. **Documentation**: Comprehensive docs for maintainability
+7. **Disaster Recovery**: Test backup/restore procedures quarterly
 
 ---
 
@@ -437,15 +505,47 @@ EFFORT                   │                    EFFORT
 
 ---
 
-## 11. Changelog
+## 11. Production Readiness Milestones
+
+### Milestone Checklist
+
+| Milestone | Target | Status |
+|-----------|--------|--------|
+| **Phase 0 Complete** | +3 days | 🔴 Not Started |
+| Security blockers resolved | +3 days | 🔴 Not Started |
+| Legal pages published | +1 week | 📅 Planned |
+| MFA implemented | +2 weeks | 📅 Planned |
+| Disaster recovery tested | +2 weeks | 📅 Planned |
+| **Phase 1 Complete** | +2 weeks | 📅 Planned |
+| Production deployment ready | +2 weeks | 📅 Planned |
+
+### Go-Live Readiness
+
+| Requirement | Status | Blocker? |
+|-------------|--------|----------|
+| CRON_SECRET configured | ❌ Missing | Yes |
+| XSS vulnerabilities patched | ❌ Open | Yes |
+| Terms of Service page | ❌ Missing | Yes |
+| Privacy Policy page | ❌ Missing | Yes |
+| Cookie consent implemented | ❌ Missing | Yes |
+| MFA for admins | ❌ Missing | No (P1) |
+| Rate limiting | ❌ Missing | No (P1) |
+| Backup restore tested | ❌ Not Done | No (P1) |
+
+See [PRODUCTION-READINESS.md](./PRODUCTION-READINESS.md) for full assessment.
+
+---
+
+## 12. Changelog
 
 | Date | Version | Changes |
 |------|---------|---------|
 | 2025-01-10 | 1.0.0 | Initial roadmap document |
+| 2025-01-10 | 1.1.0 | Added Phase 0 emergency fixes, security risks, production readiness milestones |
 
 ---
 
-## 12. Appendix: Feature Request Process
+## 13. Appendix: Feature Request Process
 
 ### Submission
 

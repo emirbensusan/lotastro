@@ -324,10 +324,81 @@ The textile and leather wholesale industry operates with:
 | [USER-JOURNEYS.md](./USER-JOURNEYS.md) | Key user journey maps |
 | [ERD.md](./ERD.md) | Database schema documentation |
 | [API.md](./API.md) | API and Edge Function reference |
-| [CONTEXT.md](../app_context.md) | System architecture context |
+| [CONTEXT.md](./CONTEXT.md) | System architecture context |
+| [SECURITY.md](./SECURITY.md) | Security implementation details |
+| [PRODUCTION-READINESS.md](./PRODUCTION-READINESS.md) | Production readiness assessment |
 
 ### Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2025-01-10 | Initial PRD creation |
+| 1.1.0 | 2025-01-10 | Added production readiness status and security requirements |
+
+---
+
+## 11. Production Readiness Status
+
+### Current Assessment
+
+| Category | Status | Score |
+|----------|--------|-------|
+| **Overall Verdict** | ⚠️ Conditionally Ready | 2.9/5 |
+| Engineering & Infrastructure | Good | 3.5/5 |
+| Security | Needs Work | 2.5/5 |
+| Compliance | Critical Gaps | 1.5/5 |
+| Business Continuity | Good | 3.0/5 |
+| UX & Adoption | Excellent | 4.0/5 |
+
+### Critical Blockers
+
+The following must be resolved before production deployment:
+
+| Issue | Category | Priority |
+|-------|----------|----------|
+| Missing CRON_SECRET validation | Security | P0 |
+| XSS vulnerabilities in email templates | Security | P0 |
+| Missing Terms of Service page | Compliance | P0 |
+| Missing Privacy Policy page | Compliance | P0 |
+| Missing Cookie Consent | Compliance | P0 |
+| No MFA/2FA support | Security | P1 |
+| No login rate limiting | Security | P1 |
+
+### Deployment Model
+
+| Aspect | Current State |
+|--------|---------------|
+| **Architecture** | Single-tenant |
+| **Multi-tenant Support** | Not implemented |
+| **Tenant Isolation** | N/A (single organization) |
+| **Scalability** | Supabase-managed |
+
+### Security Requirements (Updated)
+
+| Requirement | Implementation | Status |
+|-------------|----------------|--------|
+| **Authentication** | Supabase Auth with JWT | ✅ Complete |
+| **Authorization** | RBAC with 4 roles, 13 categories | ✅ Complete |
+| **Data Protection** | RLS on all tables | ✅ Complete |
+| **Input Validation** | Zod schemas on all inputs | ✅ Complete |
+| **Audit Trail** | Complete action logging | ✅ Complete |
+| **Session Security** | Configurable timeout | ✅ Complete |
+| **IP Restriction** | Admin IP whitelist option | ✅ Complete |
+| **Password Policy** | Strength requirements enforced | ✅ Complete |
+| **MFA/2FA** | Multi-factor authentication | ❌ Not Implemented |
+| **Rate Limiting** | Login attempt limiting | ❌ Not Implemented |
+| **XSS Protection** | DOMPurify sanitization | ❌ Not Implemented |
+| **CRON Security** | Secret validation | ⚠️ Partial |
+
+### Compliance Requirements (New)
+
+| Requirement | Status | Notes |
+|-------------|--------|-------|
+| **Terms of Service** | ❌ Missing | Legal page required |
+| **Privacy Policy** | ❌ Missing | GDPR/KVKK requirement |
+| **Cookie Consent** | ❌ Missing | EU ePrivacy requirement |
+| **Data Export** | ⚠️ Partial | Manual via admin |
+| **Right to Deletion** | ⚠️ Partial | admin-delete-user function |
+| **Audit Retention** | ✅ Complete | 2-year retention |
+
+See [PRODUCTION-READINESS.md](./PRODUCTION-READINESS.md) for full assessment and remediation roadmap.
