@@ -31,10 +31,19 @@ import {
   DEFAULT_REPORT_STYLING,
 } from './reportBuilderTypes';
 
-interface SchemaResponse {
+interface TableFromAPI {
+  table: string;
+  labelEn: string;
+  labelTr: string;
+  descriptionEn?: string;
+  descriptionTr?: string;
   columns: ColumnDefinition[];
+  columnCount: number;
+}
+
+interface SchemaResponse {
+  tables: TableFromAPI[];
   relationships: JPTableRelationship[];
-  tables: { key: string; labelEn: string; labelTr: string; descriptionEn?: string; descriptionTr?: string }[];
 }
 
 interface ValidationResult {
@@ -129,9 +138,30 @@ const ReportBuilderTab: React.FC = () => {
       if (error) throw error;
 
       const response = data as SchemaResponse;
-      setAllColumns(response.columns || []);
+      
+      // Extract flat columns from nested table structure
+      const flatColumns: ColumnDefinition[] = [];
+      (response.tables || []).forEach((tableData: TableFromAPI) => {
+        tableData.columns.forEach(col => {
+          flatColumns.push({
+            ...col,
+            table: tableData.table,
+          });
+        });
+      });
+      
+      // Transform tables to expected format with 'key' property
+      const transformedTables = (response.tables || []).map((t: TableFromAPI) => ({
+        key: t.table,
+        labelEn: t.labelEn,
+        labelTr: t.labelTr,
+        descriptionEn: t.descriptionEn,
+        descriptionTr: t.descriptionTr,
+      }));
+
+      setAllColumns(flatColumns);
       setRelationships(response.relationships || []);
-      setTables(response.tables || []);
+      setTables(transformedTables);
     } catch (error) {
       console.error('Error fetching schema:', error);
       toast({
