@@ -186,7 +186,210 @@ LotAstro operates as a **multi-project ecosystem** with separate Lovable project
 
 ---
 
-### Phase 1A: Security Hardening (Week 1)
+### Phase 0C: OCR Pipeline Fixes (Days 5-8)
+
+**Owner:** Full-Stack  
+**Theme:** Stock Take OCR Reliability  
+**Exit Criteria:** 90%+ accuracy on clean printed labels
+
+#### Problem Statement
+
+The Stock Take OCR module is **not working reliably** due to:
+- Missing image preprocessing (resize, adaptive binarization, deskew)
+- Incorrect Tesseract configuration (wrong PSM, no character whitelist)
+- No preprocessing parity between client and server
+- No debug tools to diagnose failures
+
+#### Root Cause Analysis
+
+| Failure Mode | Current Behavior | Required Fix |
+|--------------|------------------|--------------|
+| OCR returns garbage | Raw camera images sent to Tesseract | Add preprocessing pipeline |
+| OCR very slow/timeouts | 4-8MB images processed | Resize to 1600-2000px width |
+| Low confidence on labels | Global threshold, wrong PSM | Adaptive binarization, PSM=6 |
+| Random character noise | No character whitelist | Add `A-Z0-9-./: ` whitelist |
+| Skewed labels fail | No deskew detection | Add Hough transform deskew |
+
+#### Task Breakdown
+
+| Task | File/Location | Priority | Effort | Owner | Status |
+|------|---------------|----------|--------|-------|--------|
+| **A1: Preprocessing Pipeline** | | | | | |
+| Add mandatory resize step (1800px) | `src/utils/ocrPreprocessing.ts` | P0 | S | Full-Stack | 🔴 Not Started |
+| Enable adaptive binarization (Otsu) | `src/utils/ocrPreprocessing.ts` | P0 | S | Full-Stack | 🔴 Not Started |
+| Add deskew detection | `src/utils/ocrPreprocessing.ts` | P1 | M | Full-Stack | 🔴 Not Started |
+| Correct preprocessing order | `src/utils/ocrPreprocessing.ts` | P0 | S | Full-Stack | 🔴 Not Started |
+| Add debug image saving to IndexedDB | `src/hooks/useClientOCR.ts` | P1 | S | Full-Stack | 🔴 Not Started |
+| **A2: Tesseract Configuration** | | | | | |
+| Set PSM=6 (SINGLE_BLOCK) | `src/hooks/useClientOCR.ts` | P0 | XS | Full-Stack | 🔴 Not Started |
+| Add character whitelist | `src/hooks/useClientOCR.ts` | P0 | XS | Full-Stack | 🔴 Not Started |
+| Use 'eng' language only | `src/hooks/useClientOCR.ts` | P0 | XS | Full-Stack | 🔴 Not Started |
+| **A3: Server-Side Preprocessing** | | | | | |
+| Add preprocessing to Edge function | `supabase/functions/stock-take-ocr/index.ts` | P1 | M | Backend | 🔴 Not Started |
+| Create shared image preprocessing lib | `supabase/functions/_shared/image-preprocessing.ts` | P1 | M | Backend | 🔴 Not Started |
+| **A4: Debug & Testing Tools** | | | | | |
+| Create OCR Test Lab page | `src/pages/OCRTestLab.tsx` | P1 | M | Full-Stack | 🔴 Not Started |
+| Add preprocessing stage visualization | `src/pages/OCRTestLab.tsx` | P1 | S | Full-Stack | 🔴 Not Started |
+| Add PSM mode testing | `src/pages/OCRTestLab.tsx` | P2 | S | Full-Stack | 🔴 Not Started |
+
+#### Preprocessing Pipeline (Correct Order)
+
+```
+1. Resize (1600-2000px width, maintain aspect ratio)
+   ↓
+2. Grayscale conversion
+   ↓
+3. Contrast enhancement (stretch histogram)
+   ↓
+4. Adaptive binarization (Otsu's method)
+   ↓
+5. Denoise (remove JPEG artifacts)
+   ↓
+6. Deskew (if skew > 1°)
+   ↓
+7. OCR with correct config
+```
+
+#### Tesseract Configuration (Required Settings)
+
+```typescript
+await worker.setParameters({
+  tessedit_pageseg_mode: '6',  // PSM.SINGLE_BLOCK for labels
+  tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-./: ',
+});
+const worker = await Tesseract.createWorker('eng', 1, {...}); // English only
+```
+
+#### Expected Accuracy Targets
+
+| Label Type | Target Accuracy | Notes |
+|------------|-----------------|-------|
+| Printed clean | 90-98% | With proper preprocessing |
+| Printed faded | 75-90% | May need manual review |
+| Handwritten | 20-50% | Always flag for manual review |
+
+**Deliverables:**
+- [ ] Resize step reduces images to ~1800px width
+- [ ] Adaptive binarization produces clean black/white output
+- [ ] PSM=6 and character whitelist configured
+- [ ] OCR Test Lab shows preprocessing stages
+- [ ] 90%+ accuracy on clean printed labels
+
+---
+
+### Phase 0D: AI Order Extraction Fixes (Days 9-14)
+
+**Owner:** Full-Stack  
+**Theme:** AI Order Extraction Reliability  
+**Exit Criteria:** 85%+ combined extraction accuracy
+
+#### Problem Statement
+
+The AI Order Extraction from text is **not working reliably** due to:
+- Incorrect regex pattern priority (overly greedy patterns match first)
+- Turkish number parsing edge cases (`1.000,50` vs `1,000.50`)
+- Missing header context inheritance for bullet lists
+- LLM prompt complexity causing inconsistent structured output
+- Merge logic conflicts between deterministic and LLM results
+
+#### Root Cause Analysis
+
+| Failure Mode | Current Behavior | Required Fix |
+|--------------|------------------|--------------|
+| Wrong quality extracted | Greedy regex matches partial codes | Reorder patterns, most specific first |
+| Turkish numbers fail | `1.720` parsed as 1.72 instead of 1720 | Fix `parseTurkishNumber()` logic |
+| Bullet lists lose context | "P200:" header not inherited | Add header context tracking |
+| LLM returns malformed JSON | Free-form JSON parsing | Use tool-calling for structured output |
+| Merge conflicts lose data | No conflict resolution logging | Add merge audit trail |
+
+#### Task Breakdown
+
+| Task | File/Location | Priority | Effort | Owner | Status |
+|------|---------------|----------|--------|-------|--------|
+| **B1: Deterministic Extraction Fixes** | | | | | |
+| Reorder regex patterns (specific first) | `supabase/functions/_shared/extraction-lib.ts` | P0 | M | Backend | 🔴 Not Started |
+| Fix `parseTurkishNumber()` edge cases | `supabase/functions/_shared/extraction-lib.ts` | P0 | S | Backend | 🔴 Not Started |
+| Add header context inheritance | `supabase/functions/_shared/extraction-lib.ts` | P0 | M | Backend | 🔴 Not Started |
+| Add confidence threshold gate (<0.6) | `supabase/functions/_shared/extraction-lib.ts` | P1 | S | Backend | 🔴 Not Started |
+| **B2: LLM Integration Refactor** | | | | | |
+| Switch to tool-calling for structured output | `supabase/functions/extract-order/index.ts` | P0 | L | Backend | 🔴 Not Started |
+| Simplify system prompt (~30 lines) | `supabase/functions/extract-order/index.ts` | P1 | S | Backend | 🔴 Not Started |
+| Add DB context validation warning | `supabase/functions/extract-order/index.ts` | P1 | XS | Backend | 🔴 Not Started |
+| **B3: Merge Logic Fixes** | | | | | |
+| Add conflict resolution logging | `supabase/functions/_shared/extraction-lib.ts` | P1 | S | Backend | 🔴 Not Started |
+| Fix source row matching (fuzzy) | `supabase/functions/_shared/extraction-lib.ts` | P1 | M | Backend | 🔴 Not Started |
+| Add merge audit trail | `supabase/functions/_shared/extraction-lib.ts` | P1 | S | Backend | 🔴 Not Started |
+| **B4: Extraction Test Lab Enhancement** | | | | | |
+| Show deterministic vs LLM side-by-side | `src/pages/ExtractionTest.tsx` | P1 | M | Full-Stack | 🔴 Not Started |
+| Display DB context that was loaded | `src/pages/ExtractionTest.tsx` | P1 | S | Full-Stack | 🔴 Not Started |
+| Show regex match details per line | `src/pages/ExtractionTest.tsx` | P2 | M | Full-Stack | 🔴 Not Started |
+| Add re-run buttons (deterministic/LLM only) | `src/pages/ExtractionTest.tsx` | P2 | S | Full-Stack | 🔴 Not Started |
+
+#### Turkish Number Parsing Rules
+
+```typescript
+// Input → Expected Output
+"1.000,50" → 1000.50   // European: dots=thousands, comma=decimal
+"1,000.50" → 1000.50   // US format
+"1.720"    → 1720      // Ambiguous: treat as thousands if 3 digits after
+"1.720 MT" → 1720      // Context: MT suffix indicates meters
+"10,5 mt"  → 10.5      // Turkish decimal with context
+```
+
+#### LLM Tool-Calling Schema
+
+```typescript
+const extractionTool = {
+  type: 'function',
+  function: {
+    name: 'extract_order_lines',
+    description: 'Extract structured order lines from text',
+    parameters: {
+      type: 'object',
+      properties: {
+        lines: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              quality: { type: 'string' },
+              color: { type: 'string' },
+              meters: { type: 'number' },
+              intent_type: { 
+                type: 'string', 
+                enum: ['order', 'reservation', 'stock_inquiry', 'return', 'noise']
+              },
+              confidence_score: { type: 'number', minimum: 0, maximum: 1 }
+            },
+            required: ['quality', 'color', 'meters', 'intent_type']
+          }
+        }
+      },
+      required: ['lines']
+    }
+  }
+};
+```
+
+#### Expected Accuracy Targets
+
+| Extraction Mode | Target Accuracy | Notes |
+|-----------------|-----------------|-------|
+| Deterministic only | 70%+ | Pattern-matched, no LLM |
+| Combined (Det + LLM) | 85%+ | LLM fills gaps |
+| With manual review | 99%+ | Human verification |
+
+**Deliverables:**
+- [ ] Regex patterns ordered by specificity
+- [ ] Turkish numbers parsed correctly in all formats
+- [ ] Header context inherited for bullet lists
+- [ ] LLM uses tool-calling for structured output
+- [ ] Merge conflicts logged with audit trail
+- [ ] 85%+ accuracy on typical order emails
+
+---
+
+### Phase 1A: Security Hardening (Week 2)
 
 **Owner:** Backend  
 **Theme:** Authentication Hardening  
@@ -571,12 +774,14 @@ LotAstro operates as a **multi-project ecosystem** with separate Lovable project
 | Phase | Duration | Key Deliverables |
 |-------|----------|------------------|
 | **0A-0B** | Days 1-4 | Security & XSS fixes |
-| **1A-1D** | Weeks 1-2 | Auth hardening, legal, ops |
-| **1C** | Weeks 2-3 | Reports, Stock Take complete |
-| **2A-2B** | Month 1 | API layer + webhooks |
-| **2C-2E** | Month 2 | CRM/Wiki integration, AI Studio prep |
-| **3A-3B** | Month 3 | Portal APIs, compliance |
-| **3C-3D** | Months 4-6 | Enterprise, Ops Console |
+| **0C** | Days 5-8 | OCR pipeline fixes (Stock Take) |
+| **0D** | Days 9-14 | AI order extraction fixes |
+| **1A-1D** | Weeks 2-3 | Auth hardening, legal, ops |
+| **1C** | Weeks 3-4 | Reports, Stock Take complete |
+| **2A-2B** | Month 2 | API layer + webhooks |
+| **2C-2E** | Month 3 | CRM/Wiki integration, AI Studio prep |
+| **3A-3B** | Month 4 | Portal APIs, compliance |
+| **3C-3D** | Months 5-7 | Enterprise, Ops Console |
 
 ---
 
@@ -653,3 +858,4 @@ LotAstro operates as a **multi-project ecosystem** with separate Lovable project
 |---------|------|---------|
 | 1.0.0 | 2025-01-10 | Initial roadmap creation |
 | 2.0.0 | 2025-12-25 | Multi-project ecosystem architecture; removed CRM/Portal creation; added integration phases |
+| 2.1.0 | 2025-12-25 | Added Phase 0C (OCR Pipeline Fixes) and Phase 0D (AI Extraction Fixes) for QA/refactoring |
