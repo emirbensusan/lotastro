@@ -6,7 +6,7 @@ import { encodeHex } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 // Field extraction patterns (same as stock-take-ocr)
@@ -291,6 +291,18 @@ serve(async (req) => {
   }
 
   try {
+    // Validate CRON_SECRET for scheduled runs
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const providedSecret = req.headers.get('x-cron-secret');
+    
+    if (cronSecret && providedSecret !== cronSecret) {
+      console.error('[process-ocr-queue] Invalid or missing CRON_SECRET');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('[process-ocr-queue] Worker started');
 
     // Initialize Supabase client with service role
