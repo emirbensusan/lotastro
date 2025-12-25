@@ -29,6 +29,7 @@ import StockTakeSettingsTab from '@/components/stocktake/StockTakeSettingsTab';
 import ApiKeyManagementTab from '@/components/admin/ApiKeyManagementTab';
 import WebhookSubscriptionsTab from '@/components/admin/WebhookSubscriptionsTab';
 import ApiUsageDashboardTab from '@/components/admin/ApiUsageDashboardTab';
+import MFASettings from '@/components/auth/MFASettings';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
@@ -1346,6 +1347,22 @@ const Admin: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="security" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                {language === 'tr' ? 'İki Faktörlü Doğrulama (MFA)' : 'Two-Factor Authentication (MFA)'}
+              </CardTitle>
+              <CardDescription>
+                {language === 'tr' 
+                  ? 'Hesabınız için ek güvenlik katmanı ekleyin' 
+                  : 'Add an extra layer of security to your account'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MFASettings />
+            </CardContent>
+          </Card>
           <IPWhitelistTab />
         </TabsContent>
 
