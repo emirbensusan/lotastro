@@ -1,8 +1,9 @@
 # LotAstro Security Implementation (SECURITY.md)
 
-> **Version**: 1.0.0  
-> **Last Updated**: 2025-01-10  
-> **Classification**: Internal - Security Documentation
+> **Version**: 2.0.0  
+> **Last Updated**: 2025-12-25  
+> **Classification**: Internal - Security Documentation  
+> **Architecture**: Multi-Project Ecosystem
 
 ---
 
@@ -19,12 +20,61 @@ LotAstro implements a defense-in-depth security strategy with multiple layers of
 | **Audit Logging** | Comprehensive trail | ✅ Complete |
 | **Session Management** | Auto-timeout | ✅ Complete |
 | **API Security** | Edge function auth | ✅ Complete |
+| **MFA/2FA** | Multi-factor auth | ❌ Not Implemented |
+| **Rate Limiting** | Brute force protection | ❌ Not Implemented |
+| **XSS Protection** | DOMPurify sanitization | ❌ Not Implemented |
+| **Integration Security** | API keys, webhooks | 📅 Planned |
 
 ---
 
-## 2. Authentication Architecture
+## 2. Ecosystem Security Context
 
-### 2.1 Authentication Flow
+### Multi-Project Architecture
+
+LotAstro WMS operates within an ecosystem of connected applications. Security considerations extend beyond the WMS to protect data flowing between systems.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     SECURITY PERIMETER                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐      │
+│   │  LotAstro WMS   │◄──│  LotAstro CRM   │   │  LotAstro Wiki  │      │
+│   │  (This System)  │──►│  (External)     │   │  (External)     │      │
+│   └────────┬────────┘   └────────┬────────┘   └────────┬────────┘      │
+│            │                     │                     │                │
+│            └─────────────────────┼─────────────────────┘                │
+│                                  │                                      │
+│                    ┌─────────────▼─────────────┐                        │
+│                    │   INTEGRATION LAYER       │                        │
+│                    │   ═══════════════════════ │                        │
+│                    │   • API Key Auth          │                        │
+│                    │   • HMAC Webhook Signing  │                        │
+│                    │   • Rate Limiting         │                        │
+│                    │   • Request Logging       │                        │
+│                    └─────────────┬─────────────┘                        │
+│                                  │                                      │
+│   ┌─────────────────┐   ┌───────┴───────┐   ┌─────────────────┐        │
+│   │ Customer Portal │   │  Ops Console  │   │ Other AI Studio │        │
+│   │   (External)    │   │  (External)   │   │     Apps        │        │
+│   └─────────────────┘   └───────────────┘   └─────────────────┘        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Ecosystem Security Principles
+
+1. **Zero Trust Between Apps**: Each app must authenticate, even internal ones
+2. **Least Privilege APIs**: APIs expose only necessary data
+3. **Audit All Cross-App Calls**: Log every integration request
+4. **Signed Webhooks**: Prevent webhook spoofing with HMAC
+5. **Per-App Secrets**: Unique API keys per consumer application
+
+---
+
+## 3. Authentication Architecture
+
+### 3.1 Authentication Flow
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -44,7 +94,7 @@ LotAstro implements a defense-in-depth security strategy with multiple layers of
 └─────────────────────────┘
 ```
 
-### 2.2 Session Security
+### 3.2 Session Security
 
 | Feature | Implementation | Configuration |
 |---------|----------------|---------------|
@@ -54,7 +104,7 @@ LotAstro implements a defense-in-depth security strategy with multiple layers of
 | **Secure Storage** | Supabase SDK | HttpOnly-equivalent via SDK |
 | **Session Invalidation** | Sign out | Clears all tokens |
 
-### 2.3 Password Security
+### 3.3 Password Security
 
 ```typescript
 // Password requirements enforced by PasswordStrengthIndicator
@@ -70,7 +120,7 @@ const passwordRequirements = {
 // Never store or transmit plain passwords
 ```
 
-### 2.4 User Invitation Security
+### 3.4 User Invitation Security
 
 ```typescript
 // user_invitations table
@@ -85,18 +135,18 @@ interface UserInvitation {
 }
 
 // Invitation flow
-1. Admin creates invitation → unique token generated
-2. Email sent with magic link → send-invitation edge function
-3. User clicks link → /invite route validates token
-4. Token consumed on successful signup → status = 'accepted'
-5. Expired tokens rejected → status = 'expired'
+// 1. Admin creates invitation → unique token generated
+// 2. Email sent with magic link → send-invitation edge function
+// 3. User clicks link → /invite route validates token
+// 4. Token consumed on successful signup → status = 'accepted'
+// 5. Expired tokens rejected → status = 'expired'
 ```
 
 ---
 
-## 3. Authorization (RBAC) System
+## 4. Authorization (RBAC) System
 
-### 3.1 Role Hierarchy
+### 4.1 Role Hierarchy
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -114,7 +164,7 @@ interface UserInvitation {
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Role Storage (Secure Pattern)
+### 4.2 Role Storage (Secure Pattern)
 
 ```sql
 -- CRITICAL: Roles stored in separate table, NOT in profiles
@@ -143,7 +193,7 @@ AS $$
 $$;
 ```
 
-### 3.3 Permission Categories & Actions
+### 4.3 Permission Categories & Actions
 
 | Category | Actions | Description |
 |----------|---------|-------------|
@@ -161,7 +211,7 @@ $$;
 | `qrdocuments` | scanqrcodes, printqrcodes | QR operations |
 | `suppliers` | viewsuppliers, managesuppliers | Supplier management |
 
-### 3.4 Permission Check Implementation
+### 4.4 Permission Check Implementation
 
 ```typescript
 // Frontend permission check
@@ -178,7 +228,7 @@ const filteredNavigation = navigationItems.filter(item =>
 );
 ```
 
-### 3.5 Admin "View As Role" Feature
+### 4.5 Admin "View As Role" Feature
 
 ```typescript
 // ViewAsRoleContext allows admins to simulate other roles
@@ -195,9 +245,9 @@ const effectiveRole = viewAsRole || profile?.role;
 
 ---
 
-## 4. Row Level Security (RLS)
+## 5. Row Level Security (RLS)
 
-### 4.1 RLS Philosophy
+### 5.1 RLS Philosophy
 
 All tables in LotAstro use **RESTRICTIVE** RLS policies:
 
@@ -212,7 +262,7 @@ TO authenticated
 USING (condition);
 ```
 
-### 4.2 RLS Policy Patterns
+### 5.2 RLS Policy Patterns
 
 #### Pattern 1: Role-Based Access
 
@@ -255,7 +305,7 @@ USING (
 );
 ```
 
-### 4.3 RLS Coverage by Table Category
+### 5.3 RLS Coverage by Table Category
 
 #### User Management Tables
 
@@ -271,80 +321,24 @@ USING (
 | Table | Policies | Access Pattern |
 |-------|----------|----------------|
 | `lots` | 5 | Role-based CRUD |
-| `rolls` | 5 | Role-based CRUD |
+| `rolls` | 5 | Role-based CRUD ⚠️ Review needed |
 | `lot_queue` | 4 | Role-based with creator access |
 | `incoming_stock` | 4 | Accounting/senior/admin |
-| `goods_in_receipts` | 3 | Warehouse + admin |
+| `goods_in_receipts` | 3 | Warehouse + admin ⚠️ Review needed |
 | `goods_in_rows` | 3 | Follows receipt access |
 
-#### Order Tables
+### 5.4 Known RLS Gaps (Critical)
 
-| Table | Policies | Access Pattern |
-|-------|----------|----------------|
-| `orders` | 4 | Role-based CRUD |
-| `order_lots` | 3 | Follows order access |
-| `order_queue` | 3 | Accounting/senior/admin |
-| `po_drafts` | 3 | Creator access + admin |
-
-#### Catalog Tables
-
-| Table | Policies | Access Pattern |
-|-------|----------|----------------|
-| `catalog_items` | 4 | Role-based; admin delete |
-| `catalog_item_suppliers` | 2 | Edit/view by role |
-| `catalog_custom_field_definitions` | 2 | Admin manage; all view |
-| `catalog_custom_field_values` | 2 | Edit/view by role |
-| `catalog_item_audit_logs` | 2 | Insert/view by role |
-| `catalog_approval_settings` | 4 | Admin manage |
-| `catalog_user_views` | 2 | User owns their views |
-
-#### Stock Take Tables
-
-| Table | Policies | Access Pattern |
-|-------|----------|----------------|
-| `count_sessions` | 6 | Creator + admin/senior review |
-| `count_rolls` | 6 | Session-based + admin review |
-
-#### Email System Tables
-
-| Table | Policies | Access Pattern |
-|-------|----------|----------------|
-| `email_templates` | 1 | Admin only |
-| `email_log` | 3 | Admin view; system insert |
-| `email_schedules` | 2 | Admin manage; senior view |
-| `email_recipients` | 2 | Admin manage; senior view |
-| `email_settings` | 3 | Admin only |
-| `email_digest_configs` | 3 | Admin only |
-| `email_recipient_preferences` | 3 | User owns; admin manage all |
-
-#### Audit & System Tables
-
-| Table | Policies | Access Pattern |
-|-------|----------|----------------|
-| `audit_logs` | 4 | Admin/senior view; system insert |
-| `role_permissions` | 2 | Admin manage; all view |
-| `field_edit_queue` | 4 | All create; senior/admin manage |
-| `ai_usage` | 1 | Admin/senior view only |
-
-### 4.4 RLS Bypass Prevention
-
-```sql
--- NEVER bypass RLS in application code
--- Edge Functions use service role only when necessary
-
--- ❌ WRONG: Bypassing RLS
-const supabaseAdmin = createClient(url, SERVICE_ROLE_KEY);
-
--- ✅ CORRECT: Use authenticated client
-const supabase = createClient(url, ANON_KEY);
-// RLS automatically applied based on user JWT
-```
+| Table | Issue | Risk | Remediation |
+|-------|-------|------|-------------|
+| `rolls` | Overly permissive SELECT | Data exposure | Restrict to role-based |
+| `goods_in_receipts` | Overly permissive SELECT | Data exposure | Restrict to role-based |
 
 ---
 
-## 5. Input Validation
+## 6. Input Validation
 
-### 5.1 Zod Schema Validation
+### 6.1 Zod Schema Validation
 
 ```typescript
 // All user inputs validated with Zod schemas
@@ -365,34 +359,11 @@ const orderSchema = z.object({
 // Validation before API call
 const result = orderSchema.safeParse(formData);
 if (!result.success) {
-  // Handle validation errors
   throw new Error(result.error.message);
 }
 ```
 
-### 5.2 Common Validation Patterns
-
-```typescript
-// Email validation
-const emailSchema = z.string().email().max(255);
-
-// UUID validation
-const uuidSchema = z.string().uuid();
-
-// Numeric ranges
-const metersSchema = z.number().positive().max(10000);
-
-// Date validation
-const dateSchema = z.string().refine(
-  (val) => !isNaN(Date.parse(val)),
-  { message: 'Invalid date' }
-);
-
-// Enum validation
-const roleSchema = z.enum(['warehouse_staff', 'accounting', 'senior_manager', 'admin']);
-```
-
-### 5.3 Edge Function Validation
+### 6.2 Edge Function Validation
 
 ```typescript
 // All edge functions validate input
@@ -423,9 +394,9 @@ export async function handler(req: Request) {
 
 ---
 
-## 6. Audit Logging
+## 7. Audit Logging
 
-### 6.1 Audit Log Structure
+### 7.1 Audit Log Structure
 
 ```typescript
 interface AuditLog {
@@ -449,7 +420,7 @@ interface AuditLog {
 }
 ```
 
-### 6.2 Audit Logging Implementation
+### 7.2 Audit Logging Implementation
 
 ```typescript
 // useAuditLog hook
@@ -483,399 +454,254 @@ export const useAuditLog = () => {
 };
 ```
 
-### 6.3 Audit Log Retention
-
-```sql
--- cleanup-old-audit-logs edge function
--- Runs on schedule to maintain log size
--- Configurable retention period (default: 2 years)
-
-DELETE FROM audit_logs
-WHERE created_at < NOW() - INTERVAL '2 years'
-  AND is_reversed = false;
-```
-
-### 6.4 Audit Reversal Feature
-
-```typescript
-// Admins can reverse certain actions
-// Creates reversal audit entry linked to original
-await supabase.functions.invoke('reverse-audit-action', {
-  body: {
-    auditId: originalAuditId,
-    reason: 'User requested correction'
-  }
-});
-```
-
 ---
 
-## 7. Edge Function Security
+## 8. Edge Function Security
 
-### 7.1 Authentication Enforcement
-
-```typescript
-// Every edge function validates authentication
-const authHeader = req.headers.get('Authorization');
-if (!authHeader) {
-  return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-    status: 401,
-  });
-}
-
-// Verify JWT
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  global: { headers: { Authorization: authHeader } }
-});
-
-const { data: { user }, error } = await supabase.auth.getUser();
-if (error || !user) {
-  return new Response(JSON.stringify({ error: 'Invalid token' }), {
-    status: 401,
-  });
-}
-```
-
-### 7.2 Role Verification in Edge Functions
+### 8.1 Authentication Enforcement
 
 ```typescript
-// Check user role for privileged operations
-const { data: roleData } = await supabaseAdmin
-  .from('user_roles')
-  .select('role')
-  .eq('user_id', user.id)
-  .single();
+// All edge functions must verify JWT
+import { createClient } from '@supabase/supabase-js';
 
-if (roleData?.role !== 'admin') {
-  return new Response(JSON.stringify({ error: 'Forbidden' }), {
-    status: 403,
-  });
-}
-```
+export async function handler(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401 
+    });
+  }
 
-### 7.3 CRON Job Authentication
-
-```typescript
-// All scheduled jobs validate CRON_SECRET
-const cronSecret = Deno.env.get('CRON_SECRET');
-const requestSecret = req.headers.get('x-cron-secret');
-
-if (!cronSecret) {
-  return new Response(
-    JSON.stringify({ error: 'CRON_SECRET not configured' }),
-    { status: 503 }
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    {
+      global: { headers: { Authorization: authHeader } }
+    }
   );
-}
 
-if (requestSecret !== cronSecret) {
-  return new Response(
-    JSON.stringify({ error: 'Unauthorized' }),
-    { status: 401 }
-  );
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401 
+    });
+  }
+
+  // Proceed with authorized request...
 }
 ```
 
-### 7.4 CORS Configuration
+### 8.2 CRON Job Authentication (Critical Gap)
 
 ```typescript
-// Standard CORS headers for all edge functions
+// REQUIRED: CRON jobs must validate CRON_SECRET
+export async function handler(req: Request) {
+  const cronSecret = req.headers.get('x-cron-secret');
+  const expectedSecret = Deno.env.get('CRON_SECRET');
+  
+  if (!cronSecret || cronSecret !== expectedSecret) {
+    console.error('CRON authentication failed');
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401 
+    });
+  }
+
+  // Proceed with CRON job...
+}
+```
+
+**Status:** ⚠️ Missing from `cleanup-old-drafts` and `send-mo-reminders`
+
+### 8.3 CORS Configuration
+
+```typescript
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Handle preflight
+// Handle CORS preflight
 if (req.method === 'OPTIONS') {
-  return new Response('ok', { headers: corsHeaders });
+  return new Response(null, { headers: corsHeaders });
 }
 ```
 
 ---
 
-## 8. Data Protection
+## 9. Integration Security (Planned)
 
-### 8.1 Sensitive Data Classification
-
-| Level | Examples | Protection |
-|-------|----------|------------|
-| **Critical** | Passwords, API keys | Never stored in frontend |
-| **Sensitive** | Email, phone, PII | Encrypted at rest |
-| **Internal** | User IDs, order numbers | RLS protected |
-| **Public** | Product names, images | Standard access |
-
-### 8.2 Data in Transit
-
-- All communications over HTTPS
-- TLS 1.2+ enforced by Supabase
-- No sensitive data in URLs
-
-### 8.3 Data at Rest
-
-- Supabase encrypts all data at rest
-- Database-level encryption (PostgreSQL)
-- Storage bucket encryption
-
-### 8.4 Client-Side Data Handling
+### 9.1 API Key Authentication
 
 ```typescript
-// NEVER store sensitive data in localStorage
-// ❌ WRONG
-localStorage.setItem('userRole', 'admin');
+// Planned: Per-app API keys for ecosystem communication
+export async function handler(req: Request) {
+  const apiKey = req.headers.get('x-api-key');
+  
+  // Validate against stored API keys
+  const { data: keyData } = await supabase
+    .from('api_keys')
+    .select('app_name, permissions, rate_limit')
+    .eq('key_hash', hashApiKey(apiKey))
+    .eq('is_active', true)
+    .single();
+  
+  if (!keyData) {
+    return new Response(JSON.stringify({ error: 'Invalid API key' }), { 
+      status: 401 
+    });
+  }
 
-// ✅ CORRECT - Use secure session from Supabase
-const { data: { session } } = await supabase.auth.getSession();
-// Role comes from database, not client storage
+  // Log the API request for audit
+  await logApiRequest(keyData.app_name, req);
+
+  // Proceed with request...
+}
 ```
 
----
-
-## 9. IP Whitelisting (Admin Panel)
-
-### 9.1 Implementation
-
-```sql
--- admin_ip_whitelist table
-CREATE TABLE public.admin_ip_whitelist (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ip_address TEXT NOT NULL,
-    description TEXT,
-    created_by UUID REFERENCES auth.users(id),
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Only admins can manage
-CREATE POLICY "Only admins can manage IP whitelist" ON admin_ip_whitelist
-FOR ALL
-USING (has_role(auth.uid(), 'admin'));
-```
-
-### 9.2 Admin Panel Component
+### 9.2 Webhook Signature Verification
 
 ```typescript
-// IPWhitelistTab.tsx
-// Manages allowed IP addresses for enhanced security
-// Optional feature for high-security deployments
-```
-
----
-
-## 10. Security Checklist
-
-### 10.1 New Feature Checklist
-
-- [ ] All inputs validated with Zod schemas
-- [ ] RLS policies created for new tables
-- [ ] Permission checks added to UI
-- [ ] Edge function auth verified
-- [ ] Audit logging implemented
-- [ ] No sensitive data in console logs
-- [ ] Error messages are generic
-- [ ] CORS headers configured
-
-### 10.2 Code Review Checklist
-
-- [ ] No hardcoded secrets
-- [ ] No client-side role storage
-- [ ] No dangerouslySetInnerHTML with user content
-- [ ] Parameterized queries only
-- [ ] Service role used only when necessary
-- [ ] Input sanitization applied
-
-### 10.3 Deployment Checklist
-
-- [ ] Environment variables configured
-- [ ] CRON_SECRET set for scheduled functions
-- [ ] RESEND_API_KEY verified
-- [ ] OPENAI_API_KEY secured
-- [ ] RLS policies tested
-- [ ] Edge functions deployed
-
----
-
-## 11. Incident Response
-
-### 11.1 Security Event Types
-
-| Event | Severity | Response |
-|-------|----------|----------|
-| **Failed logins (>5)** | Medium | Account lockout |
-| **Unauthorized access attempt** | High | Log & alert |
-| **Data breach** | Critical | Immediate investigation |
-| **RLS bypass attempt** | Critical | Block & audit |
-
-### 11.2 Logging & Monitoring
-
-```typescript
-// Security events logged to audit_logs
-await supabase.rpc('log_audit_action', {
-  p_action: 'SECURITY_EVENT',
-  p_entity_type: 'profile',
-  p_entity_id: userId,
-  p_notes: 'Multiple failed login attempts detected'
-});
-```
-
-### 11.3 Contact Points
-
-| Role | Responsibility |
-|------|----------------|
-| System Admin | Initial investigation |
-| Development Lead | Technical remediation |
-| Project Owner | Stakeholder communication |
-
----
-
-## 12. Compliance Considerations
-
-### 12.1 Data Retention
-
-| Data Type | Retention | Policy |
-|-----------|-----------|--------|
-| Audit logs | 2 years | Automatic cleanup |
-| User data | Active account | Deleted on request |
-| Order history | 7 years | Legal requirement |
-| Email logs | 1 year | Auto-purge |
-
-### 12.2 GDPR Considerations
-
-- User data export capability (via admin)
-- Right to deletion (admin-delete-user)
-- Consent tracking (email_recipient_preferences)
-- Data minimization (collect only necessary)
-
-### 12.3 Future Enhancements
-
-| Enhancement | Priority | Status |
-|-------------|----------|--------|
-| MFA support | High | Planned |
-| SSO integration | Medium | Planned |
-| Security dashboard | Medium | Planned |
-| Automated vulnerability scanning | Low | Planned |
-
----
-
-## 13. Known Security Gaps
-
-> ⚠️ **Critical**: This section documents known security issues that require remediation.
-
-### 13.1 Critical Gaps (P0)
-
-| Issue | Location | Risk | Remediation |
-|-------|----------|------|-------------|
-| **Missing CRON_SECRET validation** | `cleanup-old-drafts/index.ts` | High - Unauthorized job execution | Add secret validation |
-| **Missing CRON_SECRET validation** | `send-mo-reminders/index.ts` | High - Unauthorized job execution | Add secret validation |
-| **CRON_SECRET not configured** | Supabase Secrets | High - Jobs will fail validation | Configure in dashboard |
-| **XSS vulnerability** | `EmailTemplateEditor.tsx` | Medium - Script injection | Add DOMPurify |
-| **XSS vulnerability** | `EmailTemplatePreview.tsx` | Medium - Script injection | Add DOMPurify |
-| **XSS vulnerability** | `VersionHistoryDrawer.tsx` | Medium - Script injection | Add DOMPurify |
-| **XSS vulnerability** | `InlineEditableField.tsx` | Medium - Script injection | Add DOMPurify |
-
-### 13.2 High Priority Gaps (P1)
-
-| Issue | Risk | Remediation | Status |
-|-------|------|-------------|--------|
-| **No MFA/2FA** | Account takeover | Implement TOTP | Planned |
-| **No login rate limiting** | Brute force attacks | Add attempt limiting | Planned |
-| **No password attempt lockout** | Credential stuffing | Add lockout policy | Planned |
-| **Overly permissive RLS on some tables** | Data exposure | Review and restrict | Pending Review |
-
-### 13.3 Medium Priority Gaps (P2)
-
-| Issue | Risk | Remediation | Status |
-|-------|------|-------------|--------|
-| **No security event dashboard** | Lack of visibility | Build monitoring UI | Planned |
-| **No automated vulnerability scanning** | Unknown vulnerabilities | Integrate scanner | Planned |
-| **No penetration testing** | Unknown attack vectors | Engage security firm | Planned |
-
----
-
-## 14. Remediation Plan
-
-### Phase 0: Emergency Fixes (1-3 Days)
-
-**Target**: Eliminate critical vulnerabilities
-
-```typescript
-// CRON_SECRET validation pattern (required in all CRON functions)
-const cronSecret = Deno.env.get('CRON_SECRET');
-const requestSecret = req.headers.get('x-cron-secret');
-
-if (!cronSecret) {
-  console.error('CRON_SECRET not configured');
-  return new Response(
-    JSON.stringify({ error: 'Server configuration error' }),
-    { status: 503, headers: corsHeaders }
+// Planned: HMAC signing for outgoing webhooks
+function signWebhookPayload(payload: object, secret: string): string {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(JSON.stringify(payload));
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
   );
+  const signature = await crypto.subtle.sign('HMAC', key, data);
+  return btoa(String.fromCharCode(...new Uint8Array(signature)));
 }
 
-if (requestSecret !== cronSecret) {
-  console.warn('Unauthorized CRON attempt from:', req.headers.get('x-forwarded-for'));
-  return new Response(
-    JSON.stringify({ error: 'Unauthorized' }),
-    { status: 401, headers: corsHeaders }
-  );
+// Include signature in webhook headers
+const webhookHeaders = {
+  'Content-Type': 'application/json',
+  'X-Webhook-Signature': signWebhookPayload(payload, webhookSecret),
+  'X-Webhook-Timestamp': Date.now().toString(),
+};
+```
+
+### 9.3 Rate Limiting
+
+```typescript
+// Planned: Per-API-key rate limiting
+async function checkRateLimit(apiKey: string, limit: number): Promise<boolean> {
+  const key = `rate_limit:${apiKey}`;
+  const now = Date.now();
+  const window = 60000; // 1 minute window
+  
+  // Check recent requests
+  const { data } = await supabase
+    .from('api_rate_limits')
+    .select('request_count')
+    .eq('api_key', apiKey)
+    .gte('window_start', now - window)
+    .single();
+  
+  if (data && data.request_count >= limit) {
+    return false; // Rate limited
+  }
+  
+  return true;
 }
 ```
 
+---
+
+## 10. XSS Protection (Critical Gap)
+
+### 10.1 Current Vulnerabilities
+
+The following components use `dangerouslySetInnerHTML` without sanitization:
+
+| Component | File | Risk |
+|-----------|------|------|
+| EmailTemplateEditor | `src/components/email/EmailTemplateEditor.tsx` | High |
+| EmailTemplatePreview | `src/components/email/EmailTemplatePreview.tsx` | High |
+| VersionHistoryDrawer | `src/components/email/VersionHistoryDrawer.tsx` | High |
+| InlineEditableField | `src/components/InlineEditableField.tsx` | High |
+
+### 10.2 Required Fix
+
 ```typescript
-// XSS prevention pattern (required for dangerouslySetInnerHTML)
+// Install DOMPurify
+// npm install dompurify @types/dompurify
+
 import DOMPurify from 'dompurify';
 
-// Before rendering user-generated HTML
-const sanitizedHtml = DOMPurify.sanitize(userContent, {
-  ALLOWED_TAGS: ['b', 'i', 'u', 'a', 'p', 'br', 'ul', 'ol', 'li', 'strong', 'em'],
-  ALLOWED_ATTR: ['href', 'target', 'rel'],
-});
-
-<div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
+// Sanitize before rendering
+<div 
+  dangerouslySetInnerHTML={{ 
+    __html: DOMPurify.sanitize(htmlContent) 
+  }} 
+/>
 ```
 
-### Phase 1: Security Hardening (1-2 Weeks)
+---
 
-1. **MFA Implementation**
-   - Add TOTP support for admin accounts
-   - Optional for other roles
-   - Recovery code generation
+## 11. Security Checklist
 
-2. **Rate Limiting**
-   - Login: 5 attempts per 15 minutes per IP
-   - API: 100 requests per minute per user
-   - Password reset: 3 requests per hour per email
+### For New Features
 
-3. **Account Lockout**
-   - Lock after 5 failed attempts
-   - 15-minute lockout duration
-   - Admin unlock capability
+- [ ] Input validated with Zod schema
+- [ ] RLS policies reviewed for new tables
+- [ ] Audit logging implemented
+- [ ] Permission checks added
+- [ ] No sensitive data in client logs
+- [ ] CORS configured correctly
+- [ ] Edge function validates JWT
 
-### Phase 2: Security Visibility (1-3 Months)
+### For Code Reviews
 
-1. **Security Dashboard**
-   - Failed login heatmap
-   - Suspicious activity alerts
-   - RLS bypass attempt logging
+- [ ] No hardcoded secrets
+- [ ] No `dangerouslySetInnerHTML` without DOMPurify
+- [ ] SQL injection prevented (use parameterized queries)
+- [ ] Error messages don't leak sensitive info
+- [ ] API responses don't include unnecessary data
 
-2. **Automated Scanning**
-   - Dependency vulnerability checks
-   - Static code analysis
-   - Regular security audits
+### For Deployments
+
+- [ ] CRON_SECRET configured
+- [ ] All secrets rotated if compromised
+- [ ] RLS policies tested
+- [ ] Edge functions tested with auth
 
 ---
 
-## 15. Security Incident Log
+## 12. Known Security Gaps & Remediation
 
-| Date | Incident | Severity | Resolution | Status |
-|------|----------|----------|------------|--------|
-| - | No incidents recorded | - | - | - |
+### Critical (P0)
 
-*This log should be updated whenever a security incident occurs.*
+| Issue | Risk | Remediation | Status |
+|-------|------|-------------|--------|
+| Missing CRON_SECRET | CRON job abuse | Add validation to all CRON functions | 🔴 Open |
+| XSS in email templates | Script injection | Add DOMPurify | 🔴 Open |
+| Overly permissive RLS | Data exposure | Review rolls, goods_in_receipts | 🔴 Open |
+
+### High (P1)
+
+| Issue | Risk | Remediation | Status |
+|-------|------|-------------|--------|
+| No MFA/2FA | Account takeover | Implement TOTP | 📅 Planned |
+| No rate limiting | Brute force | Add login rate limiter | 📅 Planned |
+| No password lockout | Account compromise | Lock after N failures | 📅 Planned |
+
+### Medium (P2)
+
+| Issue | Risk | Remediation | Status |
+|-------|------|-------------|--------|
+| No API key auth | Ecosystem abuse | Implement per-app keys | 📅 Planned |
+| No webhook signatures | Webhook spoofing | Add HMAC signing | 📅 Planned |
+| No penetration test | Unknown vulns | Conduct external audit | 📅 Planned |
 
 ---
 
-## Appendix: Version History
+## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2025-01-10 | Initial security documentation |
-| 1.1.0 | 2025-01-10 | Added known security gaps, remediation plan, incident log |
+| 2.0.0 | 2025-12-25 | Ecosystem security context; integration security requirements; updated gap analysis |

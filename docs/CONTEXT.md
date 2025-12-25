@@ -1,8 +1,9 @@
 # LotAstro System Architecture (CONTEXT.md)
 
-> **Version**: 1.0.0  
-> **Last Updated**: 2025-01-10  
-> **Purpose**: Comprehensive system architecture and technical reference
+> **Version**: 2.0.0  
+> **Last Updated**: 2025-12-25  
+> **Purpose**: Comprehensive system architecture and technical reference  
+> **Architecture**: Multi-Project Ecosystem
 
 ---
 
@@ -11,6 +12,53 @@
 ### Business Domain
 
 LotAstro is a **Warehouse Management System (WMS)** designed for the textile and leather wholesale industry. It provides end-to-end inventory management, order processing, manufacturing order tracking, and demand forecasting.
+
+### Ecosystem Architecture
+
+LotAstro WMS operates as the **inventory master** within a larger ecosystem of connected applications:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        LOTASTRO ECOSYSTEM                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   LOVABLE PROJECTS (Supabase Backend)                                       │
+│   ════════════════════════════════════                                      │
+│   ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐          │
+│   │  🏭 LotAstro    │   │  👥 LotAstro    │   │  📚 LotAstro    │          │
+│   │     WMS         │◄──┤     CRM         │   │     Wiki        │          │
+│   │  ═══════════    │   │  ═══════════    │   │  ═══════════    │          │
+│   │  THIS PROJECT   │──►│  Customers      │   │  Knowledge      │          │
+│   │                 │   │  Leads, Sales   │   │  Articles       │          │
+│   └────────┬────────┘   └────────┬────────┘   └────────┬────────┘          │
+│            │                     │                     │                    │
+│            │   ┌─────────────────┴─────────────────────┘                   │
+│            │   │                                                            │
+│            ▼   ▼                                                            │
+│   ┌─────────────────────────────────────────────────────────────┐          │
+│   │              🔗 INTEGRATION LAYER                            │          │
+│   │  ════════════════════════════════════════════════════════   │          │
+│   │  • Edge Function APIs (get-inventory, create-order, etc.)   │          │
+│   │  • Webhook Events (order.created, inventory.updated, etc.)  │          │
+│   │  • API Key Authentication (per-app keys)                    │          │
+│   │  • Shared Entity IDs (UUIDs)                                │          │
+│   └─────────────────────────────────────────────────────────────┘          │
+│            │                                                                │
+│            ▼                                                                │
+│   AI STUDIO PROJECTS (Potential Lovable Import)                            │
+│   ═════════════════════════════════════════════                            │
+│   ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐          │
+│   │  🛒 Customer    │   │  💰 Cost        │   │  🎫 SIM         │          │
+│   │     Portal      │   │     Portal      │   │     Ticketing   │          │
+│   └─────────────────┘   └─────────────────┘   └─────────────────┘          │
+│                                                                              │
+│   ┌─────────────────┐   ┌─────────────────┐                                │
+│   │  🎛️ Ops Console │   │  🚚 Route       │                                │
+│   │                 │   │    Optimizer    │                                │
+│   └─────────────────┘   └─────────────────┘                                │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Target Market
 
@@ -27,10 +75,39 @@ LotAstro is a **Warehouse Management System (WMS)** designed for the textile and
 2. **Real-Time Inventory Tracking** - Roll-level precision with QR codes
 3. **Demand Forecasting** - Predictive analytics for stock planning
 4. **Mobile-First Design** - Warehouse floor accessibility
+5. **Ecosystem Integration** - Seamless data flow with CRM, Portal, and other apps
 
 ---
 
-## 2. Technology Stack
+## 2. Data Ownership Model
+
+### Distributed Ownership Across Ecosystem
+
+| Entity | Master System | Sync Direction | Consumers |
+|--------|---------------|----------------|-----------|
+| **Inventory/Stock** | WMS | → | CRM, Portal, Ops Console |
+| **Products/Catalog** | WMS | → | CRM, Portal |
+| **Orders (Fulfillment)** | WMS | ↔ | CRM (sales), Portal (customer) |
+| **Customers/Leads** | CRM | → | WMS, Portal |
+| **Customer Credit** | CRM | → | WMS |
+| **Knowledge Articles** | Wiki | → | All apps |
+| **Invoices** | Cost Portal | → | WMS |
+| **Delivery Routes** | Route Optimizer | → | WMS |
+| **Support Tickets** | Ticketing | → | Ops Console |
+
+### WMS as Inventory Master
+
+LotAstro WMS is the **source of truth** for:
+- Lot and roll inventory
+- Product catalog definitions
+- Order fulfillment status
+- Stock levels and availability
+- Manufacturing order tracking
+- Demand forecasts
+
+---
+
+## 3. Technology Stack
 
 ### Frontend Stack
 
@@ -65,9 +142,17 @@ LotAstro is a **Warehouse Management System (WMS)** designed for the textile and
 | **Email** | Resend | 4.0.0 | Transactional email |
 | **AI** | OpenAI GPT-4 | Latest | Order extraction |
 
+### Shared Services
+
+| Service | Usage | Shared With |
+|---------|-------|-------------|
+| **Resend** | Email delivery | CRM, Wiki |
+| **GitHub** | Source control | CRM, Wiki |
+| **Supabase** | Backend platform | CRM, Wiki (separate projects) |
+
 ---
 
-## 3. System Architecture
+## 4. System Architecture
 
 ### High-Level Architecture
 
@@ -106,8 +191,9 @@ LotAstro is a **Warehouse Management System (WMS)** designed for the textile and
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         SUPABASE BACKEND                                 │
 │   ┌───────────────────────────────────────────────────────────────────┐ │
-│   │                        Edge Functions (33)                        │ │
-│   │   Admin (5) | Email (10) | AI (3) | OCR (2) | Forecast (2) | ... │ │
+│   │                        Edge Functions (33+)                       │ │
+│   │   Admin (5) | Email (10) | AI (3) | OCR (2) | Forecast (2)       │ │
+│   │   Integration APIs (planned): inventory, orders, catalog          │ │
 │   └───────────────────────────────────────────────────────────────────┘ │
 │   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
 │   │   Auth       │ │  PostgreSQL  │ │   Storage    │ │   Realtime   │   │
@@ -119,45 +205,66 @@ LotAstro is a **Warehouse Management System (WMS)** designed for the textile and
 │   └───────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
-                                    ▼
+            ┌───────────────────────┼───────────────────────┐
+            ▼                       ▼                       ▼
+┌─────────────────────┐ ┌─────────────────────┐ ┌─────────────────────────┐
+│   EXTERNAL SERVICES │ │   ECOSYSTEM APPS    │ │   FUTURE INTEGRATIONS   │
+│   ─────────────────  │ │   ───────────────   │ │   ────────────────────  │
+│   ┌─────────────┐   │ │   ┌─────────────┐   │ │   ┌─────────────────┐   │
+│   │   Resend    │   │ │   │  LotAstro   │   │ │   │ Customer Portal │   │
+│   │   (Email)   │   │ │   │    CRM      │   │ │   │   (AI Studio)   │   │
+│   └─────────────┘   │ │   └─────────────┘   │ │   └─────────────────┘   │
+│   ┌─────────────┐   │ │   ┌─────────────┐   │ │   ┌─────────────────┐   │
+│   │   OpenAI    │   │ │   │  LotAstro   │   │ │   │  Ops Console    │   │
+│   │  (GPT-4)    │   │ │   │    Wiki     │   │ │   │   (AI Studio)   │   │
+│   └─────────────┘   │ │   └─────────────┘   │ │   └─────────────────┘   │
+└─────────────────────┘ └─────────────────────┘ └─────────────────────────┘
+```
+
+### Integration Architecture (Planned)
+
+```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        EXTERNAL SERVICES                                 │
-│   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                    │
-│   │   Resend     │ │   OpenAI     │ │   (Future)   │                    │
-│   │   (Email)    │ │  (GPT-4)     │ │   Stripe     │                    │
-│   └──────────────┘ └──────────────┘ └──────────────┘                    │
+│                     INTEGRATION LAYER (Phase 2)                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    EDGE FUNCTION APIS                            │   │
+│   │  ─────────────────────────────────────────────────────────────  │   │
+│   │  GET  /get-inventory-summary    → Returns stock levels          │   │
+│   │  GET  /get-customer-orders      → Returns orders by customer    │   │
+│   │  POST /create-order-external    → Accept orders from Portal     │   │
+│   │  GET  /get-catalog-public       → Product catalog for Portal    │   │
+│   │  GET  /check-availability       → Real-time stock check         │   │
+│   │  POST /sync-customer-from-crm   → Receive CRM customer data     │   │
+│   │  GET  /metrics                  → Health and usage metrics      │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    WEBHOOK EVENTS                                │   │
+│   │  ─────────────────────────────────────────────────────────────  │   │
+│   │  order.created        → Notify CRM, Ops Console                 │   │
+│   │  order.fulfilled      → Notify CRM, Portal                      │   │
+│   │  order.cancelled      → Notify CRM, Portal                      │   │
+│   │  inventory.low_stock  → Notify CRM, Ops Console                 │   │
+│   │  inventory.updated    → Notify Portal                           │   │
+│   │  customer.created     → Receive from CRM                        │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    AUTHENTICATION                                │   │
+│   │  ─────────────────────────────────────────────────────────────  │   │
+│   │  API Keys: CRM_API_KEY, PORTAL_API_KEY, OPS_CONSOLE_API_KEY     │   │
+│   │  Webhook Signatures: HMAC-SHA256 with per-app secrets           │   │
+│   │  Rate Limiting: Per-key limits with backoff                     │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
-```
-
-### Request Flow
-
-```
-User Action → React Component → Custom Hook → TanStack Query → Supabase Client
-                                                                      │
-                                                                      ▼
-                                                              ┌───────────────┐
-                                                              │ Auth Check    │
-                                                              │ (JWT Token)   │
-                                                              └───────┬───────┘
-                                                                      │
-                                              ┌───────────────────────┼───────────────────────┐
-                                              │                       │                       │
-                                              ▼                       ▼                       ▼
-                                      ┌───────────────┐       ┌───────────────┐       ┌───────────────┐
-                                      │   Database    │       │    Storage    │       │ Edge Function │
-                                      │   (Direct)    │       │   (Direct)    │       │   (Invoke)    │
-                                      └───────┬───────┘       └───────────────┘       └───────┬───────┘
-                                              │                                               │
-                                              ▼                                               ▼
-                                      ┌───────────────┐                               ┌───────────────┐
-                                      │  RLS Policy   │                               │  Business     │
-                                      │  Evaluation   │                               │  Logic        │
-                                      └───────────────┘                               └───────────────┘
 ```
 
 ---
 
-## 4. Frontend Architecture
+## 5. Frontend Architecture
 
 ### Provider Hierarchy
 
@@ -188,10 +295,6 @@ User Action → React Component → Custom Hook → TanStack Query → Supabase 
 src/
 ├── components/                 # UI Components
 │   ├── ui/                    # shadcn/ui base (52 components)
-│   │   ├── button.tsx
-│   │   ├── dialog.tsx
-│   │   ├── table.tsx
-│   │   └── ...
 │   ├── catalog/               # Catalog module (11 components)
 │   ├── email/                 # Email templates (7 components)
 │   ├── forecast/              # Forecasting (5 components)
@@ -208,20 +311,9 @@ src/
 │   ├── useAuth.tsx            # Authentication
 │   ├── usePermissions.tsx     # RBAC permissions
 │   ├── useAuditLog.tsx        # Audit logging
-│   ├── useReportBuilder.ts    # Report building
-│   ├── useStockTakeSession.ts # Stock take sessions
-│   ├── use-mobile.tsx         # Mobile detection
-│   ├── usePullToRefresh.ts    # Pull-to-refresh
-│   ├── useSwipeGesture.ts     # Touch gestures
 │   └── ...
 │
 ├── pages/                      # Route Pages (30+ pages)
-│   ├── Dashboard.tsx
-│   ├── Inventory.tsx
-│   ├── Orders.tsx
-│   ├── Catalog.tsx
-│   ├── Reports.tsx
-│   └── ...
 │
 ├── integrations/
 │   └── supabase/
@@ -229,9 +321,6 @@ src/
 │       └── types.ts           # Generated database types
 │
 ├── utils/                      # Utility Functions
-│   ├── excelImport.ts         # Excel parsing
-│   ├── ocrExtraction.ts       # OCR utilities
-│   └── ocrPreprocessing.ts    # Image preprocessing
 │
 ├── lib/
 │   └── utils.ts               # cn() and utilities
@@ -239,578 +328,206 @@ src/
 ├── App.tsx                     # Application root
 ├── main.tsx                    # Entry point
 └── index.css                   # Global styles + Tailwind
-```
 
-### Custom Hooks Inventory
-
-| Hook | Purpose | Key Dependencies |
-|------|---------|------------------|
-| `useAuth` | Authentication state & methods | Supabase Auth |
-| `usePermissions` | RBAC permission checking | role_permissions table |
-| `useAuditLog` | Audit trail logging | log_audit_action RPC |
-| `useReportBuilder` | Report configuration | email_report_configs |
-| `useStockTakeSession` | Stock take sessions | count_sessions table |
-| `useStockTakeSettings` | Stock take config | app_settings table |
-| `useStockTakeUpload` | Photo upload handling | Storage + count_rolls |
-| `useClientOCR` | Tesseract.js OCR | tesseract.js |
-| `useDuplicateDetection` | Roll duplicate checking | photo hashes |
-| `useImageCompression` | Image optimization | Browser APIs |
-| `useIndexedDBBackup` | Offline backup | IndexedDB |
-| `usePullToRefresh` | Mobile refresh gesture | Touch events |
-| `useSwipeGesture` | Swipe detection | Touch events |
-| `useHapticFeedback` | Vibration feedback | Navigator API |
-| `useSessionTimeout` | Auto-logout | Timer + Auth |
-| `useUploadRetry` | Failed upload retry | IndexedDB queue |
-| `useViewMode` | Table/card view toggle | localStorage |
-| `use-mobile` | Mobile breakpoint | window.matchMedia |
-| `use-toast` | Toast notifications | sonner |
-
-### Routing Structure
-
-```
-/                           → Dashboard (Protected)
-/auth                       → Login/Signup (Public)
-/reset-password             → Password Reset (Public)
-/invite                     → Accept Invitation (Public)
-
-/lot-intake                 → Create New Lots
-/lot-queue                  → Pending Lots Queue
-/inventory                  → Inventory List
-/inventory/:quality         → Quality Detail
-/inventory/:quality/:color  → Lot Detail
-
-/orders                     → Orders List
-/order-queue                → Order Processing Queue
-/reservations               → Stock Reservations
-/lot-selection              → Roll Selection
-/bulk-selection             → Bulk Roll Selection
-
-/catalog                    → Product Catalog
-/catalog/:id                → Catalog Item Detail
-
-/incoming-stock             → Incoming Stock
-/manufacturing-orders       → Manufacturing Orders
-/goods-receipt              → Receive Goods
-
-/forecast                   → Demand Forecast
-/forecast-settings          → Forecast Configuration
-
-/stock-take                 → Stock Take Capture
-/stock-take-review          → Review Sessions
-
-/qr-scan                    → QR Scanner
-/qr/:lotNumber              → QR Direct Access
-/print/qr/:lotNumber        → QR Print Page
-
-/reports                    → Reports Hub
-/reports/builder            → New Report
-/reports/builder/:id        → Edit Report
-
-/approvals                  → Approval Queue
-/audit-logs                 → Action History
-/suppliers                  → Supplier Management
-/admin                      → System Administration
-
-/admin/extraction-test      → AI Extraction Test (Dev)
+supabase/
+├── functions/                  # Edge Functions (33+)
+│   ├── admin-*/               # Admin functions
+│   ├── send-*/                # Email functions
+│   ├── extract-order/         # AI extraction
+│   ├── stock-take-ocr/        # OCR processing
+│   ├── forecast-engine/       # Demand forecasting
+│   └── [integration APIs]     # (Planned) CRM, Portal APIs
+├── migrations/                 # Database migrations
+└── config.toml                # Supabase configuration
 ```
 
 ---
 
-## 5. Database Architecture
+## 6. Database Schema Overview
 
 ### Table Categories
 
-| Category | Tables | Description |
-|----------|--------|-------------|
-| **User Management** | 4 | profiles, user_roles, user_invitations, admin_ip_whitelist |
-| **Inventory Core** | 6 | lots, rolls, lot_queue, incoming_stock, goods_in_receipts, goods_in_rows |
-| **Order Management** | 4 | orders, order_lots, order_queue, po_drafts |
-| **Manufacturing** | 2 | manufacturing_orders, mo_status_history |
-| **Reservations** | 2 | reservations, reservation_rolls |
-| **Catalog** | 7 | catalog_items, catalog_item_suppliers, catalog_custom_field_*, catalog_user_views, catalog_approval_settings |
-| **Forecasting** | 5 | forecast_settings_global, forecast_settings_per_quality, forecast_runs, forecast_results, forecast_alerts, demand_history |
-| **Stock Take** | 2 | count_sessions, count_rolls |
-| **Email System** | 9 | email_templates, email_log, email_schedules, email_recipients, email_settings, etc. |
-| **Reports** | 1 | email_report_configs |
-| **Audit/System** | 4 | audit_logs, role_permissions, field_edit_queue, ai_usage |
-| **Reference** | 1 | suppliers |
+| Category | Tables | Purpose |
+|----------|--------|---------|
+| **User Management** | profiles, user_roles, user_invitations, admin_ip_whitelist | Auth & access |
+| **Inventory** | lots, rolls, lot_queue, incoming_stock | Stock tracking |
+| **Orders** | orders, order_lots, order_queue, po_drafts | Order processing |
+| **Manufacturing** | manufacturing_orders, mo_status_history | Production tracking |
+| **Reservations** | reservations, reservation_lots | Stock reservations |
+| **Catalog** | catalog_items, catalog_item_suppliers, catalog_custom_* | Product catalog |
+| **Forecasting** | forecast_runs, forecast_results, forecast_alerts, forecast_settings_* | Demand prediction |
+| **Stock Take** | count_sessions, count_rolls | Physical inventory |
+| **Email** | email_templates, email_log, email_schedules, email_* | Email system |
+| **Audit** | audit_logs, field_edit_queue | Audit trail |
+| **Reports** | email_report_configs | Report builder |
+| **Integration** | (planned) webhook_subscriptions, customers_external | Ecosystem sync |
 
-### Key Database Functions
+### Key Relationships
 
-| Function | Purpose | Security |
+```
+lots ──┬── rolls (1:N)
+       ├── order_lots (N:M via orders)
+       ├── reservation_lots (N:M via reservations)
+       └── goods_in_rows (N:M via goods_in_receipts)
+
+catalog_items ──┬── catalog_item_suppliers (1:N)
+                ├── catalog_custom_field_values (1:N)
+                └── lots (1:N via catalog_item_id)
+
+orders ──┬── order_lots (1:N)
+         └── po_drafts (1:1)
+
+manufacturing_orders ──┬── mo_status_history (1:N)
+                       └── incoming_stock (1:N)
+
+count_sessions ── count_rolls (1:N)
+
+forecast_runs ──┬── forecast_results (1:N)
+                └── forecast_alerts (1:N)
+```
+
+---
+
+## 7. Edge Functions Inventory
+
+### Current Functions (33)
+
+| Category | Functions | Purpose |
+|----------|-----------|---------|
+| **Admin** | admin-change-password, admin-deactivate-user, admin-delete-user, admin-reconcile-users | User management |
+| **Email Sending** | send-invitation, send-mo-reminders, send-overdue-digest, send-pending-approvals-digest, send-reservation-reminders, send-forecast-digest, send-scheduled-report, send-test-email, send-in-app-notification | Notifications |
+| **Email Processing** | process-email-retries | Retry failed emails |
+| **AI Extraction** | extract-order, validate-extraction, test-extraction | Order parsing |
+| **OCR** | stock-take-ocr, process-ocr-queue | Label reading |
+| **Forecasting** | forecast-engine, forecast-import-history | Demand prediction |
+| **Reports** | generate-report-attachment, get-report-schema | Report generation |
+| **Catalog** | migrate-catalog-items | Data migration |
+| **Autocomplete** | autocomplete-colors, autocomplete-qualities | Search helpers |
+| **Audit** | repair-audit-inconsistencies, reverse-audit-action, cleanup-old-audit-logs | Audit management |
+| **CRON** | check-stock-alerts, cleanup-old-drafts | Scheduled tasks |
+| **Order Flow** | confirm-draft | Order confirmation |
+
+### Planned Integration Functions
+
+| Function | Purpose | Consumer |
 |----------|---------|----------|
-| `has_role(user_id, role)` | Check user role | SECURITY DEFINER |
-| `get_user_role(user_id)` | Get primary role | SECURITY DEFINER |
-| `log_audit_action(...)` | Create audit log | SECURITY DEFINER |
-| `handle_new_user()` | Trigger: auto-create profile | Trigger function |
-| `generate_order_number()` | Sequential order numbers | Sequence-based |
-| `generate_mo_number()` | Sequential MO numbers | Sequence-based |
-| `get_dashboard_stats()` | Dashboard KPIs | RPC function |
-| `get_inventory_pivot_summary()` | Pivot inventory data | RPC function |
-| `get_inventory_with_reservations()` | Inventory + reservations | RPC function |
-| `refresh_roll_counts()` | Recalculate roll counts | Maintenance |
-
-### Storage Buckets
-
-| Bucket | Purpose | Public | Size Limit |
-|--------|---------|--------|------------|
-| `catalog-files` | Product specs, test reports | No | 50MB |
-| `order-attachments` | Order documents | No | 10MB |
-| `stock-take-photos` | Roll label photos | No | 5MB |
-| `public-assets` | Shared assets | Yes | 10MB |
+| get-inventory-summary | Stock levels API | CRM, Portal |
+| get-customer-orders | Order history API | CRM, Portal |
+| create-order-external | Order submission API | Portal |
+| get-catalog-public | Product catalog API | Portal |
+| check-availability | Stock check API | Portal |
+| sync-customer-from-crm | Customer sync | CRM |
+| webhook-dispatcher | Event distribution | All apps |
+| notify-crm | Order event push | CRM |
+| search-wiki | Wiki search | Wiki |
+| metrics | Health/usage metrics | Ops Console |
 
 ---
 
-## 6. Edge Functions Inventory
-
-### Function Categories
-
-#### Admin Functions (5)
-
-| Function | Method | Auth | Purpose |
-|----------|--------|------|---------|
-| `admin-change-password` | POST | Admin | Change user password |
-| `admin-deactivate-user` | POST | Admin | Soft-disable account |
-| `admin-delete-user` | POST | Admin | Hard-delete user |
-| `admin-reconcile-users` | POST | Admin | Sync auth.users with profiles |
-| `migrate-catalog-items` | POST | Admin | Catalog migration utility |
-
-#### Email Functions (10)
-
-| Function | Method | Trigger | Purpose |
-|----------|--------|---------|---------|
-| `send-invitation` | POST | Manual | User invite email |
-| `send-test-email` | POST | Manual | Template testing |
-| `send-mo-reminders` | POST | CRON | MO reminder digest |
-| `send-overdue-digest` | POST | CRON | Overdue orders digest |
-| `send-pending-approvals-digest` | POST | CRON | Approvals digest |
-| `send-reservation-reminders` | POST | CRON | Reservation expiry |
-| `send-forecast-digest` | POST | CRON | Forecast alerts |
-| `send-scheduled-report` | POST | CRON | Report delivery |
-| `send-in-app-notification` | POST | Event | In-app notifications |
-| `process-email-retries` | POST | CRON | Failed email retry |
-
-#### AI/OCR Functions (5)
-
-| Function | Method | Purpose |
-|----------|--------|---------|
-| `extract-order` | POST | GPT-4 order extraction |
-| `test-extraction` | POST | Test extraction (dev) |
-| `validate-extraction` | POST | Validate extraction results |
-| `stock-take-ocr` | POST | Roll label OCR |
-| `process-ocr-queue` | POST | Batch OCR processing |
-
-#### Report Functions (2)
-
-| Function | Method | Purpose |
-|----------|--------|---------|
-| `get-report-schema` | POST | Database schema for reports |
-| `generate-report-attachment` | POST | PDF/Excel generation |
-
-#### Forecast Functions (2)
-
-| Function | Method | Purpose |
-|----------|--------|---------|
-| `forecast-engine` | POST | Run forecast calculations |
-| `forecast-import-history` | POST | Import demand history |
-
-#### Utility Functions (9)
-
-| Function | Method | Purpose |
-|----------|--------|---------|
-| `autocomplete-colors` | GET | Color suggestions |
-| `autocomplete-qualities` | GET | Quality suggestions |
-| `confirm-draft` | POST | Confirm PO draft |
-| `cleanup-old-drafts` | POST | Remove expired drafts |
-| `cleanup-old-audit-logs` | POST | Audit log retention |
-| `repair-audit-inconsistencies` | POST | Fix audit issues |
-| `reverse-audit-action` | POST | Undo audit action |
-| `check-stock-alerts` | POST | Stock level alerts |
-
----
-
-## 7. Authentication & Authorization
+## 8. Security Architecture
 
 ### Authentication Flow
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   User Login    │────▶│  Supabase Auth  │────▶│   JWT Token     │
-│   (Email/Pass)  │     │  (Validation)   │     │   (Issued)      │
-└─────────────────┘     └─────────────────┘     └────────┬────────┘
-                                                         │
-                        ┌─────────────────┐              │
-                        │  Auto-refresh   │◀─────────────┘
-                        │  (Supabase SDK) │
-                        └────────┬────────┘
-                                 │
-                        ┌────────▼────────┐
-                        │   AuthProvider  │
-                        │  (React Context)│
-                        └────────┬────────┘
-                                 │
-         ┌───────────────────────┼───────────────────────┐
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  user: User     │     │ session: Session│     │ profile: Profile│
-│  (auth.users)   │     │   (JWT data)    │     │ (public.profiles)│
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+User Login → Supabase Auth → JWT Token (1 week exp)
+                                    │
+         ┌──────────────────────────┤
+         │                          │
+         ▼                          ▼
+┌─────────────────────┐    ┌─────────────────┐
+│  AuthProvider       │    │  Auto Refresh   │
+│  Context            │    │  (Supabase SDK) │
+└─────────────────────┘    └─────────────────┘
 ```
 
-### RBAC Permission System
+### Authorization (RBAC)
 
-```typescript
-// Permission check flow
-const { hasPermission } = usePermissions();
+| Role | Access Level |
+|------|--------------|
+| **Admin** | Full system access, user management |
+| **Senior Manager** | All operations, approvals, forecasting |
+| **Accounting** | Orders, catalog, manufacturing, reservations |
+| **Warehouse Staff** | Inventory view, lot intake, QR scanning |
 
-// Check pattern
-if (hasPermission('category', 'action')) {
-  // Allow operation
-}
+### Row Level Security (RLS)
 
-// Database lookup
-role_permissions table:
-┌──────────────────┬─────────────────────┬──────────────────┬────────────┐
-│ role             │ permission_category │ permission_action│ is_allowed │
-├──────────────────┼─────────────────────┼──────────────────┼────────────┤
-│ warehouse_staff  │ inventory           │ view             │ true       │
-│ warehouse_staff  │ inventory           │ delete           │ false      │
-│ admin            │ *                   │ *                │ true       │
-└──────────────────┴─────────────────────┴──────────────────┴────────────┘
-```
+- ✅ Enabled on ALL tables
+- ✅ Restrictive by default
+- ✅ Role-based policies via `has_role()` function
+- ⚠️ Some policies need review (rolls, goods_in_receipts)
 
-### Permission Categories
+### Integration Security (Planned)
 
-| Category | Actions |
-|----------|---------|
-| `inventory` | view, createlotentries, editlot, delete, viewlotqueue, viewincoming, receiveincoming |
-| `orders` | vieworders, createorders, fulfilorders, cancelorders, approve |
-| `reservations` | view, create, release, cancel, convert |
-| `manufacturing` | view, create, edit, delete |
-| `catalog` | view, create, edit, approve, delete |
-| `approvals` | viewapprovals, approve, reject |
-| `reports` | viewreports, accessdashboard |
-| `auditlogs` | viewalllogs, viewownlogs |
-| `usermanagement` | viewusers, manageusers, managepermissions |
-| `forecasting` | viewforecasts, configureforecasts, runforecasts |
-| `stocktake` | startsession, reviewsessions |
-| `qrdocuments` | scanqrcodes, printqrcodes |
-| `suppliers` | viewsuppliers, managesuppliers |
+| Mechanism | Purpose |
+|-----------|---------|
+| API Keys | Per-app authentication |
+| HMAC Signatures | Webhook verification |
+| Rate Limiting | Abuse prevention |
+| Request Logging | Audit trail |
 
 ---
 
-## 8. Internationalization (i18n)
+## 9. Deployment Architecture
 
-### Language Support
+### Current Deployment
 
-| Language | Code | Status |
-|----------|------|--------|
-| English | `en` | Full support |
-| Turkish | `tr` | Full support |
-
-### Implementation
-
-```typescript
-// LanguageContext.tsx
-interface LanguageContextType {
-  language: 'en' | 'tr';
-  setLanguage: (lang: 'en' | 'tr') => void;
-  t: (key: string) => string | Record<string, string>;
-}
-
-// Usage in components
-const { t, language } = useLanguage();
-<span>{t('dashboard')}</span>  // "Dashboard" or "Kontrol Paneli"
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         LOVABLE PLATFORM                                 │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                    Frontend Hosting                              │   │
+│   │   • Static React build                                          │   │
+│   │   • CDN distribution                                            │   │
+│   │   • HTTPS by default                                            │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         SUPABASE PROJECT                                 │
+│   ┌───────────────┐ ┌───────────────┐ ┌───────────────┐                │
+│   │   Database    │ │    Auth       │ │   Storage     │                │
+│   │   (Postgres)  │ │   (GoTrue)    │ │   (S3-like)   │                │
+│   └───────────────┘ └───────────────┘ └───────────────┘                │
+│   ┌─────────────────────────────────────────────────────────────────┐  │
+│   │                    Edge Functions (Deno)                         │  │
+│   │   • Auto-deployed on code push                                   │  │
+│   │   • Isolated per function                                        │  │
+│   │   • Access to Supabase client                                    │  │
+│   └─────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Translation Structure
+### Multi-Project Deployment
 
-```typescript
-const translations = {
-  en: {
-    dashboard: 'Dashboard',
-    inventory: 'Inventory',
-    orders: 'Orders',
-    // ... 500+ keys
-  },
-  tr: {
-    dashboard: 'Kontrol Paneli',
-    inventory: 'Envanter',
-    orders: 'Siparişler',
-    // ... 500+ keys
-  }
-};
-```
+| Project | Frontend | Backend | Database |
+|---------|----------|---------|----------|
+| LotAstro WMS | Lovable | Supabase (Project A) | Postgres A |
+| LotAstro CRM | Lovable | Supabase (Project B) | Postgres B |
+| LotAstro Wiki | Lovable | Supabase (Project C) | Postgres C |
+| AI Studio Apps | AI Studio | TBD | TBD |
+
+**Note:** Each Supabase project has its own isolated database. Integration is via APIs, not shared databases.
 
 ---
 
-## 9. Environment Configuration
+## 10. Key Metrics
 
-### Environment Variables
-
-| Variable | Environment | Purpose |
-|----------|-------------|---------|
-| `VITE_SUPABASE_URL` | All | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | All | Supabase anonymous key |
-
-### Supabase Secrets (Edge Functions)
-
-| Secret | Purpose | Required By |
-|--------|---------|-------------|
-| `RESEND_API_KEY` | Email sending | All email functions |
-| `OPENAI_API_KEY` | AI extraction | extract-order, stock-take-ocr |
-| `CRON_SECRET` | Scheduled job auth | All CRON functions |
-| `SERVICE_ROLE_KEY` | Admin operations | admin-* functions |
-
-### Deployment Environments
-
-| Environment | URL | Purpose |
-|-------------|-----|---------|
-| Development | localhost:8080 | Local development |
-| Staging | *.lovableproject.com | Preview/testing |
-| Production | depo.lotastro.com | Live production |
+| Metric | Value |
+|--------|-------|
+| Database Tables | 50+ |
+| Edge Functions | 33 |
+| UI Components | 100+ |
+| Custom Hooks | 20 |
+| Translation Keys | 500+ |
+| React Pages | 30+ |
+| API Endpoints (planned) | 10+ |
 
 ---
 
-## 10. Build & Deployment
-
-### Build Process
-
-```bash
-# Development
-npm run dev
-
-# Production build
-npm run build
-
-# Type checking
-npm run typecheck
-
-# Linting
-npm run lint
-```
-
-### Vite Configuration
-
-```typescript
-// vite.config.ts
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  server: {
-    port: 8080,
-    host: '::',
-  },
-});
-```
-
-### Edge Function Deployment
-
-```bash
-# Deploy single function
-supabase functions deploy function-name
-
-# Deploy all functions
-supabase functions deploy
-
-# Local development
-supabase functions serve --env-file .env.local
-```
-
----
-
-## 11. API Patterns
-
-### TanStack Query Pattern
-
-```typescript
-// Standard query pattern
-const { data, isLoading, error, refetch } = useQuery({
-  queryKey: ['resource', id],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from('table')
-      .select('*')
-      .eq('id', id);
-    if (error) throw error;
-    return data;
-  },
-});
-
-// Mutation pattern
-const mutation = useMutation({
-  mutationFn: async (payload) => {
-    const { error } = await supabase
-      .from('table')
-      .insert(payload);
-    if (error) throw error;
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['resource'] });
-    toast.success('Created successfully');
-  },
-  onError: (error) => {
-    toast.error(error.message);
-  },
-});
-```
-
-### Edge Function Call Pattern
-
-```typescript
-// Calling edge functions
-const { data, error } = await supabase.functions.invoke('function-name', {
-  body: { param1: 'value1' },
-  headers: { 'x-custom-header': 'value' },
-});
-
-if (error) {
-  console.error('Function error:', error);
-  throw error;
-}
-
-return data;
-```
-
-### RPC Call Pattern
-
-```typescript
-// Database function calls
-const { data, error } = await supabase
-  .rpc('function_name', {
-    p_param1: 'value1',
-    p_param2: 'value2',
-  });
-```
-
----
-
-## 12. Performance Considerations
-
-### Query Optimization
-
-- Use `.select()` to limit returned columns
-- Implement pagination with `.range()`
-- Use database indexes for filtered queries
-- Leverage RPC functions for complex aggregations
-
-### Bundle Optimization
-
-- Dynamic imports for large components
-- Tree-shaking via ES modules
-- Image optimization in build
-- Code splitting per route
-
-### Caching Strategy
-
-| Data Type | Cache Time | Invalidation |
-|-----------|------------|--------------|
-| Reference data | 5 minutes | Manual |
-| User profile | Session | On change |
-| Inventory data | 30 seconds | Real-time |
-| Reports | On demand | Manual |
-
----
-
-## 13. Monitoring & Observability
-
-### Client-Side Logging
-
-```typescript
-// Error boundary catches React errors
-<ErrorBoundary>
-  <App />
-</ErrorBoundary>
-
-// Console logging for debugging
-console.error('Failed to load:', error);
-```
-
-### Server-Side Logging
-
-- Edge function logs in Supabase Dashboard
-- PostgreSQL logs for query issues
-- Auth logs for authentication events
-
-### Audit Trail
-
-```typescript
-// All significant actions logged
-await logAction(
-  'CREATE',           // action type
-  'order',            // entity type
-  orderId,            // entity id
-  orderNumber,        // entity identifier
-  null,               // old data
-  orderData,          // new data
-  'Created via AI extraction'  // notes
-);
-```
-
----
-
-## 14. Deployment Model
-
-### Current Architecture
-
-| Aspect | Status | Notes |
-|--------|--------|-------|
-| **Tenant Model** | Single-Tenant | One organization per deployment |
-| **Multi-Tenant Support** | ❌ Not Implemented | No `tenant_id`, `org_id` columns |
-| **Data Isolation** | N/A | All data in single workspace |
-| **Scalability** | Supabase-Managed | Horizontal scaling available |
-
-### Production Readiness
-
-| Category | Score | Status |
-|----------|-------|--------|
-| Overall | 2.9/5 | ⚠️ Conditionally Ready |
-| Security | 2.5/5 | Critical gaps exist |
-| Compliance | 1.5/5 | Missing legal pages |
-| Infrastructure | 3.5/5 | Good foundation |
-
-See [PRODUCTION-READINESS.md](./PRODUCTION-READINESS.md) for full assessment.
-
----
-
-## 15. Future Considerations
-
-### Planned Modules
-
-| Module | Status | Dependencies |
-|--------|--------|--------------|
-| CRM | Planned | New tables, customer portal |
-| Wiki/Knowledge Base | Planned | Rich text storage |
-| Customer Portal | Planned | Auth changes, new roles |
-| Agreements | Planned | Document templates |
-| Supplier Portal | Planned | Supplier auth |
-
-### Technical Debt
-
-- Translation key consolidation
-- Component refactoring for reusability
-- Test coverage improvement
-- Documentation expansion
-- XSS vulnerability remediation (P0)
-- CRON security hardening (P0)
-
-### Scalability
-
-- Horizontal scaling via Supabase
-- CDN for static assets
-- Connection pooling (Supavisor)
-- Read replicas for heavy queries
-
----
-
-## Appendix: Version History
+## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2025-01-10 | Initial context documentation |
-| 1.1.0 | 2025-01-10 | Added deployment model, production readiness status, tenant assessment |
+| 2.0.0 | 2025-12-25 | Multi-project ecosystem architecture; integration layer; data ownership model |
