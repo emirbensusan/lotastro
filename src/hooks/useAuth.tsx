@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthenticatorAssuranceLevels } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
@@ -17,10 +17,13 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  mfaRequired: boolean;
+  mfaVerified: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: any; mfaRequired?: boolean }>;
   signUp: (email: string, password: string, fullName: string, role?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   hasRole: (role: string) => boolean;
+  completeMfaVerification: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,6 +48,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaVerified, setMfaVerified] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -96,11 +101,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    
+    if (!error && data.session) {
+      // Check MFA assurance level
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {
+        setMfaRequired(true);
+        setMfaVerified(false);
+        return { error: null, mfaRequired: true };
+      }
+      setMfaVerified(true);
+    }
+    
     return { error };
+  };
+
+  const completeMfaVerification = () => {
+    setMfaRequired(false);
+    setMfaVerified(true);
   };
 
   const signUp = async (email: string, password: string, fullName: string, role: string = 'warehouse_staff') => {
@@ -140,10 +162,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     profile,
     loading,
+    mfaRequired,
+    mfaVerified,
     signIn,
     signUp,
     signOut,
     hasRole,
+    completeMfaVerification,
   };
 
   return (

@@ -124,6 +124,56 @@ export type Database = {
         }
         Relationships: []
       }
+      api_request_logs: {
+        Row: {
+          api_key_id: string | null
+          created_at: string
+          endpoint: string
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          method: string
+          request_body_size: number | null
+          response_body_size: number | null
+          response_time_ms: number | null
+          status_code: number | null
+        }
+        Insert: {
+          api_key_id?: string | null
+          created_at?: string
+          endpoint: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          method: string
+          request_body_size?: number | null
+          response_body_size?: number | null
+          response_time_ms?: number | null
+          status_code?: number | null
+        }
+        Update: {
+          api_key_id?: string | null
+          created_at?: string
+          endpoint?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          method?: string
+          request_body_size?: number | null
+          response_body_size?: number | null
+          response_time_ms?: number | null
+          status_code?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_request_logs_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: Database["public"]["Enums"]["audit_action_type"]
@@ -3463,6 +3513,14 @@ export type Database = {
               reversal_strategy: string
             }[]
           }
+      check_api_rate_limit: {
+        Args: { p_api_key_id: string; p_limit_per_minute: number }
+        Returns: {
+          current_count: number
+          is_limited: boolean
+          reset_at: string
+        }[]
+      }
       check_user_dependencies: {
         Args: { target_user_id: string }
         Returns: {
@@ -3470,6 +3528,7 @@ export type Database = {
           table_name: string
         }[]
       }
+      cleanup_old_api_logs: { Args: never; Returns: undefined }
       generate_count_session_number: { Args: never; Returns: string }
       generate_lastro_sku_code: { Args: never; Returns: string }
       generate_mo_number: { Args: never; Returns: string }
