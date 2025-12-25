@@ -1,6 +1,6 @@
 # LotAstro Feature Inventory
 
-> **Version**: 2.0.0  
+> **Version**: 2.1.0  
 > **Last Updated**: 2025-12-25  
 > **Purpose**: Comprehensive feature status and roadmap reference  
 > **Architecture**: Multi-Project Ecosystem
@@ -487,16 +487,18 @@
 
 ---
 
-## 16. Integration Features (New)
+## 16. Integration Features
 
 ### Internal APIs
 
 | Feature | Status | Description | Consumer |
 |---------|--------|-------------|----------|
-| Inventory Summary API | 📅 Planned | Stock levels endpoint | CRM, Portal |
+| API Key Authentication | ✅ Complete | Per-app API keys | All integrations |
+| API Request Logging | ✅ Complete | Audit API calls | Admin |
+| Inventory Summary API | ✅ Complete | Stock levels endpoint | CRM, Portal |
+| Catalog API | ✅ Complete | Product catalog endpoint | Portal |
+| Create Order API | ✅ Complete | Order submission endpoint | Portal |
 | Customer Orders API | 📅 Planned | Order history endpoint | CRM, Portal |
-| Create Order API | 📅 Planned | Order submission endpoint | Portal |
-| Catalog Public API | 📅 Planned | Product catalog endpoint | Portal |
 | Availability Check API | 📅 Planned | Real-time stock check | Portal |
 | Customer Sync API | 📅 Planned | Receive CRM customer data | CRM |
 | Metrics API | 📅 Planned | Health and usage metrics | Ops Console |
@@ -505,12 +507,12 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Webhook Dispatcher | 📅 Planned | Central event distribution |
-| Webhook Subscriptions | 📅 Planned | Endpoint registration |
+| Webhook Dispatcher | ✅ Complete | Central event distribution |
+| Webhook Subscriptions | ✅ Complete | Endpoint registration |
+| HMAC Signatures | ✅ Complete | Webhook verification |
+| Retry with Backoff | ✅ Complete | Failed delivery handling |
 | Order Events | 📅 Planned | created, fulfilled, cancelled |
 | Inventory Events | 📅 Planned | low_stock, updated |
-| Retry with Backoff | 📅 Planned | Failed delivery handling |
-| HMAC Signatures | 📅 Planned | Webhook verification |
 
 ### CRM Integration
 
@@ -550,10 +552,12 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Terms of Service | 🔴 Critical Gap | Legal page required |
-| Privacy Policy | 🔴 Critical Gap | GDPR/KVKK requirement |
-| Cookie Consent | 🔴 Critical Gap | EU ePrivacy requirement |
-| KVKK Notice | 📅 Planned | Turkey-specific compliance |
+| Terms of Service | ✅ Complete | Legal page at `/terms` |
+| Privacy Policy | ✅ Complete | GDPR/KVKK at `/privacy` |
+| Cookie Policy | ✅ Complete | Cookie info at `/cookies` |
+| Cookie Consent | ✅ Complete | Banner with accept/decline |
+| KVKK Notice | ✅ Complete | Turkey-specific at `/kvkk` |
+| Footer Links | ✅ Complete | Links to all legal pages |
 
 ### Data Rights
 
@@ -561,7 +565,7 @@
 |---------|--------|-------------|
 | Data Export | 📅 Planned | User data download |
 | Data Deletion | 🔶 Partial | Via admin-delete-user |
-| Consent Tracking | 📅 Planned | Track user consents |
+| Consent Tracking | ✅ Complete | Cookie consent stored |
 
 ---
 
@@ -579,22 +583,24 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| DOMPurify Integration | 🔴 Critical Gap | HTML sanitization needed |
+| DOMPurify Integration | ✅ Complete | HTML sanitization |
+| sanitizeHtml() utility | ✅ Complete | `src/lib/sanitize.ts` |
+| sanitizeEmailHtml() utility | ✅ Complete | Preserves safe CSS |
 
 ### CRON Security
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| CRON_SECRET Validation | 🔴 Critical Gap | Protect scheduled functions |
+| CRON_SECRET Validation | ✅ Complete | All 11 CRON functions protected |
 
-### API Security (Planned)
+### API Security
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| API Key Authentication | 📅 Planned | Per-app API keys |
-| API Rate Limiting | 📅 Planned | Per-key limits |
-| Request Logging | 📅 Planned | Audit API calls |
-| Webhook Signatures | 📅 Planned | HMAC verification |
+| API Key Authentication | ✅ Complete | Per-app API keys |
+| API Rate Limiting | ✅ Complete | Per-key limits |
+| Request Logging | ✅ Complete | Audit API calls |
+| Webhook Signatures | ✅ Complete | HMAC verification |
 
 ---
 
@@ -604,19 +610,35 @@
 
 | Status | Count |
 |--------|-------|
-| ✅ Complete | 150+ |
-| 🔶 Partial | 5 |
-| 🔄 In Progress | 8 |
-| 📅 Planned | 35+ |
-| 🔴 Critical Gap | 8 |
+| ✅ Complete | 165+ |
+| 🔶 Partial | 4 |
+| 🔄 In Progress | 6 |
+| 📅 Planned | 25+ |
+| 🔴 Critical Gap | 3 |
 | 🔗 External | 7 (ecosystem projects) |
 
 ### Priority Focus
 
-1. **Immediate (P0):** Security gaps (CRON, XSS), compliance pages
-2. **Short-term (P1):** Complete Reports/Stock Take, begin integration APIs
+1. **Immediate (P0):** ~~Security gaps (CRON, XSS)~~, ~~compliance pages~~ → Auth hardening (MFA, rate limiting)
+2. **Short-term (P1):** Complete Reports/Stock Take, expand integration APIs
 3. **Medium-term (P2):** Full ecosystem integration, enterprise features
 4. **Long-term (P3):** Advanced analytics, AI Studio imports
+
+---
+
+## 21. Changelog
+
+### 2025-12-25 (v2.1.0)
+- ✅ XSS Protection: DOMPurify integration complete
+- ✅ Legal Pages: Terms, Privacy, Cookies, KVKK complete
+- ✅ Cookie Consent: Banner with accept/decline complete
+- ✅ CRON Security: All 11 functions protected
+- ✅ Integration APIs: Foundation complete (api-auth, 4 endpoints, webhook dispatcher)
+- Updated feature counts and priority focus
+
+### Previous
+- 2025-12-25 (v2.0.0): Multi-project ecosystem; integration features; external project references
+- 2025-01-10 (v1.0.0): Initial feature inventory
 
 ---
 
@@ -625,4 +647,5 @@
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2025-01-10 | Initial feature inventory |
-| 2.0.0 | 2025-12-25 | Multi-project ecosystem; integration features; external project references |
+| 2.0.0 | 2025-12-25 | Multi-project ecosystem; integration features |
+| 2.1.0 | 2025-12-25 | Security/compliance phases complete; integration APIs started |
