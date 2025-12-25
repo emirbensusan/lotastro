@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { History, RotateCcw, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { sanitizeEmailHtml } from '@/lib/sanitize';
 
 interface TemplateVersion {
   id: string;
@@ -170,7 +171,7 @@ const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                                   <p className="text-xs font-medium text-muted-foreground">Body</p>
                                   <div 
                                     className="text-sm prose prose-sm max-w-none max-h-32 overflow-auto border rounded p-2 bg-muted/20"
-                                    dangerouslySetInnerHTML={{ __html: version.body_en }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(version.body_en) }}
                                   />
                                 </div>
                               </div>
@@ -186,7 +187,7 @@ const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                                   <p className="text-xs font-medium text-muted-foreground">İçerik</p>
                                   <div 
                                     className="text-sm prose prose-sm max-w-none max-h-32 overflow-auto border rounded p-2 bg-muted/20"
-                                    dangerouslySetInnerHTML={{ __html: version.body_tr }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(version.body_tr) }}
                                   />
                                 </div>
                               </div>

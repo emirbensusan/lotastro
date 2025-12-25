@@ -404,6 +404,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {children}
             </div>
           </main>
+
+          {/* Footer */}
+          <footer className="border-t bg-card py-3 px-4 shrink-0">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>© {new Date().getFullYear()} LotAstro. {language === 'tr' ? 'Tüm hakları saklıdır.' : 'All rights reserved.'}</span>
+              <nav className="flex items-center gap-4">
+                <a href="/terms" className="hover:text-foreground transition-colors">
+                  {language === 'tr' ? 'Kullanım Koşulları' : 'Terms'}
+                </a>
+                <a href="/privacy" className="hover:text-foreground transition-colors">
+                  {language === 'tr' ? 'Gizlilik' : 'Privacy'}
+                </a>
+                <a href="/cookies" className="hover:text-foreground transition-colors">
+                  {language === 'tr' ? 'Çerezler' : 'Cookies'}
+                </a>
+                <a href="/kvkk" className="hover:text-foreground transition-colors">
+                  KVKK
+                </a>
+              </nav>
+            </div>
+          </footer>
         </div>
       </div>
     </SidebarProvider>
