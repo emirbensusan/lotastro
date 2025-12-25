@@ -4,7 +4,7 @@ import { Resend } from "npm:resend@4.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 interface ManufacturingOrder {
@@ -36,6 +36,18 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Validate CRON_SECRET for scheduled runs
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const providedSecret = req.headers.get('x-cron-secret');
+    
+    if (cronSecret && providedSecret !== cronSecret) {
+      console.error('[send-mo-reminders] Invalid or missing CRON_SECRET');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('Starting MO reminders job...');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
