@@ -1,8 +1,9 @@
 # LotAstro Feature Inventory
 
-> **Version**: 1.0.0  
-> **Last Updated**: 2025-01-10  
-> **Purpose**: Comprehensive feature status and roadmap reference
+> **Version**: 2.0.0  
+> **Last Updated**: 2025-12-25  
+> **Purpose**: Comprehensive feature status and roadmap reference  
+> **Architecture**: Multi-Project Ecosystem
 
 ---
 
@@ -16,10 +17,39 @@
 | **Planned** | 📅 | Scheduled for future development |
 | **Backlog** | 📋 | Requested but not yet scheduled |
 | **Critical Gap** | 🔴 | Security/compliance blocker |
+| **External** | 🔗 | Exists as separate project |
 
 ---
 
-## 2. Authentication & User Management
+## 2. Ecosystem Overview
+
+### Project Landscape
+
+| Project | Platform | Status | Relationship to WMS |
+|---------|----------|--------|---------------------|
+| **LotAstro WMS** | Lovable/Supabase | ✅ Active | This project |
+| **LotAstro CRM** | Lovable/Supabase | 🔗 External | Consumes inventory, sends customers |
+| **LotAstro Wiki** | Lovable/Supabase | 🔗 External | Provides knowledge articles |
+| **Customer Portal** | AI Studio | 📅 Planned Import | Consumes catalog, submits orders |
+| **Cost Portal** | AI Studio | 📅 Planned Import | Provides invoice data |
+| **SIM Ticketing** | AI Studio | 📅 Planned Import | Support tickets |
+| **Ops Console** | AI Studio | 📅 Planned Import | Aggregates metrics |
+| **Route Optimizer** | AI Studio | 📅 Planned Import | Delivery planning |
+
+### WMS Data Ownership
+
+| Entity | WMS Role | Sync Direction |
+|--------|----------|----------------|
+| **Inventory/Stock** | Master | WMS → CRM, Portal |
+| **Products/Catalog** | Master | WMS → Portal |
+| **Orders (Fulfillment)** | Master | WMS ↔ CRM |
+| **Manufacturing Orders** | Master | WMS only |
+| **Demand Forecasts** | Master | WMS only |
+| **Customers** | Consumer | CRM → WMS |
+
+---
+
+## 3. Authentication & User Management
 
 ### Authentication
 
@@ -60,7 +90,7 @@
 
 ---
 
-## 3. Inventory Management
+## 4. Inventory Management
 
 ### Lot Management
 
@@ -111,7 +141,7 @@
 
 ---
 
-## 4. Order Management
+## 5. Order Management
 
 ### Order Processing
 
@@ -150,7 +180,7 @@
 
 ---
 
-## 5. Reservations
+## 6. Reservations
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -165,7 +195,7 @@
 
 ---
 
-## 6. Manufacturing Orders
+## 7. Manufacturing Orders
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -184,7 +214,7 @@
 
 ---
 
-## 7. Incoming Stock
+## 8. Incoming Stock
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -199,7 +229,7 @@
 
 ---
 
-## 8. Product Catalog
+## 9. Product Catalog
 
 ### Catalog Items
 
@@ -240,7 +270,7 @@
 
 ---
 
-## 9. Demand Forecasting
+## 10. Demand Forecasting
 
 ### Forecast Configuration
 
@@ -277,7 +307,7 @@
 
 ---
 
-## 10. Stock Take
+## 11. Stock Take
 
 ### Session Management
 
@@ -324,7 +354,7 @@
 
 ---
 
-## 11. Reports
+## 12. Reports
 
 ### Report Builder
 
@@ -369,7 +399,7 @@
 
 ---
 
-## 12. Email System
+## 13. Email System
 
 ### Email Templates
 
@@ -404,21 +434,9 @@
 | Acknowledgment | ✅ Complete | Critical email ACK |
 | Unsubscribe | ✅ Complete | Preference management |
 
-### Email Types
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| User Invitation | ✅ Complete | New user invites |
-| MO Reminders | ✅ Complete | Manufacturing order alerts |
-| Overdue Digest | ✅ Complete | Overdue order summary |
-| Pending Approvals | ✅ Complete | Approval queue digest |
-| Reservation Expiry | ✅ Complete | Expiring reservations |
-| Forecast Alerts | ✅ Complete | Stockout warnings |
-| Scheduled Reports | 🔄 In Progress | Report delivery |
-
 ---
 
-## 13. Audit & Compliance
+## 14. Audit & Compliance
 
 ### Audit Logging
 
@@ -444,7 +462,7 @@
 
 ---
 
-## 14. Admin Panel
+## 15. Admin Panel
 
 ### System Settings
 
@@ -463,195 +481,148 @@
 | User List | ✅ Complete | View all users |
 | User Invitation | ✅ Complete | Invite new users |
 | Role Assignment | ✅ Complete | Change user roles |
-| Password Change | ✅ Complete | Admin password reset |
-| Deactivate User | ✅ Complete | Disable accounts |
-| Delete User | ✅ Complete | Remove users |
+| User Deactivation | ✅ Complete | Disable accounts |
+| Password Change (Admin) | ✅ Complete | Reset user passwords |
+| User Deletion | ✅ Complete | Remove accounts |
 
 ---
 
-## 15. Supplier Management
+## 16. Integration Features (New)
+
+### Internal APIs
+
+| Feature | Status | Description | Consumer |
+|---------|--------|-------------|----------|
+| Inventory Summary API | 📅 Planned | Stock levels endpoint | CRM, Portal |
+| Customer Orders API | 📅 Planned | Order history endpoint | CRM, Portal |
+| Create Order API | 📅 Planned | Order submission endpoint | Portal |
+| Catalog Public API | 📅 Planned | Product catalog endpoint | Portal |
+| Availability Check API | 📅 Planned | Real-time stock check | Portal |
+| Customer Sync API | 📅 Planned | Receive CRM customer data | CRM |
+| Metrics API | 📅 Planned | Health and usage metrics | Ops Console |
+
+### Webhook Events
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Supplier List | ✅ Complete | View all suppliers |
-| Supplier Creation | ✅ Complete | Add new suppliers |
-| Supplier Editing | ✅ Complete | Update details |
-| Supplier Deletion | ✅ Complete | Remove suppliers |
-| Contact Information | ✅ Complete | Multiple contacts |
-| Supplier-MO Link | ✅ Complete | Link to MOs |
-| Supplier-Lot Link | ✅ Complete | Link to lots |
+| Webhook Dispatcher | 📅 Planned | Central event distribution |
+| Webhook Subscriptions | 📅 Planned | Endpoint registration |
+| Order Events | 📅 Planned | created, fulfilled, cancelled |
+| Inventory Events | 📅 Planned | low_stock, updated |
+| Retry with Backoff | 📅 Planned | Failed delivery handling |
+| HMAC Signatures | 📅 Planned | Webhook verification |
 
----
-
-## 16. Mobile Experience
+### CRM Integration
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Responsive Design | ✅ Complete | Mobile-first layouts |
-| Touch Gestures | ✅ Complete | Swipe support |
-| Pull to Refresh | ✅ Complete | Mobile refresh pattern |
-| Haptic Feedback | ✅ Complete | Vibration feedback |
-| Mobile Navigation | ✅ Complete | Slide-out menu |
-| Touch-Friendly Buttons | ✅ Complete | 44px touch targets |
-| Mobile Cards | ✅ Complete | Card view for lists |
+| Customer Data Sync | 📅 Planned | Receive customer from CRM |
+| External Customer Linking | 📅 Planned | Link orders to CRM customers |
+| Order Notifications | 📅 Planned | Push order events to CRM |
+| Credit Limit Enforcement | 📅 Planned | Check CRM credit limits |
 
----
-
-## 17. Internationalization
+### Wiki Integration
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| English (EN) | ✅ Complete | Full translation |
-| Turkish (TR) | ✅ Complete | Full translation |
-| Language Switcher | ✅ Complete | Real-time switching |
-| RTL Support | 📅 Planned | Right-to-left languages |
-| Additional Languages | 📅 Planned | German, Spanish, etc. |
+| Wiki Search | 📅 Planned | Search wiki from WMS |
+| Help Icon Links | 📅 Planned | Contextual wiki links |
+| In-App Wiki Panel | 📅 Planned | Slide-out wiki content |
 
 ---
 
-## 18. Dashboard & Analytics
+## 17. Mobile Features
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| KPI Dashboard | ✅ Complete | Key metrics display |
-| Stock Overview | ✅ Complete | Inventory summary |
-| Order Stats | ✅ Complete | Order metrics |
-| Quick Actions | ✅ Complete | Common action buttons |
-| Recent Activity | 📅 Planned | Activity feed |
-| Custom Widgets | 📅 Planned | User-configurable |
+| Responsive Design | ✅ Complete | All pages mobile-ready |
+| Touch Gestures | ✅ Complete | Swipe, pull-to-refresh |
+| Haptic Feedback | ✅ Complete | Vibration on actions |
+| Camera Access | ✅ Complete | QR and OCR scanning |
+| Offline Support | 🔶 Partial | IndexedDB backup |
+| PWA | 📋 Backlog | Installable app |
 
 ---
 
-## 19. Future Modules (Planned)
+## 18. Compliance Features
 
-### CRM Module
-
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| Customer Management | P0 | Customer profiles |
-| Lead Tracking | P1 | Sales pipeline |
-| Activity Logging | P1 | Interactions |
-| Customer Portal Link | P2 | Portal integration |
-
-### Wiki/Knowledge Base
-
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| Article Management | P0 | Create/edit articles |
-| Categories | P1 | Organize content |
-| Search | P0 | Full-text search |
-| Permissions | P1 | Role-based access |
-
-### Customer Portal
-
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| Customer Login | P0 | Separate auth |
-| Order History | P0 | View past orders |
-| Order Placement | P1 | Self-service |
-| Invoice Access | P1 | Download invoices |
-
-### Agreements Module
-
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| Templates | P0 | Agreement templates |
-| E-Signatures | P1 | Digital signing |
-| Tracking | P1 | Status management |
-
-### Supplier Portal
-
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| Supplier Login | P0 | Supplier auth |
-| MO Updates | P0 | Status updates |
-| Document Exchange | P1 | File sharing |
-
----
-
-## 20. Security & Compliance Features
-
-### Security Features
+### Legal Pages
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| JWT Authentication | ✅ Complete | Supabase Auth |
-| RBAC Permissions | ✅ Complete | 4 roles, 13 categories |
-| Row Level Security | ✅ Complete | All tables protected |
-| Session Timeout | ✅ Complete | Configurable inactivity |
-| Password Strength | ✅ Complete | Enforced requirements |
-| IP Whitelist | ✅ Complete | Admin access control |
-| Audit Logging | ✅ Complete | Full action trail |
-| MFA/2FA | 🔴 Critical Gap | Not implemented - P1 |
-| Login Rate Limiting | 🔴 Critical Gap | Not implemented - P1 |
-| XSS Protection | 🔴 Critical Gap | DOMPurify needed - P0 |
-| CRON Security | 🔴 Critical Gap | Secret validation needed - P0 |
+| Terms of Service | 🔴 Critical Gap | Legal page required |
+| Privacy Policy | 🔴 Critical Gap | GDPR/KVKK requirement |
+| Cookie Consent | 🔴 Critical Gap | EU ePrivacy requirement |
+| KVKK Notice | 📅 Planned | Turkey-specific compliance |
 
-### Compliance Features
+### Data Rights
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Terms of Service Page | 🔴 Critical Gap | Not implemented - P0 |
-| Privacy Policy Page | 🔴 Critical Gap | Not implemented - P0 |
-| Cookie Consent | 🔴 Critical Gap | Not implemented - P0 |
-| GDPR Data Export | 📅 Planned | Manual via admin only |
-| Right to Deletion | 🔶 Partial | admin-delete-user exists |
-| Audit Retention | ✅ Complete | Configurable cleanup |
+| Data Export | 📅 Planned | User data download |
+| Data Deletion | 🔶 Partial | Via admin-delete-user |
+| Consent Tracking | 📅 Planned | Track user consents |
 
-### Tenant Model
+---
+
+## 19. Security Features
+
+### Authentication Security
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Single-Tenant | ✅ Current | Single organization |
-| Multi-Tenant | ❌ Not Implemented | No tenant_id columns |
-| Tenant Isolation | N/A | Not applicable |
+| MFA/2FA | 🔴 Critical Gap | Two-factor authentication |
+| Rate Limiting | 🔴 Critical Gap | Brute force protection |
+| Lockout Policy | 🔴 Critical Gap | Account protection |
+
+### XSS Protection
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| DOMPurify Integration | 🔴 Critical Gap | HTML sanitization needed |
+
+### CRON Security
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| CRON_SECRET Validation | 🔴 Critical Gap | Protect scheduled functions |
+
+### API Security (Planned)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| API Key Authentication | 📅 Planned | Per-app API keys |
+| API Rate Limiting | 📅 Planned | Per-key limits |
+| Request Logging | 📅 Planned | Audit API calls |
+| Webhook Signatures | 📅 Planned | HMAC verification |
 
 ---
 
-## 21. Feature Request Process
+## 20. Feature Summary
 
-### How to Request Features
+### By Status
 
-1. **Internal Users**: Submit via admin panel feedback
-2. **Development Team**: Create GitHub issue
-3. **Product Team**: Add to roadmap planning
+| Status | Count |
+|--------|-------|
+| ✅ Complete | 150+ |
+| 🔶 Partial | 5 |
+| 🔄 In Progress | 8 |
+| 📅 Planned | 35+ |
+| 🔴 Critical Gap | 8 |
+| 🔗 External | 7 (ecosystem projects) |
 
-### Request Template
+### Priority Focus
 
-```markdown
-**Feature Name**: [Short name]
-
-**Problem Statement**: 
-What problem does this solve?
-
-**Proposed Solution**:
-How should it work?
-
-**User Impact**:
-Which roles benefit?
-
-**Priority Suggestion**:
-P0 / P1 / P2 / P3
-
-**Additional Context**:
-Screenshots, examples, etc.
-```
-
-### Evaluation Criteria
-
-| Factor | Weight |
-|--------|--------|
-| Business Value | 30% |
-| User Impact | 25% |
-| Technical Feasibility | 20% |
-| Strategic Alignment | 15% |
-| Effort Required | 10% |
+1. **Immediate (P0):** Security gaps (CRON, XSS), compliance pages
+2. **Short-term (P1):** Complete Reports/Stock Take, begin integration APIs
+3. **Medium-term (P2):** Full ecosystem integration, enterprise features
+4. **Long-term (P3):** Advanced analytics, AI Studio imports
 
 ---
 
-## Appendix: Version History
+## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2025-01-10 | Initial feature inventory |
-| 1.1.0 | 2025-01-10 | Added security/compliance features, tenant model status |
+| 2.0.0 | 2025-12-25 | Multi-project ecosystem; integration features; external project references |
