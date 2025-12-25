@@ -40,9 +40,14 @@ import Catalog from "./pages/Catalog";
 import CatalogDetail from "./pages/CatalogDetail";
 import StockTakeCapture from "./pages/StockTakeCapture";
 import StockTakeReview from "./pages/StockTakeReview";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Cookies from "./pages/Cookies";
+import KVKK from "./pages/KVKK";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 import ErrorBoundary from "./components/ErrorBoundary";
+import CookieConsent from "./components/CookieConsent";
 
 const queryClient = new QueryClient();
 
@@ -223,10 +228,16 @@ const App = () => (
                   <StockTakeReview />
                 </ProtectedRoute>
               } />
+              {/* Legal Pages - Public Access */}
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/cookies" element={<Cookies />} />
+              <Route path="/kvkk" element={<KVKK />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
             <FloatingPOCart />
+            <CookieConsent />
                 </ErrorBoundary>
               </POCartProvider>
             </ViewAsRoleProvider>

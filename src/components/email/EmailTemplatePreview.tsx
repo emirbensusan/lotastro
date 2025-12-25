@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { sanitizeEmailHtml } from '@/lib/sanitize';
 
 interface VariableMeta {
   name: string;
@@ -32,7 +33,7 @@ const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
       const pattern = new RegExp(`\\{${v.name}\\}`, 'g');
       result = result.replace(pattern, `<span class="bg-primary/20 px-1 rounded">${v.example}</span>`);
     });
-    return result;
+    return sanitizeEmailHtml(result);
   };
 
   return (
