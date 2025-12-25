@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, ArrowRightLeft, Package, Link2 } from 'lucide-react';
+import { Users, Settings, Database, Shield, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, ArrowRightLeft, Package, Link2, Webhook, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -26,6 +26,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import MigrationProgressDialog from '@/components/MigrationProgressDialog';
 import StockTakeSettingsTab from '@/components/stocktake/StockTakeSettingsTab';
+import ApiKeyManagementTab from '@/components/admin/ApiKeyManagementTab';
+import WebhookSubscriptionsTab from '@/components/admin/WebhookSubscriptionsTab';
+import ApiUsageDashboardTab from '@/components/admin/ApiUsageDashboardTab';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
@@ -780,6 +783,18 @@ const Admin: React.FC = () => {
           <TabsTrigger value="auditRetention" className="flex-shrink-0">{t('auditRetention')}</TabsTrigger>
           <TabsTrigger value="orderFlow" className="flex-shrink-0">{t('orderFlowSettings')}</TabsTrigger>
           <TabsTrigger value="stocktake" className="flex-shrink-0">{language === 'tr' ? 'Stok Sayım' : 'Stock Take'}</TabsTrigger>
+          <TabsTrigger value="apiKeys" className="flex-shrink-0 flex items-center gap-1">
+            <Key className="h-3 w-3" />
+            {language === 'tr' ? 'API Anahtarları' : 'API Keys'}
+          </TabsTrigger>
+          <TabsTrigger value="webhooks" className="flex-shrink-0 flex items-center gap-1">
+            <Webhook className="h-3 w-3" />
+            {language === 'tr' ? 'Webhooks' : 'Webhooks'}
+          </TabsTrigger>
+          <TabsTrigger value="apiUsage" className="flex-shrink-0 flex items-center gap-1">
+            <BarChart3 className="h-3 w-3" />
+            {language === 'tr' ? 'API Kullanımı' : 'API Usage'}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -1313,6 +1328,21 @@ const Admin: React.FC = () => {
 
         <TabsContent value="stocktake" className="space-y-6">
           <StockTakeSettingsTab />
+        </TabsContent>
+
+        {/* API Key Management Tab */}
+        <TabsContent value="apiKeys" className="space-y-6">
+          <ApiKeyManagementTab />
+        </TabsContent>
+
+        {/* Webhook Subscriptions Tab */}
+        <TabsContent value="webhooks" className="space-y-6">
+          <WebhookSubscriptionsTab />
+        </TabsContent>
+
+        {/* API Usage Dashboard Tab */}
+        <TabsContent value="apiUsage" className="space-y-6">
+          <ApiUsageDashboardTab />
         </TabsContent>
 
         <TabsContent value="security" className="space-y-6">
