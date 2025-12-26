@@ -10,7 +10,9 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import GlobalSearch from '@/components/GlobalSearch';
+import { NetworkStatusIndicator } from '@/components/ui/network-status-indicator';
 import { 
   Home,
   PackagePlus, 
@@ -60,6 +62,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { language, setLanguage, t } = useLanguage();
   const { getItemCount, setIsCartOpen } = usePOCart();
   const { viewAsRole, setViewAsRole, isViewingAsOtherRole } = useViewAsRole();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -355,6 +358,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
 
               <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+                {/* Network status - show on mobile */}
+                {isMobile && <NetworkStatusIndicator compact />}
+                
                 <GlobalSearch />
                 
                 <Select value={language} onValueChange={(value: 'en' | 'tr') => setLanguage(value)}>

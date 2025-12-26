@@ -1,3 +1,4 @@
+import React, { Suspense, lazy } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,49 +8,78 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ViewAsRoleProvider } from "@/contexts/ViewAsRoleContext";
 import Layout from "@/components/Layout";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
-import LotIntake from "./pages/LotIntake";
-import Inventory from "./pages/Inventory";
-import Orders from "./pages/Orders";
-import Reservations from "./pages/Reservations";
-import LotSelection from "./pages/LotSelection";
-import LotQueue from "./pages/LotQueue";
-import QRScan from "./pages/QRScan";
-import Reports from "./pages/Reports";
-import ReportBuilderPage from "./pages/ReportBuilder";
-import Admin from "./pages/Admin";
-import Approvals from "./pages/Approvals";
-import AuditLogs from "./pages/AuditLogs";
-import Suppliers from "./pages/Suppliers";
-import ExtractionTest from "./pages/ExtractionTest";
-import IncomingStock from "./pages/IncomingStock";
-import GoodsReceipt from "./pages/GoodsReceipt";
-import ResetPassword from "./pages/ResetPassword";
-import NotFound from "./pages/NotFound";
-import QRPrint from "./pages/QRPrint";
-import OrderQueue from "./pages/OrderQueue";
-import BulkSelection from "./pages/BulkSelection";
-import QualityDetails from "./pages/QualityDetails";
-import LotDetails from "./pages/LotDetails";
-import InviteAccept from "./pages/InviteAccept";
-import ManufacturingOrders from "./pages/ManufacturingOrders";
-import Forecast from "./pages/Forecast";
-import ForecastSettings from "./pages/ForecastSettings";
-import Catalog from "./pages/Catalog";
-import CatalogDetail from "./pages/CatalogDetail";
-import StockTakeCapture from "./pages/StockTakeCapture";
-import StockTakeReview from "./pages/StockTakeReview";
-import ApiDocs from "./pages/ApiDocs";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import Cookies from "./pages/Cookies";
-import KVKK from "./pages/KVKK";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { RouteWrapper } from "./components/RouteWrapper";
 import CookieConsent from "./components/CookieConsent";
+import { OfflineBanner } from "./components/ui/network-status-indicator";
+import { Skeleton } from "./components/ui/skeleton";
+
+// Lazy load pages for bundle splitting
+// Core pages - loaded immediately
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import NotFound from "./pages/NotFound";
+
+// Inventory module
+const Inventory = lazy(() => import("./pages/Inventory"));
+const LotIntake = lazy(() => import("./pages/LotIntake"));
+const LotQueue = lazy(() => import("./pages/LotQueue"));
+const LotDetails = lazy(() => import("./pages/LotDetails"));
+const QualityDetails = lazy(() => import("./pages/QualityDetails"));
+const IncomingStock = lazy(() => import("./pages/IncomingStock"));
+const GoodsReceipt = lazy(() => import("./pages/GoodsReceipt"));
+const ManufacturingOrders = lazy(() => import("./pages/ManufacturingOrders"));
+const Forecast = lazy(() => import("./pages/Forecast"));
+const ForecastSettings = lazy(() => import("./pages/ForecastSettings"));
+const Catalog = lazy(() => import("./pages/Catalog"));
+const CatalogDetail = lazy(() => import("./pages/CatalogDetail"));
+
+// Orders module
+const Orders = lazy(() => import("./pages/Orders"));
+const Reservations = lazy(() => import("./pages/Reservations"));
+const OrderQueue = lazy(() => import("./pages/OrderQueue"));
+const LotSelection = lazy(() => import("./pages/LotSelection"));
+const BulkSelection = lazy(() => import("./pages/BulkSelection"));
+
+// Tools module
+const QRScan = lazy(() => import("./pages/QRScan"));
+const QRPrint = lazy(() => import("./pages/QRPrint"));
+const StockTakeCapture = lazy(() => import("./pages/StockTakeCapture"));
+const StockTakeReview = lazy(() => import("./pages/StockTakeReview"));
+const Approvals = lazy(() => import("./pages/Approvals"));
+
+// Admin & Reports module
+const Admin = lazy(() => import("./pages/Admin"));
+const Reports = lazy(() => import("./pages/Reports"));
+const ReportBuilderPage = lazy(() => import("./pages/ReportBuilder"));
+const AuditLogs = lazy(() => import("./pages/AuditLogs"));
+const Suppliers = lazy(() => import("./pages/Suppliers"));
+const ApiDocs = lazy(() => import("./pages/ApiDocs"));
+const ExtractionTest = lazy(() => import("./pages/ExtractionTest"));
+
+// Auth & Legal pages
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const InviteAccept = lazy(() => import("./pages/InviteAccept"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Cookies = lazy(() => import("./pages/Cookies"));
+const KVKK = lazy(() => import("./pages/KVKK"));
+
+// Page loading fallback
+const PageLoader = () => (
+  <div className="p-6 space-y-4">
+    <Skeleton className="h-8 w-64" />
+    <Skeleton className="h-4 w-48" />
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+      <Skeleton className="h-32" />
+      <Skeleton className="h-32" />
+      <Skeleton className="h-32" />
+    </div>
+    <Skeleton className="h-64 mt-6" />
+  </div>
+);
 
 // Configure QueryClient with retry logic for failed queries
 const queryClient = new QueryClient({
@@ -93,11 +123,20 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return (
     <Layout>
       <RouteWrapper>
-        {children}
+        <Suspense fallback={<PageLoader />}>
+          {children}
+        </Suspense>
       </RouteWrapper>
     </Layout>
   );
 };
+
+// Public route with suspense
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Suspense fallback={<PageLoader />}>
+    {children}
+  </Suspense>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -105,174 +144,70 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <OfflineBanner />
         <BrowserRouter>
           <AuthProvider>
             <ViewAsRoleProvider>
               <POCartProvider>
                 <ErrorBoundary>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/invite" element={<InviteAccept />} />
-              <Route path="/admin/extraction-test" element={<ExtractionTest />} />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/lot-intake" element={
-                <ProtectedRoute>
-                  <LotIntake />
-                </ProtectedRoute>
-              } />
-              <Route path="/inventory" element={
-                <ProtectedRoute>
-                  <Inventory />
-                </ProtectedRoute>
-              } />
-              <Route path="/inventory/:quality/:color" element={
-                <ProtectedRoute>
-                  <LotDetails />
-                </ProtectedRoute>
-              } />
-              <Route path="/inventory/:quality" element={
-                <ProtectedRoute>
-                  <QualityDetails />
-                </ProtectedRoute>
-              } />
-              <Route path="/bulk-selection" element={
-                <ProtectedRoute>
-                  <BulkSelection />
-                </ProtectedRoute>
-              } />
-              <Route path="/orders" element={
-                <ProtectedRoute>
-                  <Orders />
-                </ProtectedRoute>
-              } />
-              <Route path="/reservations" element={
-                <ProtectedRoute>
-                  <Reservations />
-                </ProtectedRoute>
-              } />
-              <Route path="/lot-selection" element={
-                <ProtectedRoute>
-                  <LotSelection />
-                </ProtectedRoute>
-              } />
-              <Route path="/lot-queue" element={
-                <ProtectedRoute>
-                  <LotQueue />
-                </ProtectedRoute>
-              } />
-              <Route path="/order-queue" element={
-                <ProtectedRoute>
-                  <OrderQueue />
-                </ProtectedRoute>
-              } />
-              <Route path="/qr-scan" element={
-                <ProtectedRoute>
-                  <QRScan />
-                </ProtectedRoute>
-              } />
-              <Route path="/qr/:lotNumber" element={<QRScan />} />
-              <Route path="/print/qr/:lotNumber" element={<QRPrint />} />
-              <Route path="/reports" element={
-                <ProtectedRoute>
-                  <Reports />
-                </ProtectedRoute>
-              } />
-              <Route path="/reports/builder" element={
-                <ProtectedRoute>
-                  <ReportBuilderPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/reports/builder/:id" element={
-                <ProtectedRoute>
-                  <ReportBuilderPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/suppliers" element={
-                <ProtectedRoute>
-                  <Suppliers />
-                </ProtectedRoute>
-              } />
-              <Route path="/incoming-stock" element={
-                <ProtectedRoute>
-                  <IncomingStock />
-                </ProtectedRoute>
-              } />
-              <Route path="/manufacturing-orders" element={
-                <ProtectedRoute>
-                  <ManufacturingOrders />
-                </ProtectedRoute>
-              } />
-              <Route path="/forecast" element={
-                <ProtectedRoute>
-                  <Forecast />
-                </ProtectedRoute>
-              } />
-              <Route path="/forecast-settings" element={
-                <ProtectedRoute>
-                  <ForecastSettings />
-                </ProtectedRoute>
-              } />
-              <Route path="/catalog" element={
-                <ProtectedRoute>
-                  <Catalog />
-                </ProtectedRoute>
-              } />
-              <Route path="/catalog/:id" element={
-                <ProtectedRoute>
-                  <CatalogDetail />
-                </ProtectedRoute>
-              } />
-              <Route path="/goods-receipt" element={
-                <ProtectedRoute>
-                  <GoodsReceipt />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin" element={
-                <ProtectedRoute>
-                  <Admin />
-                </ProtectedRoute>
-              } />
-              <Route path="/approvals" element={
-                <ProtectedRoute>
-                  <Approvals />
-                </ProtectedRoute>
-              } />
-              <Route path="/audit-logs" element={
-                <ProtectedRoute>
-                  <AuditLogs />
-                </ProtectedRoute>
-              } />
-              <Route path="/stock-take" element={
-                <ProtectedRoute>
-                  <StockTakeCapture />
-                </ProtectedRoute>
-              } />
-              <Route path="/stock-take-review" element={
-                <ProtectedRoute>
-                  <StockTakeReview />
-                </ProtectedRoute>
-              } />
-              {/* API Documentation - Protected */}
-              <Route path="/api-docs" element={
-                <ProtectedRoute>
-                  <ApiDocs />
-                </ProtectedRoute>
-              } />
-              {/* Legal Pages - Public Access */}
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/cookies" element={<Cookies />} />
-              <Route path="/kvkk" element={<KVKK />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <FloatingPOCart />
-            <CookieConsent />
+                  <Routes>
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
+                    <Route path="/invite" element={<PublicRoute><InviteAccept /></PublicRoute>} />
+                    <Route path="/admin/extraction-test" element={<PublicRoute><ExtractionTest /></PublicRoute>} />
+                    
+                    {/* Dashboard */}
+                    <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    
+                    {/* Inventory Module */}
+                    <Route path="/lot-intake" element={<ProtectedRoute><LotIntake /></ProtectedRoute>} />
+                    <Route path="/lot-queue" element={<ProtectedRoute><LotQueue /></ProtectedRoute>} />
+                    <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+                    <Route path="/inventory/:quality/:color" element={<ProtectedRoute><LotDetails /></ProtectedRoute>} />
+                    <Route path="/inventory/:quality" element={<ProtectedRoute><QualityDetails /></ProtectedRoute>} />
+                    <Route path="/incoming-stock" element={<ProtectedRoute><IncomingStock /></ProtectedRoute>} />
+                    <Route path="/goods-receipt" element={<ProtectedRoute><GoodsReceipt /></ProtectedRoute>} />
+                    <Route path="/manufacturing-orders" element={<ProtectedRoute><ManufacturingOrders /></ProtectedRoute>} />
+                    <Route path="/forecast" element={<ProtectedRoute><Forecast /></ProtectedRoute>} />
+                    <Route path="/forecast-settings" element={<ProtectedRoute><ForecastSettings /></ProtectedRoute>} />
+                    <Route path="/catalog" element={<ProtectedRoute><Catalog /></ProtectedRoute>} />
+                    <Route path="/catalog/:id" element={<ProtectedRoute><CatalogDetail /></ProtectedRoute>} />
+                    
+                    {/* Orders Module */}
+                    <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+                    <Route path="/reservations" element={<ProtectedRoute><Reservations /></ProtectedRoute>} />
+                    <Route path="/order-queue" element={<ProtectedRoute><OrderQueue /></ProtectedRoute>} />
+                    <Route path="/lot-selection" element={<ProtectedRoute><LotSelection /></ProtectedRoute>} />
+                    <Route path="/bulk-selection" element={<ProtectedRoute><BulkSelection /></ProtectedRoute>} />
+                    
+                    {/* Tools Module */}
+                    <Route path="/qr-scan" element={<ProtectedRoute><QRScan /></ProtectedRoute>} />
+                    <Route path="/qr/:lotNumber" element={<PublicRoute><QRScan /></PublicRoute>} />
+                    <Route path="/print/qr/:lotNumber" element={<PublicRoute><QRPrint /></PublicRoute>} />
+                    <Route path="/stock-take" element={<ProtectedRoute><StockTakeCapture /></ProtectedRoute>} />
+                    <Route path="/stock-take-review" element={<ProtectedRoute><StockTakeReview /></ProtectedRoute>} />
+                    <Route path="/approvals" element={<ProtectedRoute><Approvals /></ProtectedRoute>} />
+                    
+                    {/* Admin & Reports Module */}
+                    <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+                    <Route path="/reports/builder" element={<ProtectedRoute><ReportBuilderPage /></ProtectedRoute>} />
+                    <Route path="/reports/builder/:id" element={<ProtectedRoute><ReportBuilderPage /></ProtectedRoute>} />
+                    <Route path="/suppliers" element={<ProtectedRoute><Suppliers /></ProtectedRoute>} />
+                    <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                    <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+                    <Route path="/api-docs" element={<ProtectedRoute><ApiDocs /></ProtectedRoute>} />
+                    
+                    {/* Legal Pages - Public Access */}
+                    <Route path="/terms" element={<PublicRoute><Terms /></PublicRoute>} />
+                    <Route path="/privacy" element={<PublicRoute><Privacy /></PublicRoute>} />
+                    <Route path="/cookies" element={<PublicRoute><Cookies /></PublicRoute>} />
+                    <Route path="/kvkk" element={<PublicRoute><KVKK /></PublicRoute>} />
+                    
+                    {/* Catch-all */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <FloatingPOCart />
+                  <CookieConsent />
                 </ErrorBoundary>
               </POCartProvider>
             </ViewAsRoleProvider>
