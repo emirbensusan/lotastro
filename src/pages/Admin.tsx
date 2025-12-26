@@ -30,6 +30,8 @@ import ApiKeyManagementTab from '@/components/admin/ApiKeyManagementTab';
 import WebhookSubscriptionsTab from '@/components/admin/WebhookSubscriptionsTab';
 import ApiUsageDashboardTab from '@/components/admin/ApiUsageDashboardTab';
 import ApiOverviewTab from '@/components/admin/ApiOverviewTab';
+import SessionSettingsTab from '@/components/admin/SessionSettingsTab';
+import PasswordPolicyTab from '@/components/admin/PasswordPolicyTab';
 import MFASettings from '@/components/auth/MFASettings';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
