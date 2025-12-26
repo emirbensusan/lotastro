@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   Book, Code, Key, Database, Webhook, Shield, Copy, ExternalLink, 
-  Check, ChevronRight, Server, Lock, Zap, FileJson, ArrowRight
+  Check, ChevronRight, Server, Lock, Zap, FileJson, ArrowRight, Download
 } from 'lucide-react';
 
 const SUPABASE_URL = 'https://kwcwbyfzzordqwudixvl.supabase.co';
@@ -186,6 +186,19 @@ const ApiDocs: React.FC = () => {
     setTimeout(() => setCopiedText(null), 2000);
   };
 
+  const downloadOpenAPISpec = () => {
+    const link = document.createElement('a');
+    link.href = '/openapi.yaml';
+    link.download = 'openapi.yaml';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ 
+      title: t('success') as string, 
+      description: 'OpenAPI specification downloaded' 
+    });
+  };
+
   const getMethodBadge = (method: string) => {
     const colors: Record<string, string> = {
       GET: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
@@ -233,12 +246,12 @@ const ApiDocs: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card/50 backdrop-blur border-muted">
+            <Card className="bg-card/50 backdrop-blur border-muted cursor-pointer hover:bg-card/70 transition-colors" onClick={downloadOpenAPISpec}>
               <CardContent className="p-4 flex items-start gap-3">
-                <Zap className="h-5 w-5 text-primary mt-0.5" />
+                <Download className="h-5 w-5 text-primary mt-0.5" />
                 <div>
-                  <p className="font-medium">{t('rateLimit')}</p>
-                  <p className="text-xs text-muted-foreground">{t('rateLimitDescription')}</p>
+                  <p className="font-medium">{t('openApiSpec') || 'OpenAPI Spec'}</p>
+                  <p className="text-xs text-muted-foreground">{t('downloadOpenApiSpec') || 'Download OpenAPI 3.0 YAML'}</p>
                 </div>
               </CardContent>
             </Card>
