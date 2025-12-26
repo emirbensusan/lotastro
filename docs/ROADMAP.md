@@ -1,17 +1,59 @@
 # LotAstro Development Roadmap
 
-> **Version**: 2.1.0  
-> **Last Updated**: 2025-12-25  
-> **Planning Horizon**: 12 months  
-> **Architecture**: Multi-Project Ecosystem
+> **Version**: 3.0.0  
+> **Last Updated**: 2025-12-26  
+> **Planning Horizon**: 14 weeks (Q1 2025)  
+> **Architecture**: Multi-Project Ecosystem  
+> **Philosophy**: Reliability → Intelligence → Connectivity → Delight
 
 ---
 
-## 1. Ecosystem Overview
+## 1. Vision Statement
+
+> **We're not here to write code. We're here to make a dent in the universe.**
+
+LotAstro WMS is not just warehouse software—it's the **operational nervous system** for textile and leather wholesalers. Every feature should be so elegant, so intuitive, so *right* that it feels inevitable.
+
+### Design Principles
+
+1. **Reliability First** – Users trust the system 100%. Data never lies. Actions never fail silently.
+2. **Intelligence Everywhere** – The system does the work. Humans verify, not calculate.
+3. **Connectivity By Default** – Everything talks to everything. Seamless ecosystem.
+4. **Delightful Experience** – Users love using it. Reduces churn, not adds burden.
+
+### The Four Pillars
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        THE FOUR PILLARS                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────┐   ┌─────────────────┐                                 │
+│   │  🔒 RELIABILITY │   │  🧠 INTELLIGENCE│                                 │
+│   │  ─────────────  │   │  ─────────────  │                                 │
+│   │  • Security     │   │  • OCR @ 95%    │                                 │
+│   │  • Data Integrity│  │  • AI @ 90%     │                                 │
+│   │  • Error Recovery│  │  • Reports      │                                 │
+│   │  • Offline Mode │   │  • Forecasting  │                                 │
+│   └─────────────────┘   └─────────────────┘                                 │
+│                                                                              │
+│   ┌─────────────────┐   ┌─────────────────┐                                 │
+│   │  🔗 CONNECTIVITY│   │  ✨ DELIGHT     │                                 │
+│   │  ─────────────  │   │  ─────────────  │                                 │
+│   │  • Public APIs  │   │  • Onboarding   │                                 │
+│   │  • Webhooks     │   │  • Analytics    │                                 │
+│   │  • CRM Sync     │   │  • Mobile UX    │                                 │
+│   │  • Portal Ready │   │  • Performance  │                                 │
+│   └─────────────────┘   └─────────────────┘                                 │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Ecosystem Overview
 
 ### LotAstro Project Landscape
-
-LotAstro operates as a **multi-project ecosystem** with separate Lovable projects for different business domains, all integrated via APIs and webhooks.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -33,25 +75,10 @@ LotAstro operates as a **multi-project ecosystem** with separate Lovable project
 │                                  │                                          │
 │                    ┌─────────────▼─────────────┐                            │
 │                    │   🔗 Integration Layer    │                            │
-│                    │   • Edge Function APIs    │                            │
+│                    │   • OpenAPI 3.0 Spec ✅   │                            │
 │                    │   • Webhook Events        │                            │
 │                    │   • Shared Entity IDs     │                            │
-│                    └─────────────┬─────────────┘                            │
-│                                  │                                          │
-│   ┌─────────────────────────────┼─────────────────────────────┐            │
-│   │                             │                             │            │
-│   │   ┌─────────────────┐   ┌──┴──────────────┐   ┌─────────────────┐     │
-│   │   │  🛒 Customer    │   │  💰 Cost        │   │  🎫 SIM         │     │
-│   │   │     Portal      │   │     Portal      │   │     Ticketing   │     │
-│   │   │  (AI Studio)    │   │  (AI Studio)    │   │  (AI Studio)    │     │
-│   │   └─────────────────┘   └─────────────────┘   └─────────────────┘     │
-│   │                                                                        │
-│   │   ┌─────────────────┐   ┌─────────────────┐                           │
-│   │   │  🎛️ Ops Console │   │  🚚 Route       │                           │
-│   │   │  (AI Studio)    │   │    Optimizer    │                           │
-│   │   │                 │   │  (AI Studio)    │                           │
-│   │   └─────────────────┘   └─────────────────┘                           │
-│   └─────────────────────────────────────────────────────────────────────────┘
+│                    └───────────────────────────┘                            │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -65,186 +92,135 @@ LotAstro operates as a **multi-project ecosystem** with separate Lovable project
 | **LotAstro Wiki** | Lovable | Supabase | ✅ Active | Knowledge Articles |
 | **Customer Portal** | AI Studio | TBD | 📋 Planned | - |
 | **Cost Portal** | AI Studio | TBD | 📋 Planned | Invoices |
-| **SIM Ticketing** | AI Studio | TBD | 📋 Planned | Tickets |
-| **Ops Console** | AI Studio | TBD | 📋 Planned | Metrics (aggregated) |
-| **Route Optimizer** | AI Studio | TBD | 📋 Planned | Routes, Deliveries |
-
-### Distributed Data Ownership
-
-| Entity | Master System | Consumers |
-|--------|---------------|-----------|
-| **Inventory/Stock** | WMS | CRM, Portal, Ops Console |
-| **Products/Catalog** | WMS | CRM, Portal |
-| **Customers/Leads** | CRM | WMS (for orders), Portal |
-| **Orders** | WMS (fulfillment) | CRM (sales view), Portal (customer view) |
-| **Invoices/Costs** | Cost Portal | WMS (matching) |
-| **Knowledge Articles** | Wiki | All apps |
-| **Delivery Routes** | Route Optimizer | WMS |
-| **Support Tickets** | Ticketing Portal | Ops Console |
 
 ---
 
-## 2. Vision & Strategic Objectives
+## 3. Success Metrics
 
-### Product Vision
-
-> Transform textile/leather warehouse operations through intelligent automation, 
-> real-time visibility, and predictive analytics—enabling wholesalers to scale 
-> efficiently while reducing manual overhead. Operate as a connected ecosystem 
-> of specialized applications sharing data seamlessly.
-
-### Strategic Objectives (12-Month)
-
-| Objective | Target | Metric |
-|-----------|--------|--------|
-| **Operational Efficiency** | 50% reduction in manual data entry | Orders processed/hour |
-| **Inventory Accuracy** | 99% inventory accuracy | Stock variance rate |
-| **User Adoption** | 90% daily active users | DAU/MAU ratio |
-| **AI Extraction Accuracy** | 95% first-pass accuracy | AI extraction success rate |
-| **Forecast Accuracy** | 85% demand forecast accuracy | MAPE |
-| **Ecosystem Integration** | 100% data sync across apps | Sync success rate |
+| Metric | Current | Target | Measurement |
+|--------|---------|--------|-------------|
+| **OCR Accuracy (clean labels)** | ~70% | 95% | `count_rolls.ocr_confidence_score` |
+| **AI Extraction Accuracy** | ~70% | 90% | `po_draft_lines.confidence_score` avg |
+| **Stock Take Duration** | 3 days | 8 hours | `count_sessions` timestamps |
+| **Order Entry Time** | 15 min | 3 min | Time from start to confirm |
+| **System Uptime** | - | 99.5% | Supabase monitoring |
+| **Mobile Usage** | - | 40% | User agent analysis |
+| **User Satisfaction** | - | 4.5/5 | In-app feedback |
 
 ---
 
-## 3. Current Status Summary
+## 4. Current Status
 
-### Completed Modules (v1.0)
+### Completed Phases ✅
 
-| Module | Status | Completion |
-|--------|--------|------------|
-| Authentication & RBAC | ✅ Complete | 100% |
-| Inventory Management | ✅ Complete | 100% |
-| Order Processing | ✅ Complete | 100% |
-| AI Order Extraction | ✅ Complete | 100% |
-| Manufacturing Orders | ✅ Complete | 100% |
-| Reservations | ✅ Complete | 100% |
-| Product Catalog | ✅ Complete | 100% |
-| Demand Forecasting | ✅ Complete | 100% |
-| Email System | ✅ Complete | 100% |
-| Audit Logging | ✅ Complete | 100% |
-| Admin Panel | ✅ Complete | 100% |
+| Phase | Theme | Status | Completion Date |
+|-------|-------|--------|-----------------|
+| Phase 0A | CRON Security | ✅ Complete | 2025-12-25 |
+| Phase 0B | XSS Protection | ✅ Complete | 2025-12-25 |
+| Phase 1B | Legal Compliance | ✅ Complete | 2025-12-25 |
+| Phase 2A.1 | Integration APIs Foundation | ✅ Complete | 2025-12-26 |
+| Phase 1A | Security Hardening | ✅ Complete | 2025-12-26 |
 
-### In Progress
+### Completed Work Summary
 
-| Module | Status | Completion | ETA |
-|--------|--------|------------|-----|
-| Reports Builder | 🔄 In Progress | 85% | Q1 2025 |
-| Stock Take (OCR) | 🔄 In Progress | 80% | Q1 2025 |
-| Integration APIs | 🔄 In Progress | 40% | Q1 2025 |
-
-### Key Metrics (Current)
-
-| Metric | Value |
-|--------|-------|
-| Database Tables | 50+ |
-| Edge Functions | 38 |
-| UI Components | 100+ |
-| Custom Hooks | 20 |
-| Translations | 500+ keys |
+- ✅ **11 CRON functions** protected with secret validation
+- ✅ **DOMPurify** XSS protection on all HTML rendering
+- ✅ **Legal pages**: Terms, Privacy, Cookies, KVKK
+- ✅ **Cookie consent** banner with localStorage
+- ✅ **Integration APIs**: `api-get-inventory`, `api-get-catalog`, `api-create-order`, `webhook-dispatcher`
+- ✅ **OpenAPI 3.0 specification** at `public/openapi.yaml`
+- ✅ **Session timeout** configurable via admin panel
+- ✅ **Password policy** configurable via admin panel
+- ✅ **MFA components** ready (`MFAEnroll.tsx`, `MFAVerify.tsx`)
 
 ---
 
-## 4. Roadmap Phases
+## 5. Roadmap Phases
 
-### Phase 0A: Critical Security Fixes (Days 1-2) ✅ COMPLETE
+### PILLAR 1: RELIABILITY FOUNDATION
 
-**Owner:** Backend/DevOps  
-**Theme:** Eliminate Critical Security Vulnerabilities  
-**Exit Criteria:** All P0 security issues resolved  
-**Status:** ✅ Complete (2025-12-25)
+#### Phase 1.1: Security Hardening (Week 1) ✅ COMPLETE
 
-| Task | File/Location | Priority | Effort | Owner | Status |
-|------|---------------|----------|--------|-------|--------|
-| Add CRON_SECRET validation | `cleanup-old-drafts/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `send-mo-reminders/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `process-ocr-queue/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `send-scheduled-report/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `cleanup-old-audit-logs/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `check-stock-alerts/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `process-email-retries/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `send-reservation-reminders/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `send-overdue-digest/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `send-pending-approvals-digest/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Add CRON_SECRET validation | `send-forecast-digest/index.ts` | P0 | XS | Backend | ✅ Complete |
-| Configure CRON_SECRET secret | Supabase Dashboard → Secrets | P0 | XS | DevOps | ✅ Complete |
-| Audit RLS on `rolls` table | Database → RLS Policies | P0 | S | Backend | 🔴 Not Started |
-| Audit RLS on `goods_in_receipts` table | Database → RLS Policies | P0 | S | Backend | 🔴 Not Started |
+**Owner:** Backend  
+**Theme:** Authentication Hardening  
+**Status:** ✅ Complete (2025-12-26)
 
-**Deliverables:**
-- [x] All CRON endpoints protected with secret validation (11/11 functions)
-- [ ] RLS policies verified as restrictive
-- [ ] No tables with `USING condition: true` for SELECT
+| Task | Priority | Status |
+|------|----------|--------|
+| Session timeout configuration UI | P1 | ✅ Complete |
+| Password policy configuration UI | P1 | ✅ Complete |
+| System settings database table | P1 | ✅ Complete |
+| Password strength on reset page | P1 | ✅ Complete |
+| OpenAPI spec creation | P1 | ✅ Complete |
+| API docs download button | P2 | ✅ Complete |
+
+**Remaining Work:**
+- [ ] Wire MFA enforcement for admins (`useAuth.tsx`)
+- [ ] Rate limiting enforcement (wire `useLoginRateLimit.ts`)
+- [ ] RLS audit on `rolls` and `goods_in_receipts` tables
 
 ---
 
-### Phase 0B: Compliance Blockers (Days 3-4) ✅ COMPLETE
+#### Phase 1.2: Data Integrity (Week 1-2) 🔴 NOT STARTED
+
+**Owner:** Backend  
+**Theme:** Bulletproof Data
+
+| Task | File/Location | Priority | Status |
+|------|---------------|----------|--------|
+| RLS policy audit - `rolls` | Database | P0 | 🔴 Not Started |
+| RLS policy audit - `goods_in_receipts` | Database | P0 | 🔴 Not Started |
+| Foreign key cascade review | Database | P1 | 🔴 Not Started |
+| Add missing CHECK constraints | Database | P2 | 🔴 Not Started |
+
+---
+
+#### Phase 1.3: Error Recovery (Week 2) 🟡 PARTIAL
 
 **Owner:** Frontend  
-**Theme:** Eliminate XSS Vulnerabilities  
-**Exit Criteria:** All dangerouslySetInnerHTML sanitized  
-**Status:** ✅ Complete (2025-12-25)
+**Theme:** Graceful Failures
 
-| Task | File/Location | Priority | Effort | Owner | Status |
-|------|---------------|----------|--------|-------|--------|
-| Install DOMPurify package | `package.json` | P0 | XS | Frontend | ✅ Complete |
-| Create sanitize utility | `src/lib/sanitize.ts` | P0 | S | Frontend | ✅ Complete |
-| Add DOMPurify sanitization | `EmailTemplatePreview.tsx` | P0 | S | Frontend | ✅ Complete |
-| Add DOMPurify sanitization | `VersionHistoryDrawer.tsx` | P0 | S | Frontend | ✅ Complete |
-
-**Deliverables:**
-- [x] All `dangerouslySetInnerHTML` uses sanitized with DOMPurify
-- [x] `sanitizeHtml()` and `sanitizeEmailHtml()` utility functions available
-- [x] No raw HTML injection possible
+| Task | Status | Notes |
+|------|--------|-------|
+| ErrorBoundary component | ✅ Complete | Exists at `src/components/ErrorBoundary.tsx` |
+| QueryErrorState component | ✅ Complete | Exists at `src/components/ui/query-error-state.tsx` |
+| useNetworkRetry hook | ✅ Complete | Exists at `src/hooks/useNetworkRetry.ts` |
+| Form draft recovery | ✅ Complete | `useFormPersistence.tsx` exists |
+| Test all error paths | 🔴 Not Started | Verify error handling works |
 
 ---
 
-### Phase 0C: OCR Pipeline Fixes (Days 5-8)
+#### Phase 1.4: Offline Capability (Week 3) 🔴 NOT STARTED
+
+**Owner:** Full-Stack  
+**Theme:** Work Without Internet
+
+| Task | File/Location | Priority | Status |
+|------|---------------|----------|--------|
+| Create `useOfflineQueue` hook | `src/hooks/useOfflineQueue.ts` | P1 | 🔴 Not Started |
+| IndexedDB mutation queue | New utility | P1 | 🔴 Not Started |
+| Background sync on reconnect | Service worker | P2 | 🔴 Not Started |
+| Conflict resolution UI | New component | P2 | 🔴 Not Started |
+| Offline status indicator | ✅ Already in `Layout.tsx` | - | ✅ Complete |
+
+---
+
+### PILLAR 2: INTELLIGENCE UPGRADE
+
+#### Phase 2.1: OCR Pipeline Overhaul (Weeks 4-5) 🔴 NOT STARTED
 
 **Owner:** Full-Stack  
 **Theme:** Stock Take OCR Reliability  
-**Exit Criteria:** 90%+ accuracy on clean printed labels
+**Exit Criteria:** 95%+ accuracy on clean printed labels
 
-#### Problem Statement
+##### Problem Statement
 
 The Stock Take OCR module is **not working reliably** due to:
 - Missing image preprocessing (resize, adaptive binarization, deskew)
 - Incorrect Tesseract configuration (wrong PSM, no character whitelist)
-- No preprocessing parity between client and server
 - No debug tools to diagnose failures
 
-#### Root Cause Analysis
-
-| Failure Mode | Current Behavior | Required Fix |
-|--------------|------------------|--------------|
-| OCR returns garbage | Raw camera images sent to Tesseract | Add preprocessing pipeline |
-| OCR very slow/timeouts | 4-8MB images processed | Resize to 1600-2000px width |
-| Low confidence on labels | Global threshold, wrong PSM | Adaptive binarization, PSM=6 |
-| Random character noise | No character whitelist | Add `A-Z0-9-./: ` whitelist |
-| Skewed labels fail | No deskew detection | Add Hough transform deskew |
-
-#### Task Breakdown
-
-| Task | File/Location | Priority | Effort | Owner | Status |
-|------|---------------|----------|--------|-------|--------|
-| **A1: Preprocessing Pipeline** | | | | | |
-| Add mandatory resize step (1800px) | `src/utils/ocrPreprocessing.ts` | P0 | S | Full-Stack | 🔴 Not Started |
-| Enable adaptive binarization (Otsu) | `src/utils/ocrPreprocessing.ts` | P0 | S | Full-Stack | 🔴 Not Started |
-| Add deskew detection | `src/utils/ocrPreprocessing.ts` | P1 | M | Full-Stack | 🔴 Not Started |
-| Correct preprocessing order | `src/utils/ocrPreprocessing.ts` | P0 | S | Full-Stack | 🔴 Not Started |
-| Add debug image saving to IndexedDB | `src/hooks/useClientOCR.ts` | P1 | S | Full-Stack | 🔴 Not Started |
-| **A2: Tesseract Configuration** | | | | | |
-| Set PSM=6 (SINGLE_BLOCK) | `src/hooks/useClientOCR.ts` | P0 | XS | Full-Stack | 🔴 Not Started |
-| Add character whitelist | `src/hooks/useClientOCR.ts` | P0 | XS | Full-Stack | 🔴 Not Started |
-| Use 'eng' language only | `src/hooks/useClientOCR.ts` | P0 | XS | Full-Stack | 🔴 Not Started |
-| **A3: Server-Side Preprocessing** | | | | | |
-| Add preprocessing to Edge function | `supabase/functions/stock-take-ocr/index.ts` | P1 | M | Backend | 🔴 Not Started |
-| Create shared image preprocessing lib | `supabase/functions/_shared/image-preprocessing.ts` | P1 | M | Backend | 🔴 Not Started |
-| **A4: Debug & Testing Tools** | | | | | |
-| Create OCR Test Lab page | `src/pages/OCRTestLab.tsx` | P1 | M | Full-Stack | 🔴 Not Started |
-| Add preprocessing stage visualization | `src/pages/OCRTestLab.tsx` | P1 | S | Full-Stack | 🔴 Not Started |
-| Add PSM mode testing | `src/pages/OCRTestLab.tsx` | P2 | S | Full-Stack | 🔴 Not Started |
-
-#### Preprocessing Pipeline (Correct Order)
+##### Preprocessing Pipeline (Correct Order)
 
 ```
 1. Resize (1600-2000px width, maintain aspect ratio)
@@ -262,82 +238,42 @@ The Stock Take OCR module is **not working reliably** due to:
 7. OCR with correct config
 ```
 
-#### Tesseract Configuration (Required Settings)
+##### Tesseract Configuration
 
 ```typescript
 await worker.setParameters({
   tessedit_pageseg_mode: '6',  // PSM.SINGLE_BLOCK for labels
   tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-./: ',
 });
-const worker = await Tesseract.createWorker('eng', 1, {...}); // English only
 ```
 
-#### Expected Accuracy Targets
+##### Task Breakdown
 
-| Label Type | Target Accuracy | Notes |
-|------------|-----------------|-------|
-| Printed clean | 90-98% | With proper preprocessing |
-| Printed faded | 75-90% | May need manual review |
-| Handwritten | 20-50% | Always flag for manual review |
-
-**Deliverables:**
-- [ ] Resize step reduces images to ~1800px width
-- [ ] Adaptive binarization produces clean black/white output
-- [ ] PSM=6 and character whitelist configured
-- [ ] OCR Test Lab shows preprocessing stages
-- [ ] 90%+ accuracy on clean printed labels
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Rewrite preprocessing pipeline | `src/utils/ocrPreprocessing.ts` | P0 | 🔴 Not Started |
+| Mandatory resize to 1800px | `src/utils/ocrPreprocessing.ts` | P0 | 🔴 Not Started |
+| Enable Otsu's adaptive binarization | `src/utils/ocrPreprocessing.ts` | P0 | 🔴 Not Started |
+| Set PSM=6 and character whitelist | `src/hooks/useClientOCR.ts` | P0 | 🔴 Not Started |
+| Create OCR Test Lab page | `src/pages/OCRTestLab.tsx` | P1 | 🔴 Not Started |
+| Server-side preprocessing parity | `supabase/functions/stock-take-ocr/index.ts` | P1 | 🔴 Not Started |
 
 ---
 
-### Phase 0D: AI Order Extraction Fixes (Days 9-14)
+#### Phase 2.2: AI Extraction Fixes (Weeks 5-6) 🔴 NOT STARTED
 
 **Owner:** Full-Stack  
 **Theme:** AI Order Extraction Reliability  
-**Exit Criteria:** 85%+ combined extraction accuracy
+**Exit Criteria:** 90%+ combined extraction accuracy
 
-#### Problem Statement
+##### Problem Statement
 
-The AI Order Extraction from text is **not working reliably** due to:
-- Incorrect regex pattern priority (overly greedy patterns match first)
-- Turkish number parsing edge cases (`1.000,50` vs `1,000.50`)
-- Missing header context inheritance for bullet lists
-- LLM prompt complexity causing inconsistent structured output
-- Merge logic conflicts between deterministic and LLM results
+The AI Order Extraction is **not working reliably** due to:
+- Incorrect regex pattern priority (greedy patterns match first)
+- Turkish number parsing edge cases (`1.720` → 1720 not 1.72)
+- LLM prompt complexity causing inconsistent output
 
-#### Root Cause Analysis
-
-| Failure Mode | Current Behavior | Required Fix |
-|--------------|------------------|--------------|
-| Wrong quality extracted | Greedy regex matches partial codes | Reorder patterns, most specific first |
-| Turkish numbers fail | `1.720` parsed as 1.72 instead of 1720 | Fix `parseTurkishNumber()` logic |
-| Bullet lists lose context | "P200:" header not inherited | Add header context tracking |
-| LLM returns malformed JSON | Free-form JSON parsing | Use tool-calling for structured output |
-| Merge conflicts lose data | No conflict resolution logging | Add merge audit trail |
-
-#### Task Breakdown
-
-| Task | File/Location | Priority | Effort | Owner | Status |
-|------|---------------|----------|--------|-------|--------|
-| **B1: Deterministic Extraction Fixes** | | | | | |
-| Reorder regex patterns (specific first) | `supabase/functions/_shared/extraction-lib.ts` | P0 | M | Backend | 🔴 Not Started |
-| Fix `parseTurkishNumber()` edge cases | `supabase/functions/_shared/extraction-lib.ts` | P0 | S | Backend | 🔴 Not Started |
-| Add header context inheritance | `supabase/functions/_shared/extraction-lib.ts` | P0 | M | Backend | 🔴 Not Started |
-| Add confidence threshold gate (<0.6) | `supabase/functions/_shared/extraction-lib.ts` | P1 | S | Backend | 🔴 Not Started |
-| **B2: LLM Integration Refactor** | | | | | |
-| Switch to tool-calling for structured output | `supabase/functions/extract-order/index.ts` | P0 | L | Backend | 🔴 Not Started |
-| Simplify system prompt (~30 lines) | `supabase/functions/extract-order/index.ts` | P1 | S | Backend | 🔴 Not Started |
-| Add DB context validation warning | `supabase/functions/extract-order/index.ts` | P1 | XS | Backend | 🔴 Not Started |
-| **B3: Merge Logic Fixes** | | | | | |
-| Add conflict resolution logging | `supabase/functions/_shared/extraction-lib.ts` | P1 | S | Backend | 🔴 Not Started |
-| Fix source row matching (fuzzy) | `supabase/functions/_shared/extraction-lib.ts` | P1 | M | Backend | 🔴 Not Started |
-| Add merge audit trail | `supabase/functions/_shared/extraction-lib.ts` | P1 | S | Backend | 🔴 Not Started |
-| **B4: Extraction Test Lab Enhancement** | | | | | |
-| Show deterministic vs LLM side-by-side | `src/pages/ExtractionTest.tsx` | P1 | M | Full-Stack | 🔴 Not Started |
-| Display DB context that was loaded | `src/pages/ExtractionTest.tsx` | P1 | S | Full-Stack | 🔴 Not Started |
-| Show regex match details per line | `src/pages/ExtractionTest.tsx` | P2 | M | Full-Stack | 🔴 Not Started |
-| Add re-run buttons (deterministic/LLM only) | `src/pages/ExtractionTest.tsx` | P2 | S | Full-Stack | 🔴 Not Started |
-
-#### Turkish Number Parsing Rules
+##### Turkish Number Parsing Rules
 
 ```typescript
 // Input → Expected Output
@@ -348,183 +284,215 @@ The AI Order Extraction from text is **not working reliably** due to:
 "10,5 mt"  → 10.5      // Turkish decimal with context
 ```
 
-#### LLM Tool-Calling Schema
+##### Task Breakdown
 
-```typescript
-const extractionTool = {
-  type: 'function',
-  function: {
-    name: 'extract_order_lines',
-    description: 'Extract structured order lines from text',
-    parameters: {
-      type: 'object',
-      properties: {
-        lines: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              quality: { type: 'string' },
-              color: { type: 'string' },
-              meters: { type: 'number' },
-              intent_type: { 
-                type: 'string', 
-                enum: ['order', 'reservation', 'stock_inquiry', 'return', 'noise']
-              },
-              confidence_score: { type: 'number', minimum: 0, maximum: 1 }
-            },
-            required: ['quality', 'color', 'meters', 'intent_type']
-          }
-        }
-      },
-      required: ['lines']
-    }
-  }
-};
-```
-
-#### Expected Accuracy Targets
-
-| Extraction Mode | Target Accuracy | Notes |
-|-----------------|-----------------|-------|
-| Deterministic only | 70%+ | Pattern-matched, no LLM |
-| Combined (Det + LLM) | 85%+ | LLM fills gaps |
-| With manual review | 99%+ | Human verification |
-
-**Deliverables:**
-- [ ] Regex patterns ordered by specificity
-- [ ] Turkish numbers parsed correctly in all formats
-- [ ] Header context inherited for bullet lists
-- [ ] LLM uses tool-calling for structured output
-- [ ] Merge conflicts logged with audit trail
-- [ ] 85%+ accuracy on typical order emails
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Reorder regex patterns (specific first) | `supabase/functions/_shared/extraction-lib.ts` | P0 | 🔴 Not Started |
+| Fix `parseTurkishNumber()` | `supabase/functions/_shared/extraction-lib.ts` | P0 | 🔴 Not Started |
+| Add header context inheritance | `supabase/functions/_shared/extraction-lib.ts` | P0 | 🔴 Not Started |
+| Switch LLM to tool-calling | `supabase/functions/extract-order/index.ts` | P0 | 🔴 Not Started |
+| Add confidence threshold gate (<0.6) | `supabase/functions/_shared/extraction-lib.ts` | P1 | 🔴 Not Started |
+| Enhance ExtractionTest page | `src/pages/ExtractionTest.tsx` | P2 | 🔴 Not Started |
 
 ---
 
-### Phase 1A: Security Hardening (Week 2)
-
-**Owner:** Backend  
-**Theme:** Authentication Hardening  
-**Exit Criteria:** Admin accounts protected with MFA
-
-| Task | Description | Priority | Effort | Owner | Status |
-|------|-------------|----------|--------|-------|--------|
-| Login rate limiting | Add rate limiter (5 attempts/15 min) | P1 | M | Backend | 📅 Planned |
-| Password attempt lockout | Lock after 10 failed attempts for 30 min | P1 | M | Backend | 📅 Planned |
-| MFA/2FA for admins | TOTP-based 2FA using Supabase Auth MFA | P1 | L | Backend | 📅 Planned |
-| Session timeout config | Configurable session duration (default 8h) | P1 | S | Backend | 📅 Planned |
-| Password policy enforcement | Minimum 12 chars, complexity rules | P1 | S | Backend | 📅 Planned |
-
-**Deliverables:**
-- [ ] Admin accounts require MFA
-- [ ] Failed login attempts are rate-limited
-- [ ] Password policy enforced on all new accounts
-
----
-
-### Phase 1B: Legal & Compliance Pages (Week 1) ✅ COMPLETE
-
-**Owner:** Frontend/Legal  
-**Theme:** Legal Compliance  
-**Exit Criteria:** Legal pages live and accessible  
-**Status:** ✅ Complete (2025-12-25)
-
-| Task | Route | Priority | Effort | Owner | Status |
-|------|-------|----------|--------|-------|--------|
-| Create Terms of Service page | `/terms` | P0 | M | Frontend | ✅ Complete |
-| Create Privacy Policy page | `/privacy` | P0 | M | Frontend | ✅ Complete |
-| Create Cookie Policy page | `/cookies` | P1 | S | Frontend | ✅ Complete |
-| Implement cookie consent banner | Global component | P0 | M | Frontend | ✅ Complete |
-| Add legal links to footer | Layout component | P1 | XS | Frontend | ✅ Complete |
-| Create KVKK compliance notice | `/kvkk` (Turkey specific) | P1 | S | Frontend | ✅ Complete |
-
-**Deliverables:**
-- [x] Terms, Privacy, Cookies, KVKK pages accessible
-- [x] Cookie consent shown on first visit
-- [x] Consent stored in localStorage and respected
-- [x] Footer links to all legal pages
-
----
-
-### Phase 1C: Core Features Completion (Weeks 2-3)
+#### Phase 2.3: Report Builder Execution (Weeks 6-7) 🔄 IN PROGRESS
 
 **Owner:** Full-Stack  
-**Theme:** Complete MVP Features  
-**Exit Criteria:** Reports & Stock Take fully functional
+**Theme:** Reports That Actually Run  
+**Exit Criteria:** Reports can be created, saved, executed, and exported
 
-| Task | Module | Priority | Effort | Owner | Status |
-|------|--------|----------|--------|-------|--------|
-| Complete Report Builder | Reports | P1 | L | Full-Stack | 🔄 In Progress |
-| Complete Stock Take OCR flow | Stock Take | P1 | L | Full-Stack | 🔄 In Progress |
-| Fix mobile performance issues | Mobile UX | P1 | M | Frontend | 📅 Planned |
-| Add error boundaries to all pages | Error Handling | P1 | S | Frontend | 📅 Planned |
-| Complete i18n translations (TR) | I18n | P1 | M | Frontend | 📅 Planned |
+##### Problem Statement
 
-**Deliverables:**
-- [ ] Report Builder can create/save/execute reports
-- [ ] Stock Take OCR processes images and extracts data
-- [ ] Mobile pages load < 2 seconds
+Beautiful UI, but reports don't actually run or export.
 
----
+##### Task Breakdown
 
-### Phase 1D: Operational Readiness (Week 2)
-
-**Owner:** DevOps/Ops  
-**Theme:** Production Operations  
-**Exit Criteria:** Disaster recovery tested
-
-| Task | Description | Priority | Effort | Owner | Status |
-|------|-------------|----------|--------|-------|--------|
-| Test backup restoration | Restore from Supabase backup to staging | P1 | M | DevOps | 📅 Planned |
-| Create incident runbook | Document response procedures | P1 | M | Ops | 📅 Planned |
-| Set up monitoring alerts | Supabase dashboard + Resend delivery | P1 | M | DevOps | 📅 Planned |
-| Document deployment process | GitHub → Supabase deployment | P1 | S | DevOps | 📅 Planned |
-| Create on-call rotation | Define responsibilities | P2 | S | Ops | 📅 Planned |
-
-**Deliverables:**
-- [ ] Backup restore tested successfully
-- [ ] Runbook covers top 10 incident types
-- [ ] Alerts configured for downtime/errors
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Query builder engine | `supabase/functions/generate-report-attachment/index.ts` | P0 | 🔄 In Progress |
+| Convert report definition → SQL | New utility | P0 | 🔴 Not Started |
+| PDF export generator | Edge function | P1 | 🔴 Not Started |
+| Excel export generator | Use `xlsx-js-style` | P1 | 🔴 Not Started |
+| Wire RunReportButton | `src/components/reports/RunReportButton.tsx` | P1 | 🔴 Not Started |
+| Schedule execution | `supabase/functions/send-scheduled-report/index.ts` | P2 | 🔴 Not Started |
 
 ---
 
-### Phase 2A: Integration Layer - Internal APIs (Month 1, Weeks 1-2) 🔄 IN PROGRESS
+### PILLAR 3: CONNECTIVITY LAYER
+
+#### Phase 3.1: Public API Completion (Week 8) 🟡 PARTIAL
 
 **Owner:** Backend  
-**Theme:** WMS Exposes APIs for Ecosystem  
-**Exit Criteria:** CRM can query WMS via API  
-**Status:** 🔄 In Progress (2025-12-25)
+**Theme:** Seamless Ecosystem Integration
 
-| Task | Description | Priority | Effort | Owner | Status |
-|------|-------------|----------|--------|-------|--------|
-| Create API key database tables | `api_keys`, `webhook_subscriptions`, `webhook_deliveries` | P1 | M | Backend | ✅ Complete |
-| Create `_shared/api-auth.ts` helper | API key validation, rate limiting, logging | P1 | M | Backend | ✅ Complete |
-| Create `api-get-inventory` Edge Function | Returns stock levels for CRM/Portal | P1 | M | Backend | ✅ Complete |
-| Create `api-get-catalog` Edge Function | Returns product catalog for Portal | P1 | M | Backend | ✅ Complete |
-| Create `api-create-order` Edge Function | Accepts orders from Portal/CRM | P1 | L | Backend | ✅ Complete |
-| Create `webhook-dispatcher` Edge Function | Central webhook event distribution | P1 | M | Backend | ✅ Complete |
-| Create OpenAPI spec | Document all integration endpoints | P2 | M | Backend | 📅 Planned |
-
-**New Secrets Required:**
-- `CRM_API_KEY` - for CRM to call WMS
-- `PORTAL_API_KEY` - for Ordering Portal to call WMS
-- `OPS_CONSOLE_API_KEY` - for Ops Console to call WMS
-
-**Deliverables:**
-- [x] API key authentication implemented
-- [x] CRM can query WMS inventory via API
-- [x] Portal can submit orders to WMS
-- [x] Webhook dispatcher sends events to registered endpoints
+| Task | Status | Notes |
+|------|--------|-------|
+| OpenAPI 3.0 Specification | ✅ Complete | `public/openapi.yaml` |
+| API Key Authentication | ✅ Complete | `_shared/api-auth.ts` |
+| `api-get-inventory` endpoint | ✅ Complete | Returns stock levels |
+| `api-get-catalog` endpoint | ✅ Complete | Returns product catalog |
+| `api-create-order` endpoint | ✅ Complete | Accepts orders from Portal |
+| Interactive Swagger UI | 🔴 Not Started | Embed in ApiDocs page |
+| API Key Management UI | ✅ Complete | `ApiKeyManagementTab.tsx` |
+| API Usage Dashboard | ✅ Complete | `ApiUsageDashboardTab.tsx` |
 
 ---
 
-## 5. Changelog
+#### Phase 3.2: Webhook System (Week 8-9) 🟡 PARTIAL
+
+**Owner:** Backend  
+**Theme:** Event-Driven Architecture
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Webhook dispatcher | ✅ Complete | `webhook-dispatcher/index.ts` |
+| HMAC signing | ✅ Complete | Implemented in dispatcher |
+| Webhook subscriptions table | ✅ Complete | `webhook_subscriptions` |
+| Webhook deliveries table | ✅ Complete | `webhook_deliveries` |
+| Order events (created, fulfilled, cancelled) | 🔴 Not Started | Define event payloads |
+| Inventory events (low_stock, updated) | 🔴 Not Started | Define event payloads |
+| Webhook management UI | 🔴 Not Started | Admin panel tab |
+
+---
+
+#### Phase 3.3: CRM Integration (Week 9-10) 🔴 NOT STARTED
+
+**Owner:** Backend  
+**Theme:** Bidirectional Customer Sync
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Customer sync endpoint | New edge function | P1 | 🔴 Not Started |
+| External customer linking | Database column | P1 | 🔴 Not Started |
+| Order notification webhook | Webhook event | P1 | 🔴 Not Started |
+| Credit limit enforcement | Order creation | P2 | 🔴 Not Started |
+
+---
+
+### PILLAR 4: USER DELIGHT
+
+#### Phase 4.1: Onboarding Experience (Week 11) 🔴 NOT STARTED
+
+**Owner:** Frontend  
+**Theme:** Zero-Friction Start
+
+| Task | Priority | Status |
+|------|----------|--------|
+| First-login setup wizard | P1 | 🔴 Not Started |
+| Role-based feature tours | P2 | 🔴 Not Started |
+| Contextual help tooltips | P2 | 🔴 Not Started |
+| Video tutorial embeds | P3 | 🔴 Not Started |
+
+---
+
+#### Phase 4.2: Analytics Dashboard (Week 12) 🔴 NOT STARTED
+
+**Owner:** Frontend  
+**Theme:** Data-Driven Decisions
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Executive KPI dashboard | P1 | 🔴 Not Started |
+| Orders today/week/month | P1 | 🔴 Not Started |
+| Inventory value & turnover | P1 | 🔴 Not Started |
+| Forecast accuracy tracking | P2 | 🔴 Not Started |
+| Trend charts with Recharts | P2 | 🔴 Not Started |
+
+---
+
+#### Phase 4.3: Mobile Excellence (Week 13) 🟡 PARTIAL
+
+**Owner:** Frontend  
+**Theme:** Native-Like Experience
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Virtual scrolling | ✅ Complete | `src/components/ui/virtual-list.tsx` |
+| Swipe actions | ✅ Complete | `SwipeableCardEnhanced.tsx` |
+| Haptic feedback | ✅ Complete | `useHapticFeedback.ts` |
+| Pull-to-refresh | ✅ Complete | `PullToRefresh.tsx` |
+| Camera scanner improvements | 🔴 Not Started | Better QR detection |
+| PWA manifest | 🔴 Not Started | Installable app |
+
+---
+
+#### Phase 4.4: Performance Polish (Week 14) 🟡 PARTIAL
+
+**Owner:** Frontend  
+**Theme:** Blazing Fast
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Bundle splitting | ✅ Complete | Vite code splitting |
+| Image lazy loading | ✅ Complete | `LazyImage` component |
+| Query optimization | 🔴 Not Started | Review slow queries |
+| Aggressive caching | 🔴 Not Started | TanStack Query staleTime |
+| < 2s page load | 🔴 Not Started | Performance audit |
+
+---
+
+## 6. Priority Decision Matrix
+
+### What to Build vs. What to Wait
+
+| Feature | Build Now | Wait | Rationale |
+|---------|-----------|------|-----------|
+| **OCR Pipeline Fix** | ✅ | | Critical for stock take usability |
+| **AI Extraction Fix** | ✅ | | Critical for order processing |
+| **Report Execution** | ✅ | | Users expecting this feature |
+| **MFA Enforcement** | ✅ | | Security requirement |
+| **Offline Mode** | | ⏳ Phase 2 | Nice-to-have, not blocking |
+| **Analytics Dashboard** | | ⏳ Phase 4 | After core features stable |
+| **CRM Integration** | | ⏳ Phase 3 | After CRM project ready |
+| **PWA** | | ⏳ Backlog | Mobile web works well |
+
+### Recommended Starting Point
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RECOMMENDED PRIORITY                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  OPTION A: Start with Phase 2.1 (OCR Pipeline Fix)              │
+│  ────────────────────────────────────────────────               │
+│  • Stock take is currently unusable                             │
+│  • High user impact when fixed                                  │
+│  • ~1 week effort                                               │
+│                                                                  │
+│  OPTION B: Start with Phase 2.2 (AI Extraction Fix)             │
+│  ────────────────────────────────────────────────               │
+│  • Order processing is the core workflow                        │
+│  • Turkish number parsing is broken                             │
+│  • ~1 week effort                                               │
+│                                                                  │
+│  OPTION C: Start with Phase 2.3 (Report Builder)                │
+│  ────────────────────────────────────────────────               │
+│  • UI is beautiful but doesn't execute                          │
+│  • Users are waiting for this                                   │
+│  • ~1-2 week effort                                             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 7. Changelog
+
+### 2025-12-26 (v3.0.0) - Enterprise Vision Roadmap
+- 🎯 Restructured around Four Pillars: Reliability, Intelligence, Connectivity, Delight
+- ✅ Phase 1A (Security Hardening) completed
+- ✅ Phase 2A.1 (OpenAPI spec + API docs) completed
+- 📋 Added success metrics with targets
+- 📋 Added priority decision matrix
+- 📋 Added recommended starting points
 
 ### 2025-12-25 (v2.1.0)
 - ✅ Phase 0A: CRON_SECRET validation complete (11/11 edge functions)
 - ✅ Phase 0B: DOMPurify XSS protection complete
 - ✅ Phase 1B: Legal pages and cookie consent complete
-- 🔄 Phase 2A: Integration API foundation started (database tables + 5 edge functions)
+- 🔄 Phase 2A: Integration API foundation started
 
 ### Previous
 - 2025-12-25 (v2.0.0): Multi-project ecosystem architecture documented
@@ -537,5 +505,6 @@ const extractionTool = {
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2025-01-10 | Initial roadmap |
-| 2.0.0 | 2025-12-25 | Multi-project ecosystem; integration features |
-| 2.1.0 | 2025-12-25 | Phase 0A/0B/1B complete; Phase 2A integration APIs started |
+| 2.0.0 | 2025-12-25 | Multi-project ecosystem |
+| 2.1.0 | 2025-12-25 | Phase 0A/0B/1B complete |
+| 3.0.0 | 2025-12-26 | Enterprise vision; Four Pillars; Phase 1A complete |

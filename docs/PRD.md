@@ -1,10 +1,11 @@
 # LotAstro WMS - Product Requirements Document
 
-> **Version**: 2.0.0  
-> **Last Updated**: 2025-12-25  
+> **Version**: 3.0.0  
+> **Last Updated**: 2025-12-26  
 > **Product Owner**: LotAstro Development Team  
 > **Target Release**: Production (Continuous Deployment)  
-> **Architecture**: Multi-Project Ecosystem
+> **Architecture**: Multi-Project Ecosystem  
+> **Philosophy**: Reliability → Intelligence → Connectivity → Delight
 
 ---
 
@@ -12,11 +13,24 @@
 
 ### Vision Statement
 
-**LotAstro WMS** is a comprehensive Warehouse Management System designed specifically for the textile and leather wholesale industry. It operates as the **inventory and order fulfillment hub** within a larger ecosystem of connected applications, replacing paper-based tracking and Excel spreadsheets with an intelligent, AI-powered platform.
+> **We're not here to write code. We're here to make a dent in the universe.**
+
+**LotAstro WMS** is the **operational nervous system** for textile and leather wholesalers. It's not just warehouse software—it's an intelligent platform that transforms how businesses manage inventory, process orders, and make data-driven decisions.
+
+Every feature is designed to be so elegant, so intuitive, so *right* that it feels inevitable.
+
+### Design Principles
+
+| Principle | Description |
+|-----------|-------------|
+| **Reliability First** | Users trust the system 100%. Data never lies. Actions never fail silently. |
+| **Intelligence Everywhere** | The system does the work. Humans verify, not calculate. |
+| **Connectivity By Default** | Everything talks to everything. Seamless ecosystem integration. |
+| **Delightful Experience** | Users love using it. Reduces churn, not adds burden. |
 
 ### Ecosystem Context
 
-LotAstro WMS is part of a multi-project ecosystem:
+LotAstro WMS is the **inventory and order fulfillment hub** within a larger ecosystem:
 
 | Project | Platform | Relationship |
 |---------|----------|--------------|
@@ -26,8 +40,6 @@ LotAstro WMS is part of a multi-project ecosystem:
 | **Customer Portal** | AI Studio | Customer-facing ordering |
 | **Cost Portal** | AI Studio | Invoice management |
 | **Ops Console** | AI Studio | Unified operations dashboard |
-| **Route Optimizer** | AI Studio | Delivery planning |
-| **SIM Ticketing** | AI Studio | Support tickets |
 
 ### Product Overview
 
@@ -39,18 +51,20 @@ LotAstro WMS provides:
 - **Manufacturing Order Management**: End-to-end tracking of production orders
 - **Stock Take Automation**: Mobile-first camera capture with OCR for efficient physical counts
 - **Multi-lingual Support**: Full English and Turkish localization
-- **Ecosystem Integration**: APIs and webhooks for connected applications
+- **Ecosystem Integration**: Public APIs and webhooks for connected applications
 
 ### Business Value
 
-| Metric | Before LotAstro | With LotAstro |
-|--------|-----------------|---------------|
-| Order Entry Time | 15-30 min/order | 2-5 min/order |
-| Stock Take Duration | 3-5 days | 1 day |
-| Inventory Accuracy | 85-90% | 98%+ |
-| Stockout Incidents | Reactive | Proactive alerts |
-| Report Generation | Hours (manual) | Minutes (automated) |
-| Cross-App Data Sync | Manual | Real-time via APIs |
+| Metric | Before LotAstro | With LotAstro | Target |
+|--------|-----------------|---------------|--------|
+| Order Entry Time | 15-30 min/order | 2-5 min/order | 3 min |
+| Stock Take Duration | 3-5 days | 1 day | 8 hours |
+| Inventory Accuracy | 85-90% | 98%+ | 99% |
+| OCR Accuracy (clean labels) | N/A | 70% | 95% |
+| AI Extraction Accuracy | N/A | 70% | 90% |
+| Stockout Incidents | Reactive | Proactive alerts | 100% proactive |
+| Report Generation | Hours (manual) | Minutes (automated) | < 1 min |
+| Cross-App Data Sync | Manual | Real-time via APIs | < 5 sec latency |
 
 ---
 
@@ -87,69 +101,98 @@ The textile and leather wholesale industry operates with:
 
 ## 3. Feature Requirements
 
+### The Four Pillars Framework
+
+Features are organized around four strategic pillars:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  PILLAR 1: RELIABILITY     │  PILLAR 2: INTELLIGENCE                        │
+│  ─────────────────────     │  ─────────────────────                         │
+│  • Security hardening      │  • OCR @ 95% accuracy                          │
+│  • Data integrity          │  • AI extraction @ 90%                         │
+│  • Error recovery          │  • Report execution                            │
+│  • Offline capability      │  • Demand forecasting                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  PILLAR 3: CONNECTIVITY    │  PILLAR 4: DELIGHT                             │
+│  ─────────────────────     │  ─────────────────                             │
+│  • Public APIs (OpenAPI)   │  • Onboarding wizard                           │
+│  • Webhook events          │  • Analytics dashboard                         │
+│  • CRM integration         │  • Mobile excellence                           │
+│  • Portal-ready endpoints  │  • Performance polish                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 ### P0 - Critical (MVP - Complete)
 
-| Feature | Description | Acceptance Criteria |
-|---------|-------------|---------------------|
-| **User Authentication** | Secure login with email/password | Supabase Auth, password reset, session management |
-| **Role-Based Access** | 4 roles with granular permissions | Admin, Senior Manager, Accounting, Warehouse Staff |
-| **Inventory Management** | Lot and roll tracking | Create/edit/delete lots, roll-level tracking |
-| **QR Code System** | Generate and scan QR codes | QR generation, camera scanner, bulk printing |
-| **Supplier Management** | Supplier master data | CRUD operations, supplier-quality associations |
-| **Order Processing** | Customer order creation | Manual order entry, roll selection, order numbers |
-| **Basic Reporting** | Dashboard with KPIs | Statistics, inventory pivot table, Excel export |
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **User Authentication** | Secure login with email/password | ✅ Complete |
+| **Role-Based Access** | 4 roles with granular permissions | ✅ Complete |
+| **Inventory Management** | Lot and roll tracking | ✅ Complete |
+| **QR Code System** | Generate and scan QR codes | ✅ Complete |
+| **Supplier Management** | Supplier master data | ✅ Complete |
+| **Order Processing** | Customer order creation | ✅ Complete |
+| **Basic Reporting** | Dashboard with KPIs | ✅ Complete |
 
 ### P1 - High Priority (Complete)
 
-| Feature | Description | Acceptance Criteria |
-|---------|-------------|---------------------|
-| **Manufacturing Orders** | Production order tracking | MO creation, status workflow, status history |
-| **Reservations** | Stock reservation system | Create/convert/release reservations |
-| **Incoming Stock** | Expected delivery tracking | Track arrivals, partial receipts, MO linking |
-| **Order Queue** | Approval workflow | Submit/approve/reject with notifications |
-| **Email Templates** | Configurable email system | Template editor, EN/TR support, versioning |
-| **Audit Logging** | Complete audit trail | Track all CRUD, user attribution, reversal |
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Manufacturing Orders** | Production order tracking | ✅ Complete |
+| **Reservations** | Stock reservation system | ✅ Complete |
+| **Incoming Stock** | Expected delivery tracking | ✅ Complete |
+| **Order Queue** | Approval workflow | ✅ Complete |
+| **Email Templates** | Configurable email system | ✅ Complete |
+| **Audit Logging** | Complete audit trail | ✅ Complete |
+| **Legal Compliance** | Terms, Privacy, Cookies, KVKK | ✅ Complete |
+| **Security Hardening** | Session timeout, password policy | ✅ Complete |
+| **Integration APIs** | OpenAPI spec, API endpoints | ✅ Complete |
 
 ### P2 - Medium Priority (In Progress)
 
-| Feature | Description | Status | Acceptance Criteria |
-|---------|-------------|--------|---------------------|
-| **AI Order Extraction** | Parse customer POs automatically | ✅ Complete | Extract from PDF/image/text, confidence scoring |
-| **Demand Forecasting** | Predict future demand | ✅ Complete | Historical import, 3 scenarios, recommendations |
-| **Stock Take** | Physical inventory counting | 🔄 Partial | Session-based, OCR, admin review |
-| **Report Builder** | Custom report creation | 🔄 In Progress | Data sources, filters, scheduling |
-| **Catalog Management** | Product catalog with custom fields | ✅ Complete | Catalog items, approval workflow |
+| Feature | Description | Status | Target |
+|---------|-------------|--------|--------|
+| **AI Order Extraction** | Parse customer POs automatically | 🔄 Needs Fix | 90% accuracy |
+| **Demand Forecasting** | Predict future demand | ✅ Complete | - |
+| **Stock Take OCR** | Camera capture with OCR | 🔄 Needs Fix | 95% accuracy |
+| **Report Builder** | Custom report creation | 🔄 In Progress | Full execution |
+| **Catalog Management** | Product catalog with custom fields | ✅ Complete | - |
 
-### P3 - Low Priority (Planned - Integration Focus)
+### P3 - Future (Planned)
 
 | Feature | Description | Target |
 |---------|-------------|--------|
-| **Integration APIs** | APIs for ecosystem apps | Q1 2025 |
-| **Webhook Events** | Event-driven sync | Q1 2025 |
 | **CRM Integration** | Bidirectional customer sync | Q1 2025 |
-| **Wiki Integration** | Knowledge base access | Q1 2025 |
-| **Portal APIs** | Customer-facing order APIs | Q2 2025 |
-| **Ops Console Metrics** | Health and usage endpoints | Q2 2025 |
-
-**Note:** CRM, Wiki, and Customer Portal are **separate Lovable/AI Studio projects**, not modules to be built within WMS.
+| **Webhook Events** | order.created, inventory.low_stock, etc. | Q1 2025 |
+| **Analytics Dashboard** | Executive KPIs | Q1 2025 |
+| **Onboarding Wizard** | First-login setup | Q1 2025 |
+| **PWA Support** | Installable mobile app | Q2 2025 |
+| **SSO/SAML** | Enterprise authentication | Q2 2025 |
 
 ---
 
-## 4. Integration Requirements (New)
+## 4. Integration Requirements
 
-### API Endpoints Required
+### API Endpoints (Implemented)
+
+| Endpoint | Method | Purpose | Consumer | Status |
+|----------|--------|---------|----------|--------|
+| `/api-get-inventory` | GET | Stock levels | CRM, Portal | ✅ Complete |
+| `/api-get-catalog` | GET | Product catalog | Portal | ✅ Complete |
+| `/api-create-order` | POST | Submit orders | Portal | ✅ Complete |
+| `/webhook-dispatcher` | POST | Event distribution | All | ✅ Complete |
+
+### API Endpoints (Planned)
 
 | Endpoint | Method | Purpose | Consumer |
 |----------|--------|---------|----------|
-| `/get-inventory-summary` | GET | Stock levels | CRM, Portal |
 | `/get-customer-orders` | GET | Order history | CRM, Portal |
-| `/create-order-external` | POST | Submit orders | Portal |
-| `/get-catalog-public` | GET | Product catalog | Portal |
 | `/check-availability` | GET | Real-time stock | Portal |
 | `/sync-customer-from-crm` | POST | Customer data | CRM |
 | `/metrics` | GET | Health/usage | Ops Console |
 
-### Webhook Events Required
+### Webhook Events (Planned)
 
 | Event | Payload | Subscribers |
 |-------|---------|-------------|
@@ -159,14 +202,13 @@ The textile and leather wholesale industry operates with:
 | `inventory.low_stock` | Product, quantity | CRM, Ops Console |
 | `inventory.updated` | Product, delta | Portal |
 
-### Data Mapping
+### OpenAPI Specification
 
-| Entity | WMS Field | CRM Field | Sync Direction |
-|--------|-----------|-----------|----------------|
-| Customer | external_customer_id | customer_id | CRM → WMS |
-| Customer Name | customer_name | customer_name | CRM → WMS |
-| Credit Limit | customer_credit_limit | credit_limit | CRM → WMS |
-| Order Total | calculated | total_orders_value | WMS → CRM |
+Full API documentation available at `public/openapi.yaml`:
+- OpenAPI 3.0.3 compliant
+- Bearer token authentication
+- Complete request/response schemas
+- Error response definitions
 
 ---
 
@@ -174,14 +216,14 @@ The textile and leather wholesale industry operates with:
 
 ### Performance Requirements
 
-| Metric | Requirement | Current |
-|--------|-------------|---------|
-| Page Load Time | < 2 seconds | ✅ Achieved |
-| API Response Time | < 500ms (p95) | ✅ Achieved |
-| Concurrent Users | 50+ simultaneous | ✅ Tested |
-| Database Query Time | < 100ms (simple), < 500ms (complex) | ✅ Achieved |
-| Mobile Performance | Smooth 60fps interactions | ✅ Achieved |
-| Integration API Response | < 1 second | 📅 Planned |
+| Metric | Requirement | Current | Target |
+|--------|-------------|---------|--------|
+| Page Load Time | < 2 seconds | ✅ Achieved | < 1.5s |
+| API Response Time | < 500ms (p95) | ✅ Achieved | < 300ms |
+| Concurrent Users | 50+ simultaneous | ✅ Tested | 100+ |
+| Database Query Time | < 100ms (simple) | ✅ Achieved | - |
+| Mobile Performance | Smooth 60fps | ✅ Achieved | - |
+| Integration API Response | < 1 second | ✅ Achieved | < 500ms |
 
 ### Security Requirements
 
@@ -194,12 +236,13 @@ The textile and leather wholesale industry operates with:
 | **Audit Trail** | Complete action logging | ✅ Complete |
 | **Session Security** | Configurable timeout | ✅ Complete |
 | **IP Restriction** | Admin IP whitelist option | ✅ Complete |
-| **Password Policy** | Strength requirements enforced | ✅ Complete |
-| **MFA/2FA** | Multi-factor authentication | ❌ Not Implemented |
-| **Rate Limiting** | Login attempt limiting | ❌ Not Implemented |
-| **XSS Protection** | DOMPurify sanitization | ❌ Not Implemented |
-| **API Authentication** | Per-app API keys | 📅 Planned |
-| **Webhook Signatures** | HMAC verification | 📅 Planned |
+| **Password Policy** | Configurable strength requirements | ✅ Complete |
+| **XSS Protection** | DOMPurify sanitization | ✅ Complete |
+| **CRON Security** | Secret validation on all functions | ✅ Complete |
+| **API Authentication** | Per-app API keys | ✅ Complete |
+| **Webhook Signatures** | HMAC verification | ✅ Complete |
+| **MFA/2FA** | Multi-factor authentication | 🔄 Components ready |
+| **Rate Limiting** | Login attempt limiting | 🔄 Hook exists |
 
 ### Availability Requirements
 
@@ -254,88 +297,34 @@ The textile and leather wholesale industry operates with:
 | React Pages | 35+ | Route-based views |
 | UI Components | 52 | shadcn/ui base library |
 | Custom Components | 80+ | Feature-specific UI |
-| Custom Hooks | 19 | Reusable logic |
+| Custom Hooks | 25+ | Reusable logic |
 | Context Providers | 5 | Global state |
-| Edge Functions | 33 | Backend logic |
+| Edge Functions | 38 | Backend logic |
 | Database Tables | 55+ | Data storage |
 | Database Functions | 15+ | Business logic |
-| Integration APIs (planned) | 10+ | Ecosystem communication |
+| Integration APIs | 4 | Ecosystem communication |
 
 ---
 
-## 7. Release Plan
-
-### Phase 1: Core WMS ✅ Complete
-
-**Timeline**: Completed  
-**Focus**: Essential warehouse operations
-
-- User management with RBAC
-- Inventory (lots, rolls, suppliers)
-- Order processing
-- QR code system
-- Basic reporting
-
-### Phase 2: Advanced Features 🔄 In Progress
-
-**Timeline**: Current  
-**Focus**: Automation and intelligence
-
-| Feature | Status |
-|---------|--------|
-| AI Order Extraction | ✅ Complete |
-| Manufacturing Orders | ✅ Complete |
-| Reservations | ✅ Complete |
-| Forecasting | ✅ Complete |
-| Stock Take | 🔄 In Progress |
-| Report Builder | 🔄 In Progress |
-| Email System | ✅ Complete |
-
-### Phase 3: Integration Layer 📅 Planned
-
-**Timeline**: Q1 2025  
-**Focus**: Ecosystem connectivity
-
-| Feature | Target |
-|---------|--------|
-| Internal APIs | Month 1 |
-| Webhook Events | Month 1 |
-| CRM Integration | Month 1-2 |
-| Wiki Integration | Month 2 |
-| Portal APIs | Month 2-3 |
-
-### Phase 4: Enterprise & Compliance 📅 Planned
-
-**Timeline**: Q2-Q3 2025  
-**Focus**: Enterprise customers
-
-| Feature | Target |
-|---------|--------|
-| SSO/SAML | Q2 2025 |
-| Advanced RBAC | Q2 2025 |
-| GDPR Data Export | Q2 2025 |
-| Ops Console Metrics | Q2 2025 |
-
----
-
-## 8. Success Metrics & KPIs
+## 7. Success Metrics & KPIs
 
 ### Operational Metrics
 
+| Metric | Current | Target | How Measured |
+|--------|---------|--------|--------------|
+| Orders Processed/Day | - | 50+ | `orders` table count |
+| AI Extraction Accuracy | ~70% | 90% | `po_draft_lines.confidence_score` |
+| OCR Accuracy (clean) | ~70% | 95% | `count_rolls.ocr_confidence_score` |
+| Stock Take Duration | 3 days | 8 hours | `count_sessions` timestamps |
+| Forecast Accuracy | - | 80% | Predicted vs actual demand |
+| System Uptime | - | 99.5% | Supabase monitoring |
+
+### Integration Metrics
+
 | Metric | Target | How Measured |
 |--------|--------|--------------|
-| Orders Processed/Day | 50+ | `orders` table count |
-| AI Extraction Accuracy | > 85% | `po_draft_lines.confidence_score` |
-| Stock Take Duration | < 8 hours | `count_sessions` timestamps |
-| Forecast Accuracy | > 80% | Predicted vs actual demand |
-| System Uptime | > 99.5% | Supabase monitoring |
-
-### Integration Metrics (New)
-
-| Metric | Target | How Measured |
-|--------|--------|--------------|
-| API Uptime | > 99.9% | Edge function monitoring |
-| Webhook Delivery Rate | > 99.5% | Delivery success logs |
+| API Uptime | 99.9% | Edge function monitoring |
+| Webhook Delivery Rate | 99.5% | Delivery success logs |
 | Data Sync Latency | < 5 seconds | Event timestamps |
 | Cross-App API Response | < 500ms | API response times |
 
@@ -344,82 +333,109 @@ The textile and leather wholesale industry operates with:
 | Metric | Target | How Measured |
 |--------|--------|--------------|
 | Daily Active Users | 10+ | Auth session logs |
-| Mobile Usage | > 30% | User agent analysis |
-| Feature Adoption | > 70% per module | Page view analytics |
-| Translation Coverage | 100% | Automated check script |
+| Mobile Usage | 40% | User agent analysis |
+| Feature Adoption | 70% per module | Page view analytics |
+| User Satisfaction | 4.5/5 | In-app feedback |
 
 ---
 
-## 9. Constraints & Assumptions
+## 8. Release Plan
 
-### Constraints
+### Phase 1: Core WMS ✅ Complete
 
-1. **Technology**: Must use React/Supabase stack (existing investment)
-2. **Budget**: Limited external API usage (OpenAI, Vision API)
-3. **Timeline**: Incremental releases, no big-bang deployments
-4. **Team**: Small development team, limited capacity
-5. **Architecture**: Separate projects for CRM, Wiki, Portal (not embedded modules)
+**Status**: Completed  
+**Focus**: Essential warehouse operations
 
-### Assumptions
+- ✅ User management with RBAC
+- ✅ Inventory (lots, rolls, suppliers)
+- ✅ Order processing
+- ✅ QR code system
+- ✅ Basic reporting
+- ✅ Legal compliance
+- ✅ Security hardening
 
-1. Users have reliable internet connection
-2. Modern browsers (Chrome, Safari, Edge - last 2 versions)
-3. Mobile devices can access camera for QR/OCR features
-4. Email delivery via Resend is reliable
-5. Supabase platform remains stable and supported
-6. Ecosystem apps will implement required API consumers
+### Phase 2: Advanced Features 🔄 In Progress
 
-### Dependencies
+**Status**: Current  
+**Focus**: Automation and intelligence
 
-| Dependency | Risk Level | Mitigation |
-|------------|------------|------------|
-| Supabase | Low | Strong SLA, open source fallback |
-| Resend | Low | Alternative email providers available |
-| OpenAI | Medium | Fallback to manual entry |
-| LotAstro CRM | Medium | APIs documented, fallback to manual entry |
-| AI Studio Apps | Medium | Import to Lovable if needed |
+| Feature | Status |
+|---------|--------|
+| AI Order Extraction | 🔄 Needs accuracy fix |
+| Manufacturing Orders | ✅ Complete |
+| Reservations | ✅ Complete |
+| Forecasting | ✅ Complete |
+| Stock Take OCR | 🔄 Needs accuracy fix |
+| Report Builder | 🔄 Needs execution engine |
+| Email System | ✅ Complete |
+| Integration APIs | ✅ Foundation complete |
+
+### Phase 3: Integration Layer 📅 Planned
+
+**Timeline**: Q1 2025  
+**Focus**: Ecosystem connectivity
+
+| Feature | Target |
+|---------|--------|
+| Complete Webhook Events | Week 8-9 |
+| CRM Integration | Week 9-10 |
+| Wiki Integration | Week 10 |
+| Portal APIs | Week 10-11 |
+
+### Phase 4: User Delight 📅 Planned
+
+**Timeline**: Q1 2025  
+**Focus**: Adoption and experience
+
+| Feature | Target |
+|---------|--------|
+| Onboarding Wizard | Week 11 |
+| Analytics Dashboard | Week 12 |
+| Mobile PWA | Week 13 |
+| Performance Polish | Week 14 |
 
 ---
 
-## 10. Production Readiness Status
+## 9. Production Readiness Status
 
 ### Current Assessment
 
 | Category | Status | Score |
 |----------|--------|-------|
-| **Overall Verdict** | ⚠️ Conditionally Ready | 2.9/5 |
-| Engineering & Infrastructure | Good | 3.5/5 |
-| Security | Needs Work | 2.5/5 |
-| Compliance | Critical Gaps | 1.5/5 |
-| Business Continuity | Good | 3.0/5 |
-| UX & Adoption | Excellent | 4.0/5 |
-| Integrations | In Development | 2.5/5 |
+| **Overall Verdict** | ✅ Ready for Production | 3.8/5 |
+| Engineering & Infrastructure | Excellent | 4.0/5 |
+| Security | Good (MFA pending) | 3.5/5 |
+| Compliance | Complete | 4.0/5 |
+| Business Continuity | Good | 3.5/5 |
+| UX & Adoption | Excellent | 4.5/5 |
+| Integrations | Foundation complete | 3.5/5 |
 
-### Critical Blockers
+### Resolved Blockers ✅
+
+| Issue | Category | Status |
+|-------|----------|--------|
+| Missing CRON_SECRET validation | Security | ✅ Fixed |
+| XSS vulnerabilities | Security | ✅ Fixed |
+| Missing Terms of Service | Compliance | ✅ Fixed |
+| Missing Privacy Policy | Compliance | ✅ Fixed |
+| Missing Cookie Consent | Compliance | ✅ Fixed |
+| No session timeout config | Security | ✅ Fixed |
+| No password policy config | Security | ✅ Fixed |
+| No integration APIs | Ecosystem | ✅ Fixed |
+
+### Remaining Improvements
 
 | Issue | Category | Priority |
 |-------|----------|----------|
-| Missing CRON_SECRET validation | Security | P0 |
-| XSS vulnerabilities in email templates | Security | P0 |
-| Missing Terms of Service page | Compliance | P0 |
-| Missing Privacy Policy page | Compliance | P0 |
-| Missing Cookie Consent | Compliance | P0 |
-| No MFA/2FA support | Security | P1 |
-| No login rate limiting | Security | P1 |
-| No integration APIs | Ecosystem | P1 |
-
-### Deployment Model
-
-| Aspect | Current State |
-|--------|---------------|
-| **Architecture** | Single-tenant |
-| **Multi-tenant Support** | Not implemented |
-| **Tenant Isolation** | N/A (single organization) |
-| **Scalability** | Supabase-managed |
+| MFA enforcement for admins | Security | P1 |
+| Rate limiting enforcement | Security | P1 |
+| OCR accuracy improvement | Intelligence | P1 |
+| AI extraction accuracy | Intelligence | P1 |
+| Report execution engine | Intelligence | P1 |
 
 ---
 
-## 11. Glossary
+## 10. Glossary
 
 | Term | Definition |
 |------|------------|
@@ -430,27 +446,21 @@ The textile and leather wholesale industry operates with:
 | **MO** | Manufacturing Order - request to supplier for production |
 | **Reservation** | Stock held for a customer before order confirmation |
 | **Stock Take** | Physical inventory count process |
-| **Draft** | AI-extracted order pending human confirmation |
-| **Catalog Item** | Product definition in the catalog |
-| **Ecosystem** | The collection of LotAstro applications |
-| **Integration API** | Edge function endpoint for ecosystem communication |
-| **Webhook** | Event notification sent to subscriber endpoints |
+| **OCR** | Optical Character Recognition - extract text from images |
+| **Webhook** | HTTP callback for event-driven integration |
+| **OpenAPI** | Specification for describing REST APIs |
 
 ---
 
-## 12. Related Documents
+## 11. Related Documents
 
 | Document | Purpose |
 |----------|---------|
-| [PERSONAS.md](./PERSONAS.md) | User persona definitions |
-| [USER-JOURNEYS.md](./USER-JOURNEYS.md) | Key user journey maps |
-| [ERD.md](./ERD.md) | Database schema documentation |
-| [API.md](./API.md) | API and Edge Function reference |
-| [CONTEXT.md](./CONTEXT.md) | System architecture context |
-| [SECURITY.md](./SECURITY.md) | Security implementation details |
-| [PRODUCTION-READINESS.md](./PRODUCTION-READINESS.md) | Production readiness assessment |
-| [ROADMAP.md](./ROADMAP.md) | Development roadmap |
-| [FEATURES.md](./FEATURES.md) | Feature inventory |
+| [ROADMAP.md](./ROADMAP.md) | Development phases and timeline |
+| [FEATURES.md](./FEATURES.md) | Complete feature inventory |
+| [SECURITY.md](./SECURITY.md) | Security architecture |
+| [API.md](./API.md) | API documentation |
+| [PRODUCTION-READINESS.md](./PRODUCTION-READINESS.md) | Go-live checklist |
 
 ---
 
@@ -458,6 +468,6 @@ The textile and leather wholesale industry operates with:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.0 | 2025-01-10 | Initial PRD creation |
-| 1.1.0 | 2025-01-10 | Added production readiness status and security requirements |
-| 2.0.0 | 2025-12-25 | Multi-project ecosystem architecture; integration requirements; removed embedded CRM/Portal modules |
+| 1.0.0 | 2025-01-10 | Initial PRD |
+| 2.0.0 | 2025-12-25 | Multi-project ecosystem |
+| 3.0.0 | 2025-12-26 | Enterprise vision; Four Pillars; Production ready status updated |
