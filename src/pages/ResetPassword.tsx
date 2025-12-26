@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PasswordStrengthIndicator, { isPasswordValid } from '@/components/PasswordStrengthIndicator';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -46,10 +47,10 @@ const ResetPassword = () => {
       return;
     }
 
-    if (password.length < 6) {
+    if (!isPasswordValid(password)) {
       toast({
-        title: t('passwordTooShort') as string,
-        description: t('passwordMinLength') as string,
+        title: t('passwordTooWeak') as string,
+        description: t('passwordRequirementsNotMet') as string,
         variant: 'destructive',
       });
       return;
@@ -119,6 +120,7 @@ const ResetPassword = () => {
                   )}
                 </Button>
               </div>
+              <PasswordStrengthIndicator password={password} />
             </div>
 
             <div className="space-y-2">

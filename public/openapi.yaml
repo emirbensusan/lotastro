@@ -1,0 +1,631 @@
+openapi: 3.0.3
+info:
+  title: LotAstro Inventory Management API
+  description: |
+    REST API for LotAstro fabric inventory management system.
+    
+    ## Authentication
+    All API requests require authentication via one of:
+    - **API Key**: Pass your key in the `x-api-key` header
+    - **JWT Token**: Pass a Bearer token in the `Authorization` header
+    
+    ## Rate Limiting
+    API requests are rate-limited to 60 requests per minute per API key.
+    Rate limit headers are included in all responses.
+    
+    ## Error Handling
+    All errors return a consistent JSON structure with `success: false` and an `error` message.
+  version: 1.0.0
+  contact:
+    name: LotAstro API Support
+    email: api-support@lotastro.com
+  license:
+    name: Proprietary
+    url: https://lotastro.com/terms
+
+servers:
+  - url: https://kwcwbyfzzordqwudixvl.supabase.co/functions/v1
+    description: Production API Server
+
+tags:
+  - name: Inventory
+    description: Inventory management endpoints
+  - name: Catalog
+    description: Product catalog endpoints
+  - name: Orders
+    description: Order management endpoints
+  - name: Webhooks
+    description: Webhook dispatch and management
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+paths:
+  /api-get-inventory:
+    get:
+      tags:
+        - Inventory
+      summary: Get inventory summary
+      description: |
+        Retrieve inventory summary grouped by quality and color.
+        Returns total meters, available meters, reserved meters, and lot count for each quality/color combination.
+      operationId: getInventory
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: quality
+          in: query
+          description: Filter by quality code (e.g., SELENA, MONTANA)
+          required: false
+          schema:
+            type: string
+            example: SELENA
+        - name: color
+          in: query
+          description: Filter by color name
+          required: false
+          schema:
+            type: string
+            example: Navy Blue
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of results per page
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 500
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api-get-catalog:
+    get:
+      tags:
+        - Catalog
+      summary: Get catalog items
+      description: |
+        Retrieve catalog items with filtering and pagination.
+        Includes fabric details, composition, and supplier information.
+      operationId: getCatalog
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: type
+          in: query
+          description: Filter by item type
+          required: false
+          schema:
+            type: string
+            enum:
+              - fabric
+              - lining
+              - accessory
+        - name: status
+          in: query
+          description: Filter by status
+          required: false
+          schema:
+            type: string
+            enum:
+              - active
+              - pending_approval
+              - inactive
+        - name: code
+          in: query
+          description: Filter by quality code
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Number of results per page
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+        - name: offset
+          in: query
+          description: Number of results to skip
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api-create-order:
+    post:
+      tags:
+        - Orders
+      summary: Create a new order
+      description: |
+        Create a new order with one or more line items.
+        Each line specifies quality, color, meters, and optional roll count.
+      operationId: createOrder
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /webhook-dispatcher:
+    post:
+      tags:
+        - Webhooks
+      summary: Dispatch webhook event
+      description: |
+        Dispatch a webhook event to all registered endpoints.
+        Used for integrating with external systems like CRM, ERP, etc.
+      operationId: dispatchWebhook
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookDispatchRequest'
+      responses:
+        '200':
+          description: Webhook dispatched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDispatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: |
+        API key for external integrations.
+        Obtain from Admin > API Keys.
+        Format: `lot_{service}_{32_char_key}`
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Supabase authentication
+
+  schemas:
+    # Inventory Schemas
+    InventoryItem:
+      type: object
+      properties:
+        quality:
+          type: string
+          description: Quality/fabric code
+          example: SELENA
+        color:
+          type: string
+          description: Color name
+          example: Navy Blue
+        total_meters:
+          type: number
+          format: float
+          description: Total meters in stock
+          example: 2500
+        available_meters:
+          type: number
+          format: float
+          description: Meters available (not reserved)
+          example: 2100
+        reserved_meters:
+          type: number
+          format: float
+          description: Meters reserved for orders
+          example: 400
+        lot_count:
+          type: integer
+          description: Number of lots
+          example: 5
+
+    InventoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+        meta:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total number of results
+              example: 45
+            page:
+              type: integer
+              example: 1
+            limit:
+              type: integer
+              example: 100
+
+    # Catalog Schemas
+    CatalogItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lastro_sku_code:
+          type: string
+          example: FAB-SEL-001
+        code:
+          type: string
+          description: Quality code
+          example: SELENA
+        color_name:
+          type: string
+          example: Navy Blue
+        type:
+          type: string
+          enum:
+            - fabric
+            - lining
+            - accessory
+        status:
+          type: string
+          enum:
+            - active
+            - pending_approval
+            - inactive
+        weight_g_m2:
+          type: number
+          nullable: true
+          example: 280
+        composition:
+          type: object
+          additionalProperties:
+            type: number
+          example:
+            cotton: 95
+            elastane: 5
+        suppliers:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CatalogResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogItem'
+        meta:
+          type: object
+          properties:
+            total:
+              type: integer
+            offset:
+              type: integer
+            limit:
+              type: integer
+
+    # Order Schemas
+    OrderLineRequest:
+      type: object
+      required:
+        - quality
+        - color
+        - meters
+      properties:
+        quality:
+          type: string
+          description: Quality/fabric code
+          example: SELENA
+        color:
+          type: string
+          description: Color name
+          example: Navy Blue
+        meters:
+          type: number
+          format: float
+          minimum: 0.01
+          description: Requested meters
+          example: 500
+        roll_count:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Number of rolls (optional)
+          example: 5
+        notes:
+          type: string
+          nullable: true
+          description: Line-specific notes
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - customer_name
+        - lines
+      properties:
+        customer_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: ACME Textiles
+        po_number:
+          type: string
+          nullable: true
+          description: Customer PO number
+          example: PO-2025-001
+        notes:
+          type: string
+          nullable: true
+          description: Order notes
+          example: Urgent delivery required
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/OrderLineRequest'
+
+    CreateOrderResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        order_id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+          example: ORD-2025-0042
+        lines_created:
+          type: integer
+          example: 1
+
+    # Webhook Schemas
+    WebhookDispatchRequest:
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          description: Event type
+          enum:
+            - order.created
+            - order.updated
+            - order.fulfilled
+            - inventory.low_stock
+            - inventory.updated
+            - lot.received
+            - catalog.updated
+          example: order.created
+        data:
+          type: object
+          description: Event payload data
+          additionalProperties: true
+          example:
+            order_id: 550e8400-e29b-41d4-a716-446655440000
+            customer_name: ACME Textiles
+
+    WebhookDispatchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        dispatched_to:
+          type: integer
+          description: Number of endpoints notified
+          example: 3
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              endpoint:
+                type: string
+                format: uri
+              status:
+                type: integer
+                example: 200
+              error:
+                type: string
+                nullable: true
+
+    # Error Schemas
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Error message
+          example: Invalid request parameters
+        code:
+          type: string
+          nullable: true
+          description: Error code for programmatic handling
+          example: INVALID_PARAMS
+
+    ValidationError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Validation failed
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: lines[0].meters
+              message:
+                type: string
+                example: Must be a positive number
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: Invalid request parameters
+            code: BAD_REQUEST
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: Missing or invalid API key
+            code: UNAUTHORIZED
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: API key does not have required permissions
+            code: FORBIDDEN
+
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Requests allowed per minute
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Requests remaining in current window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: Rate limit exceeded. Try again in 45 seconds.
+            code: RATE_LIMITED
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: An unexpected error occurred
+            code: INTERNAL_ERROR
