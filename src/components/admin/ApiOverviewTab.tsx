@@ -7,7 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   Book, Code, Key, Copy, ExternalLink, CheckCircle, 
-  AlertCircle, Activity, Clock, Zap, ArrowRight
+  AlertCircle, Activity, Clock, Zap, ArrowRight, RefreshCw,
+  Database, Shield, HardDrive, Server
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -21,6 +22,17 @@ interface ApiStats {
   active_webhooks: number;
 }
 
+interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  checks: {
+    database: { status: 'pass' | 'fail'; latency_ms?: number };
+    auth: { status: 'pass' | 'fail'; latency_ms?: number };
+    storage: { status: 'pass' | 'fail'; latency_ms?: number };
+    functions: { status: 'pass' | 'fail'; latency_ms?: number };
+  };
+}
+
 const ApiOverviewTab: React.FC = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -32,10 +44,36 @@ const ApiOverviewTab: React.FC = () => {
     active_webhooks: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
 
   useEffect(() => {
     fetchStats();
+    fetchHealth();
   }, []);
+
+  const fetchHealth = async () => {
+    setHealthLoading(true);
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/health-check`);
+      const data = await response.json();
+      setHealth(data);
+    } catch (error) {
+      console.error('Health check failed:', error);
+      setHealth({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: { status: 'fail' },
+          auth: { status: 'fail' },
+          storage: { status: 'fail' },
+          functions: { status: 'fail' },
+        },
+      });
+    } finally {
+      setHealthLoading(false);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -82,6 +120,73 @@ const ApiOverviewTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* System Health */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              {t('systemHealth')}
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={fetchHealth}
+              disabled={healthLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${healthLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4 mb-4">
+            <Badge 
+              variant={health?.status === 'healthy' ? 'default' : health?.status === 'degraded' ? 'secondary' : 'destructive'}
+              className={health?.status === 'healthy' ? 'bg-emerald-500' : ''}
+            >
+              {health?.status === 'healthy' ? t('allSystemsOperational') : 
+               health?.status === 'degraded' ? t('partialOutage') : t('systemDown')}
+            </Badge>
+            {health?.timestamp && (
+              <span className="text-xs text-muted-foreground">
+                {t('lastChecked')}: {new Date(health.timestamp).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { key: 'database', icon: Database, label: t('healthDatabase') },
+              { key: 'auth', icon: Shield, label: t('healthAuth') },
+              { key: 'storage', icon: HardDrive, label: t('healthStorage') },
+              { key: 'functions', icon: Zap, label: t('healthFunctions') },
+            ].map(({ key, icon: Icon, label }) => {
+              const check = health?.checks?.[key as keyof typeof health.checks];
+              return (
+                <div 
+                  key={key}
+                  className={`flex items-center gap-2 p-2 rounded-lg border ${
+                    check?.status === 'pass' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-destructive/30 bg-destructive/5'
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 ${check?.status === 'pass' ? 'text-emerald-500' : 'text-destructive'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{label}</p>
+                    {check?.latency_ms !== undefined && (
+                      <p className="text-[10px] text-muted-foreground">{check.latency_ms}ms</p>
+                    )}
+                  </div>
+                  {check?.status === 'pass' ? (
+                    <CheckCircle className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>

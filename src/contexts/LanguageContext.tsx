@@ -1841,6 +1841,15 @@ const translations = {
     rateLimits: 'Rate Limits',
     perKeyLimit: 'Per-key configurable',
     configurablePerKey: 'Default: 60 req/min',
+    systemHealth: 'System Health',
+    allSystemsOperational: 'All Systems Operational',
+    partialOutage: 'Partial Outage',
+    systemDown: 'System Down',
+    lastChecked: 'Last checked',
+    healthDatabase: 'Database',
+    healthAuth: 'Auth',
+    healthStorage: 'Storage',
+    healthFunctions: 'Edge Functions',
 
     moFlat: {
       noPermission: 'You do not have permission to view manufacturing orders',
