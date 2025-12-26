@@ -48,11 +48,33 @@ import KVKK from "./pages/KVKK";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { RouteWrapper } from "./components/RouteWrapper";
 import CookieConsent from "./components/CookieConsent";
 
-const queryClient = new QueryClient();
+// Configure QueryClient with retry logic for failed queries
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors (except 429)
+        const message = error instanceof Error ? error.message.toLowerCase() : '';
+        if (message.includes('401') || message.includes('403') || message.includes('404')) {
+          return false;
+        }
+        // Retry up to 3 times for other errors
+        return failureCount < 3;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+    mutations: {
+      retry: 1,
+      retryDelay: 1000,
+    },
+  },
+});
 
-// Protected Route Component
+// Protected Route Component with Error Boundary
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
   
@@ -68,7 +90,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/auth" replace />;
   }
   
-  return <Layout>{children}</Layout>;
+  return (
+    <Layout>
+      <RouteWrapper>
+        {children}
+      </RouteWrapper>
+    </Layout>
+  );
 };
 
 const App = () => (
