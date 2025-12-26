@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, ArrowRightLeft, Package, Link2, Webhook, BarChart3 } from 'lucide-react';
+import { Users, Settings, Database, Shield, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, ArrowRightLeft, Package, Link2, Webhook, BarChart3, Code } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -29,6 +29,7 @@ import StockTakeSettingsTab from '@/components/stocktake/StockTakeSettingsTab';
 import ApiKeyManagementTab from '@/components/admin/ApiKeyManagementTab';
 import WebhookSubscriptionsTab from '@/components/admin/WebhookSubscriptionsTab';
 import ApiUsageDashboardTab from '@/components/admin/ApiUsageDashboardTab';
+import ApiOverviewTab from '@/components/admin/ApiOverviewTab';
 import MFASettings from '@/components/auth/MFASettings';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
@@ -784,6 +785,10 @@ const Admin: React.FC = () => {
           <TabsTrigger value="auditRetention" className="flex-shrink-0">{t('auditRetention')}</TabsTrigger>
           <TabsTrigger value="orderFlow" className="flex-shrink-0">{t('orderFlowSettings')}</TabsTrigger>
           <TabsTrigger value="stocktake" className="flex-shrink-0">{language === 'tr' ? 'Stok Sayım' : 'Stock Take'}</TabsTrigger>
+          <TabsTrigger value="apiOverview" className="flex-shrink-0 flex items-center gap-1">
+            <Code className="h-3 w-3" />
+            {language === 'tr' ? 'API Genel Bakış' : 'API Overview'}
+          </TabsTrigger>
           <TabsTrigger value="apiKeys" className="flex-shrink-0 flex items-center gap-1">
             <Key className="h-3 w-3" />
             {language === 'tr' ? 'API Anahtarları' : 'API Keys'}
@@ -1329,6 +1334,11 @@ const Admin: React.FC = () => {
 
         <TabsContent value="stocktake" className="space-y-6">
           <StockTakeSettingsTab />
+        </TabsContent>
+
+        {/* API Overview Tab */}
+        <TabsContent value="apiOverview" className="space-y-6">
+          <ApiOverviewTab />
         </TabsContent>
 
         {/* API Key Management Tab */}

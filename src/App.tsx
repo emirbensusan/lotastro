@@ -40,6 +40,7 @@ import Catalog from "./pages/Catalog";
 import CatalogDetail from "./pages/CatalogDetail";
 import StockTakeCapture from "./pages/StockTakeCapture";
 import StockTakeReview from "./pages/StockTakeReview";
+import ApiDocs from "./pages/ApiDocs";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Cookies from "./pages/Cookies";
@@ -226,6 +227,12 @@ const App = () => (
               <Route path="/stock-take-review" element={
                 <ProtectedRoute>
                   <StockTakeReview />
+                </ProtectedRoute>
+              } />
+              {/* API Documentation - Protected */}
+              <Route path="/api-docs" element={
+                <ProtectedRoute>
+                  <ApiDocs />
                 </ProtectedRoute>
               } />
               {/* Legal Pages - Public Access */}
