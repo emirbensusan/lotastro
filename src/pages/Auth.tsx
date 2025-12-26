@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
+import { useLoginRateLimit } from '@/hooks/useLoginRateLimit';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Globe, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Globe, Eye, EyeOff, AlertTriangle, Lock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,9 +21,18 @@ const Auth = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  
   const { signIn, user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
+  const { 
+    rateLimitState, 
+    checkRateLimit, 
+    recordAttempt, 
+    formatTimeRemaining,
+    maxAttempts 
+  } = useLoginRateLimit();
 
   useEffect(() => {
     if (user) {
@@ -29,18 +40,78 @@ const Auth = () => {
     }
   }, [user, navigate]);
 
+  // Countdown timer for lockout
+  useEffect(() => {
+    if (rateLimitState.secondsRemaining > 0) {
+      setCountdown(rateLimitState.secondsRemaining);
+    }
+  }, [rateLimitState.secondsRemaining]);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          // Re-check rate limit when countdown expires
+          if (email) {
+            checkRateLimit(email);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [countdown, email, checkRateLimit]);
+
+  // Check rate limit when email changes (debounced)
+  useEffect(() => {
+    if (!email || !email.includes('@')) return;
+    
+    const debounceTimer = setTimeout(() => {
+      checkRateLimit(email);
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [email, checkRateLimit]);
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check rate limit before attempting login
+    const currentState = await checkRateLimit(email);
+    if (currentState.isLocked) {
+      setCountdown(currentState.secondsRemaining);
+      toast({
+        title: t('accountLocked') as string,
+        description: (t('accountLockedDescription') as string).replace('{time}', formatTimeRemaining(currentState.secondsRemaining)),
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     const { error } = await signIn(email, password);
     
     if (error) {
+      // Record failed attempt
+      await recordAttempt(email, false);
+      
       let errorMessage = error.message;
       
       // Handle specific errors with better messaging
       if (error.message.includes('Invalid login credentials')) {
         errorMessage = t('invalidCredentials') as string;
+        
+        // Show remaining attempts warning
+        const updatedState = await checkRateLimit(email);
+        const remaining = maxAttempts - updatedState.failedAttempts;
+        if (remaining > 0 && remaining <= 3) {
+          errorMessage += ` ${(t('attemptsRemaining') as string).replace('{count}', String(remaining))}`;
+        }
       } else if (error.message.includes('Email address') && error.message.includes('invalid')) {
         errorMessage = (t('emailDomainNotAllowed') as string).replace('{domain}', email.split('@')[1]);
       }
@@ -51,6 +122,9 @@ const Auth = () => {
         variant: "destructive",
       });
     } else {
+      // Record successful attempt
+      await recordAttempt(email, true);
+      
       toast({
         title: t('welcomeBackAuth') as string,
         description: t('signInSuccess') as string,
@@ -99,6 +173,7 @@ const Auth = () => {
     }
   };
 
+  const isLocked = rateLimitState.isLocked || countdown > 0;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -128,6 +203,26 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Lockout Warning */}
+          {isLocked && (
+            <Alert variant="destructive" className="mb-4">
+              <Lock className="h-4 w-4" />
+              <AlertDescription className="ml-2">
+                {(t('accountLockedDescription') as string).replace('{time}', formatTimeRemaining(countdown))}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Attempts Warning */}
+          {!isLocked && rateLimitState.failedAttempts > 0 && rateLimitState.failedAttempts < maxAttempts && (
+            <Alert className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="ml-2 text-yellow-700 dark:text-yellow-400">
+                {(t('attemptsRemaining') as string).replace('{count}', String(maxAttempts - rateLimitState.failedAttempts))}
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <form onSubmit={handleSignIn} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="signin-email">{t('email')}</Label>
@@ -137,6 +232,7 @@ const Auth = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLocked}
               />
             </div>
             <div className="space-y-2">
@@ -149,6 +245,7 @@ const Auth = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="pr-10"
+                  disabled={isLocked}
                 />
                 <Button
                   type="button"
@@ -156,6 +253,7 @@ const Auth = () => {
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLocked}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -165,11 +263,16 @@ const Auth = () => {
                 </Button>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || isLocked}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {t('signingIn')}
+                </>
+              ) : isLocked ? (
+                <>
+                  <Lock className="mr-2 h-4 w-4" />
+                  {(t('tryAgainIn') as string).replace('{time}', formatTimeRemaining(countdown))}
                 </>
               ) : (
                 t('signIn')

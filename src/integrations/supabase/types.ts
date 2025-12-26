@@ -2075,6 +2075,30 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          attempted_at: string
+          email: string
+          id: string
+          ip_address: string | null
+          success: boolean
+        }
+        Insert: {
+          attempted_at?: string
+          email: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+        }
+        Update: {
+          attempted_at?: string
+          email?: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+        }
+        Relationships: []
+      }
       lot_queue: {
         Row: {
           color: string
@@ -3521,6 +3545,19 @@ export type Database = {
           reset_at: string
         }[]
       }
+      check_login_rate_limit: {
+        Args: {
+          p_email: string
+          p_lockout_minutes?: number
+          p_max_attempts?: number
+        }
+        Returns: {
+          failed_attempts: number
+          is_locked: boolean
+          lockout_until: string
+          seconds_remaining: number
+        }[]
+      }
       check_user_dependencies: {
         Args: { target_user_id: string }
         Returns: {
@@ -3675,6 +3712,10 @@ export type Database = {
         Returns: undefined
       }
       normalize_quality: { Args: { quality_input: string }; Returns: string }
+      record_login_attempt: {
+        Args: { p_email: string; p_ip_address?: string; p_success: boolean }
+        Returns: undefined
+      }
     }
     Enums: {
       audit_action_type:
