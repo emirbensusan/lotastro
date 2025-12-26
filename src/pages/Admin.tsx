@@ -1453,7 +1453,7 @@ const Admin: React.FC = () => {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password (min 8 characters)"
+                  placeholder={t('enterNewPasswordMinChars') as string}
                 />
               </div>
               <div>
@@ -1463,7 +1463,7 @@ const Admin: React.FC = () => {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
+                  placeholder={t('confirmNewPasswordPlaceholder') as string}
                 />
               </div>
               <div className="flex justify-end space-x-2">

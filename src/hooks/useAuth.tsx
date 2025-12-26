@@ -144,13 +144,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) {
+    // If session not found, it means session was already invalidated
+    // (e.g., after admin password change) - treat as successful logout
+    if (error && !error.message?.includes('session_not_found') && !error.message?.includes('Session not found')) {
       toast({
         title: "Error signing out",
         description: error.message,
         variant: "destructive",
       });
     }
+    // Always clear local state
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setMfaRequired(false);
+    setMfaVerified(false);
   }, []);
 
   const hasRole = (role: string) => {

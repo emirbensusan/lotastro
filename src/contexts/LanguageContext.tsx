@@ -355,6 +355,8 @@ const translations = {
     passwordReqNumber: 'At least 1 number',
     passwordReqSpecial: 'At least 1 special character',
     passwordNotMeetRequirements: 'Password does not meet all requirements',
+    changePasswordFor: 'Change Password for {name}',
+    enterNewPasswordMinChars: 'Enter new password (min 8 characters)',
     
     // 404 Not Found Page
     pageNotFound: 'Page not found',
@@ -3444,6 +3446,8 @@ const translations = {
     passwordReqNumber: 'En az 1 rakam',
     passwordReqSpecial: 'En az 1 özel karakter',
     passwordNotMeetRequirements: 'Şifre tüm gereksinimleri karşılamıyor',
+    changePasswordFor: '{name} için Şifre Değiştir',
+    enterNewPasswordMinChars: 'Yeni şifre girin (min 8 karakter)',
     
     // 404 Not Found Page
     pageNotFound: 'Sayfa bulunamadı',
