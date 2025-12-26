@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.get-report-schema]
 verify_jwt = true
+
+[functions.health-check]
+verify_jwt = false
