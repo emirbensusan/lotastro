@@ -302,6 +302,12 @@ const translations = {
     resetEmailSentDescription: 'Check your email for a link to reset your password',
     resetEmailFailed: 'Reset Email Failed',
     
+    // Login Rate Limiting
+    accountLocked: 'Account Temporarily Locked',
+    accountLockedDescription: 'Too many failed login attempts. Please try again in {time}.',
+    attemptsRemaining: '{count} attempts remaining before lockout',
+    tryAgainIn: 'Try again in {time}',
+    
     // Reset Password Page
     enterNewPasswordBelow: 'Enter your new password below',
     newPassword: 'New Password',
@@ -3392,6 +3398,12 @@ const translations = {
     resetEmailSent: 'Sıfırlama E-postası Gönderildi',
     resetEmailSentDescription: 'Şifrenizi sıfırlamak için e-postanızı kontrol edin',
     resetEmailFailed: 'Sıfırlama E-postası Gönderilemedi',
+    
+    // Login Rate Limiting
+    accountLocked: 'Hesap Geçici Olarak Kilitlendi',
+    accountLockedDescription: 'Çok fazla başarısız giriş denemesi. Lütfen {time} sonra tekrar deneyin.',
+    attemptsRemaining: 'Kilitlenmeden önce {count} deneme hakkı kaldı',
+    tryAgainIn: '{time} sonra tekrar deneyin',
     
     // Reset Password Page
     enterNewPasswordBelow: 'Yeni şifrenizi aşağıya girin',
