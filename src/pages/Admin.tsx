@@ -781,6 +781,14 @@ const Admin: React.FC = () => {
           <TabsTrigger value="users" className="flex-shrink-0">{t('userManagement')}</TabsTrigger>
           <TabsTrigger value="permissions" className="flex-shrink-0">{t('permissions')}</TabsTrigger>
           <TabsTrigger value="security" className="flex-shrink-0">{t('security')}</TabsTrigger>
+          <TabsTrigger value="sessionSettings" className="flex-shrink-0 flex items-center gap-1">
+            <Settings className="h-3 w-3" />
+            {language === 'tr' ? 'Oturum Ayarları' : 'Session Settings'}
+          </TabsTrigger>
+          <TabsTrigger value="passwordPolicy" className="flex-shrink-0 flex items-center gap-1">
+            <Shield className="h-3 w-3" />
+            {language === 'tr' ? 'Şifre Politikası' : 'Password Policy'}
+          </TabsTrigger>
           <TabsTrigger value="catalog" className="flex-shrink-0">{t('catalog.settings')}</TabsTrigger>
           <TabsTrigger value="emailTemplates" className="flex-shrink-0">{t('emailSettings.emailTemplates')}</TabsTrigger>
           <TabsTrigger value="reminderSettings" className="flex-shrink-0">{t('emailSettings.reminderSettings')}</TabsTrigger>
@@ -1380,6 +1388,16 @@ const Admin: React.FC = () => {
 
         <TabsContent value="auditRetention" className="space-y-6">
           <AuditRetentionSettings />
+        </TabsContent>
+
+        {/* Session Settings Tab */}
+        <TabsContent value="sessionSettings" className="space-y-6">
+          <SessionSettingsTab />
+        </TabsContent>
+
+        {/* Password Policy Tab */}
+        <TabsContent value="passwordPolicy" className="space-y-6">
+          <PasswordPolicyTab />
         </TabsContent>
       </Tabs>
 
