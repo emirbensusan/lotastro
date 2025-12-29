@@ -844,6 +844,45 @@ export type Database = {
         }
         Relationships: []
       }
+      database_export_logs: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          export_type: string
+          exported_by: string
+          file_size_bytes: number | null
+          id: string
+          row_counts: Json | null
+          started_at: string
+          status: string
+          tables_included: string[]
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          export_type: string
+          exported_by: string
+          file_size_bytes?: number | null
+          id?: string
+          row_counts?: Json | null
+          started_at?: string
+          status?: string
+          tables_included: string[]
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          export_type?: string
+          exported_by?: string
+          file_size_bytes?: number | null
+          id?: string
+          row_counts?: Json | null
+          started_at?: string
+          status?: string
+          tables_included?: string[]
+        }
+        Relationships: []
+      }
       demand_history: {
         Row: {
           amount: number
@@ -2075,6 +2114,54 @@ export type Database = {
           },
         ]
       }
+      inventory_snapshots: {
+        Row: {
+          by_color: Json | null
+          by_quality: Json | null
+          by_quality_color: Json | null
+          by_status: Json | null
+          created_at: string
+          id: string
+          lot_details: Json | null
+          snapshot_date: string
+          total_available_meters: number
+          total_lots: number
+          total_meters: number
+          total_reserved_meters: number
+          total_rolls: number
+        }
+        Insert: {
+          by_color?: Json | null
+          by_quality?: Json | null
+          by_quality_color?: Json | null
+          by_status?: Json | null
+          created_at?: string
+          id?: string
+          lot_details?: Json | null
+          snapshot_date: string
+          total_available_meters?: number
+          total_lots?: number
+          total_meters?: number
+          total_reserved_meters?: number
+          total_rolls?: number
+        }
+        Update: {
+          by_color?: Json | null
+          by_quality?: Json | null
+          by_quality_color?: Json | null
+          by_status?: Json | null
+          created_at?: string
+          id?: string
+          lot_details?: Json | null
+          snapshot_date?: string
+          total_available_meters?: number
+          total_lots?: number
+          total_meters?: number
+          total_reserved_meters?: number
+          total_rolls?: number
+        }
+        Relationships: []
+      }
       login_attempts: {
         Row: {
           attempted_at: string
@@ -2555,6 +2642,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      order_snapshots: {
+        Row: {
+          by_customer: Json | null
+          by_status: Json | null
+          created_at: string
+          fulfilled_meters: number
+          fulfilled_orders: number
+          id: string
+          order_details: Json | null
+          pending_meters: number
+          pending_orders: number
+          snapshot_date: string
+          total_orders: number
+        }
+        Insert: {
+          by_customer?: Json | null
+          by_status?: Json | null
+          created_at?: string
+          fulfilled_meters?: number
+          fulfilled_orders?: number
+          id?: string
+          order_details?: Json | null
+          pending_meters?: number
+          pending_orders?: number
+          snapshot_date: string
+          total_orders?: number
+        }
+        Update: {
+          by_customer?: Json | null
+          by_status?: Json | null
+          created_at?: string
+          fulfilled_meters?: number
+          fulfilled_orders?: number
+          id?: string
+          order_details?: Json | null
+          pending_meters?: number
+          pending_orders?: number
+          snapshot_date?: string
+          total_orders?: number
+        }
+        Relationships: []
       }
       orders: {
         Row: {
@@ -3091,6 +3220,48 @@ export type Database = {
           },
         ]
       }
+      reservation_snapshots: {
+        Row: {
+          active_count: number
+          by_customer: Json | null
+          by_status: Json | null
+          canceled_count: number
+          converted_count: number
+          created_at: string
+          expiring_7_days: number
+          id: string
+          reservation_details: Json | null
+          snapshot_date: string
+          total_reserved_meters: number
+        }
+        Insert: {
+          active_count?: number
+          by_customer?: Json | null
+          by_status?: Json | null
+          canceled_count?: number
+          converted_count?: number
+          created_at?: string
+          expiring_7_days?: number
+          id?: string
+          reservation_details?: Json | null
+          snapshot_date: string
+          total_reserved_meters?: number
+        }
+        Update: {
+          active_count?: number
+          by_customer?: Json | null
+          by_status?: Json | null
+          canceled_count?: number
+          converted_count?: number
+          created_at?: string
+          expiring_7_days?: number
+          id?: string
+          reservation_details?: Json | null
+          snapshot_date?: string
+          total_reserved_meters?: number
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
           cancel_other_text: string | null
@@ -3314,6 +3485,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      snapshot_settings: {
+        Row: {
+          created_at: string
+          id: string
+          include_color_breakdown: boolean
+          include_customer_breakdown: boolean
+          include_lot_details: boolean
+          include_quality_breakdown: boolean
+          is_enabled: boolean
+          last_snapshot_at: string | null
+          last_snapshot_error: string | null
+          last_snapshot_status: string | null
+          retention_years: number
+          snapshot_time_utc: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          include_color_breakdown?: boolean
+          include_customer_breakdown?: boolean
+          include_lot_details?: boolean
+          include_quality_breakdown?: boolean
+          is_enabled?: boolean
+          last_snapshot_at?: string | null
+          last_snapshot_error?: string | null
+          last_snapshot_status?: string | null
+          retention_years?: number
+          snapshot_time_utc?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          include_color_breakdown?: boolean
+          include_customer_breakdown?: boolean
+          include_lot_details?: boolean
+          include_quality_breakdown?: boolean
+          is_enabled?: boolean
+          last_snapshot_at?: string | null
+          last_snapshot_error?: string | null
+          last_snapshot_status?: string | null
+          retention_years?: number
+          snapshot_time_utc?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {
