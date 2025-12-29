@@ -33,6 +33,7 @@ import ApiOverviewTab from '@/components/admin/ApiOverviewTab';
 import SessionSettingsTab from '@/components/admin/SessionSettingsTab';
 import PasswordPolicyTab from '@/components/admin/PasswordPolicyTab';
 import MFASettings from '@/components/auth/MFASettings';
+import MFAEnrollmentBanner from '@/components/auth/MFAEnrollmentBanner';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
@@ -814,6 +815,12 @@ const Admin: React.FC = () => {
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
+          {/* MFA Enforcement Banner for Admins */}
+          <MFAEnrollmentBanner 
+            dismissible={true}
+            message="For security, administrators should enable Two-Factor Authentication (MFA). This protects your account and prevents unauthorized access to admin features."
+          />
+          
           {/* Overview Cards */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
