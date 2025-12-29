@@ -51,6 +51,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaVerified, setMfaVerified] = useState(false);
 
+  // Check MFA assurance level for a session
+  const checkMfaStatus = async (session: Session) => {
+    try {
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {
+        // User has MFA enrolled but hasn't verified in this session
+        setMfaRequired(true);
+        setMfaVerified(false);
+      } else if (aalData?.currentLevel === 'aal2') {
+        // MFA is verified
+        setMfaRequired(false);
+        setMfaVerified(true);
+      } else {
+        // No MFA enrolled
+        setMfaRequired(false);
+        setMfaVerified(true);
+      }
+    } catch (error) {
+      console.error('Error checking MFA status:', error);
+      // Default to verified if check fails
+      setMfaVerified(true);
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -59,23 +83,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer profile fetch to avoid deadlock
+          // Defer profile fetch and MFA check to avoid deadlock
           setTimeout(() => {
             fetchUserProfile(session.user.id);
+            checkMfaStatus(session);
           }, 0);
         } else {
           setProfile(null);
+          setMfaRequired(false);
+          setMfaVerified(false);
         }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
         fetchUserProfile(session.user.id);
+        await checkMfaStatus(session);
       }
       setLoading(false);
     });
