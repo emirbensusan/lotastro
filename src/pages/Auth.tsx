@@ -12,6 +12,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Loader2, Globe, Eye, EyeOff, AlertTriangle, Lock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import MFAVerify from '@/components/auth/MFAVerify';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -22,8 +23,9 @@ const Auth = () => {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [showMfaVerify, setShowMfaVerify] = useState(false);
   
-  const { signIn, user } = useAuth();
+  const { signIn, signOut, user, mfaRequired, mfaVerified, completeMfaVerification } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const { 
@@ -34,11 +36,19 @@ const Auth = () => {
     maxAttempts 
   } = useLoginRateLimit();
 
+  // Redirect to home only if user is authenticated AND MFA is verified (or not required)
   useEffect(() => {
-    if (user) {
+    if (user && mfaVerified) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, mfaVerified, navigate]);
+
+  // Show MFA screen if required
+  useEffect(() => {
+    if (user && mfaRequired && !mfaVerified) {
+      setShowMfaVerify(true);
+    }
+  }, [user, mfaRequired, mfaVerified]);
 
   // Countdown timer for lockout
   useEffect(() => {
@@ -94,7 +104,7 @@ const Auth = () => {
     
     setLoading(true);
 
-    const { error } = await signIn(email, password);
+    const { error, mfaRequired: needsMfa } = await signIn(email, password);
     
     if (error) {
       // Record failed attempt
@@ -121,6 +131,13 @@ const Auth = () => {
         description: errorMessage,
         variant: "destructive",
       });
+    } else if (needsMfa) {
+      // MFA is required - show MFA verification screen
+      setShowMfaVerify(true);
+      toast({
+        title: t('mfaRequired') as string || 'MFA Required',
+        description: t('mfaRequiredDescription') as string || 'Please enter your verification code',
+      });
     } else {
       // Record successful attempt
       await recordAttempt(email, true);
@@ -133,6 +150,21 @@ const Auth = () => {
     }
     
     setLoading(false);
+  };
+
+  const handleMfaVerificationComplete = () => {
+    completeMfaVerification();
+    setShowMfaVerify(false);
+    toast({
+      title: t('welcomeBackAuth') as string,
+      description: t('signInSuccess') as string,
+    });
+    navigate('/');
+  };
+
+  const handleMfaCancel = async () => {
+    setShowMfaVerify(false);
+    await signOut();
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -174,6 +206,18 @@ const Auth = () => {
   };
 
   const isLocked = rateLimitState.isLocked || countdown > 0;
+
+  // Show MFA verification screen
+  if (showMfaVerify) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <MFAVerify 
+          onVerificationComplete={handleMfaVerificationComplete}
+          onCancel={handleMfaCancel}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

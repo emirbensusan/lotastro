@@ -106,7 +106,7 @@ const queryClient = new QueryClient({
 
 // Protected Route Component with Error Boundary
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, mfaRequired, mfaVerified } = useAuth();
   
   if (loading) {
     return (
@@ -117,6 +117,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
   
   if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  // If MFA is required but not verified, redirect to auth for MFA completion
+  if (mfaRequired && !mfaVerified) {
     return <Navigate to="/auth" replace />;
   }
   
