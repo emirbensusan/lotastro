@@ -51,9 +51,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaVerified, setMfaVerified] = useState(false);
 
-  // Check MFA assurance level for a session
-  const checkMfaStatus = async (session: Session) => {
+  // Fetch role-based MFA requirements from system settings
+  const fetchMfaRoleSettings = async (): Promise<Record<string, boolean>> => {
     try {
+      const { data } = await (supabase
+        .from('system_settings' as any)
+        .select('setting_value')
+        .eq('setting_key', 'session_config')
+        .maybeSingle() as unknown as Promise<{ data: { setting_value: { mfa_required_roles?: Record<string, boolean> } } | null; error: any }>);
+      
+      return data?.setting_value?.mfa_required_roles || {
+        admin: true,
+        senior_manager: true,
+        accounting: true,
+        warehouse_staff: false,
+      };
+    } catch (error) {
+      console.error('Error fetching MFA role settings:', error);
+      // Default: require MFA for privileged roles
+      return { admin: true, senior_manager: true, accounting: true, warehouse_staff: false };
+    }
+  };
+
+  // Check MFA assurance level for a session, considering role requirements
+  const checkMfaStatus = async (session: Session, userRole?: string) => {
+    try {
+      // First check if user's role requires MFA
+      const mfaRoleSettings = await fetchMfaRoleSettings();
+      const roleRequiresMfa = userRole ? mfaRoleSettings[userRole] ?? false : false;
+      
+      // If role doesn't require MFA, skip enforcement
+      if (!roleRequiresMfa) {
+        setMfaRequired(false);
+        setMfaVerified(true);
+        return;
+      }
+      
+      // Role requires MFA - check AAL
       const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {
         // User has MFA enrolled but hasn't verified in this session
@@ -64,7 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMfaRequired(false);
         setMfaVerified(true);
       } else {
-        // No MFA enrolled
+        // No MFA enrolled - for roles that require it, we still allow access
+        // but the MFAEnrollmentBanner will prompt them to set it up
         setMfaRequired(false);
         setMfaVerified(true);
       }
@@ -84,9 +119,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           // Defer profile fetch and MFA check to avoid deadlock
-          setTimeout(() => {
-            fetchUserProfile(session.user.id);
-            checkMfaStatus(session);
+          setTimeout(async () => {
+            const profileData = await fetchUserProfile(session.user.id);
+            if (profileData?.role) {
+              checkMfaStatus(session, profileData.role);
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -102,8 +139,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchUserProfile(session.user.id);
-        await checkMfaStatus(session);
+        const profileData = await fetchUserProfile(session.user.id);
+        if (profileData?.role) {
+          await checkMfaStatus(session, profileData.role);
+        }
       }
       setLoading(false);
     });
@@ -111,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string): Promise<Profile | null> => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -121,8 +160,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       setProfile(data);
+      return data;
     } catch (error) {
       console.error('Error fetching profile:', error);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -134,13 +175,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
     });
     
-    if (!error && data.session) {
-      // Check MFA assurance level
-      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {
-        setMfaRequired(true);
-        setMfaVerified(false);
-        return { error: null, mfaRequired: true };
+    if (!error && data.session && data.user) {
+      // Fetch profile to get user role
+      const profileData = await fetchUserProfile(data.user.id);
+      
+      // Check MFA requirements based on role
+      const mfaRoleSettings = await fetchMfaRoleSettings();
+      const roleRequiresMfa = profileData?.role ? mfaRoleSettings[profileData.role] ?? false : false;
+      
+      if (roleRequiresMfa) {
+        // Check MFA assurance level
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {
+          setMfaRequired(true);
+          setMfaVerified(false);
+          return { error: null, mfaRequired: true };
+        }
       }
       setMfaVerified(true);
     }

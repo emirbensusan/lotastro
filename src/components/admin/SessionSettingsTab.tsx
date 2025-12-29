@@ -7,21 +7,35 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Clock, AlertTriangle, Save } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, Clock, Shield, Save } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+
+interface MfaRequiredRoles {
+  admin: boolean;
+  senior_manager: boolean;
+  accounting: boolean;
+  warehouse_staff: boolean;
+}
 
 interface SessionSettings {
   timeout_minutes: number;
   warning_minutes: number;
   strict_timeout: boolean;
-  require_mfa_for_admin: boolean;
+  mfa_required_roles: MfaRequiredRoles;
 }
+
+const DEFAULT_MFA_ROLES: MfaRequiredRoles = {
+  admin: true,
+  senior_manager: true,
+  accounting: true,
+  warehouse_staff: false,
+};
 
 const DEFAULT_SETTINGS: SessionSettings = {
   timeout_minutes: 30,
   warning_minutes: 5,
   strict_timeout: false,
-  require_mfa_for_admin: true,
+  mfa_required_roles: DEFAULT_MFA_ROLES,
 };
 
 const SessionSettingsTab: React.FC = () => {
@@ -182,36 +196,81 @@ const SessionSettingsTab: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            {t('mfaSettings')}
+            <Shield className="h-5 w-5" />
+            {t('mfaRequirementsByRole')}
           </CardTitle>
           <CardDescription>
-            {t('mfaSettingsDescription')}
+            {t('mfaRequirementsByRoleDescription')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Require MFA for Admin */}
+        <CardContent className="space-y-3">
+          {/* Admin */}
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
-              <Label>{t('requireMfaForAdmin')}</Label>
+              <div className="flex items-center gap-2">
+                <Label>{t('admin')}</Label>
+                <Badge variant="destructive" className="text-xs">{t('fullAccess')}</Badge>
+              </div>
               <p className="text-sm text-muted-foreground">
-                {t('requireMfaForAdminDescription')}
+                {t('adminMfaDescription')}
               </p>
             </div>
             <Switch
-              checked={settings.require_mfa_for_admin}
-              onCheckedChange={(checked) => updateSetting('require_mfa_for_admin', checked)}
+              checked={settings.mfa_required_roles.admin}
+              onCheckedChange={(checked) => updateSetting('mfa_required_roles', { ...settings.mfa_required_roles, admin: checked })}
             />
           </div>
 
-          {settings.require_mfa_for_admin && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                {t('mfaRequiredWarning')}
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* Senior Manager */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Label>{t('seniorManager')}</Label>
+                <Badge variant="secondary" className="text-xs">{t('approvalAccess')}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('seniorManagerMfaDescription')}
+              </p>
+            </div>
+            <Switch
+              checked={settings.mfa_required_roles.senior_manager}
+              onCheckedChange={(checked) => updateSetting('mfa_required_roles', { ...settings.mfa_required_roles, senior_manager: checked })}
+            />
+          </div>
+
+          {/* Accounting */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Label>{t('accounting')}</Label>
+                <Badge variant="secondary" className="text-xs">{t('financialAccess')}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('accountingMfaDescription')}
+              </p>
+            </div>
+            <Switch
+              checked={settings.mfa_required_roles.accounting}
+              onCheckedChange={(checked) => updateSetting('mfa_required_roles', { ...settings.mfa_required_roles, accounting: checked })}
+            />
+          </div>
+
+          {/* Warehouse Staff */}
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Label>{t('warehouseStaff')}</Label>
+                <Badge variant="outline" className="text-xs">{t('limitedAccess')}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('warehouseStaffMfaDescription')}
+              </p>
+            </div>
+            <Switch
+              checked={settings.mfa_required_roles.warehouse_staff}
+              onCheckedChange={(checked) => updateSetting('mfa_required_roles', { ...settings.mfa_required_roles, warehouse_staff: checked })}
+            />
+          </div>
         </CardContent>
       </Card>
 

@@ -7,6 +7,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import MFAEnroll from './MFAEnroll';
 
+interface MfaRequiredRoles {
+  admin: boolean;
+  senior_manager: boolean;
+  accounting: boolean;
+  warehouse_staff: boolean;
+}
+
 interface MFAEnrollmentBannerProps {
   /** If true, shows a dismissible banner. If false, shows a blocking dialog */
   dismissible?: boolean;
@@ -15,8 +22,8 @@ interface MFAEnrollmentBannerProps {
 }
 
 /**
- * Banner/Dialog that prompts admin users to set up MFA if they haven't already.
- * For security, admins should have MFA enabled.
+ * Banner/Dialog that prompts users to set up MFA if their role requires it.
+ * Checks system settings to determine which roles need MFA.
  */
 const MFAEnrollmentBanner: React.FC<MFAEnrollmentBannerProps> = ({
   dismissible = true,
@@ -27,10 +34,45 @@ const MFAEnrollmentBanner: React.FC<MFAEnrollmentBannerProps> = ({
   const [loading, setLoading] = useState(true);
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [roleRequiresMfa, setRoleRequiresMfa] = useState(false);
 
   useEffect(() => {
-    checkMFAStatus();
-  }, []);
+    if (profile?.role) {
+      checkMfaRequirements();
+    }
+  }, [profile?.role]);
+
+  const checkMfaRequirements = async () => {
+    try {
+      // Fetch role-based MFA settings
+      const { data: settingsData } = await (supabase
+        .from('system_settings' as any)
+        .select('setting_value')
+        .eq('setting_key', 'session_config')
+        .maybeSingle() as unknown as Promise<{ data: { setting_value: { mfa_required_roles?: MfaRequiredRoles } } | null; error: any }>);
+      
+      const mfaRoles = settingsData?.setting_value?.mfa_required_roles || {
+        admin: true,
+        senior_manager: true,
+        accounting: true,
+        warehouse_staff: false,
+      };
+      
+      const userRole = profile?.role as keyof MfaRequiredRoles;
+      const requiresMfa = userRole ? mfaRoles[userRole] ?? false : false;
+      setRoleRequiresMfa(requiresMfa);
+      
+      // Only check MFA status if role requires it
+      if (requiresMfa) {
+        await checkMFAStatus();
+      } else {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error checking MFA requirements:', error);
+      setLoading(false);
+    }
+  };
 
   const checkMFAStatus = async () => {
     try {
@@ -58,8 +100,8 @@ const MFAEnrollmentBanner: React.FC<MFAEnrollmentBannerProps> = ({
     setHasMFA(true);
   };
 
-  // Only show for admin users without MFA
-  if (loading || hasMFA !== false || profile?.role !== 'admin') {
+  // Only show for users whose role requires MFA and don't have it set up
+  if (loading || hasMFA !== false || !roleRequiresMfa) {
     return null;
   }
 
