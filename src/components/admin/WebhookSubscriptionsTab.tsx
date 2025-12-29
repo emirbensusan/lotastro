@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Webhook, Plus, Trash2, Eye, Loader2, CheckCircle, XCircle, Clock, Copy, ExternalLink } from 'lucide-react';
+import { Webhook, Plus, Trash2, Eye, Loader2, CheckCircle, XCircle, Copy, Play, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,12 +30,13 @@ interface WebhookSubscription {
 interface WebhookDelivery {
   id: string;
   subscription_id: string;
-  event_type: string;
+  event: string;
   payload: Record<string, any>;
-  response_status: number | null;
-  response_body: string | null;
+  status_code: number | null;
+  error_message: string | null;
   delivered_at: string | null;
-  retry_count: number;
+  duration_ms: number | null;
+  success: boolean;
 }
 
 const AVAILABLE_EVENTS = [
@@ -59,6 +60,7 @@ const WebhookSubscriptionsTab: React.FC = () => {
   const [selectedSubscription, setSelectedSubscription] = useState<WebhookSubscription | null>(null);
   const [creating, setCreating] = useState(false);
   const [loadingDeliveries, setLoadingDeliveries] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState<string | null>(null);
 
   const [webhookName, setWebhookName] = useState('');
   const [endpointUrl, setEndpointUrl] = useState('');
@@ -145,6 +147,59 @@ const WebhookSubscriptionsTab: React.FC = () => {
     }
   };
 
+  const handleTestWebhook = async (sub: WebhookSubscription) => {
+    setTestingWebhook(sub.id);
+    try {
+      const testPayload = {
+        event: sub.event_type || 'test.ping',
+        data: {
+          test: true,
+          message: 'This is a test webhook from LotAstro',
+          subscription_id: sub.id,
+          subscription_name: sub.name,
+          timestamp: new Date().toISOString(),
+        },
+      };
+
+      const { data, error } = await supabase.functions.invoke('webhook-dispatcher', {
+        body: testPayload,
+      });
+
+      if (error) throw error;
+
+      if (data?.delivered > 0) {
+        toast({
+          title: 'Test Successful',
+          description: `Webhook delivered to ${sub.endpoint_url}`,
+        });
+      } else if (data?.failed > 0) {
+        toast({
+          title: 'Test Failed',
+          description: 'Webhook delivery failed. Check the delivery history for details.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'No Match',
+          description: 'No active subscriptions matched the test event.',
+          variant: 'default',
+        });
+      }
+
+      // Refresh to show new delivery
+      fetchSubscriptions();
+    } catch (error: any) {
+      console.error('Error testing webhook:', error);
+      toast({
+        title: 'Test Failed',
+        description: error.message || 'Failed to send test webhook',
+        variant: 'destructive',
+      });
+    } finally {
+      setTestingWebhook(null);
+    }
+  };
+
   const handleToggleActive = async (sub: WebhookSubscription) => {
     try {
       const { error } = await supabase.from('webhook_subscriptions').update({ is_active: !sub.is_active }).eq('id', sub.id);
@@ -218,13 +273,33 @@ const WebhookSubscriptionsTab: React.FC = () => {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Registered Webhooks</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Registered Webhooks</CardTitle>
+              <CardDescription>{subscriptions.length} webhook{subscriptions.length !== 1 ? 's' : ''} configured</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchSubscriptions} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
         <CardContent>
           {loading ? <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div> : subscriptions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground"><Webhook className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>No webhooks registered</p></div>
           ) : (
             <Table>
-              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Endpoint</TableHead><TableHead>Event</TableHead><TableHead>Status</TableHead><TableHead>Active</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Endpoint</TableHead>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
                 {subscriptions.map((sub) => (
                   <TableRow key={sub.id}>
@@ -234,10 +309,23 @@ const WebhookSubscriptionsTab: React.FC = () => {
                     <TableCell>{getStatusBadge(sub)}</TableCell>
                     <TableCell><Switch checked={sub.is_active} onCheckedChange={() => handleToggleActive(sub)} /></TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(sub.secret)}><Copy className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => { setSelectedSubscription(sub); fetchDeliveries(sub.id); setDeliveriesDialogOpen(true); }}><Eye className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => { setSelectedSubscription(sub); setDeleteDialogOpen(true); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <div className="flex justify-end gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleTestWebhook(sub)}
+                          disabled={testingWebhook === sub.id || !sub.is_active}
+                          title="Test webhook"
+                        >
+                          {testingWebhook === sub.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => copyToClipboard(sub.secret)} title="Copy secret"><Copy className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setSelectedSubscription(sub); fetchDeliveries(sub.id); setDeliveriesDialogOpen(true); }} title="View deliveries"><Eye className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setSelectedSubscription(sub); setDeleteDialogOpen(true); }} title="Delete"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -249,19 +337,53 @@ const WebhookSubscriptionsTab: React.FC = () => {
       </Card>
 
       <Dialog open={deliveriesDialogOpen} onOpenChange={setDeliveriesDialogOpen}>
-        <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Delivery History</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Delivery History - {selectedSubscription?.name}</DialogTitle>
+            <DialogDescription>Recent webhook deliveries for this subscription</DialogDescription>
+          </DialogHeader>
           {loadingDeliveries ? <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div> : deliveries.length === 0 ? <p className="text-center py-8 text-muted-foreground">No deliveries yet</p> : (
             <ScrollArea className="h-[400px]">
-              <Table><TableHeader><TableRow><TableHead>Status</TableHead><TableHead>Event</TableHead><TableHead>Response</TableHead><TableHead>Retries</TableHead><TableHead>Time</TableHead></TableRow></TableHeader>
-                <TableBody>{deliveries.map((d) => (
-                  <TableRow key={d.id}>
-                    <TableCell>{d.response_status && d.response_status < 300 ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-destructive" />}</TableCell>
-                    <TableCell><Badge variant="outline">{d.event_type}</Badge></TableCell>
-                    <TableCell><Badge variant={d.response_status && d.response_status < 300 ? 'default' : 'destructive'}>{d.response_status || 'Pending'}</Badge></TableCell>
-                    <TableCell>{d.retry_count}</TableCell>
-                    <TableCell className="text-muted-foreground">{d.delivered_at ? formatDistanceToNow(new Date(d.delivered_at), { addSuffix: true }) : '-'}</TableCell>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Response</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Time</TableHead>
                   </TableRow>
-                ))}</TableBody>
+                </TableHeader>
+                <TableBody>
+                  {deliveries.map((d) => (
+                    <TableRow key={d.id}>
+                      <TableCell>
+                        {d.success ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        )}
+                      </TableCell>
+                      <TableCell><Badge variant="outline">{d.event}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant={d.status_code && d.status_code < 300 ? 'default' : 'destructive'}>
+                          {d.status_code || 'Error'}
+                        </Badge>
+                        {d.error_message && (
+                          <span className="text-xs text-muted-foreground ml-2 truncate max-w-[100px] block">
+                            {d.error_message}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {d.duration_ms ? `${d.duration_ms}ms` : '-'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {d.delivered_at ? formatDistanceToNow(new Date(d.delivered_at), { addSuffix: true }) : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
             </ScrollArea>
           )}
@@ -269,8 +391,15 @@ const WebhookSubscriptionsTab: React.FC = () => {
       </Dialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Webhook</AlertDialogTitle><AlertDialogDescription>This will stop all event deliveries to this endpoint.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteSubscription} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction></AlertDialogFooter>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Webhook</AlertDialogTitle>
+            <AlertDialogDescription>This will stop all event deliveries to this endpoint.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSubscription} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

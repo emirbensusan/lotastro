@@ -27,6 +27,21 @@ interface CreateOrderInput {
   delivery_date?: string;
   notes?: string;
   lines: OrderLineInput[];
+  validate_catalog?: boolean; // If true, validate lines against catalog
+  strict_validation?: boolean; // If true, fail on any validation error
+}
+
+interface ValidationResult {
+  line_index: number;
+  quality: string;
+  color: string;
+  valid: boolean;
+  catalog_match?: {
+    id: string;
+    lastro_sku_code: string;
+    code: string;
+  };
+  warning?: string;
 }
 
 Deno.serve(async (req) => {
@@ -56,8 +71,8 @@ Deno.serve(async (req) => {
     }
 
     // Check permission
-    if (!hasPermission(validation.permissions, 'create_order')) {
-      return errorResponse('Permission denied: create_order required', 403);
+    if (!hasPermission(validation.permissions, 'create_order') && !hasPermission(validation.permissions, 'orders.create')) {
+      return errorResponse('Permission denied: orders.create required', 403);
     }
 
     // Parse and validate request body
@@ -93,6 +108,69 @@ Deno.serve(async (req) => {
 
     console.log(`[api-create-order] Request from ${validation.service}: customer=${body.customer_name}, lines=${body.lines.length}`);
 
+    // Catalog validation if requested
+    const validationResults: ValidationResult[] = [];
+    const validateCatalog = body.validate_catalog !== false; // Default to true
+    const strictValidation = body.strict_validation === true;
+
+    if (validateCatalog) {
+      console.log('[api-create-order] Validating lines against catalog...');
+      
+      // Fetch catalog items for matching
+      const { data: catalogItems, error: catalogError } = await supabase
+        .from('catalog_items')
+        .select('id, code, color_name, lastro_sku_code, is_active')
+        .eq('is_active', true);
+
+      if (catalogError) {
+        console.error('[api-create-order] Error fetching catalog:', catalogError);
+      }
+
+      for (let i = 0; i < body.lines.length; i++) {
+        const line = body.lines[i];
+        const normalizedQuality = line.quality.trim().toUpperCase();
+        const normalizedColor = line.color.trim().toUpperCase();
+
+        // Try to find matching catalog item
+        const match = catalogItems?.find((item: any) => {
+          const itemCode = item.code?.toUpperCase() || '';
+          const itemColor = item.color_name?.toUpperCase() || '';
+          return itemCode === normalizedQuality && itemColor === normalizedColor;
+        });
+
+        if (match) {
+          validationResults.push({
+            line_index: i,
+            quality: normalizedQuality,
+            color: normalizedColor,
+            valid: true,
+            catalog_match: {
+              id: match.id,
+              lastro_sku_code: match.lastro_sku_code,
+              code: match.code,
+            },
+          });
+        } else {
+          validationResults.push({
+            line_index: i,
+            quality: normalizedQuality,
+            color: normalizedColor,
+            valid: false,
+            warning: `No active catalog item found for quality "${normalizedQuality}" and color "${normalizedColor}"`,
+          });
+        }
+      }
+
+      // Check if we should fail due to validation errors
+      const invalidLines = validationResults.filter(r => !r.valid);
+      if (strictValidation && invalidLines.length > 0) {
+        return errorResponse(
+          `Catalog validation failed for ${invalidLines.length} line(s): ${invalidLines.map(l => `line[${l.line_index}]: ${l.warning}`).join('; ')}`,
+          400
+        );
+      }
+    }
+
     // Generate order number
     const { data: orderNumber } = await supabase.rpc('generate_order_number');
 
@@ -122,15 +200,19 @@ Deno.serve(async (req) => {
       throw orderError;
     }
 
-    // Create order lines
-    const orderLines = body.lines.map((line, index) => ({
-      order_id: order.id,
-      line_number: index + 1,
-      quality: line.quality.trim().toUpperCase(),
-      color: line.color.trim().toUpperCase(),
-      meters: line.meters,
-      notes: line.notes?.trim() || null,
-    }));
+    // Create order lines with catalog item reference if available
+    const orderLines = body.lines.map((line, index) => {
+      const validationResult = validationResults.find(r => r.line_index === index);
+      return {
+        order_id: order.id,
+        line_number: index + 1,
+        quality: line.quality.trim().toUpperCase(),
+        color: line.color.trim().toUpperCase(),
+        meters: line.meters,
+        notes: line.notes?.trim() || null,
+        catalog_item_id: validationResult?.catalog_match?.id || null,
+      };
+    });
 
     const { error: linesError } = await supabase
       .from('order_lines')
@@ -146,6 +228,10 @@ Deno.serve(async (req) => {
     // Calculate total meters
     const totalMeters = body.lines.reduce((sum, line) => sum + line.meters, 0);
 
+    // Count validation warnings
+    const validatedCount = validationResults.filter(r => r.valid).length;
+    const warningCount = validationResults.filter(r => !r.valid).length;
+
     // Format response
     const response = {
       success: true,
@@ -160,7 +246,17 @@ Deno.serve(async (req) => {
         status: 'pending',
         created_at: order.created_at,
       },
-      message: `Order ${orderNumber} created successfully with ${body.lines.length} line(s)`,
+      validation: validateCatalog ? {
+        enabled: true,
+        strict: strictValidation,
+        validated_lines: validatedCount,
+        warning_lines: warningCount,
+        warnings: validationResults.filter(r => !r.valid).map(r => ({
+          line: r.line_index,
+          message: r.warning,
+        })),
+      } : undefined,
+      message: `Order ${orderNumber} created successfully with ${body.lines.length} line(s)${warningCount > 0 ? ` (${warningCount} catalog warnings)` : ''}`,
     };
 
     // Log the request
@@ -173,7 +269,7 @@ Deno.serve(async (req) => {
       Date.now() - startTime
     );
 
-    console.log(`[api-create-order] Created order ${orderNumber} with ${body.lines.length} lines in ${Date.now() - startTime}ms`);
+    console.log(`[api-create-order] Created order ${orderNumber} with ${body.lines.length} lines (${validatedCount} validated, ${warningCount} warnings) in ${Date.now() - startTime}ms`);
 
     return jsonResponse(response, 201);
 

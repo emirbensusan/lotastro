@@ -39,17 +39,26 @@ Deno.serve(async (req) => {
     }
 
     // Check permission
-    if (!hasPermission(validation.permissions, 'read_inventory')) {
-      return errorResponse('Permission denied: read_inventory required', 403);
+    if (!hasPermission(validation.permissions, 'read_inventory') && !hasPermission(validation.permissions, 'inventory.read')) {
+      return errorResponse('Permission denied: inventory.read required', 403);
     }
 
     // Parse query parameters
     const url = new URL(req.url);
     const quality = url.searchParams.get('quality');
     const color = url.searchParams.get('color');
+    const status = url.searchParams.get('status'); // in_stock, low_stock, out_of_stock
+    const minMeters = url.searchParams.get('min_meters');
+    const maxMeters = url.searchParams.get('max_meters');
     const includeIncoming = url.searchParams.get('include_incoming') === 'true';
+    const includeReserved = url.searchParams.get('include_reserved') !== 'false'; // default true
+    
+    // Pagination
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = Math.min(parseInt(url.searchParams.get('page_size') || '100'), 500);
+    const offset = (page - 1) * pageSize;
 
-    console.log(`[api-get-inventory] Request from ${validation.service}: quality=${quality}, color=${color}, includeIncoming=${includeIncoming}`);
+    console.log(`[api-get-inventory] Request from ${validation.service}: quality=${quality}, color=${color}, status=${status}, page=${page}`);
 
     // Get inventory pivot summary
     const { data: inventoryData, error: inventoryError } = await supabase
@@ -60,7 +69,7 @@ Deno.serve(async (req) => {
       throw inventoryError;
     }
 
-    // Filter if quality or color specified
+    // Filter data
     let filteredData = inventoryData || [];
     
     if (quality) {
@@ -76,17 +85,54 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Status filter
+    if (status === 'in_stock') {
+      filteredData = filteredData.filter((item: any) => item.total_meters > 0);
+    } else if (status === 'low_stock') {
+      filteredData = filteredData.filter((item: any) => item.available_meters > 0 && item.available_meters < 100);
+    } else if (status === 'out_of_stock') {
+      filteredData = filteredData.filter((item: any) => item.available_meters <= 0);
+    }
+
+    // Meters range filter
+    if (minMeters) {
+      const min = parseFloat(minMeters);
+      filteredData = filteredData.filter((item: any) => item.available_meters >= min);
+    }
+    if (maxMeters) {
+      const max = parseFloat(maxMeters);
+      filteredData = filteredData.filter((item: any) => item.available_meters <= max);
+    }
+
+    const totalCount = filteredData.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    
+    // Apply pagination
+    const paginatedData = filteredData.slice(offset, offset + pageSize);
+
     // Format response
     const response = {
       success: true,
       timestamp: new Date().toISOString(),
-      count: filteredData.length,
+      count: paginatedData.length,
+      total_count: totalCount,
+      pagination: {
+        page,
+        page_size: pageSize,
+        total_pages: totalPages,
+        has_next: page < totalPages,
+        has_prev: page > 1,
+      },
       filters: {
         quality: quality || null,
         color: color || null,
+        status: status || null,
+        min_meters: minMeters ? parseFloat(minMeters) : null,
+        max_meters: maxMeters ? parseFloat(maxMeters) : null,
         include_incoming: includeIncoming,
+        include_reserved: includeReserved,
       },
-      data: filteredData.map((item: any) => ({
+      data: paginatedData.map((item: any) => ({
         quality: item.quality,
         normalized_quality: item.normalized_quality,
         color: item.color,
@@ -94,7 +140,9 @@ Deno.serve(async (req) => {
         in_stock_rolls: item.total_rolls || 0,
         lot_count: item.lot_count || 0,
         incoming_meters: includeIncoming ? (item.incoming_meters || 0) : undefined,
-        reserved_meters: item.total_reserved_meters || 0,
+        physical_reserved_meters: includeReserved ? (item.physical_reserved_meters || 0) : undefined,
+        incoming_reserved_meters: includeReserved ? (item.incoming_reserved_meters || 0) : undefined,
+        total_reserved_meters: includeReserved ? (item.total_reserved_meters || 0) : undefined,
         available_meters: item.available_meters || 0,
       })),
     };
@@ -109,7 +157,7 @@ Deno.serve(async (req) => {
       Date.now() - startTime
     );
 
-    console.log(`[api-get-inventory] Returning ${response.count} items in ${Date.now() - startTime}ms`);
+    console.log(`[api-get-inventory] Returning ${response.count}/${totalCount} items (page ${page}/${totalPages}) in ${Date.now() - startTime}ms`);
 
     return jsonResponse(response);
 

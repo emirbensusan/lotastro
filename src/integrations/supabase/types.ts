@@ -3715,6 +3715,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_webhook_failure: {
+        Args: { p_subscription_id: string }
+        Returns: undefined
+      }
       is_ip_whitelisted: { Args: { check_ip: string }; Returns: boolean }
       log_audit_action: {
         Args: {
