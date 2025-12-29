@@ -814,6 +814,14 @@ const Admin: React.FC = () => {
             <BarChart3 className="h-3 w-3" />
             {language === 'tr' ? 'API Kullanımı' : 'API Usage'}
           </TabsTrigger>
+          <TabsTrigger value="snapshots" className="flex-shrink-0 flex items-center gap-1">
+            <Camera className="h-3 w-3" />
+            {language === 'tr' ? 'Anlık Görüntüler' : 'Snapshots'}
+          </TabsTrigger>
+          <TabsTrigger value="dbExport" className="flex-shrink-0 flex items-center gap-1">
+            <Download className="h-3 w-3" />
+            {language === 'tr' ? 'Veritabanı Dışa Aktar' : 'Database Export'}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -1407,6 +1415,16 @@ const Admin: React.FC = () => {
         {/* Password Policy Tab */}
         <TabsContent value="passwordPolicy" className="space-y-6">
           <PasswordPolicyTab />
+        </TabsContent>
+
+        {/* Snapshot Settings Tab */}
+        <TabsContent value="snapshots" className="space-y-6">
+          <SnapshotSettingsTab />
+        </TabsContent>
+
+        {/* Database Export Tab */}
+        <TabsContent value="dbExport" className="space-y-6">
+          <DatabaseExportTab />
         </TabsContent>
       </Tabs>
 

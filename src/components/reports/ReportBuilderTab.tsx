@@ -4,10 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { 
   Columns, Filter, ArrowUpDown, Palette, Save, Calculator, 
   Loader2, FileSpreadsheet, Clock, Play, ChevronDown, ChevronUp,
-  AlertCircle, CheckCircle2, X, Plus, GripVertical
+  AlertCircle, CheckCircle2, X, Plus, GripVertical, History, Database
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +32,16 @@ import {
   DEFAULT_REPORT_STYLING,
 } from './reportBuilderTypes';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+
+type DataSourceType = 'live' | 'historical';
+
+interface SnapshotDate {
+  date: string;
+  hasInventory: boolean;
+  hasOrders: boolean;
+  hasReservations: boolean;
+}
 
 interface TableFromAPI {
   table: string;
@@ -114,6 +126,12 @@ const ReportBuilderTab: React.FC = () => {
     },
   });
 
+  // Historical data source
+  const [dataSource, setDataSource] = useState<DataSourceType>('live');
+  const [snapshotDate, setSnapshotDate] = useState<string>('');
+  const [availableSnapshots, setAvailableSnapshots] = useState<SnapshotDate[]>([]);
+  const [loadingSnapshots, setLoadingSnapshots] = useState(false);
+
   // Drag state for selected columns reordering
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -123,6 +141,13 @@ const ReportBuilderTab: React.FC = () => {
     fetchSchema();
   }, []);
 
+  // Fetch available snapshots when data source changes to historical
+  useEffect(() => {
+    if (dataSource === 'historical') {
+      fetchAvailableSnapshots();
+    }
+  }, [dataSource]);
+
   // Validate when columns change
   useEffect(() => {
     if (selectedColumns.length > 1) {
@@ -131,6 +156,35 @@ const ReportBuilderTab: React.FC = () => {
       setValidation({ isValid: true, joinPath: [] });
     }
   }, [selectedColumns]);
+
+  const fetchAvailableSnapshots = async () => {
+    setLoadingSnapshots(true);
+    try {
+      const { data, error } = await supabase
+        .from('inventory_snapshots')
+        .select('snapshot_date')
+        .order('snapshot_date', { ascending: false })
+        .limit(365);
+
+      if (error) throw error;
+
+      const snapshots: SnapshotDate[] = (data || []).map(s => ({
+        date: s.snapshot_date,
+        hasInventory: true,
+        hasOrders: true,
+        hasReservations: true,
+      }));
+
+      setAvailableSnapshots(snapshots);
+      if (snapshots.length > 0 && !snapshotDate) {
+        setSnapshotDate(snapshots[0].date);
+      }
+    } catch (error) {
+      console.error('Error fetching snapshots:', error);
+    } finally {
+      setLoadingSnapshots(false);
+    }
+  };
 
   const fetchSchema = async () => {
     setLoading(true);
@@ -329,8 +383,8 @@ const ReportBuilderTab: React.FC = () => {
 
       const payload = {
         name: reportName,
-        report_type: primaryTable,
-        data_source: primaryTable,
+        report_type: dataSource === 'historical' ? 'historical_snapshot' : primaryTable,
+        data_source: dataSource === 'historical' ? `snapshot:${snapshotDate}` : primaryTable,
         selected_joins: selectedTables.slice(1),
         columns_config: selectedColumns,
         calculated_fields: calculatedFields,
@@ -430,6 +484,52 @@ const ReportBuilderTab: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Data Source Selector */}
+          <div className="flex items-center gap-2 border rounded-md p-1 bg-muted/30">
+            <Button
+              variant={dataSource === 'live' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setDataSource('live')}
+              className="h-7"
+            >
+              <Database className="h-3.5 w-3.5 mr-1" />
+              {language === 'tr' ? 'Canlı' : 'Live'}
+            </Button>
+            <Button
+              variant={dataSource === 'historical' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setDataSource('historical')}
+              className="h-7"
+            >
+              <History className="h-3.5 w-3.5 mr-1" />
+              {language === 'tr' ? 'Geçmiş' : 'Historical'}
+            </Button>
+          </div>
+          {/* Snapshot Date Selector */}
+          {dataSource === 'historical' && (
+            <Select value={snapshotDate} onValueChange={setSnapshotDate}>
+              <SelectTrigger className="w-40 h-9">
+                <SelectValue placeholder={language === 'tr' ? 'Tarih seçin' : 'Select date'} />
+              </SelectTrigger>
+              <SelectContent>
+                {loadingSnapshots ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : availableSnapshots.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    {language === 'tr' ? 'Snapshot bulunamadı' : 'No snapshots available'}
+                  </div>
+                ) : (
+                  availableSnapshots.map((s) => (
+                    <SelectItem key={s.date} value={s.date}>
+                      {format(new Date(s.date), 'dd MMM yyyy')}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          )}
           <Input
             value={reportName}
             onChange={(e) => setReportName(e.target.value)}
