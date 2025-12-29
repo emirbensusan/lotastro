@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Settings, Database, Shield, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, ArrowRightLeft, Package, Link2, Webhook, BarChart3, Code } from 'lucide-react';
+import { Users, Settings, Database, Shield, Edit, Trash2, UserCheck, Key, Loader2, Mail, UserX, Copy, RefreshCw, AlertCircle, CheckCircle2, ArrowRightLeft, Package, Link2, Webhook, BarChart3, Code, Camera, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -34,6 +34,8 @@ import SessionSettingsTab from '@/components/admin/SessionSettingsTab';
 import PasswordPolicyTab from '@/components/admin/PasswordPolicyTab';
 import MFASettings from '@/components/auth/MFASettings';
 import MFAEnrollmentBanner from '@/components/auth/MFAEnrollmentBanner';
+import SnapshotSettingsTab from '@/components/admin/SnapshotSettingsTab';
+import DatabaseExportTab from '@/components/admin/DatabaseExportTab';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
