@@ -15,6 +15,7 @@ import { RouteWrapper } from "./components/RouteWrapper";
 import CookieConsent from "./components/CookieConsent";
 import { OfflineBanner } from "./components/ui/network-status-indicator";
 import { OfflineProvider } from "./contexts/OfflineContext";
+import { TourProvider } from "./components/tour/TourProvider";
 import { Skeleton } from "./components/ui/skeleton";
 
 // Lazy load pages for bundle splitting
@@ -155,7 +156,8 @@ const App = () => (
           <BrowserRouter>
             <AuthProvider>
               <ViewAsRoleProvider>
-                <POCartProvider>
+                <TourProvider>
+                  <POCartProvider>
                     <ErrorBoundary>
                       <Routes>
                         <Route path="/auth" element={<Auth />} />
@@ -217,7 +219,8 @@ const App = () => (
                       <CookieConsent />
                     </ErrorBoundary>
                   </POCartProvider>
-                </ViewAsRoleProvider>
+                </TourProvider>
+              </ViewAsRoleProvider>
               </AuthProvider>
             </BrowserRouter>
           </OfflineProvider>

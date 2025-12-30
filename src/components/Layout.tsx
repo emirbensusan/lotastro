@@ -11,10 +11,16 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import GlobalSearch from '@/components/GlobalSearch';
 import { NetworkStatusIndicator } from '@/components/ui/network-status-indicator';
 import { SyncStatusBadge } from '@/components/offline/SyncStatusBadge';
 import { ConflictResolutionDialog } from '@/components/offline/ConflictResolutionDialog';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { CommandPalette } from '@/components/keyboard/CommandPalette';
+import { ShortcutsHelp } from '@/components/keyboard/ShortcutsHelp';
+import { HelpPanel } from '@/components/help/HelpPanel';
+import { useTour } from '@/components/tour/TourProvider';
 import { useOffline } from '@/contexts/OfflineContext';
 import { 
   Home,
@@ -39,7 +45,9 @@ import {
   TrendingUp,
   BookOpen,
   ClipboardCheck,
-  FileSearch
+  FileSearch,
+  HelpCircle,
+  Keyboard
 } from 'lucide-react';
 import { 
   Sidebar,
@@ -69,7 +77,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
+  const [helpPanelOpen, setHelpPanelOpen] = useState(false);
   const { conflicts, showConflictDialog, setShowConflictDialog, syncStatus, resolveConflict } = useOffline();
+  
+  // Get tour context
+  let tourContext: ReturnType<typeof useTour> | null = null;
+  try {
+    tourContext = useTour();
+  } catch {
+    // TourProvider not available yet
+  }
+  
+  // Initialize keyboard shortcuts
+  useKeyboardShortcuts({
+    onCommandPalette: () => setCommandPaletteOpen(true),
+    onShowShortcuts: () => setShortcutsHelpOpen(true),
+    onClose: () => {
+      setCommandPaletteOpen(false);
+      setShortcutsHelpOpen(false);
+      setHelpPanelOpen(false);
+    },
+    enabled: true
+  });
 
   // Get effective role (viewAsRole if viewing as another role, otherwise actual role)
   const effectiveRole = viewAsRole || profile?.role;
@@ -85,6 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: string;
       icon: any;
       permission: { category: string; action: string };
+      tourId?: string;
     }>;
   }
 
@@ -92,46 +124,46 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     {
       label: String(t('overview')),
       items: [
-        { path: '/', label: String(t('dashboard')), icon: Home, permission: { category: 'reports', action: 'accessdashboard' } },
+        { path: '/', label: String(t('dashboard')), icon: Home, permission: { category: 'reports', action: 'accessdashboard' }, tourId: 'dashboard' },
       ]
     },
     {
       label: String(t('inventoryManagement')),
       items: [
-        { path: '/catalog', label: String(t('catalog.title')), icon: BookOpen, permission: { category: 'catalog', action: 'view' } },
-        { path: '/lot-intake', label: String(t('lotIntake')), icon: PackagePlus, permission: { category: 'inventory', action: 'createlotentries' } },
+        { path: '/catalog', label: String(t('catalog.title')), icon: BookOpen, permission: { category: 'catalog', action: 'view' }, tourId: 'catalog' },
+        { path: '/lot-intake', label: String(t('lotIntake')), icon: PackagePlus, permission: { category: 'inventory', action: 'createlotentries' }, tourId: 'lot-intake' },
         { path: '/lot-queue', label: String(t('lotQueue')), icon: Timer, permission: { category: 'inventory', action: 'viewlotqueue' } },
-        { path: '/inventory', label: String(t('inventory')), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' } },
-        { path: '/incoming-stock', label: String(t('incomingStockLabel')), icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' } },
+        { path: '/inventory', label: String(t('inventory')), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' }, tourId: 'inventory' },
+        { path: '/incoming-stock', label: String(t('incomingStockLabel')), icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' }, tourId: 'incoming-stock' },
         { path: '/manufacturing-orders', label: String(t('mo.title')), icon: Factory, permission: { category: 'inventory', action: 'viewincoming' } },
-        { path: '/forecast', label: String(t('forecast.title') || 'Forecast'), icon: TrendingUp, permission: { category: 'forecasting', action: 'viewforecasts' } },
+        { path: '/forecast', label: String(t('forecast.title') || 'Forecast'), icon: TrendingUp, permission: { category: 'forecasting', action: 'viewforecasts' }, tourId: 'forecast' },
         { path: '/goods-receipt', label: String(t('goodsReceipt')), icon: PackageCheck, permission: { category: 'inventory', action: 'receiveincoming' } },
       ]
     },
     {
       label: String(t('ordersAndReservations')),
       items: [
-        { path: '/orders', label: String(t('orders')), icon: Truck, permission: { category: 'orders', action: 'vieworders' } },
-        { path: '/reservations', label: String(t('reservations')), icon: Calendar, permission: { category: 'orders', action: 'vieworders' } },
-        { path: '/order-queue', label: String(t('orderQueue')), icon: ListOrdered, permission: { category: 'orders', action: 'createorders' } },
+        { path: '/orders', label: String(t('orders')), icon: Truck, permission: { category: 'orders', action: 'vieworders' }, tourId: 'orders' },
+        { path: '/reservations', label: String(t('reservations')), icon: Calendar, permission: { category: 'orders', action: 'vieworders' }, tourId: 'reservations' },
+        { path: '/order-queue', label: String(t('orderQueue')), icon: ListOrdered, permission: { category: 'orders', action: 'createorders' }, tourId: 'order-queue' },
       ]
     },
     {
       label: String(t('toolsAndUtilities')),
       items: [
-        { path: '/stock-take', label: String(t('stocktake.title')), icon: ClipboardCheck, permission: { category: 'stocktake', action: 'startsession' } },
+        { path: '/stock-take', label: String(t('stocktake.title')), icon: ClipboardCheck, permission: { category: 'stocktake', action: 'startsession' }, tourId: 'stock-take' },
         { path: '/stock-take-review', label: String(t('stocktake.review.navLabel')), icon: FileSearch, permission: { category: 'stocktake', action: 'reviewsessions' } },
-        { path: '/qr-scan', label: String(t('qrScan')), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' } },
-        { path: '/approvals', label: String(t('approvalRequests')), icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' } },
+        { path: '/qr-scan', label: String(t('qrScan')), icon: QrCode, permission: { category: 'qrdocuments', action: 'scanqrcodes' }, tourId: 'qr-scan' },
+        { path: '/approvals', label: String(t('approvalRequests')), icon: CheckCircle, permission: { category: 'approvals', action: 'viewapprovals' }, tourId: 'approvals' },
       ]
     },
     {
       label: String(t('reportsAndAdmin')),
       items: [
-        { path: '/reports', label: String(t('reports')), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' } },
-        { path: '/audit-logs', label: String(t('actionHistory')), icon: History, permission: { category: 'auditlogs', action: 'viewalllogs' } },
+        { path: '/reports', label: String(t('reports')), icon: BarChart3, permission: { category: 'reports', action: 'viewreports' }, tourId: 'reports' },
+        { path: '/audit-logs', label: String(t('actionHistory')), icon: History, permission: { category: 'auditlogs', action: 'viewalllogs' }, tourId: 'audit-logs' },
         { path: '/suppliers', label: String(t('suppliers')), icon: Users, permission: { category: 'suppliers', action: 'viewsuppliers' } },
-        { path: '/admin', label: String(t('settings')), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' } },
+        { path: '/admin', label: String(t('settings')), icon: Settings, permission: { category: 'usermanagement', action: 'viewusers' }, tourId: 'admin' },
       ]
     }
   ];
@@ -199,7 +231,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       const active = location.pathname === item.path;
                       
                       return (
-                        <SidebarMenuItem key={item.path}>
+                        <SidebarMenuItem key={item.path} data-tour={item.tourId}>
                           <SidebarMenuButton
                             onClick={() => navigate(item.path)}
                             isActive={active}
@@ -363,12 +395,64 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
               <div className="flex items-center gap-1 sm:gap-2 min-w-0">
                 {/* Sync Status Badge */}
-                <SyncStatusBadge compact />
+                <div data-tour="sync-status">
+                  <SyncStatusBadge compact />
+                </div>
                 
                 {/* Network status - show on mobile */}
                 {isMobile && <NetworkStatusIndicator compact />}
                 
-                <GlobalSearch />
+                <div data-tour="global-search">
+                  <GlobalSearch />
+                </div>
+                
+                {/* Notification Center */}
+                <NotificationCenter />
+                
+                {/* Help Menu */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" data-tour="help">
+                      <HelpCircle className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48" align="end">
+                    <div className="space-y-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => setShortcutsHelpOpen(true)}
+                      >
+                        <Keyboard className="h-4 w-4 mr-2" />
+                        {language === 'tr' ? 'Kısayollar' : 'Shortcuts'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => setHelpPanelOpen(true)}
+                      >
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        {language === 'tr' ? 'Yardım' : 'Help'}
+                      </Button>
+                      {tourContext && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            const tourId = tourContext!.getRoleTourId();
+                            tourContext!.startTour(tourId);
+                          }}
+                        >
+                          <BookOpen className="h-4 w-4 mr-2" />
+                          {language === 'tr' ? 'Tura Başla' : 'Start Tour'}
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
                 
                 <Select value={language} onValueChange={(value: 'en' | 'tr') => setLanguage(value)}>
                   <SelectTrigger className="w-12 sm:w-14 md:w-16 h-8 text-xs sm:text-sm">
@@ -446,6 +530,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           onOpenChange={setShowConflictDialog}
           conflicts={conflicts}
           onResolve={resolveConflict}
+        />
+        
+        {/* Command Palette */}
+        <CommandPalette 
+          open={commandPaletteOpen} 
+          onOpenChange={setCommandPaletteOpen} 
+        />
+        
+        {/* Shortcuts Help */}
+        <ShortcutsHelp 
+          open={shortcutsHelpOpen} 
+          onOpenChange={setShortcutsHelpOpen} 
+        />
+        
+        {/* Help Panel */}
+        <HelpPanel 
+          open={helpPanelOpen} 
+          onOpenChange={setHelpPanelOpen} 
         />
       </div>
     </SidebarProvider>
