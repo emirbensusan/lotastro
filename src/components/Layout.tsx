@@ -13,6 +13,9 @@ import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import GlobalSearch from '@/components/GlobalSearch';
 import { NetworkStatusIndicator } from '@/components/ui/network-status-indicator';
+import { SyncStatusBadge } from '@/components/offline/SyncStatusBadge';
+import { ConflictResolutionDialog } from '@/components/offline/ConflictResolutionDialog';
+import { useOffline } from '@/contexts/OfflineContext';
 import { 
   Home,
   PackagePlus, 
@@ -66,6 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { conflicts, showConflictDialog, setShowConflictDialog, syncStatus, resolveConflict } = useOffline();
 
   // Get effective role (viewAsRole if viewing as another role, otherwise actual role)
   const effectiveRole = viewAsRole || profile?.role;
@@ -358,6 +362,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
 
               <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+                {/* Sync Status Badge */}
+                <SyncStatusBadge compact />
+                
                 {/* Network status - show on mobile */}
                 {isMobile && <NetworkStatusIndicator compact />}
                 
@@ -432,6 +439,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
           </footer>
         </div>
+        
+        {/* Conflict Resolution Dialog */}
+        <ConflictResolutionDialog
+          open={showConflictDialog}
+          onOpenChange={setShowConflictDialog}
+          conflicts={conflicts}
+          onResolve={resolveConflict}
+        />
       </div>
     </SidebarProvider>
   );
