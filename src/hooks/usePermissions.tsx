@@ -63,5 +63,5 @@ export const usePermissions = () => {
     return permissions[key] === true;
   }, [profile?.role, viewAsRole, permissions]);
 
-  return { hasPermission, loading };
+  return { hasPermission, loading, effectiveRole };
 };
