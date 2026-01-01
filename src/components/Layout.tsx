@@ -20,6 +20,7 @@ import { NotificationCenter } from '@/components/notifications/NotificationCente
 import { CommandPalette } from '@/components/keyboard/CommandPalette';
 import { ShortcutsHelp } from '@/components/keyboard/ShortcutsHelp';
 import { HelpPanel } from '@/components/help/HelpPanel';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { useTour } from '@/components/tour/TourProvider';
 import { useOffline } from '@/contexts/OfflineContext';
 import { 
@@ -549,6 +550,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           open={helpPanelOpen} 
           onOpenChange={setHelpPanelOpen} 
         />
+        
+        {/* PWA Install Prompt */}
+        <InstallPrompt />
       </div>
     </SidebarProvider>
   );

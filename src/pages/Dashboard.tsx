@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,6 +11,23 @@ import { Button } from '@/components/ui/button';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { useIsMobile } from '@/hooks/use-mobile';
+
+// Lazy load dashboard widgets for better initial load
+const InsightsWidget = lazy(() => import('@/components/dashboard/InsightsWidget').then(m => ({ default: m.InsightsWidget })));
+const ActivityFeed = lazy(() => import('@/components/dashboard/ActivityFeed').then(m => ({ default: m.ActivityFeed })));
+const TrendChart = lazy(() => import('@/components/dashboard/TrendChart').then(m => ({ default: m.TrendChart })));
+
+// Widget loading skeleton
+const WidgetSkeleton = () => (
+  <Card>
+    <CardHeader className="pb-2">
+      <Skeleton className="h-5 w-32" />
+    </CardHeader>
+    <CardContent>
+      <Skeleton className="h-24" />
+    </CardContent>
+  </Card>
+);
 
 interface DashboardStats {
   totalLots: number;
@@ -499,6 +517,21 @@ const Dashboard = () => {
           </>
         )}
       </div>
+
+      {/* Analytics Widgets - Lazy loaded */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Suspense fallback={<WidgetSkeleton />}>
+          <InsightsWidget className="lg:col-span-1" />
+        </Suspense>
+        <Suspense fallback={<WidgetSkeleton />}>
+          <TrendChart className="lg:col-span-2" />
+        </Suspense>
+      </div>
+
+      {/* Activity Feed */}
+      <Suspense fallback={<WidgetSkeleton />}>
+        <ActivityFeed className="max-h-80" />
+      </Suspense>
     </div>
   );
 

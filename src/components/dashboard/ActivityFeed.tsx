@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { queryKeys, staleTime } from '@/lib/queryClient';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface ActivityItem {
   id: string;
@@ -30,7 +31,11 @@ interface ActivityItem {
   createdAt: string;
 }
 
-export function ActivityFeed() {
+interface ActivityFeedProps {
+  className?: string;
+}
+
+export function ActivityFeed({ className }: ActivityFeedProps) {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -89,7 +94,7 @@ export function ActivityFeed() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className={cn(className)}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <History className="h-4 w-4" />
@@ -114,7 +119,7 @@ export function ActivityFeed() {
   }
 
   return (
-    <Card>
+    <Card className={cn(className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
