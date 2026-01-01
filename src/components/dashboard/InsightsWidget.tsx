@@ -14,6 +14,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { queryKeys, staleTime } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
 
 interface Insight {
   id: string;
@@ -25,7 +26,11 @@ interface Insight {
   count?: number;
 }
 
-export function InsightsWidget() {
+interface InsightsWidgetProps {
+  className?: string;
+}
+
+export function InsightsWidget({ className }: InsightsWidgetProps) {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -136,7 +141,7 @@ export function InsightsWidget() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className={cn(className)}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
@@ -152,7 +157,7 @@ export function InsightsWidget() {
   }
 
   return (
-    <Card>
+    <Card className={cn(className)}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
