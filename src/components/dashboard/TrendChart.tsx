@@ -27,7 +27,12 @@ interface TrendChartProps {
 export function TrendChart({ className }: TrendChartProps) {
   const { data, isLoading } = useQuery({
     queryKey: [...queryKeys.dashboard.all, 'trends'],
-    queryFn: async () => {
+    queryFn: async (): Promise<{
+      chartData: TrendData[];
+      weekChange: number;
+      totalIncoming: number;
+      totalOutgoing: number;
+    }> => {
       const days: TrendData[] = [];
       const today = new Date();
 
@@ -37,23 +42,27 @@ export function TrendChart({ className }: TrendChartProps) {
         const dateStr = date.toISOString().split('T')[0];
         const nextDateStr = new Date(date.getTime() + 86400000).toISOString().split('T')[0];
         
-        const { count: incomingCount } = await supabase
+        // Use separate queries with explicit typing to avoid deep type instantiation
+        const lotsQuery = supabase
           .from('lots')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .gte('entry_date', dateStr)
           .lt('entry_date', nextDateStr);
-
-        const { count: outgoingCount } = await supabase
-          .from('orders')
-          .select('*', { count: 'exact', head: true })
+        
+        // Cast to any to avoid deep type instantiation with orders table
+        const ordersQuery = (supabase
+          .from('orders') as any)
+          .select('id', { count: 'exact', head: true })
           .eq('status', 'fulfilled')
           .gte('fulfilled_date', dateStr)
           .lt('fulfilled_date', nextDateStr);
 
+        const [lotsResult, ordersResult] = await Promise.all([lotsQuery, ordersQuery]);
+
         days.push({
           date: date.toLocaleDateString('en-US', { weekday: 'short' }),
-          incoming: incomingCount || 0,
-          outgoing: outgoingCount || 0,
+          incoming: (lotsResult.count as number) || 0,
+          outgoing: (ordersResult.count as number) || 0,
         });
       }
 
@@ -149,10 +158,23 @@ export function TrendChart({ className }: TrendChartProps) {
               <YAxis hide />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'white',
-                  border: '1px solid #e2e8f0',
+                  backgroundColor: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
                   borderRadius: '6px',
                   fontSize: '12px'
+                }}
+                content={({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) => {
+                  if (!active || !payload?.length) return null;
+                  return (
+                    <div className="rounded-md border bg-popover px-2 py-1.5 text-xs shadow-md">
+                      <p className="font-medium mb-1">{label}</p>
+                      {payload.map((entry, index) => (
+                        <p key={index} style={{ color: entry.color }}>
+                          {entry.name}: {entry.value}
+                        </p>
+                      ))}
+                    </div>
+                  );
                 }}
               />
               <Area
