@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.0";
+import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,7 +72,7 @@ interface ReportStyling {
 
 interface ReportRequest {
   report_type?: string;
-  format: 'html' | 'csv' | 'json' | 'excel';
+  format: 'html' | 'csv' | 'json' | 'excel' | 'pdf';
   config_id?: string;
   filters?: Record<string, any>;
   columns?: string[];
@@ -103,6 +104,40 @@ function generateCSV(headers: string[], rows: any[][]): string {
     }).join(','))
   ];
   return csvRows.join('\n');
+}
+
+// Generate real Excel (.xlsx) using xlsx library
+function generateExcelBuffer(
+  headers: string[], 
+  rows: any[][], 
+  sheetName: string,
+  styling?: ReportStyling,
+  columnConfigs?: ColumnConfig[]
+): Uint8Array {
+  // Create workbook and worksheet
+  const wb = XLSX.utils.book_new();
+  
+  // Prepare data with headers
+  const wsData = [headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  
+  // Set column widths based on content
+  const colWidths = headers.map((header, idx) => {
+    let maxWidth = header.length;
+    rows.forEach(row => {
+      const cellValue = String(row[idx] ?? '');
+      maxWidth = Math.max(maxWidth, cellValue.length);
+    });
+    return { wch: Math.min(Math.max(maxWidth + 2, 10), 50) };
+  });
+  ws['!cols'] = colWidths;
+  
+  // Add worksheet to workbook
+  XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
+  
+  // Write to buffer
+  const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+  return new Uint8Array(buffer);
 }
 
 // Generate HTML table with dynamic styling
@@ -239,6 +274,128 @@ function generateHTMLTable(
         </tbody>
       </table>
       <div class="footer">Total rows: ${rows.length}</div>
+    </body>
+    </html>
+  `;
+}
+
+// Generate print-friendly HTML for PDF export
+function generatePDFHTML(
+  headers: string[], 
+  rows: any[][], 
+  title: string,
+  styling?: ReportStyling,
+  columnConfigs?: ColumnConfig[]
+): string {
+  const fontSizes: Record<string, string> = {
+    small: '10px',
+    medium: '11px',
+    large: '12px',
+  };
+
+  const fontSize = fontSizes[styling?.fontSize || 'medium'];
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${title}</title>
+      <style>
+        @page {
+          size: A4 landscape;
+          margin: 1cm;
+        }
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .no-print { display: none; }
+        }
+        body { 
+          font-family: Arial, Helvetica, sans-serif; 
+          font-size: ${fontSize}; 
+          margin: 0;
+          padding: 20px;
+          color: #1f2937;
+        }
+        .header { 
+          display: flex; 
+          justify-content: space-between; 
+          align-items: center;
+          border-bottom: 2px solid #3b82f6;
+          padding-bottom: 10px;
+          margin-bottom: 15px;
+        }
+        h1 { font-size: 18px; margin: 0; color: #1e40af; }
+        .meta { font-size: 10px; color: #6b7280; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { 
+          background: #1e40af; 
+          color: white;
+          padding: 8px 6px; 
+          border: 1px solid #1e40af;
+          text-align: left;
+          font-weight: 600;
+          font-size: 10px;
+        }
+        td { 
+          padding: 6px; 
+          border: 1px solid #d1d5db;
+          font-size: 10px;
+        }
+        tr:nth-child(even) td { background: #f3f4f6; }
+        .footer { 
+          margin-top: 15px; 
+          text-align: center;
+          font-size: 9px; 
+          color: #9ca3af;
+          border-top: 1px solid #e5e7eb;
+          padding-top: 10px;
+        }
+        .number, .currency { text-align: right; }
+        .print-btn {
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          padding: 10px 20px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+        }
+        .print-btn:hover { background: #2563eb; }
+      </style>
+    </head>
+    <body>
+      <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+      <div class="header">
+        <h1>${title}</h1>
+        <div class="meta">Generated: ${new Date().toLocaleString()}</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            ${headers.map((h, i) => {
+              const colType = columnConfigs?.[i]?.type || 'text';
+              return `<th class="${colType}">${h}</th>`;
+            }).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              ${row.map((cell, cellIdx) => {
+                const colType = columnConfigs?.[cellIdx]?.type || 'text';
+                return `<td class="${colType}">${formatCellValue(cell, colType)}</td>`;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div class="footer">
+        ${title} | Total: ${rows.length} rows | LotAstro WMS
+      </div>
     </body>
     </html>
   `;
@@ -782,18 +939,24 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`generate-report-attachment: Generated ${rows.length} rows`);
 
-    let content: string;
+    let content: string | null = null;
+    let binaryContent: Uint8Array | null = null;
     let contentType: string;
     let filename: string;
+    let isBase64 = false;
     const dateStr = new Date().toISOString().split('T')[0];
     const safeTitle = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
 
     switch (format) {
-      case 'excel':
-        content = generateExcelXML(headers, rows, sheetName, styling, columnConfigs);
-        contentType = 'application/vnd.ms-excel';
-        filename = `${safeTitle}_${dateStr}.xls`;
+      case 'excel': {
+        // Generate real .xlsx file
+        const excelBuffer = generateExcelBuffer(headers, rows, sheetName, styling, columnConfigs);
+        binaryContent = excelBuffer;
+        isBase64 = true;
+        contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        filename = `${safeTitle}_${dateStr}.xlsx`;
         break;
+      }
       case 'csv':
         content = generateCSV(headers, rows);
         contentType = 'text/csv';
@@ -804,6 +967,14 @@ const handler = async (req: Request): Promise<Response> => {
         contentType = 'text/html';
         filename = `${safeTitle}_${dateStr}.html`;
         break;
+      case 'pdf': {
+        // Generate HTML for PDF (simpler styling for print)
+        const pdfHtml = generatePDFHTML(headers, rows, title, styling, columnConfigs);
+        content = pdfHtml;
+        contentType = 'text/html'; // Return HTML that can be printed as PDF
+        filename = `${safeTitle}_${dateStr}.html`;
+        break;
+      }
       case 'json':
       default:
         content = JSON.stringify({ 
@@ -818,14 +989,28 @@ const handler = async (req: Request): Promise<Response> => {
         break;
     }
 
+    // Convert binary content to base64 for JSON response
+    let responseContent: string;
+    if (binaryContent) {
+      // Convert Uint8Array to base64
+      let binary = '';
+      for (let i = 0; i < binaryContent.length; i++) {
+        binary += String.fromCharCode(binaryContent[i]);
+      }
+      responseContent = btoa(binary);
+    } else {
+      responseContent = content!;
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true,
-        content,
+        content: responseContent,
         content_type: contentType,
         filename,
         row_count: rows.length,
         title,
+        is_base64: isBase64,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
