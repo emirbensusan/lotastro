@@ -1,7 +1,7 @@
 # LotAstro Production Readiness Assessment
 
-> **Version**: 3.0.0  
-> **Assessment Date**: 2025-12-26  
+> **Version**: 3.1.0  
+> **Assessment Date**: 2026-01-02  
 > **Assessor**: Principal Product Manager & Production Readiness Lead  
 > **Classification**: Internal - Critical Review  
 > **Architecture**: Multi-Project Ecosystem  
@@ -15,15 +15,18 @@
 
 | Status | Verdict |
 |--------|---------|
-| ✅ **PRODUCTION READY** | Core functionality complete with strong security foundation. Minor improvements recommended. |
+| ✅ **PRODUCTION READY** | Core functionality complete with comprehensive security foundation. Minor improvements recommended. |
 
-### Overall Score: 3.8/5
+### Overall Score: 4.0/5
 
 The LotAstro WMS has achieved production readiness with:
 - ✅ Complete security hardening (CRON, XSS, session timeout, password policy)
+- ✅ **MFA enforcement for privileged roles** (admin, senior_manager, accounting)
+- ✅ **Rate limiting with lockout** on login attempts
 - ✅ Full legal compliance (Terms, Privacy, Cookies, KVKK)
 - ✅ Integration API foundation (OpenAPI spec, 4 endpoints, webhook dispatcher)
 - ✅ Comprehensive audit logging and RBAC
+- ✅ Advanced forecasting with seasonal adjustments and trend detection
 
 ### Top 5 Improvement Priorities
 
@@ -31,9 +34,9 @@ The LotAstro WMS has achieved production readiness with:
 |---|----------|----------|--------|
 | 1 | **OCR Accuracy Improvement** | 🟠 High | 🔧 Needs Fix (70% → 95%) |
 | 2 | **AI Extraction Accuracy** | 🟠 High | 🔧 Needs Fix (70% → 90%) |
-| 3 | **MFA Enforcement for Admins** | 🟠 High | 🔄 Components Ready |
+| 3 | **MFA Enforcement for Admins** | ✅ Complete | ✅ Enforced via MFAGate |
 | 4 | **Report Execution Engine** | 🟡 Medium | 🔄 In Progress |
-| 5 | **Rate Limiting Enforcement** | 🟡 Medium | 🔶 Hook Exists |
+| 5 | **Rate Limiting Enforcement** | ✅ Complete | ✅ Wired to Login |
 
 ### Accountability Matrix
 
@@ -84,13 +87,13 @@ The LotAstro WMS has achieved production readiness with:
 | Category | Score | Assessment |
 |----------|-------|------------|
 | **Engineering & Infrastructure** | 4.0/5 | Strong edge function architecture; 38 functions deployed |
-| **Security** | 3.5/5 | CRON protected, XSS fixed, session/password config done; MFA pending |
+| **Security** | 4.5/5 | CRON protected, XSS fixed, session/password config done; **MFA enforced** |
 | **Compliance** | 4.0/5 | All legal pages live; cookie consent implemented |
 | **Business Continuity** | 3.5/5 | Good audit logging; Supabase backups |
 | **UX & Adoption** | 4.5/5 | Excellent mobile experience; bilingual support |
 | **Admin & Operations** | 4.5/5 | Comprehensive admin panel; permission management |
 | **Integrations** | 3.5/5 | Foundation complete; webhook events pending |
-| **Intelligence Features** | 3.0/5 | OCR and AI extraction need accuracy fixes |
+| **Intelligence Features** | 3.5/5 | Forecasting complete; OCR/AI extraction need accuracy fixes |
 
 ### Score Justifications
 
@@ -102,7 +105,7 @@ The LotAstro WMS has achieved production readiness with:
 - ✅ OpenAPI 3.0 specification
 - 🔶 Missing automated test coverage
 
-#### Security (3.5/5)
+#### Security (4.5/5)
 - ✅ RLS enabled on all tables
 - ✅ RBAC with 4 roles, 13 permission categories
 - ✅ All 11 CRON functions protected
@@ -110,8 +113,9 @@ The LotAstro WMS has achieved production readiness with:
 - ✅ Session timeout configurable
 - ✅ Password policy configurable
 - ✅ API key authentication
-- 🔶 MFA components ready, not enforced
-- 🔶 Rate limiting hook exists, not wired
+- ✅ **MFA enforced for privileged roles via MFAGate component**
+- ✅ **Rate limiting wired to login flow with lockout**
+- ✅ **Dynamic password reset URL (no hardcoded domains)**
 
 #### Compliance (4.0/5)
 - ✅ Terms of Service at `/terms`
@@ -183,14 +187,14 @@ The LotAstro WMS has achieved production readiness with:
 |------|-------|--------|--------|
 | OCR preprocessing pipeline fix | Full-Stack | 1 week | Stock take usable |
 | AI extraction Turkish number fix | Backend | 1 week | Order accuracy |
-| MFA enforcement for admins | Backend | 2 days | Security |
+| ~~MFA enforcement for admins~~ | ~~Backend~~ | ~~2 days~~ | ✅ **Complete** |
 | Report execution engine | Full-Stack | 1 week | Feature complete |
 
 ### Medium Priority (P2)
 
 | Task | Owner | Effort | Impact |
 |------|-------|--------|--------|
-| Rate limiting enforcement | Backend | 1 day | Security |
+| ~~Rate limiting enforcement~~ | ~~Backend~~ | ~~1 day~~ | ✅ **Complete** |
 | Webhook event definitions | Backend | 3 days | Integration |
 | Interactive Swagger UI | Frontend | 2 days | Developer experience |
 | RLS audit on rolls table | Backend | 2 hours | Security |
@@ -325,3 +329,4 @@ LotAstro WMS is **production ready** with a strong foundation:
 | 1.0.0 | 2025-01-10 | Initial assessment |
 | 2.0.0 | 2025-12-25 | Multi-project ecosystem context |
 | 3.0.0 | 2025-12-26 | Production ready; Four Pillars framework; Security complete |
+| 3.1.0 | 2026-01-02 | MFA enforcement via MFAGate; Rate limiting wired; Dynamic password reset URL |

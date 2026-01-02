@@ -12,6 +12,7 @@ import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { RouteWrapper } from "./components/RouteWrapper";
+import MFAGate from "./components/auth/MFAGate";
 import CookieConsent from "./components/CookieConsent";
 import { OfflineBanner } from "./components/ui/network-status-indicator";
 import { OfflineProvider } from "./contexts/OfflineContext";
@@ -128,13 +129,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
   
   return (
-    <Layout>
-      <RouteWrapper>
-        <Suspense fallback={<PageLoader />}>
-          {children}
-        </Suspense>
-      </RouteWrapper>
-    </Layout>
+    <MFAGate>
+      <Layout>
+        <RouteWrapper>
+          <Suspense fallback={<PageLoader />}>
+            {children}
+          </Suspense>
+        </RouteWrapper>
+      </Layout>
+    </MFAGate>
   );
 };
 
