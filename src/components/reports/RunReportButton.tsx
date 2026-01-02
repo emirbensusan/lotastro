@@ -87,8 +87,8 @@ const RunReportButton: React.FC<RunReportButtonProps> = ({
         .eq('id', execution.id);
 
       // Handle download based on format
-      if (format === 'html') {
-        // Open in new tab for HTML preview
+      if (format === 'html' || format === 'pdf') {
+        // Open in new tab for HTML/PDF preview
         const blob = new Blob([reportData.content], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
@@ -99,25 +99,17 @@ const RunReportButton: React.FC<RunReportButtonProps> = ({
         let filename: string;
         
         if (format === 'excel') {
-          // Convert base64 to blob for Excel
+          // Decode base64 to blob for Excel
           const binary = atob(reportData.content);
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) {
             bytes[i] = binary.charCodeAt(i);
           }
           blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-          filename = `${reportName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+          filename = `${reportName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
         } else if (format === 'csv') {
           blob = new Blob([reportData.content], { type: 'text/csv' });
-          filename = `${reportName}_${new Date().toISOString().split('T')[0]}.csv`;
-        } else if (format === 'pdf') {
-          const binary = atob(reportData.content);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
-          }
-          blob = new Blob([bytes], { type: 'application/pdf' });
-          filename = `${reportName}_${new Date().toISOString().split('T')[0]}.pdf`;
+          filename = `${reportName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
         } else {
           throw new Error('Unsupported format');
         }
@@ -159,7 +151,7 @@ const RunReportButton: React.FC<RunReportButtonProps> = ({
     { key: 'html', label: language === 'tr' ? 'HTML Önizleme' : 'HTML Preview', icon: BarChart3 },
     { key: 'excel', label: 'Excel (.xlsx)', icon: FileSpreadsheet },
     { key: 'csv', label: 'CSV', icon: FileText },
-    { key: 'pdf', label: 'PDF', icon: FileText },
+    { key: 'pdf', label: language === 'tr' ? 'PDF (Yazdır)' : 'PDF (Print)', icon: FileText },
   ];
 
   return (
