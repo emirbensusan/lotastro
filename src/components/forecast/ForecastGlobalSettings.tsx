@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Save, Loader2, RotateCcw } from 'lucide-react';
+import SeasonalAdjustmentEditor from './SeasonalAdjustmentEditor';
+import TrendDetectionSettings from './TrendDetectionSettings';
 
 interface Props {
   settings: any;
@@ -28,6 +30,10 @@ const ForecastGlobalSettings: React.FC<Props> = ({ settings, onSettingsChange, o
   const [localSettings, setLocalSettings] = useState(settings || getDefaultSettings());
 
   function getDefaultSettings() {
+    const defaultSeasonalIndices: Record<string, number> = {};
+    for (let i = 1; i <= 12; i++) {
+      defaultSeasonalIndices[String(i)] = 1.0;
+    }
     return {
       forecast_horizon_months: 3,
       time_bucket: '2-week',
@@ -49,6 +55,10 @@ const ForecastGlobalSettings: React.FC<Props> = ({ settings, onSettingsChange, o
       email_digest_enabled: true,
       email_digest_day: 1,
       email_digest_hour: 8,
+      seasonal_adjustment_enabled: false,
+      seasonal_indices: defaultSeasonalIndices,
+      trend_detection_enabled: false,
+      trend_smoothing_periods: 3,
     };
   }
 
