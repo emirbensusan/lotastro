@@ -38,6 +38,7 @@ import SnapshotSettingsTab from '@/components/admin/SnapshotSettingsTab';
 import DatabaseExportTab from '@/components/admin/DatabaseExportTab';
 import ActiveSessionsTab from '@/components/admin/ActiveSessionsTab';
 import AuditLogExportTab from '@/components/admin/AuditLogExportTab';
+import OfflineSettingsTab from '@/components/admin/OfflineSettingsTab';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
