@@ -10,10 +10,13 @@ import {
   Settings, 
   Sliders, 
   Loader2,
-  Info
+  Info,
+  Target,
+  TrendingUp
 } from 'lucide-react';
 import ForecastGlobalSettings from '@/components/forecast/ForecastGlobalSettings';
 import ForecastPerQualityOverrides from '@/components/forecast/ForecastPerQualityOverrides';
+import ForecastAccuracyChart from '@/components/forecast/ForecastAccuracyChart';
 
 const ForecastSettings: React.FC = () => {
   const { hasPermission, loading: permissionsLoading } = usePermissions();
@@ -102,7 +105,7 @@ const ForecastSettings: React.FC = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="global" className="flex items-center gap-2">
             <Sliders className="h-4 w-4" />
             {t('forecast.globalSettings') || 'Global Settings'}
@@ -110,6 +113,10 @@ const ForecastSettings: React.FC = () => {
           <TabsTrigger value="overrides" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             {t('forecast.perQualityOverrides') || 'Per-Quality Overrides'}
+          </TabsTrigger>
+          <TabsTrigger value="accuracy" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            {t('forecast.accuracy') || 'Accuracy'}
           </TabsTrigger>
         </TabsList>
 
@@ -127,6 +134,10 @@ const ForecastSettings: React.FC = () => {
             globalSettings={settings}
             readOnly={!canModifySettings}
           />
+        </TabsContent>
+
+        <TabsContent value="accuracy">
+          <ForecastAccuracyChart />
         </TabsContent>
       </Tabs>
     </div>

@@ -1598,6 +1598,115 @@ export type Database = {
         }
         Relationships: []
       }
+      forecast_accuracy: {
+        Row: {
+          absolute_error: number | null
+          actual_amount: number
+          calculated_at: string
+          color_code: string
+          created_at: string
+          forecast_run_id: string | null
+          forecasted_amount: number
+          id: string
+          percentage_error: number | null
+          period_end: string
+          period_start: string
+          quality_code: string
+        }
+        Insert: {
+          absolute_error?: number | null
+          actual_amount: number
+          calculated_at?: string
+          color_code: string
+          created_at?: string
+          forecast_run_id?: string | null
+          forecasted_amount: number
+          id?: string
+          percentage_error?: number | null
+          period_end: string
+          period_start: string
+          quality_code: string
+        }
+        Update: {
+          absolute_error?: number | null
+          actual_amount?: number
+          calculated_at?: string
+          color_code?: string
+          created_at?: string
+          forecast_run_id?: string | null
+          forecasted_amount?: number
+          id?: string
+          percentage_error?: number | null
+          period_end?: string
+          period_start?: string
+          quality_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecast_accuracy_forecast_run_id_fkey"
+            columns: ["forecast_run_id"]
+            isOneToOne: false
+            referencedRelation: "forecast_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forecast_accuracy_metrics: {
+        Row: {
+          bias: number | null
+          calculation_date: string
+          color_code: string | null
+          created_at: string
+          forecast_run_id: string | null
+          hit_rate: number | null
+          id: string
+          mae: number | null
+          mape: number | null
+          period_type: string
+          quality_code: string | null
+          rmse: number | null
+          total_items: number
+        }
+        Insert: {
+          bias?: number | null
+          calculation_date: string
+          color_code?: string | null
+          created_at?: string
+          forecast_run_id?: string | null
+          hit_rate?: number | null
+          id?: string
+          mae?: number | null
+          mape?: number | null
+          period_type?: string
+          quality_code?: string | null
+          rmse?: number | null
+          total_items?: number
+        }
+        Update: {
+          bias?: number | null
+          calculation_date?: string
+          color_code?: string | null
+          created_at?: string
+          forecast_run_id?: string | null
+          hit_rate?: number | null
+          id?: string
+          mae?: number | null
+          mape?: number | null
+          period_type?: string
+          quality_code?: string | null
+          rmse?: number | null
+          total_items?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecast_accuracy_metrics_forecast_run_id_fkey"
+            columns: ["forecast_run_id"]
+            isOneToOne: false
+            referencedRelation: "forecast_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forecast_alerts: {
         Row: {
           alert_type: string
@@ -1685,6 +1794,8 @@ export type Database = {
           quality_code: string
           run_id: string
           scenario: string
+          seasonal_factor: number | null
+          trend_direction: string | null
           trend_factor: number | null
           unit: string
           weighted_avg: number | null
@@ -1700,6 +1811,8 @@ export type Database = {
           quality_code: string
           run_id: string
           scenario: string
+          seasonal_factor?: number | null
+          trend_direction?: string | null
           trend_factor?: number | null
           unit: string
           weighted_avg?: number | null
@@ -1715,6 +1828,8 @@ export type Database = {
           quality_code?: string
           run_id?: string
           scenario?: string
+          seasonal_factor?: number | null
+          trend_direction?: string | null
           trend_factor?: number | null
           unit?: string
           weighted_avg?: number | null
@@ -1833,8 +1948,12 @@ export type Database = {
           overstock_alert_months: number
           permissions: Json
           scenario_parameters: Json
+          seasonal_adjustment_enabled: boolean | null
+          seasonal_indices: Json | null
           stockout_alert_days: number
           time_bucket: string
+          trend_detection_enabled: boolean | null
+          trend_smoothing_periods: number | null
           updated_at: string
           updated_by: string | null
           weekly_schedule_day: number
@@ -1862,8 +1981,12 @@ export type Database = {
           overstock_alert_months?: number
           permissions?: Json
           scenario_parameters?: Json
+          seasonal_adjustment_enabled?: boolean | null
+          seasonal_indices?: Json | null
           stockout_alert_days?: number
           time_bucket?: string
+          trend_detection_enabled?: boolean | null
+          trend_smoothing_periods?: number | null
           updated_at?: string
           updated_by?: string | null
           weekly_schedule_day?: number
@@ -1891,8 +2014,12 @@ export type Database = {
           overstock_alert_months?: number
           permissions?: Json
           scenario_parameters?: Json
+          seasonal_adjustment_enabled?: boolean | null
+          seasonal_indices?: Json | null
           stockout_alert_days?: number
           time_bucket?: string
+          trend_detection_enabled?: boolean | null
+          trend_smoothing_periods?: number | null
           updated_at?: string
           updated_by?: string | null
           weekly_schedule_day?: number

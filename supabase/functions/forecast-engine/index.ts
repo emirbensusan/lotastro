@@ -19,6 +19,10 @@ interface ForecastSettings {
   demand_statuses: string[];
   stockout_alert_days: number;
   overstock_alert_months: number;
+  seasonal_adjustment_enabled: boolean;
+  seasonal_indices: Record<string, number>;
+  trend_detection_enabled: boolean;
+  trend_smoothing_periods: number;
   scenario_parameters: {
     conservative: { coverage_multiplier: number; safety_multiplier: number; history_weight: number };
     normal: { coverage_multiplier: number; safety_multiplier: number; history_weight: number };
@@ -157,7 +161,15 @@ serve(async (req) => {
         throw new Error(`Failed to fetch settings: ${settingsError.message}`);
       }
 
-      const settings: ForecastSettings = settingsData || {
+      const defaultSeasonalIndices: Record<string, number> = {};
+      for (let i = 1; i <= 12; i++) {
+        defaultSeasonalIndices[String(i)] = 1.0;
+      }
+
+      const settings: ForecastSettings = settingsData ? {
+        ...settingsData,
+        seasonal_indices: settingsData.seasonal_indices || defaultSeasonalIndices,
+      } : {
         forecast_horizon_months: 3,
         time_bucket: '2-week',
         history_window_months: 12,
@@ -170,6 +182,10 @@ serve(async (req) => {
         demand_statuses: ['confirmed', 'reserved'],
         stockout_alert_days: 14,
         overstock_alert_months: 6,
+        seasonal_adjustment_enabled: false,
+        seasonal_indices: defaultSeasonalIndices,
+        trend_detection_enabled: false,
+        trend_smoothing_periods: 3,
         scenario_parameters: {
           conservative: { coverage_multiplier: 1.5, safety_multiplier: 1.5, history_weight: 1.2 },
           normal: { coverage_multiplier: 1.0, safety_multiplier: 1.0, history_weight: 1.0 },
@@ -484,12 +500,57 @@ serve(async (req) => {
 
         const targetCoverageWeeks = override?.target_coverage_weeks ?? leadTimeWeeks + safetyStockWeeks;
 
+        // Calculate trend factor if enabled
+        let trendFactor = 1.0;
+        let trendDirection: 'rising' | 'falling' | 'stable' = 'stable';
+        
+        if (settings.trend_detection_enabled && demand && demand.demand_periods.length >= settings.trend_smoothing_periods) {
+          // Simple linear regression on demand periods
+          const sortedPeriods = [...demand.demand_periods].sort((a, b) => a.date.getTime() - b.date.getTime());
+          const n = sortedPeriods.length;
+          
+          // Calculate slope using least squares
+          let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+          for (let i = 0; i < n; i++) {
+            sumX += i;
+            sumY += sortedPeriods[i].amount;
+            sumXY += i * sortedPeriods[i].amount;
+            sumX2 += i * i;
+          }
+          
+          const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+          const avgDemand = sumY / n;
+          
+          // Calculate trend factor (slope as % of average)
+          if (avgDemand > 0) {
+            const trendPercent = (slope / avgDemand) * 100;
+            if (trendPercent > 5) {
+              trendDirection = 'rising';
+              trendFactor = 1 + Math.min(trendPercent / 100, 0.3); // Cap at 30% increase
+            } else if (trendPercent < -5) {
+              trendDirection = 'falling';
+              trendFactor = 1 + Math.max(trendPercent / 100, -0.3); // Cap at 30% decrease
+            }
+          }
+        }
+
         // Generate forecast periods
         const periods = generatePeriods(settings.time_bucket, settings.forecast_horizon_months);
         
         for (const period of periods) {
           const periodWeeks = (period.end.getTime() - period.start.getTime()) / (7 * 24 * 60 * 60 * 1000);
-          const baseForecast = weeklyDemandRate * periodWeeks;
+          let baseForecast = weeklyDemandRate * periodWeeks;
+
+          // Apply seasonal adjustment if enabled
+          let seasonalFactor = 1.0;
+          if (settings.seasonal_adjustment_enabled && settings.seasonal_indices) {
+            const periodMonth = period.start.getMonth() + 1; // 1-indexed
+            seasonalFactor = settings.seasonal_indices[String(periodMonth)] ?? 1.0;
+            baseForecast *= seasonalFactor;
+          }
+
+          // Apply trend factor
+          baseForecast *= trendFactor;
 
           // Store base forecast
           forecastResults.push({
@@ -503,6 +564,9 @@ serve(async (req) => {
             scenario: 'base',
             historical_avg: weeklyDemandRate,
             weighted_avg: weeklyDemandRate,
+            trend_factor: trendFactor,
+            seasonal_factor: seasonalFactor,
+            trend_direction: trendDirection,
           });
         }
 
