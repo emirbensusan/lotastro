@@ -36,6 +36,8 @@ import MFASettings from '@/components/auth/MFASettings';
 import MFAEnrollmentBanner from '@/components/auth/MFAEnrollmentBanner';
 import SnapshotSettingsTab from '@/components/admin/SnapshotSettingsTab';
 import DatabaseExportTab from '@/components/admin/DatabaseExportTab';
+import ActiveSessionsTab from '@/components/admin/ActiveSessionsTab';
+import AuditLogExportTab from '@/components/admin/AuditLogExportTab';
 
 type UserRole = 'admin' | 'warehouse_staff' | 'accounting' | 'senior_manager';
 
@@ -822,6 +824,14 @@ const Admin: React.FC = () => {
             <Download className="h-3 w-3" />
             {language === 'tr' ? 'Veritabanı Dışa Aktar' : 'Database Export'}
           </TabsTrigger>
+          <TabsTrigger value="activeSessions" className="flex-shrink-0 flex items-center gap-1">
+            <Shield className="h-3 w-3" />
+            {language === 'tr' ? 'Aktif Oturumlar' : 'Active Sessions'}
+          </TabsTrigger>
+          <TabsTrigger value="auditExport" className="flex-shrink-0 flex items-center gap-1">
+            <Download className="h-3 w-3" />
+            {language === 'tr' ? 'Denetim Dışa Aktar' : 'Audit Export'}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -1425,6 +1435,16 @@ const Admin: React.FC = () => {
         {/* Database Export Tab */}
         <TabsContent value="dbExport" className="space-y-6">
           <DatabaseExportTab />
+        </TabsContent>
+
+        {/* Active Sessions Tab */}
+        <TabsContent value="activeSessions" className="space-y-6">
+          <ActiveSessionsTab />
+        </TabsContent>
+
+        {/* Audit Log Export Tab */}
+        <TabsContent value="auditExport" className="space-y-6">
+          <AuditLogExportTab />
         </TabsContent>
       </Tabs>
 

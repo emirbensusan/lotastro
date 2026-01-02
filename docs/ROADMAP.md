@@ -220,14 +220,14 @@ LotAstro WMS is not just warehouse software—it's the **operational nervous sys
 
 **Owner:** Full-Stack  
 **Theme:** Enterprise Security  
-**Status:** 🔴 NOT STARTED
+**Status:** ✅ COMPLETE (2026-01-02)
 
 | Task | Priority | Status |
 |------|----------|--------|
-| API rate limiting dashboard | P1 | 🔴 Not Started |
-| Session management (view active sessions) | P1 | 🔴 Not Started |
-| Audit log export/archival | P2 | 🔴 Not Started |
-| IP whitelist enhancements | P2 | 🔴 Not Started |
+| API rate limiting dashboard | P1 | ✅ Complete |
+| Session management (view active sessions) | P1 | ✅ Complete |
+| Audit log export/archival | P2 | ✅ Complete |
+| IP whitelist enhancements (bulk import, CIDR) | P2 | ✅ Complete |
 
 ---
 

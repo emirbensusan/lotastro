@@ -3,16 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
-import { Plus, Trash2, Shield, Loader2, Globe } from 'lucide-react';
+import { Plus, Trash2, Shield, Loader2, Globe, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface IPWhitelistEntry {
   id: string;
@@ -23,14 +25,24 @@ interface IPWhitelistEntry {
   created_by: string | null;
 }
 
+interface BulkImportResult {
+  success: number;
+  failed: number;
+  errors: string[];
+}
+
 const IPWhitelistTab: React.FC = () => {
   const { profile } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [entries, setEntries] = useState<IPWhitelistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newEntry, setNewEntry] = useState({ ip_address: '', description: '' });
+  const [bulkIPs, setBulkIPs] = useState('');
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkResult, setBulkResult] = useState<BulkImportResult | null>(null);
   const [currentIP, setCurrentIP] = useState<string | null>(null);
 
   useEffect(() => {
@@ -156,11 +168,58 @@ const IPWhitelistTab: React.FC = () => {
 
   const handleAddCurrentIP = () => {
     if (currentIP) {
-      setNewEntry({ 
-        ip_address: currentIP, 
-        description: 'My current IP' 
-      });
+      setNewEntry({ ip_address: currentIP, description: 'My current IP' });
       setDialogOpen(true);
+    }
+  };
+
+  const handleBulkImport = async () => {
+    const lines = bulkIPs.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) {
+      toast.error(language === 'tr' ? 'IP adresi giriniz' : 'Enter at least one IP address');
+      return;
+    }
+
+    setBulkImporting(true);
+    setBulkResult(null);
+    
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const line of lines) {
+      const parts = line.split(/[,\t]/).map(p => p.trim());
+      const ip = parts[0];
+      const desc = parts[1] || 'Bulk import';
+
+      if (!validateIP(ip)) {
+        failed++;
+        errors.push(`${ip}: Invalid format`);
+        continue;
+      }
+
+      const { error } = await supabase
+        .from('admin_ip_whitelist')
+        .insert({
+          ip_address: ip,
+          description: desc,
+          created_by: profile?.user_id,
+        });
+
+      if (error) {
+        failed++;
+        errors.push(`${ip}: ${error.code === '23505' ? 'Already exists' : error.message}`);
+      } else {
+        success++;
+      }
+    }
+
+    setBulkResult({ success, failed, errors });
+    setBulkImporting(false);
+    
+    if (success > 0) {
+      fetchEntries();
+      toast.success(`${success} IP(s) imported successfully`);
     }
   };
 
@@ -176,17 +235,21 @@ const IPWhitelistTab: React.FC = () => {
               {t('ipWhitelist') || 'IP Whitelist'}
             </CardTitle>
             <CardDescription>
-              {t('ipWhitelistDescription') || 'Manage allowed IP addresses for admin functions. If the list is empty, all IPs are allowed.'}
+              {t('ipWhitelistDescription') || 'Manage allowed IP addresses for admin functions. Supports IPv4, IPv6, and CIDR notation.'}
             </CardDescription>
           </div>
           <div className="flex gap-2">
             {currentIP && (
-              <Button variant="outline" onClick={handleAddCurrentIP}>
+              <Button variant="outline" onClick={handleAddCurrentIP} size="sm">
                 <Globe className="h-4 w-4 mr-2" />
-                {t('addMyIP') || 'Add My IP'} ({currentIP})
+                {language === 'tr' ? 'IP\'mi Ekle' : 'Add My IP'}
               </Button>
             )}
-            <Button onClick={() => setDialogOpen(true)}>
+            <Button variant="outline" onClick={() => setBulkDialogOpen(true)} size="sm">
+              <Upload className="h-4 w-4 mr-2" />
+              {language === 'tr' ? 'Toplu İçe Aktar' : 'Bulk Import'}
+            </Button>
+            <Button onClick={() => setDialogOpen(true)} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               {t('addIP') || 'Add IP'}
             </Button>
@@ -311,6 +374,56 @@ const IPWhitelistTab: React.FC = () => {
               <Button onClick={handleAddEntry} disabled={saving}>
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {t('addIP') || 'Add IP'}
+              </Button>
+          </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Import Dialog */}
+        <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{language === 'tr' ? 'Toplu IP İçe Aktarma' : 'Bulk IP Import'}</DialogTitle>
+              <DialogDescription>
+                {language === 'tr' 
+                  ? 'Her satıra bir IP adresi girin. İsteğe bağlı olarak virgülle ayrılmış açıklama ekleyebilirsiniz.'
+                  : 'Enter one IP per line. Optionally add description after comma.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Textarea
+                placeholder="192.168.1.1, Office network&#10;10.0.0.0/24, VPN range&#10;203.0.113.50"
+                value={bulkIPs}
+                onChange={(e) => setBulkIPs(e.target.value)}
+                rows={8}
+              />
+              {bulkResult && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span>{bulkResult.success} imported</span>
+                    {bulkResult.failed > 0 && (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-destructive ml-2" />
+                        <span>{bulkResult.failed} failed</span>
+                      </>
+                    )}
+                  </div>
+                  {bulkResult.errors.length > 0 && (
+                    <div className="text-xs text-destructive max-h-20 overflow-y-auto">
+                      {bulkResult.errors.map((e, i) => <div key={i}>{e}</div>)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setBulkDialogOpen(false); setBulkIPs(''); setBulkResult(null); }}>
+                {t('cancel') || 'Cancel'}
+              </Button>
+              <Button onClick={handleBulkImport} disabled={bulkImporting}>
+                {bulkImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {language === 'tr' ? 'İçe Aktar' : 'Import'}
               </Button>
             </DialogFooter>
           </DialogContent>
