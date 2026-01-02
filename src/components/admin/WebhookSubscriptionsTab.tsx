@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Webhook, Plus, Trash2, Eye, Loader2, CheckCircle, XCircle, Copy, Play, RefreshCw } from 'lucide-react';
@@ -20,33 +20,41 @@ interface WebhookSubscription {
   name: string;
   endpoint_url: string;
   event_type: string;
+  events: string[];
   is_active: boolean;
   secret: string;
   created_at: string;
   last_triggered_at: string | null;
   failure_count: number;
+  max_retries: number;
 }
 
 interface WebhookDelivery {
   id: string;
   subscription_id: string;
   event: string;
-  payload: Record<string, any>;
+  event_type: string;
+  payload: Record<string, unknown>;
   status_code: number | null;
+  response_status: number | null;
   error_message: string | null;
   delivered_at: string | null;
   duration_ms: number | null;
   success: boolean;
+  retry_count: number;
+  next_retry_at: string | null;
 }
 
 const AVAILABLE_EVENTS = [
-  { key: 'order.created', label: 'Order Created' },
-  { key: 'order.updated', label: 'Order Updated' },
-  { key: 'order.fulfilled', label: 'Order Fulfilled' },
-  { key: 'inventory.low_stock', label: 'Low Stock Alert' },
-  { key: 'inventory.updated', label: 'Inventory Updated' },
-  { key: 'lot.received', label: 'Lot Received' },
-  { key: 'catalog.updated', label: 'Catalog Updated' },
+  { key: 'order.created', label: 'Order Created', description: 'When a new order is created' },
+  { key: 'order.fulfilled', label: 'Order Fulfilled', description: 'When an order is marked fulfilled' },
+  { key: 'order.cancelled', label: 'Order Cancelled', description: 'When an order is cancelled' },
+  { key: 'lot.received', label: 'Lot Received', description: 'When new stock is received' },
+  { key: 'inventory.updated', label: 'Inventory Updated', description: 'When inventory levels change' },
+  { key: 'inventory.low_stock', label: 'Low Stock Alert', description: 'When stock falls below threshold' },
+  { key: 'catalog.updated', label: 'Catalog Updated', description: 'When catalog items change' },
+  { key: 'reservation.created', label: 'Reservation Created', description: 'When a reservation is made' },
+  { key: 'reservation.fulfilled', label: 'Reservation Fulfilled', description: 'When a reservation is fulfilled' },
 ];
 
 const WebhookSubscriptionsTab: React.FC = () => {
@@ -64,7 +72,7 @@ const WebhookSubscriptionsTab: React.FC = () => {
 
   const [webhookName, setWebhookName] = useState('');
   const [endpointUrl, setEndpointUrl] = useState('');
-  const [selectedEvent, setSelectedEvent] = useState('order.created');
+  const [selectedEvents, setSelectedEvents] = useState<string[]>(['order.created']);
 
   useEffect(() => {
     fetchSubscriptions();
@@ -79,7 +87,14 @@ const WebhookSubscriptionsTab: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSubscriptions((data || []) as unknown as WebhookSubscription[]);
+      
+      // Map legacy event_type to events array if needed
+      const mapped = (data || []).map(sub => ({
+        ...sub,
+        events: sub.events || (sub.event_type ? [sub.event_type] : ['order.created']),
+      }));
+      
+      setSubscriptions(mapped as WebhookSubscription[]);
     } catch (error) {
       console.error('Error fetching webhook subscriptions:', error);
     } finally {
@@ -94,7 +109,7 @@ const WebhookSubscriptionsTab: React.FC = () => {
         .from('webhook_deliveries')
         .select('*')
         .eq('subscription_id', subscriptionId)
-        .order('delivered_at', { ascending: false })
+        .order('delivered_at', { ascending: false, nullsFirst: false })
         .limit(50);
 
       if (error) throw error;
@@ -118,6 +133,11 @@ const WebhookSubscriptionsTab: React.FC = () => {
       return;
     }
 
+    if (selectedEvents.length === 0) {
+      toast({ title: 'Validation Error', description: 'Please select at least one event', variant: 'destructive' });
+      return;
+    }
+
     try { new URL(endpointUrl); } catch {
       toast({ title: 'Validation Error', description: 'Please enter a valid URL', variant: 'destructive' });
       return;
@@ -128,10 +148,12 @@ const WebhookSubscriptionsTab: React.FC = () => {
       const { error } = await supabase.from('webhook_subscriptions').insert({
         name: webhookName,
         endpoint_url: endpointUrl,
-        event_type: selectedEvent,
+        event_type: selectedEvents[0], // Keep for backward compatibility
+        events: selectedEvents,
         secret: generateSecret(),
         is_active: true,
         failure_count: 0,
+        max_retries: 5,
       });
 
       if (error) throw error;
@@ -150,8 +172,9 @@ const WebhookSubscriptionsTab: React.FC = () => {
   const handleTestWebhook = async (sub: WebhookSubscription) => {
     setTestingWebhook(sub.id);
     try {
+      const testEvent = sub.events?.[0] || sub.event_type || 'test.ping';
       const testPayload = {
-        event: sub.event_type || 'test.ping',
+        event: testEvent,
         data: {
           test: true,
           message: 'This is a test webhook from LotAstro',
@@ -186,13 +209,13 @@ const WebhookSubscriptionsTab: React.FC = () => {
         });
       }
 
-      // Refresh to show new delivery
       fetchSubscriptions();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error testing webhook:', error);
       toast({
         title: 'Test Failed',
-        description: error.message || 'Failed to send test webhook',
+        description: errorMessage || 'Failed to send test webhook',
         variant: 'destructive',
       });
     } finally {
@@ -224,6 +247,25 @@ const WebhookSubscriptionsTab: React.FC = () => {
     }
   };
 
+  const handleRetryDelivery = async (deliveryId: string) => {
+    try {
+      // Set next_retry_at to now to make it eligible for immediate retry
+      const { error } = await supabase
+        .from('webhook_deliveries')
+        .update({ next_retry_at: new Date().toISOString() })
+        .eq('id', deliveryId);
+      
+      if (error) throw error;
+      toast({ title: 'Retry Scheduled', description: 'The delivery will be retried shortly.' });
+      
+      if (selectedSubscription) {
+        fetchDeliveries(selectedSubscription.id);
+      }
+    } catch (error) {
+      console.error('Error scheduling retry:', error);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: 'Copied', description: 'Secret copied to clipboard' });
@@ -232,13 +274,34 @@ const WebhookSubscriptionsTab: React.FC = () => {
   const resetForm = () => {
     setWebhookName('');
     setEndpointUrl('');
-    setSelectedEvent('order.created');
+    setSelectedEvents(['order.created']);
+  };
+
+  const toggleEvent = (eventKey: string) => {
+    setSelectedEvents(prev => 
+      prev.includes(eventKey)
+        ? prev.filter(e => e !== eventKey)
+        : [...prev, eventKey]
+    );
   };
 
   const getStatusBadge = (sub: WebhookSubscription) => {
     if (!sub.is_active) return <Badge variant="secondary">Disabled</Badge>;
     if (sub.failure_count >= 5) return <Badge variant="destructive">Failed</Badge>;
     return <Badge variant="default">Active</Badge>;
+  };
+
+  const getDeliveryStatus = (delivery: WebhookDelivery) => {
+    if (delivery.success) {
+      return <Badge className="bg-green-500 text-white">Delivered</Badge>;
+    }
+    if (delivery.error_message?.startsWith('Dead letter')) {
+      return <Badge variant="destructive">Dead Letter</Badge>;
+    }
+    if (delivery.next_retry_at) {
+      return <Badge variant="secondary">Pending Retry</Badge>;
+    }
+    return <Badge variant="destructive">Failed</Badge>;
   };
 
   return (
@@ -251,16 +314,33 @@ const WebhookSubscriptionsTab: React.FC = () => {
           </div>
           <Dialog open={createDialogOpen} onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Add Webhook</Button></DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader><DialogTitle>Create Webhook</DialogTitle><DialogDescription>Register an endpoint to receive events</DialogDescription></DialogHeader>
               <div className="space-y-4">
                 <div><Label>Name</Label><Input value={webhookName} onChange={(e) => setWebhookName(e.target.value)} placeholder="My CRM Webhook" /></div>
                 <div><Label>Endpoint URL</Label><Input value={endpointUrl} onChange={(e) => setEndpointUrl(e.target.value)} placeholder="https://..." /></div>
-                <div><Label>Event Type</Label>
-                  <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{AVAILABLE_EVENTS.map((e) => <SelectItem key={e.key} value={e.key}>{e.label}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div>
+                  <Label className="mb-2 block">Events to Subscribe</Label>
+                  <div className="grid gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                    {AVAILABLE_EVENTS.map((event) => (
+                      <div key={event.key} className="flex items-start space-x-3">
+                        <Checkbox 
+                          id={event.key}
+                          checked={selectedEvents.includes(event.key)}
+                          onCheckedChange={() => toggleEvent(event.key)}
+                        />
+                        <div className="grid gap-0.5 leading-none">
+                          <label htmlFor={event.key} className="text-sm font-medium cursor-pointer">
+                            {event.label}
+                          </label>
+                          <p className="text-xs text-muted-foreground">{event.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {selectedEvents.length} event{selectedEvents.length !== 1 ? 's' : ''} selected
+                  </p>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
@@ -294,7 +374,7 @@ const WebhookSubscriptionsTab: React.FC = () => {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Endpoint</TableHead>
-                  <TableHead>Event</TableHead>
+                  <TableHead>Events</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Active</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -305,7 +385,16 @@ const WebhookSubscriptionsTab: React.FC = () => {
                   <TableRow key={sub.id}>
                     <TableCell className="font-medium">{sub.name}</TableCell>
                     <TableCell><code className="text-xs truncate max-w-xs block">{sub.endpoint_url}</code></TableCell>
-                    <TableCell><Badge variant="outline">{sub.event_type}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1 max-w-[200px]">
+                        {(sub.events || [sub.event_type]).slice(0, 2).map((event, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">{event.split('.')[1]}</Badge>
+                        ))}
+                        {(sub.events || []).length > 2 && (
+                          <Badge variant="secondary" className="text-xs">+{sub.events.length - 2}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{getStatusBadge(sub)}</TableCell>
                     <TableCell><Switch checked={sub.is_active} onCheckedChange={() => handleToggleActive(sub)} /></TableCell>
                     <TableCell className="text-right">
@@ -337,7 +426,7 @@ const WebhookSubscriptionsTab: React.FC = () => {
       </Card>
 
       <Dialog open={deliveriesDialogOpen} onOpenChange={setDeliveriesDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Delivery History - {selectedSubscription?.name}</DialogTitle>
             <DialogDescription>Recent webhook deliveries for this subscription</DialogDescription>
@@ -350,36 +439,47 @@ const WebhookSubscriptionsTab: React.FC = () => {
                     <TableHead>Status</TableHead>
                     <TableHead>Event</TableHead>
                     <TableHead>Response</TableHead>
+                    <TableHead>Retries</TableHead>
                     <TableHead>Duration</TableHead>
                     <TableHead>Time</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {deliveries.map((d) => (
                     <TableRow key={d.id}>
+                      <TableCell>{getDeliveryStatus(d)}</TableCell>
+                      <TableCell><Badge variant="outline">{d.event || d.event_type}</Badge></TableCell>
                       <TableCell>
-                        {d.success ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-destructive" />
-                        )}
-                      </TableCell>
-                      <TableCell><Badge variant="outline">{d.event}</Badge></TableCell>
-                      <TableCell>
-                        <Badge variant={d.status_code && d.status_code < 300 ? 'default' : 'destructive'}>
-                          {d.status_code || 'Error'}
+                        <Badge variant={(d.status_code || d.response_status) && (d.status_code || d.response_status)! < 300 ? 'default' : 'destructive'}>
+                          {d.status_code || d.response_status || 'Error'}
                         </Badge>
                         {d.error_message && (
-                          <span className="text-xs text-muted-foreground ml-2 truncate max-w-[100px] block">
-                            {d.error_message}
+                          <span className="text-xs text-muted-foreground ml-2 truncate max-w-[100px] block" title={d.error_message}>
+                            {d.error_message.slice(0, 50)}...
                           </span>
                         )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {d.retry_count || 0}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {d.duration_ms ? `${d.duration_ms}ms` : '-'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {d.delivered_at ? formatDistanceToNow(new Date(d.delivered_at), { addSuffix: true }) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {!d.success && !d.error_message?.startsWith('Dead letter') && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleRetryDelivery(d.id)}
+                            title="Retry now"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

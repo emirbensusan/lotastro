@@ -29,6 +29,7 @@ import ShareOrderDialog from '@/components/ShareOrderDialog';
 import { MobileDataCard } from '@/components/ui/mobile-data-card';
 import { ViewModeToggle } from '@/components/ui/view-mode-toggle';
 import { useViewMode } from '@/hooks/useViewMode';
+import { dispatchOrderCreated, dispatchOrderFulfilled } from '@/lib/webhookTrigger';
 
 interface Order {
   id: string;
@@ -339,6 +340,16 @@ const Orders = () => {
           .replace('{meters}', totalMeters.toFixed(2))
       );
 
+      // Dispatch webhook event for order creation
+      dispatchOrderCreated({
+        id: orderData.id,
+        order_number: orderData.order_number,
+        customer_name: customerName,
+        lots_count: selectedLots.length,
+        total_meters: totalMeters,
+        created_by: profile?.email,
+      });
+
       const newOrder = await supabase
         .from('orders')
         .select(`
@@ -450,6 +461,17 @@ const Orders = () => {
           .replace('{orderNumber}', order?.order_number || orderId)
           .replace('{customerName}', order?.customer_name || '')
       );
+
+      // Dispatch webhook event for order fulfillment
+      if (order) {
+        dispatchOrderFulfilled({
+          id: orderId,
+          order_number: order.order_number,
+          customer_name: order.customer_name,
+          fulfilled_by: profile?.email,
+          fulfilled_at: new Date().toISOString(),
+        });
+      }
 
       fetchOrders();
     } catch (error: any) {

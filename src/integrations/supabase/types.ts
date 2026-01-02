@@ -3671,6 +3671,7 @@ export type Database = {
           delivered_at: string | null
           duration_ms: number | null
           error_message: string | null
+          event: string | null
           event_type: string
           id: string
           next_retry_at: string | null
@@ -3678,12 +3679,15 @@ export type Database = {
           response_body: string | null
           response_status: number | null
           retry_count: number | null
+          status_code: number | null
           subscription_id: string | null
+          success: boolean | null
         }
         Insert: {
           delivered_at?: string | null
           duration_ms?: number | null
           error_message?: string | null
+          event?: string | null
           event_type: string
           id?: string
           next_retry_at?: string | null
@@ -3691,12 +3695,15 @@ export type Database = {
           response_body?: string | null
           response_status?: number | null
           retry_count?: number | null
+          status_code?: number | null
           subscription_id?: string | null
+          success?: boolean | null
         }
         Update: {
           delivered_at?: string | null
           duration_ms?: number | null
           error_message?: string | null
+          event?: string | null
           event_type?: string
           id?: string
           next_retry_at?: string | null
@@ -3704,7 +3711,9 @@ export type Database = {
           response_body?: string | null
           response_status?: number | null
           retry_count?: number | null
+          status_code?: number | null
           subscription_id?: string | null
+          success?: boolean | null
         }
         Relationships: [
           {
@@ -3722,6 +3731,7 @@ export type Database = {
           created_by: string | null
           endpoint_url: string
           event_type: string
+          events: string[] | null
           failure_count: number | null
           headers: Json | null
           id: string
@@ -3737,6 +3747,7 @@ export type Database = {
           created_by?: string | null
           endpoint_url: string
           event_type: string
+          events?: string[] | null
           failure_count?: number | null
           headers?: Json | null
           id?: string
@@ -3752,6 +3763,7 @@ export type Database = {
           created_by?: string | null
           endpoint_url?: string
           event_type?: string
+          events?: string[] | null
           failure_count?: number | null
           headers?: Json | null
           id?: string
