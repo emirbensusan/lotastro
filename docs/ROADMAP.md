@@ -1,8 +1,8 @@
 # LotAstro Development Roadmap
 
-> **Version**: 3.0.0  
-> **Last Updated**: 2025-12-26  
-> **Planning Horizon**: 14 weeks (Q1 2025)  
+> **Version**: 4.0.0  
+> **Last Updated**: 2026-01-02  
+> **Planning Horizon**: 19.5 days remaining  
 > **Architecture**: Multi-Project Ecosystem  
 > **Philosophy**: Reliability → Intelligence → Connectivity → Delight
 
@@ -109,17 +109,16 @@ LotAstro WMS is not just warehouse software—it's the **operational nervous sys
 
 ---
 
-## 4. Current Status
+## 4. Batch Status Summary
 
-### Completed Phases ✅
+### ✅ COMPLETED BATCHES
 
-| Phase | Theme | Status | Completion Date |
-|-------|-------|--------|-----------------|
-| Phase 0A | CRON Security | ✅ Complete | 2025-12-25 |
-| Phase 0B | XSS Protection | ✅ Complete | 2025-12-25 |
-| Phase 1B | Legal Compliance | ✅ Complete | 2025-12-25 |
-| Phase 2A.1 | Integration APIs Foundation | ✅ Complete | 2025-12-26 |
-| Phase 1A | Security Hardening | ✅ Complete | 2025-12-26 |
+| Batch | Theme | Completion Date |
+|-------|-------|-----------------|
+| **A-D** | Core, Security, Legal | 2025-12-26 |
+| **E** | User Delight & Onboarding (Tours, Help) | 2025-12-27 |
+| **G** | Performance & Mobile Polish | 2025-12-28 |
+| **H** | Analytics & Insights (Dashboard Widgets) | 2025-12-28 |
 
 ### Completed Work Summary
 
@@ -132,86 +131,173 @@ LotAstro WMS is not just warehouse software—it's the **operational nervous sys
 - ✅ **Session timeout** configurable via admin panel
 - ✅ **Password policy** configurable via admin panel
 - ✅ **MFA components** ready (`MFAEnroll.tsx`, `MFAVerify.tsx`)
+- ✅ **Product tours** with react-joyride (4 role-based tours)
+- ✅ **Help panel** with contextual documentation
+- ✅ **Dashboard widgets** (InsightsWidget, ActivityFeed, TrendChart)
+- ✅ **PWA install prompt** component
+- ✅ **Lazy loading** for dashboard components
+- ✅ **Vendor chunking** in Vite config
 
 ---
 
-## 5. Roadmap Phases
+## 5. Remaining Batches (Priority Order)
 
-### PILLAR 1: RELIABILITY FOUNDATION
+### PRIORITY 1: Core Features
 
-#### Phase 1.1: Security Hardening (Week 1) ✅ COMPLETE
+#### Batch L: Report Builder Execution (2.5 days, ~9-14 credits)
+
+**Owner:** Full-Stack  
+**Theme:** Reports That Actually Run  
+**Status:** 🔴 NOT STARTED
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Query builder engine | `supabase/functions/generate-report-attachment/index.ts` | P0 | 🔴 Not Started |
+| Convert report definition → SQL | New utility | P0 | 🔴 Not Started |
+| PDF export generator | Edge function | P1 | 🔴 Not Started |
+| Excel export generator | Use `xlsx-js-style` | P1 | 🔴 Not Started |
+| Wire RunReportButton | `src/components/reports/RunReportButton.tsx` | P1 | 🔴 Not Started |
+| Report sharing/permissions | UI + RLS | P2 | 🔴 Not Started |
+| Report templates library | Database + UI | P2 | 🔴 Not Started |
+| Schedule execution | `supabase/functions/send-scheduled-report/index.ts` | P2 | 🔴 Not Started |
+
+---
+
+#### Batch J: Offline & Reliability (2 days, ~8-12 credits)
+
+**Owner:** Full-Stack  
+**Theme:** Work Without Internet  
+**Status:** 🔴 NOT STARTED
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| IndexedDB sync queue | `src/hooks/useSyncQueue.ts` | P0 | 🔴 Not Started |
+| Conflict resolution UI | `src/components/offline/ConflictResolutionDialog.tsx` | P1 | 🔴 Not Started |
+| Background sync service worker | `public/sw.js` | P1 | 🔴 Not Started |
+| Offline-first data caching | Query persistence | P1 | 🔴 Not Started |
+| Sync status indicator | `src/components/offline/SyncStatusBadge.tsx` | P2 | 🔴 Not Started |
+
+---
+
+### PRIORITY 2: Connectivity
+
+#### Batch K: Webhook & Integration Events (1.5 days, ~6-9 credits)
 
 **Owner:** Backend  
-**Theme:** Authentication Hardening  
-**Status:** ✅ Complete (2025-12-26)
+**Theme:** Event-Driven Architecture  
+**Status:** 🟡 PARTIAL
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Webhook dispatcher | `supabase/functions/webhook-dispatcher/index.ts` | - | ✅ Complete |
+| HMAC signing | Dispatcher | - | ✅ Complete |
+| Order events (created, fulfilled, cancelled) | Webhook payloads | P0 | 🔴 Not Started |
+| Inventory events (low_stock, updated) | Webhook payloads | P1 | 🔴 Not Started |
+| Retry/dead letter queue | Edge function + table | P1 | 🔴 Not Started |
+| Integration logs dashboard | Admin UI | P2 | 🔴 Not Started |
+
+---
+
+### PRIORITY 3: Quality of Life
+
+#### Batch O: Quality of Life & Polish (2 days, ~8-13 credits)
+
+**Owner:** Frontend  
+**Theme:** Delightful UX  
+**Status:** 🔴 NOT STARTED
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Session timeout configuration UI | P1 | ✅ Complete |
-| Password policy configuration UI | P1 | ✅ Complete |
-| System settings database table | P1 | ✅ Complete |
-| Password strength on reset page | P1 | ✅ Complete |
-| OpenAPI spec creation | P1 | ✅ Complete |
-| API docs download button | P2 | ✅ Complete |
-
-**Remaining Work:**
-- [ ] Wire MFA enforcement for admins (`useAuth.tsx`)
-- [ ] Rate limiting enforcement (wire `useLoginRateLimit.ts`)
-- [ ] RLS audit on `rolls` and `goods_in_receipts` tables
+| Bulk actions (select all, bulk delete) | P1 | 🔴 Not Started |
+| Advanced filtering presets (save/load) | P1 | 🔴 Not Started |
+| Print layout refinements | P2 | 🔴 Not Started |
+| Accessibility audit (ARIA labels) | P2 | 🔴 Not Started |
+| Keyboard navigation polish | P2 | 🔴 Not Started |
 
 ---
 
-#### Phase 1.2: Data Integrity (Week 1-2) 🔴 NOT STARTED
-
-**Owner:** Backend  
-**Theme:** Bulletproof Data
-
-| Task | File/Location | Priority | Status |
-|------|---------------|----------|--------|
-| RLS policy audit - `rolls` | Database | P0 | 🔴 Not Started |
-| RLS policy audit - `goods_in_receipts` | Database | P0 | 🔴 Not Started |
-| Foreign key cascade review | Database | P1 | 🔴 Not Started |
-| Add missing CHECK constraints | Database | P2 | 🔴 Not Started |
-
----
-
-#### Phase 1.3: Error Recovery (Week 2) 🟡 PARTIAL
-
-**Owner:** Frontend  
-**Theme:** Graceful Failures
-
-| Task | Status | Notes |
-|------|--------|-------|
-| ErrorBoundary component | ✅ Complete | Exists at `src/components/ErrorBoundary.tsx` |
-| QueryErrorState component | ✅ Complete | Exists at `src/components/ui/query-error-state.tsx` |
-| useNetworkRetry hook | ✅ Complete | Exists at `src/hooks/useNetworkRetry.ts` |
-| Form draft recovery | ✅ Complete | `useFormPersistence.tsx` exists |
-| Test all error paths | 🔴 Not Started | Verify error handling works |
-
----
-
-#### Phase 1.4: Offline Capability (Week 3) 🔴 NOT STARTED
+#### Batch N: Admin & Security Enhancements (1.5 days, ~6-10 credits)
 
 **Owner:** Full-Stack  
-**Theme:** Work Without Internet
+**Theme:** Enterprise Security  
+**Status:** 🔴 NOT STARTED
 
-| Task | File/Location | Priority | Status |
-|------|---------------|----------|--------|
-| Create `useOfflineQueue` hook | `src/hooks/useOfflineQueue.ts` | P1 | 🔴 Not Started |
-| IndexedDB mutation queue | New utility | P1 | 🔴 Not Started |
-| Background sync on reconnect | Service worker | P2 | 🔴 Not Started |
-| Conflict resolution UI | New component | P2 | 🔴 Not Started |
-| Offline status indicator | ✅ Already in `Layout.tsx` | - | ✅ Complete |
+| Task | Priority | Status |
+|------|----------|--------|
+| API rate limiting dashboard | P1 | 🔴 Not Started |
+| Session management (view active sessions) | P1 | 🔴 Not Started |
+| Audit log export/archival | P2 | 🔴 Not Started |
+| IP whitelist enhancements | P2 | 🔴 Not Started |
 
 ---
 
-### PILLAR 2: INTELLIGENCE UPGRADE
+### PRIORITY 4: Advanced Features
 
-#### Phase 2.1: OCR Pipeline Overhaul (Weeks 4-5) 🔴 NOT STARTED
+#### Batch M: Advanced Forecasting (2.5 days, ~9-14 credits)
+
+**Owner:** Full-Stack  
+**Theme:** Predictive Intelligence  
+**Status:** 🔴 NOT STARTED
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Forecast algorithm refinement | P1 | 🔴 Not Started |
+| Seasonal adjustment settings | P1 | 🔴 Not Started |
+| Forecast vs. actual comparison | P2 | 🔴 Not Started |
+| Alert threshold configuration | P2 | 🔴 Not Started |
+
+---
+
+### PRIORITY 5: AI/OCR (Deferred)
+
+#### Batch P: AI Extraction Refactoring (2.5 days, ~10-15 credits)
+
+**Owner:** Full-Stack  
+**Theme:** AI Order Extraction Reliability  
+**Exit Criteria:** 90%+ combined extraction accuracy  
+**Status:** 🔴 NOT STARTED
+
+##### Problem Statement
+
+The AI Order Extraction is **not working reliably** due to:
+- Incorrect regex pattern priority (greedy patterns match first)
+- Turkish number parsing edge cases (`1.720` → 1720 not 1.72)
+- LLM prompt complexity causing inconsistent JSON output
+- No confidence threshold gating
+- Fragile header inheritance logic
+- Inconsistent few-shot examples
+
+##### Turkish Number Parsing Rules
+
+```typescript
+// Input → Expected Output
+"1.000,50" → 1000.50   // European: dots=thousands, comma=decimal
+"1,000.50" → 1000.50   // US format
+"1.720"    → 1720      // Ambiguous: treat as thousands if 3 digits after
+"1.720 MT" → 1720      // Context: MT suffix indicates meters
+"10,5 mt"  → 10.5      // Turkish decimal with context
+```
+
+##### Task Breakdown
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Reorder regex patterns (specific first) | `supabase/functions/_shared/extraction-lib.ts` | P0 | 🔴 Not Started |
+| Fix `parseTurkishNumber()` edge cases | `supabase/functions/_shared/extraction-lib.ts` | P0 | 🔴 Not Started |
+| Add header context inheritance tests | `supabase/functions/_shared/extraction-lib.ts` | P0 | 🔴 Not Started |
+| Switch LLM to tool-calling (from raw JSON) | `supabase/functions/extract-order/index.ts` | P0 | 🔴 Not Started |
+| Add confidence threshold gate (<0.6 → manual) | `supabase/functions/_shared/extraction-lib.ts` | P1 | 🔴 Not Started |
+| Multi-language extraction prompt | `supabase/functions/extract-order/index.ts` | P2 | 🔴 Not Started |
+| Enhance ExtractionTest page | `src/pages/ExtractionTest.tsx` | P2 | 🔴 Not Started |
+
+---
+
+#### Batch I: OCR Pipeline Overhaul (3 days, ~11-17 credits)
 
 **Owner:** Full-Stack  
 **Theme:** Stock Take OCR Reliability  
-**Exit Criteria:** 95%+ accuracy on clean printed labels
+**Exit Criteria:** 95%+ accuracy on clean printed labels  
+**Status:** 🔴 NOT STARTED
 
 ##### Problem Statement
 
@@ -260,243 +346,111 @@ await worker.setParameters({
 
 ---
 
-#### Phase 2.2: AI Extraction Fixes (Weeks 5-6) 🔴 NOT STARTED
+### SIDELINED
 
-**Owner:** Full-Stack  
-**Theme:** AI Order Extraction Reliability  
-**Exit Criteria:** 90%+ combined extraction accuracy
-
-##### Problem Statement
-
-The AI Order Extraction is **not working reliably** due to:
-- Incorrect regex pattern priority (greedy patterns match first)
-- Turkish number parsing edge cases (`1.720` → 1720 not 1.72)
-- LLM prompt complexity causing inconsistent output
-
-##### Turkish Number Parsing Rules
-
-```typescript
-// Input → Expected Output
-"1.000,50" → 1000.50   // European: dots=thousands, comma=decimal
-"1,000.50" → 1000.50   // US format
-"1.720"    → 1720      // Ambiguous: treat as thousands if 3 digits after
-"1.720 MT" → 1720      // Context: MT suffix indicates meters
-"10,5 mt"  → 10.5      // Turkish decimal with context
-```
-
-##### Task Breakdown
-
-| Task | File | Priority | Status |
-|------|------|----------|--------|
-| Reorder regex patterns (specific first) | `supabase/functions/_shared/extraction-lib.ts` | P0 | 🔴 Not Started |
-| Fix `parseTurkishNumber()` | `supabase/functions/_shared/extraction-lib.ts` | P0 | 🔴 Not Started |
-| Add header context inheritance | `supabase/functions/_shared/extraction-lib.ts` | P0 | 🔴 Not Started |
-| Switch LLM to tool-calling | `supabase/functions/extract-order/index.ts` | P0 | 🔴 Not Started |
-| Add confidence threshold gate (<0.6) | `supabase/functions/_shared/extraction-lib.ts` | P1 | 🔴 Not Started |
-| Enhance ExtractionTest page | `src/pages/ExtractionTest.tsx` | P2 | 🔴 Not Started |
-
----
-
-#### Phase 2.3: Report Builder Execution (Weeks 6-7) 🔄 IN PROGRESS
-
-**Owner:** Full-Stack  
-**Theme:** Reports That Actually Run  
-**Exit Criteria:** Reports can be created, saved, executed, and exported
-
-##### Problem Statement
-
-Beautiful UI, but reports don't actually run or export.
-
-##### Task Breakdown
-
-| Task | File | Priority | Status |
-|------|------|----------|--------|
-| Query builder engine | `supabase/functions/generate-report-attachment/index.ts` | P0 | 🔄 In Progress |
-| Convert report definition → SQL | New utility | P0 | 🔴 Not Started |
-| PDF export generator | Edge function | P1 | 🔴 Not Started |
-| Excel export generator | Use `xlsx-js-style` | P1 | 🔴 Not Started |
-| Wire RunReportButton | `src/components/reports/RunReportButton.tsx` | P1 | 🔴 Not Started |
-| Schedule execution | `supabase/functions/send-scheduled-report/index.ts` | P2 | 🔴 Not Started |
-
----
-
-### PILLAR 3: CONNECTIVITY LAYER
-
-#### Phase 3.1: Public API Completion (Week 8) 🟡 PARTIAL
+#### Batch F: CRM & Ecosystem Connectivity (2 days, ~8-13 credits)
 
 **Owner:** Backend  
-**Theme:** Seamless Ecosystem Integration
-
-| Task | Status | Notes |
-|------|--------|-------|
-| OpenAPI 3.0 Specification | ✅ Complete | `public/openapi.yaml` |
-| API Key Authentication | ✅ Complete | `_shared/api-auth.ts` |
-| `api-get-inventory` endpoint | ✅ Complete | Returns stock levels |
-| `api-get-catalog` endpoint | ✅ Complete | Returns product catalog |
-| `api-create-order` endpoint | ✅ Complete | Accepts orders from Portal |
-| Interactive Swagger UI | 🔴 Not Started | Embed in ApiDocs page |
-| API Key Management UI | ✅ Complete | `ApiKeyManagementTab.tsx` |
-| API Usage Dashboard | ✅ Complete | `ApiUsageDashboardTab.tsx` |
-
----
-
-#### Phase 3.2: Webhook System (Week 8-9) 🟡 PARTIAL
-
-**Owner:** Backend  
-**Theme:** Event-Driven Architecture
-
-| Task | Status | Notes |
-|------|--------|-------|
-| Webhook dispatcher | ✅ Complete | `webhook-dispatcher/index.ts` |
-| HMAC signing | ✅ Complete | Implemented in dispatcher |
-| Webhook subscriptions table | ✅ Complete | `webhook_subscriptions` |
-| Webhook deliveries table | ✅ Complete | `webhook_deliveries` |
-| Order events (created, fulfilled, cancelled) | 🔴 Not Started | Define event payloads |
-| Inventory events (low_stock, updated) | 🔴 Not Started | Define event payloads |
-| Webhook management UI | 🔴 Not Started | Admin panel tab |
-
----
-
-#### Phase 3.3: CRM Integration (Week 9-10) 🔴 NOT STARTED
-
-**Owner:** Backend  
-**Theme:** Bidirectional Customer Sync
-
-| Task | File | Priority | Status |
-|------|------|----------|--------|
-| Customer sync endpoint | New edge function | P1 | 🔴 Not Started |
-| External customer linking | Database column | P1 | 🔴 Not Started |
-| Order notification webhook | Webhook event | P1 | 🔴 Not Started |
-| Credit limit enforcement | Order creation | P2 | 🔴 Not Started |
-
----
-
-### PILLAR 4: USER DELIGHT
-
-#### Phase 4.1: Onboarding Experience (Week 11) 🔴 NOT STARTED
-
-**Owner:** Frontend  
-**Theme:** Zero-Friction Start
+**Theme:** Bidirectional Sync  
+**Status:** ⏸️ SIDELINED (awaiting CRM project readiness)
 
 | Task | Priority | Status |
 |------|----------|--------|
-| First-login setup wizard | P1 | 🔴 Not Started |
-| Role-based feature tours | P2 | 🔴 Not Started |
-| Contextual help tooltips | P2 | 🔴 Not Started |
-| Video tutorial embeds | P3 | 🔴 Not Started |
-
----
-
-#### Phase 4.2: Analytics Dashboard (Week 12) 🔴 NOT STARTED
-
-**Owner:** Frontend  
-**Theme:** Data-Driven Decisions
-
-| Task | Priority | Status |
-|------|----------|--------|
-| Executive KPI dashboard | P1 | 🔴 Not Started |
-| Orders today/week/month | P1 | 🔴 Not Started |
-| Inventory value & turnover | P1 | 🔴 Not Started |
-| Forecast accuracy tracking | P2 | 🔴 Not Started |
-| Trend charts with Recharts | P2 | 🔴 Not Started |
-
----
-
-#### Phase 4.3: Mobile Excellence (Week 13) 🟡 PARTIAL
-
-**Owner:** Frontend  
-**Theme:** Native-Like Experience
-
-| Task | Status | Notes |
-|------|--------|-------|
-| Virtual scrolling | ✅ Complete | `src/components/ui/virtual-list.tsx` |
-| Swipe actions | ✅ Complete | `SwipeableCardEnhanced.tsx` |
-| Haptic feedback | ✅ Complete | `useHapticFeedback.ts` |
-| Pull-to-refresh | ✅ Complete | `PullToRefresh.tsx` |
-| Camera scanner improvements | 🔴 Not Started | Better QR detection |
-| PWA manifest | 🔴 Not Started | Installable app |
-
----
-
-#### Phase 4.4: Performance Polish (Week 14) 🟡 PARTIAL
-
-**Owner:** Frontend  
-**Theme:** Blazing Fast
-
-| Task | Status | Notes |
-|------|--------|-------|
-| Bundle splitting | ✅ Complete | Vite code splitting |
-| Image lazy loading | ✅ Complete | `LazyImage` component |
-| Query optimization | 🔴 Not Started | Review slow queries |
-| Aggressive caching | 🔴 Not Started | TanStack Query staleTime |
-| < 2s page load | 🔴 Not Started | Performance audit |
+| CRM data sync (customers) | P1 | ⏸️ Sidelined |
+| Customer Portal API enhancements | P1 | ⏸️ Sidelined |
+| "View in CRM" deep links | P2 | ⏸️ Sidelined |
+| Shared OAuth authentication | P2 | ⏸️ Sidelined |
+| Activity timeline sync | P3 | ⏸️ Sidelined |
 
 ---
 
 ## 6. Priority Decision Matrix
 
-### What to Build vs. What to Wait
-
-| Feature | Build Now | Wait | Rationale |
-|---------|-----------|------|-----------|
-| **OCR Pipeline Fix** | ✅ | | Critical for stock take usability |
-| **AI Extraction Fix** | ✅ | | Critical for order processing |
-| **Report Execution** | ✅ | | Users expecting this feature |
-| **MFA Enforcement** | ✅ | | Security requirement |
-| **Offline Mode** | | ⏳ Phase 2 | Nice-to-have, not blocking |
-| **Analytics Dashboard** | | ⏳ Phase 4 | After core features stable |
-| **CRM Integration** | | ⏳ Phase 3 | After CRM project ready |
-| **PWA** | | ⏳ Backlog | Mobile web works well |
-
-### Recommended Starting Point
+### Recommended Execution Order
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    RECOMMENDED PRIORITY                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  OPTION A: Start with Phase 2.1 (OCR Pipeline Fix)              │
-│  ────────────────────────────────────────────────               │
-│  • Stock take is currently unusable                             │
-│  • High user impact when fixed                                  │
-│  • ~1 week effort                                               │
-│                                                                  │
-│  OPTION B: Start with Phase 2.2 (AI Extraction Fix)             │
-│  ────────────────────────────────────────────────               │
-│  • Order processing is the core workflow                        │
-│  • Turkish number parsing is broken                             │
-│  • ~1 week effort                                               │
-│                                                                  │
-│  OPTION C: Start with Phase 2.3 (Report Builder)                │
-│  ────────────────────────────────────────────────               │
-│  • UI is beautiful but doesn't execute                          │
-│  • Users are waiting for this                                   │
-│  • ~1-2 week effort                                             │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    RECOMMENDED PRIORITY ORDER                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. Batch L: Report Builder Execution    (2.5 days, ~9-14 credits)          │
+│     → Users expecting reports to actually work                              │
+│                                                                              │
+│  2. Batch J: Offline & Reliability       (2 days, ~8-12 credits)            │
+│     → Critical for warehouse floor use                                      │
+│                                                                              │
+│  3. Batch K: Webhook & Integration       (1.5 days, ~6-9 credits)           │
+│     → Enables CRM/Portal connectivity                                       │
+│                                                                              │
+│  4. Batch O: Quality of Life             (2 days, ~8-13 credits)            │
+│     → User satisfaction improvements                                        │
+│                                                                              │
+│  5. Batch N: Admin & Security            (1.5 days, ~6-10 credits)          │
+│     → Enterprise requirements                                               │
+│                                                                              │
+│  6. Batch M: Advanced Forecasting        (2.5 days, ~9-14 credits)          │
+│     → After core features stable                                            │
+│                                                                              │
+│  7. Batch P: AI Extraction Refactoring   (2.5 days, ~10-15 credits)         │
+│     → Deferred per user request                                             │
+│                                                                              │
+│  8. Batch I: OCR Pipeline Overhaul       (3 days, ~11-17 credits)           │
+│     → Deferred per user request                                             │
+│                                                                              │
+│  ⏸️ Batch F: CRM & Ecosystem             (2 days, ~8-13 credits)            │
+│     → Sidelined until CRM ready                                             │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Total Remaining Effort
+
+| Priority | Batches | Days | Credits |
+|----------|---------|------|---------|
+| Core Features | L, J | 4.5 | ~17-26 |
+| Connectivity | K | 1.5 | ~6-9 |
+| Quality of Life | O, N | 3.5 | ~14-23 |
+| Advanced | M | 2.5 | ~9-14 |
+| AI/OCR (deferred) | P, I | 5.5 | ~21-32 |
+| Sidelined | F | 2 | ~8-13 |
+| **TOTAL** | 9 | **19.5** | **~75-117** |
 
 ---
 
 ## 7. Changelog
 
+### 2026-01-02 (v4.0.0) - Batch Consolidation
+
+- 📋 Restructured roadmap into consolidated batches (L, J, K, O, N, M, P, I, F)
+- ✅ Marked Batches A-D, E, G, H as complete
+- ➕ Added Batch P: AI Extraction Refactoring with detailed problem statement
+- 📋 Added Turkish number parsing rules documentation
+- 📋 Added recommended execution order with rationale
+- 📋 Deferred Batch P & I (OCR/AI) to end per user request
+- ⏸️ Sidelined Batch F (CRM) pending CRM project readiness
+
+### 2025-12-28 (v3.2.0)
+
+- ✅ Batch G (Performance) complete: Lazy loading, vendor chunking
+- ✅ Batch H (Analytics) complete: Dashboard widgets integrated
+
+### 2025-12-27 (v3.1.0)
+
+- ✅ Batch E (Onboarding) complete: Tours, help panel, keyboard shortcuts
+
 ### 2025-12-26 (v3.0.0) - Enterprise Vision Roadmap
+
 - 🎯 Restructured around Four Pillars: Reliability, Intelligence, Connectivity, Delight
 - ✅ Phase 1A (Security Hardening) completed
 - ✅ Phase 2A.1 (OpenAPI spec + API docs) completed
 - 📋 Added success metrics with targets
 - 📋 Added priority decision matrix
-- 📋 Added recommended starting points
 
 ### 2025-12-25 (v2.1.0)
+
 - ✅ Phase 0A: CRON_SECRET validation complete (11/11 edge functions)
 - ✅ Phase 0B: DOMPurify XSS protection complete
 - ✅ Phase 1B: Legal pages and cookie consent complete
-- 🔄 Phase 2A: Integration API foundation started
-
-### Previous
-- 2025-12-25 (v2.0.0): Multi-project ecosystem architecture documented
-- 2025-01-10 (v1.0.0): Initial roadmap
 
 ---
 
@@ -507,4 +461,7 @@ Beautiful UI, but reports don't actually run or export.
 | 1.0.0 | 2025-01-10 | Initial roadmap |
 | 2.0.0 | 2025-12-25 | Multi-project ecosystem |
 | 2.1.0 | 2025-12-25 | Phase 0A/0B/1B complete |
-| 3.0.0 | 2025-12-26 | Enterprise vision; Four Pillars; Phase 1A complete |
+| 3.0.0 | 2025-12-26 | Enterprise vision; Four Pillars |
+| 3.1.0 | 2025-12-27 | Batch E complete |
+| 3.2.0 | 2025-12-28 | Batches G, H complete |
+| 4.0.0 | 2026-01-02 | Batch consolidation; AI Extraction batch added |
