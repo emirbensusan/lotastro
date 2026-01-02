@@ -383,6 +383,24 @@ const ForecastGlobalSettings: React.FC<Props> = ({ settings, onSettingsChange, o
         </CardContent>
       </Card>
 
+      {/* Seasonal Adjustments */}
+      <SeasonalAdjustmentEditor
+        enabled={localSettings.seasonal_adjustment_enabled}
+        indices={localSettings.seasonal_indices}
+        onEnabledChange={(v) => updateSetting('seasonal_adjustment_enabled', v)}
+        onIndicesChange={(v) => updateSetting('seasonal_indices', v)}
+        readOnly={readOnly}
+      />
+
+      {/* Trend Detection */}
+      <TrendDetectionSettings
+        enabled={localSettings.trend_detection_enabled}
+        smoothingPeriods={localSettings.trend_smoothing_periods}
+        onEnabledChange={(v) => updateSetting('trend_detection_enabled', v)}
+        onSmoothingPeriodsChange={(v) => updateSetting('trend_smoothing_periods', v)}
+        readOnly={readOnly}
+      />
+
       {/* Schedule Settings */}
       <Card>
         <CardHeader>
