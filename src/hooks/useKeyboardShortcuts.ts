@@ -17,10 +17,15 @@ export const shortcuts: Shortcut[] = [
   { key: 'g c', action: 'goCatalog', label: 'Go to Catalog', labelTr: 'Kataloğa Git', global: true, category: 'navigation' },
   { key: 'g r', action: 'goReports', label: 'Go to Reports', labelTr: 'Raporlara Git', global: true, category: 'navigation' },
   { key: 'g d', action: 'goDashboard', label: 'Go to Dashboard', labelTr: 'Panoya Git', global: true, category: 'navigation' },
+  { key: 'g a', action: 'goAdmin', label: 'Go to Admin', labelTr: 'Yönetime Git', global: true, category: 'navigation' },
   
   // Actions
   { key: 'mod+k', action: 'openCommandPalette', label: 'Command Palette', labelTr: 'Komut Paleti', global: true, category: 'actions' },
   { key: 'mod+/', action: 'showShortcuts', label: 'Show Shortcuts', labelTr: 'Kısayolları Göster', global: true, category: 'help' },
+  { key: 'mod+p', action: 'print', label: 'Print Page', labelTr: 'Sayfayı Yazdır', global: true, category: 'actions' },
+  { key: 'n', action: 'newItem', label: 'New Item', labelTr: 'Yeni Öğe', global: true, category: 'actions' },
+  { key: 'f', action: 'focusSearch', label: 'Focus Search', labelTr: 'Aramaya Odaklan', global: true, category: 'actions' },
+  { key: '?', action: 'showShortcuts', label: 'Show Shortcuts', labelTr: 'Kısayolları Göster', global: true, category: 'help' },
   { key: 'Escape', action: 'close', label: 'Close Dialog', labelTr: 'Diyaloğu Kapat', global: true, category: 'actions' },
 ];
 
@@ -28,12 +33,23 @@ interface UseKeyboardShortcutsOptions {
   onCommandPalette?: () => void;
   onShowShortcuts?: () => void;
   onClose?: () => void;
+  onPrint?: () => void;
+  onNewItem?: () => void;
+  onFocusSearch?: () => void;
   enabled?: boolean;
 }
 
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) {
   const navigate = useNavigate();
-  const { onCommandPalette, onShowShortcuts, onClose, enabled = true } = options;
+  const { 
+    onCommandPalette, 
+    onShowShortcuts, 
+    onClose, 
+    onPrint,
+    onNewItem,
+    onFocusSearch,
+    enabled = true 
+  } = options;
   const [pendingKey, setPendingKey] = useState<string | null>(null);
 
   const handleAction = useCallback((action: string) => {
@@ -53,6 +69,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       case 'goDashboard':
         navigate('/dashboard');
         break;
+      case 'goAdmin':
+        navigate('/admin');
+        break;
       case 'openCommandPalette':
         onCommandPalette?.();
         break;
@@ -62,8 +81,17 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       case 'close':
         onClose?.();
         break;
+      case 'print':
+        onPrint?.();
+        break;
+      case 'newItem':
+        onNewItem?.();
+        break;
+      case 'focusSearch':
+        onFocusSearch?.();
+        break;
     }
-  }, [navigate, onCommandPalette, onShowShortcuts, onClose]);
+  }, [navigate, onCommandPalette, onShowShortcuts, onClose, onPrint, onNewItem, onFocusSearch]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -94,11 +122,36 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
           handleAction('showShortcuts');
           return;
         }
+        if (key === 'p') {
+          event.preventDefault();
+          handleAction('print');
+          return;
+        }
       }
 
       // Handle escape
       if (key === 'escape') {
         handleAction('close');
+        return;
+      }
+
+      // Handle ? for shortcuts help
+      if (event.key === '?') {
+        event.preventDefault();
+        handleAction('showShortcuts');
+        return;
+      }
+
+      // Handle single-key shortcuts
+      if (key === 'n' && !isMod) {
+        event.preventDefault();
+        handleAction('newItem');
+        return;
+      }
+
+      if (key === 'f' && !isMod) {
+        event.preventDefault();
+        handleAction('focusSearch');
         return;
       }
 
@@ -125,6 +178,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
           case 'd':
             event.preventDefault();
             handleAction('goDashboard');
+            break;
+          case 'a':
+            event.preventDefault();
+            handleAction('goAdmin');
             break;
         }
         return;
