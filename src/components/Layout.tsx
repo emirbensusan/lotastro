@@ -238,9 +238,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             isActive={active}
                             size="sm"
                             className="flex items-center justify-start"
-                            tooltip={isCollapsed ? item.label : undefined}
                           >
-                            <Link to={item.path}>
+                            <Link 
+                              to={item.path}
+                              title={isCollapsed ? item.label : undefined}
+                            >
                               <Icon className="h-4 w-4 flex-shrink-0" />
                               <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
                             </Link>

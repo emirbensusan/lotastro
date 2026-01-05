@@ -582,28 +582,12 @@ const SidebarMenuButton = React.forwardRef<
       />
     )
 
-    // Disable tooltips when device can't hover (touch) to keep clicks working
-    if (!tooltip || !canHover) {
-      return button
-    }
-
-    if (typeof tooltip === "string") {
-      tooltip = {
-        children: tooltip,
-      }
-    }
-
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
-        <TooltipContent
-          side="right"
-          align="center"
-          hidden={state !== "collapsed" || isMobile}
-          {...tooltip}
-        />
-      </Tooltip>
-    )
+    // CRITICAL FIX: TooltipTrigger with asChild breaks click propagation 
+    // when the child is also using Slot (asChild pattern).
+    // The double Slot composition causes events to get lost.
+    // Solution: Always return the button directly, use native title for tooltip.
+    // This ensures clicks always reach the underlying Link/anchor element.
+    return button
   }
 )
 SidebarMenuButton.displayName = "SidebarMenuButton"
