@@ -217,6 +217,9 @@ Deno.serve(async (req) => {
       error_message: result.error || null,
       delivered_at: result.success ? new Date().toISOString() : null,
       duration_ms: result.duration_ms,
+      retry_count: 0,
+      next_retry_at: result.success ? null : new Date(Date.now() + 60000).toISOString(), // 1 min for first retry
+      is_dead_lettered: false,
     }));
 
     // Insert delivery logs
@@ -228,7 +231,9 @@ Deno.serve(async (req) => {
       console.error('[webhook-dispatcher] Error logging deliveries:', logError);
     }
 
-    // Update subscription stats
+    // Update subscription stats and handle dead letters for repeated failures
+    const MAX_SUBSCRIPTION_FAILURES = 10; // Move to dead letter after 10 consecutive failures
+    
     for (const result of results) {
       if (result.success) {
         await supabase
@@ -239,13 +244,48 @@ Deno.serve(async (req) => {
           })
           .eq('id', result.subscription_id);
       } else {
+        // Get current failure count
+        const { data: subData } = await supabase
+          .from('webhook_subscriptions')
+          .select('failure_count')
+          .eq('id', result.subscription_id)
+          .single();
+        
+        const currentFailures = (subData?.failure_count || 0) + 1;
+        
         // Increment failure count
-        await supabase.rpc('increment_webhook_failure', {
-          p_subscription_id: result.subscription_id,
-        }).catch(() => {
-          // If RPC doesn't exist, just log
-          console.log(`[webhook-dispatcher] Could not increment failure count for ${result.subscription_id}`);
-        });
+        await supabase
+          .from('webhook_subscriptions')
+          .update({
+            failure_count: currentFailures,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', result.subscription_id);
+        
+        // If max failures exceeded, move to dead letter queue
+        if (currentFailures >= MAX_SUBSCRIPTION_FAILURES) {
+          console.log(`[webhook-dispatcher] Moving to dead letter queue: ${result.subscription_id} after ${currentFailures} failures`);
+          
+          await supabase
+            .from('webhook_dead_letters')
+            .insert({
+              subscription_id: result.subscription_id,
+              event: body.event,
+              payload: payload,
+              error_message: result.error || 'Max retries exceeded',
+              attempts: currentFailures,
+              first_attempted_at: new Date().toISOString(),
+              last_attempted_at: new Date().toISOString(),
+            });
+          
+          // Mark deliveries as dead lettered
+          await supabase
+            .from('webhook_deliveries')
+            .update({ is_dead_lettered: true })
+            .eq('subscription_id', result.subscription_id)
+            .eq('event', body.event)
+            .eq('success', false);
+        }
       }
     }
 

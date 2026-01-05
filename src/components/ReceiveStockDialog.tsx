@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { Plus, Trash2 } from 'lucide-react';
+import { dispatchLotReceived } from '@/lib/webhookTrigger';
 
 interface IncomingStockWithSupplier {
   id: string;
@@ -261,6 +262,19 @@ export const ReceiveStockDialog: React.FC<ReceiveStockDialogProps> = ({
           },
           `Created lot ${lot.lot_number} with ${lot.roll_count} roll(s) via goods receipt`
         );
+      }
+
+      // Dispatch webhook events for each lot received
+      for (const lot of createdLots) {
+        dispatchLotReceived({
+          id: lot.id,
+          lot_number: lot.lot_number,
+          quality: lot.quality,
+          color: lot.color,
+          meters: lot.meters,
+          roll_count: lot.roll_count,
+          supplier_name: incomingStock.suppliers.name,
+        });
       }
 
       toast({

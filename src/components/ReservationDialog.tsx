@@ -14,6 +14,7 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from 'sonner';
 import { Trash2, Plus } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { dispatchReservationCreated } from '@/lib/webhookTrigger';
 
 interface ReservationDialogProps {
   open: boolean;
@@ -292,6 +293,16 @@ export default function ReservationDialog({ open, onOpenChange, onSuccess, preSe
         { ...reservation, lines: selectedLines },
         `Created reservation ${reservation.reservation_number} for ${customerName}`
       );
+
+      // Dispatch webhook event for reservation creation
+      dispatchReservationCreated({
+        id: reservation.id,
+        reservation_number: reservation.reservation_number,
+        customer_name: customerName,
+        total_reserved_meters: totalReservedMeters,
+        lines_count: selectedLines.length,
+        hold_until: holdUntil || null,
+      });
 
       toast.success(String(t('reservationCreated')));
       onSuccess();

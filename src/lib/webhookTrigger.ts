@@ -159,3 +159,59 @@ export function dispatchCatalogUpdated(item: {
 }) {
   return dispatchWebhookEvent('catalog.updated', item);
 }
+
+/**
+ * Helper to dispatch reservation.created event
+ */
+export function dispatchReservationCreated(reservation: {
+  id: string;
+  reservation_number: string;
+  customer_name: string;
+  total_reserved_meters: number;
+  lines_count: number;
+  hold_until?: string | null;
+  created_by?: string;
+}) {
+  return dispatchWebhookEvent('reservation.created', reservation);
+}
+
+/**
+ * Helper to dispatch reservation.fulfilled event
+ */
+export function dispatchReservationFulfilled(reservation: {
+  id: string;
+  reservation_number: string;
+  customer_name: string;
+  fulfilled_at: string;
+  fulfilled_by?: string;
+}) {
+  return dispatchWebhookEvent('reservation.fulfilled', reservation);
+}
+
+/**
+ * Helper to dispatch reservation.cancelled event
+ */
+export function dispatchReservationCancelled(reservation: {
+  id: string;
+  reservation_number: string;
+  customer_name: string;
+  cancelled_at: string;
+  cancelled_by?: string;
+  reason?: string;
+}) {
+  return dispatchWebhookEvent('reservation.cancelled', reservation);
+}
+
+/**
+ * Helper to dispatch order.cancelled event
+ */
+export function dispatchOrderCancelled(order: {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  cancelled_at: string;
+  cancelled_by?: string;
+  reason?: string;
+}) {
+  return dispatchWebhookEvent('order.cancelled', order);
+}

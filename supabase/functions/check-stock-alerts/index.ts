@@ -225,6 +225,36 @@ const handler = async (req: Request): Promise<Response> => {
 
     const totalCount = criticalItems.length + lowStockItems.length;
 
+    // Dispatch webhook events for low stock alerts
+    if (totalCount > 0) {
+      const allItems = [
+        ...criticalItems.map(item => ({ ...item, severity: 'critical' as const })),
+        ...lowStockItems.map(item => ({ ...item, severity: 'low' as const })),
+      ];
+      
+      // Call webhook dispatcher for each low stock item
+      for (const item of allItems) {
+        try {
+          await supabase.functions.invoke('webhook-dispatcher', {
+            body: {
+              event: 'inventory.low_stock',
+              data: {
+                quality: item.quality,
+                color: item.color,
+                current_stock: item.stock,
+                threshold: item.threshold,
+                severity: item.severity,
+              },
+            },
+          });
+        } catch (webhookError) {
+          console.error(`check-stock-alerts: Failed to dispatch webhook for ${item.quality}/${item.color}:`, webhookError);
+          // Continue processing - webhook failure shouldn't stop email
+        }
+      }
+      console.log(`check-stock-alerts: Dispatched ${allItems.length} low stock webhook events`);
+    }
+
     if (totalCount === 0) {
       console.log("check-stock-alerts: No stock alerts to send");
       return new Response(JSON.stringify({ message: "No stock below thresholds" }), {
