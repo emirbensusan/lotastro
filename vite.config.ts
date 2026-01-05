@@ -14,7 +14,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === 'development' && componentTagger(),
-    VitePWA({
+    // Only enable PWA in production to prevent stale bundles in development
+    mode === 'production' && VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'lotastro-logo.svg'],
       manifest: {
