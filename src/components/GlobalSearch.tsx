@@ -339,39 +339,41 @@ const GlobalSearch: React.FC = () => {
             <Search className="h-4 w-4" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="top" className="h-auto max-h-[80vh]" data-owner="mobile-search">
-          <SheetHeader className="pb-2">
-            <SheetTitle>{t('search')}</SheetTitle>
-          </SheetHeader>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setIsOpen(true);
-              }}
-              placeholder={t('searchPlaceholder') as string}
-              className="pl-10"
-              autoFocus
-            />
-            {query && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
-                onClick={() => setQuery('')}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
-          {(query.length > 2 || results.length > 0) && (
-            <div className="mt-2 max-h-[50vh] overflow-y-auto">
-              <SearchResults onResultClick={handleMobileResultClick} />
+        {mobileSheetOpen && (
+          <SheetContent side="top" className="h-auto max-h-[80vh]" data-owner="mobile-search">
+            <SheetHeader className="pb-2">
+              <SheetTitle>{t('search')}</SheetTitle>
+            </SheetHeader>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setIsOpen(true);
+                }}
+                placeholder={t('searchPlaceholder') as string}
+                className="pl-10"
+                autoFocus
+              />
+              {query && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                  onClick={() => setQuery('')}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
             </div>
-          )}
-        </SheetContent>
+            {(query.length > 2 || results.length > 0) && (
+              <div className="mt-2 max-h-[50vh] overflow-y-auto">
+                <SearchResults onResultClick={handleMobileResultClick} />
+              </div>
+            )}
+          </SheetContent>
+        )}
       </Sheet>
     </>
   );

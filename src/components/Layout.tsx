@@ -415,12 +415,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       <Menu className="h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="w-64 p-4 pt-safe" data-owner="mobile-sidebar">
-                    <div className="mb-4">
-                      <h2 className="text-lg font-semibold text-primary">LotAstro</h2>
-                    </div>
-                    <MobileNavigationContent />
-                  </SheetContent>
+                  {sidebarOpen && (
+                    <SheetContent side="left" className="w-64 p-4 pt-safe" data-owner="mobile-sidebar">
+                      <div className="mb-4">
+                        <h2 className="text-lg font-semibold text-primary">LotAstro</h2>
+                      </div>
+                      <MobileNavigationContent />
+                    </SheetContent>
+                  )}
                 </Sheet>
 
                 {/* LotAstro Logo */}

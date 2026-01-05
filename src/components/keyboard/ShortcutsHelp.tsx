@@ -34,13 +34,14 @@ export function ShortcutsHelp({ open, onOpenChange }: ShortcutsHelpProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]" data-owner="shortcuts-help">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Keyboard className="h-5 w-5" />
-            {isEnglish ? 'Keyboard Shortcuts' : 'Klavye Kısayolları'}
-          </DialogTitle>
-        </DialogHeader>
+      {open && (
+        <DialogContent className="sm:max-w-[500px]" data-owner="shortcuts-help">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Keyboard className="h-5 w-5" />
+              {isEnglish ? 'Keyboard Shortcuts' : 'Klavye Kısayolları'}
+            </DialogTitle>
+          </DialogHeader>
         
         <div className="space-y-6 py-4">
           {Object.entries(groupedShortcuts).map(([category, categoryShortcuts]) => (
@@ -67,12 +68,13 @@ export function ShortcutsHelp({ open, onOpenChange }: ShortcutsHelpProps) {
           ))}
         </div>
 
-        <div className="text-xs text-muted-foreground pt-2 border-t">
-          {isEnglish 
-            ? 'Tip: Press Ctrl+K (or ⌘K on Mac) anytime to open command palette'
-            : 'İpucu: Komut paletini açmak için istediğiniz zaman Ctrl+K (veya Mac\'te ⌘K) tuşlarına basın'}
-        </div>
-      </DialogContent>
+          <div className="text-xs text-muted-foreground pt-2 border-t">
+            {isEnglish 
+              ? 'Tip: Press Ctrl+K (or ⌘K on Mac) anytime to open command palette'
+              : 'İpucu: Komut paletini açmak için istediğiniz zaman Ctrl+K (veya Mac\'te ⌘K) tuşlarına basın'}
+          </div>
+        </DialogContent>
+      )}
     </Dialog>
   );
 }

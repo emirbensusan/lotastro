@@ -192,12 +192,14 @@ const MFAGate: React.FC<MFAGateProps> = ({ children }) => {
         </Card>
 
         <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
-          <DialogContent className="max-w-md" data-owner="mfa-enroll">
-            <MFAEnroll 
-              onEnrollmentComplete={handleEnrollmentComplete}
-              onCancel={() => setShowEnrollDialog(false)}
-            />
-          </DialogContent>
+          {showEnrollDialog && (
+            <DialogContent className="max-w-md" data-owner="mfa-enroll">
+              <MFAEnroll 
+                onEnrollmentComplete={handleEnrollmentComplete}
+                onCancel={() => setShowEnrollDialog(false)}
+              />
+            </DialogContent>
+          )}
         </Dialog>
       </div>
     );
