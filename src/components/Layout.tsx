@@ -90,7 +90,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { conflicts, showConflictDialog, setShowConflictDialog, syncStatus, resolveConflict } = useOffline();
   const [swController, setSwController] = useState<string>('checking');
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
+  const currentPathRef = useRef(location.pathname);
   
+  // Keep ref in sync with current route for fallback checks
+  useEffect(() => {
+    currentPathRef.current = location.pathname;
+  }, [location.pathname]);
   // Tour context removed for debugging
   const tourContext = null;
   
@@ -153,8 +158,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const safeNavigate = useCallback((path: string, source: string, startTime?: number) => {
     const navStartTime = startTime || performance.now();
     
-    // Guard: don't navigate if already on this route
-    if (location.pathname === path) {
+    // Guard: don't navigate if already on this route (use ref for current value)
+    if (currentPathRef.current === path) {
       console.log(`[NAV] Already on ${path}, skipping navigation`);
       return;
     }
@@ -179,12 +184,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       });
     });
     
-    // Fallback check after 250ms - compare router location.pathname
+    // Fallback check after 250ms - compare current router path (via ref) to target
     const targetPath = path;
     setTimeout(() => {
-      // Use router location (captured in closure) vs target
-      if (location.pathname !== targetPath && window.location.pathname !== targetPath) {
-        console.error(`[NAV-FALLBACK] Router path still ${location.pathname}, expected ${targetPath}. Using location.assign`);
+      // Check via ref (updated by useEffect when route changes) not closure
+      const currentRouterPath = currentPathRef.current;
+      
+      if (currentRouterPath !== targetPath) {
+        console.error(`[NAV-FALLBACK] Router path is ${currentRouterPath}, expected ${targetPath}. Using location.assign`);
         
         logNavigationMetric({
           source: source as any,
@@ -193,13 +200,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           routeChangeTime: performance.now(),
           delta: performance.now() - navStartTime,
           usedFallback: true,
-          fallbackReason: `Router stayed at ${location.pathname}`,
+          fallbackReason: `Router at ${currentRouterPath}, expected ${targetPath}`,
         });
         
         window.location.assign(targetPath);
       }
     }, 250);
-  }, [location.pathname, navigate]);
+  }, [navigate]);
   
   // Instant navigation hook for pointerup-based navigation
   const pointerStateRef = useRef<{
