@@ -136,9 +136,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, []);
 
-  // Log route changes for debugging
+  // Log route changes and close all modals/sheets on route change
   useEffect(() => {
     console.log('[ROUTE] Changed to:', location.pathname, 'at:', Date.now());
+    
+    // Close all overlays on route change to prevent orphaned portals blocking clicks
+    setCommandPaletteOpen(false);
+    setShortcutsHelpOpen(false);
+    setHelpPanelOpen(false);
+    setSidebarOpen(false); // Mobile sheet
   }, [location.pathname]);
 
   // Safe navigate with same-route guard and fallback
@@ -625,7 +631,33 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </footer>
         </div>
         
-        {/* All overlays temporarily disabled for debugging */}
+        {/* Dialogs/Sheets - conditionally rendered to force unmount when closed */}
+        {commandPaletteOpen && (
+          <CommandPalette 
+            open={commandPaletteOpen} 
+            onOpenChange={setCommandPaletteOpen} 
+          />
+        )}
+        {shortcutsHelpOpen && (
+          <ShortcutsHelp 
+            open={shortcutsHelpOpen} 
+            onOpenChange={setShortcutsHelpOpen} 
+          />
+        )}
+        {helpPanelOpen && (
+          <HelpPanel 
+            open={helpPanelOpen} 
+            onOpenChange={setHelpPanelOpen} 
+          />
+        )}
+        {showConflictDialog && conflicts.length > 0 && (
+          <ConflictResolutionDialog
+            open={showConflictDialog}
+            onOpenChange={setShowConflictDialog}
+            conflicts={conflicts}
+            onResolve={resolveConflict}
+          />
+        )}
       </div>
     </SidebarProvider>
   );
