@@ -55,6 +55,20 @@ export function useProductTour() {
     localStorage.setItem(TOUR_STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
+  // CRITICAL FIX: Reset stuck tour state when user logs out or on initial load
+  useEffect(() => {
+    // If isActive but no valid tourId, reset to prevent blocking
+    if (state.isActive && !state.currentTourId) {
+      console.warn('[useProductTour] Cleaning up stuck tour state');
+      setState(prev => ({
+        ...prev,
+        isActive: false,
+        currentTourId: null,
+        stepIndex: 0
+      }));
+    }
+  }, []);
+
   const startTour = useCallback((tourId: string) => {
     setState(prev => ({
       ...prev,

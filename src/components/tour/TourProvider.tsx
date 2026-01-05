@@ -55,9 +55,21 @@ export function TourProvider({ children }: TourProviderProps) {
     getRoleTourId
   } = useProductTour();
 
+  // CRITICAL FIX: Kill switch to completely disable tours if they brick navigation
+  const toursDisabled = typeof window !== 'undefined' && 
+    localStorage.getItem('lotastro_disable_tours') === 'true';
+
   const currentTour = currentTourId ? tours[currentTourId] : null;
 
-  const steps: Step[] = useMemo(() => {
+  // CRITICAL FIX: Auto-reset stuck tour state on mount
+  React.useEffect(() => {
+    if (isActive && (!currentTourId || !tours[currentTourId])) {
+      console.warn('[TourProvider] Resetting stuck tour state: isActive=true but no valid tour');
+      skipTour();
+    }
+  }, [isActive, currentTourId, skipTour]);
+
+  const steps: Step[] = React.useMemo(() => {
     if (!currentTour) return [];
     
     return currentTour.steps.map(step => ({
@@ -75,7 +87,7 @@ export function TourProvider({ children }: TourProviderProps) {
   }, [currentTour]);
 
   const handleCallback = (data: CallBackProps) => {
-    const { status, action, type } = data;
+    const { status, action } = data;
 
     if (status === STATUS.FINISHED) {
       if (currentTourId) {
@@ -144,32 +156,40 @@ export function TourProvider({ children }: TourProviderProps) {
     },
   };
 
+  // CRITICAL FIX: Only render Joyride when:
+  // 1. Tours are not disabled via kill switch
+  // 2. Tour is actively running (isActive)
+  // 3. We have a valid tour with steps
+  const shouldRenderJoyride = !toursDisabled && isActive && currentTour && steps.length > 0;
+
   return (
     <TourContext.Provider value={contextValue}>
       {children}
-      <Joyride
-        steps={steps}
-        stepIndex={stepIndex}
-        run={isActive}
-        continuous
-        showProgress
-        showSkipButton
-        hideCloseButton={false}
-        scrollToFirstStep
-        disableScrolling={false}
-        callback={handleCallback}
-        styles={joyrideStyles}
-        locale={{
-          back: language === 'tr' ? 'Geri' : 'Back',
-          close: language === 'tr' ? 'Kapat' : 'Close',
-          last: language === 'tr' ? 'Bitir' : 'Finish',
-          next: language === 'tr' ? 'İleri' : 'Next',
-          skip: language === 'tr' ? 'Atla' : 'Skip',
-        }}
-        floaterProps={{
-          disableAnimation: true,
-        }}
-      />
+      {shouldRenderJoyride && (
+        <Joyride
+          steps={steps}
+          stepIndex={stepIndex}
+          run={true}
+          continuous
+          showProgress
+          showSkipButton
+          hideCloseButton={false}
+          scrollToFirstStep
+          disableScrolling={false}
+          callback={handleCallback}
+          styles={joyrideStyles}
+          locale={{
+            back: language === 'tr' ? 'Geri' : 'Back',
+            close: language === 'tr' ? 'Kapat' : 'Close',
+            last: language === 'tr' ? 'Bitir' : 'Finish',
+            next: language === 'tr' ? 'İleri' : 'Next',
+            skip: language === 'tr' ? 'Atla' : 'Skip',
+          }}
+          floaterProps={{
+            disableAnimation: true,
+          }}
+        />
+      )}
     </TourContext.Provider>
   );
 }
