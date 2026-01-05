@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,57 +19,57 @@ import { OfflineBanner } from "./components/ui/network-status-indicator";
 import { OfflineProvider } from "./contexts/OfflineContext";
 // TourProvider removed for debugging
 import { Skeleton } from "./components/ui/skeleton";
+import { lazyWithRetry } from "./lib/lazyWithRetry";
 
-// Lazy load pages for bundle splitting
-// Core pages - loaded immediately
+// Core pages - loaded immediately (no lazy loading)
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
-// Inventory module
-const Inventory = lazy(() => import("./pages/Inventory"));
-const LotIntake = lazy(() => import("./pages/LotIntake"));
-const LotQueue = lazy(() => import("./pages/LotQueue"));
-const LotDetails = lazy(() => import("./pages/LotDetails"));
-const QualityDetails = lazy(() => import("./pages/QualityDetails"));
-const IncomingStock = lazy(() => import("./pages/IncomingStock"));
-const GoodsReceipt = lazy(() => import("./pages/GoodsReceipt"));
-const ManufacturingOrders = lazy(() => import("./pages/ManufacturingOrders"));
-const Forecast = lazy(() => import("./pages/Forecast"));
-const ForecastSettings = lazy(() => import("./pages/ForecastSettings"));
-const Catalog = lazy(() => import("./pages/Catalog"));
-const CatalogDetail = lazy(() => import("./pages/CatalogDetail"));
+// Inventory module - with retry logic for HMR stability
+const Inventory = lazyWithRetry(() => import("./pages/Inventory"));
+const LotIntake = lazyWithRetry(() => import("./pages/LotIntake"));
+const LotQueue = lazyWithRetry(() => import("./pages/LotQueue"));
+const LotDetails = lazyWithRetry(() => import("./pages/LotDetails"));
+const QualityDetails = lazyWithRetry(() => import("./pages/QualityDetails"));
+const IncomingStock = lazyWithRetry(() => import("./pages/IncomingStock"));
+const GoodsReceipt = lazyWithRetry(() => import("./pages/GoodsReceipt"));
+const ManufacturingOrders = lazyWithRetry(() => import("./pages/ManufacturingOrders"));
+const Forecast = lazyWithRetry(() => import("./pages/Forecast"));
+const ForecastSettings = lazyWithRetry(() => import("./pages/ForecastSettings"));
+const Catalog = lazyWithRetry(() => import("./pages/Catalog"));
+const CatalogDetail = lazyWithRetry(() => import("./pages/CatalogDetail"));
 
 // Orders module
-const Orders = lazy(() => import("./pages/Orders"));
-const Reservations = lazy(() => import("./pages/Reservations"));
-const OrderQueue = lazy(() => import("./pages/OrderQueue"));
-const LotSelection = lazy(() => import("./pages/LotSelection"));
-const BulkSelection = lazy(() => import("./pages/BulkSelection"));
+const Orders = lazyWithRetry(() => import("./pages/Orders"));
+const Reservations = lazyWithRetry(() => import("./pages/Reservations"));
+const OrderQueue = lazyWithRetry(() => import("./pages/OrderQueue"));
+const LotSelection = lazyWithRetry(() => import("./pages/LotSelection"));
+const BulkSelection = lazyWithRetry(() => import("./pages/BulkSelection"));
 
 // Tools module
-const QRScan = lazy(() => import("./pages/QRScan"));
-const QRPrint = lazy(() => import("./pages/QRPrint"));
-const StockTakeCapture = lazy(() => import("./pages/StockTakeCapture"));
-const StockTakeReview = lazy(() => import("./pages/StockTakeReview"));
-const Approvals = lazy(() => import("./pages/Approvals"));
+const QRScan = lazyWithRetry(() => import("./pages/QRScan"));
+const QRPrint = lazyWithRetry(() => import("./pages/QRPrint"));
+const StockTakeCapture = lazyWithRetry(() => import("./pages/StockTakeCapture"));
+const StockTakeReview = lazyWithRetry(() => import("./pages/StockTakeReview"));
+const Approvals = lazyWithRetry(() => import("./pages/Approvals"));
 
 // Admin & Reports module
-const Admin = lazy(() => import("./pages/Admin"));
-const Reports = lazy(() => import("./pages/Reports"));
-const ReportBuilderPage = lazy(() => import("./pages/ReportBuilder"));
-const AuditLogs = lazy(() => import("./pages/AuditLogs"));
-const Suppliers = lazy(() => import("./pages/Suppliers"));
-const ApiDocs = lazy(() => import("./pages/ApiDocs"));
-const ExtractionTest = lazy(() => import("./pages/ExtractionTest"));
+const Admin = lazyWithRetry(() => import("./pages/Admin"));
+const Reports = lazyWithRetry(() => import("./pages/Reports"));
+const ReportBuilderPage = lazyWithRetry(() => import("./pages/ReportBuilder"));
+const AuditLogs = lazyWithRetry(() => import("./pages/AuditLogs"));
+const Suppliers = lazyWithRetry(() => import("./pages/Suppliers"));
+const ApiDocs = lazyWithRetry(() => import("./pages/ApiDocs"));
+const ExtractionTest = lazyWithRetry(() => import("./pages/ExtractionTest"));
 
 // Auth & Legal pages
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const InviteAccept = lazy(() => import("./pages/InviteAccept"));
-const Terms = lazy(() => import("./pages/Terms"));
-const Privacy = lazy(() => import("./pages/Privacy"));
-const Cookies = lazy(() => import("./pages/Cookies"));
-const KVKK = lazy(() => import("./pages/KVKK"));
+const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const InviteAccept = lazyWithRetry(() => import("./pages/InviteAccept"));
+const Terms = lazyWithRetry(() => import("./pages/Terms"));
+const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
+const Cookies = lazyWithRetry(() => import("./pages/Cookies"));
+const KVKK = lazyWithRetry(() => import("./pages/KVKK"));
 
 // Page loading fallback
 const PageLoader = () => (
