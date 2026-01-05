@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +64,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+// Build ID for debugging stale bundles
+const BUILD_ID = new Date().toISOString();
+
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -82,10 +85,44 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
   const { conflicts, showConflictDialog, setShowConflictDialog, syncStatus, resolveConflict } = useOffline();
+  const [swController, setSwController] = useState<string>('checking');
   
   // Tour context removed for debugging
   const tourContext = null;
-  
+
+  // Check service worker status on mount
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      if (navigator.serviceWorker.controller) {
+        setSwController('active');
+      } else {
+        setSwController('none');
+      }
+    } else {
+      setSwController('unsupported');
+    }
+  }, []);
+
+  // Log route changes for debugging
+  useEffect(() => {
+    console.log('[ROUTE] Changed to:', location.pathname, 'at:', Date.now());
+  }, [location.pathname]);
+
+  // Safe navigate with fallback for debugging
+  const safeNavigate = useCallback((path: string, source: string) => {
+    const before = location.pathname;
+    console.log(`[NAV] ${source} click:`, path, 'from:', before);
+    
+    navigate(path);
+    
+    // Fallback check after 300ms
+    setTimeout(() => {
+      if (window.location.pathname === before && before !== path) {
+        console.warn('[NAV] navigate() did not change route, using fallback');
+        window.location.href = path;
+      }
+    }, 300);
+  }, [location.pathname, navigate]);
   
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
@@ -230,14 +267,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       return (
                         <SidebarMenuItem key={item.path} data-tour={item.tourId}>
                           <SidebarMenuButton
+                            asChild
                             isActive={active}
                             size="sm"
-                            className="flex items-center justify-start cursor-pointer"
-                            onClick={() => navigate(item.path)}
-                            title={isCollapsed ? item.label : undefined}
+                            className="flex items-center justify-start"
                           >
-                            <Icon className="h-4 w-4 flex-shrink-0" />
-                            <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
+                            <a
+                              href={item.path}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                safeNavigate(item.path, 'Sidebar');
+                              }}
+                              title={isCollapsed ? item.label : undefined}
+                            >
+                              <Icon className="h-4 w-4 flex-shrink-0" />
+                              <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
+                            </a>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
@@ -269,10 +314,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               const isActive = location.pathname === item.path;
               
               return (
-                <Link
+                <a
                   key={item.path}
-                  to={item.path}
-                  onClick={() => setSidebarOpen(false)}
+                  href={item.path}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSidebarOpen(false);
+                    safeNavigate(item.path, 'Mobile');
+                  }}
                   className={`flex items-center w-full justify-start min-h-touch px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive 
                       ? 'bg-secondary text-secondary-foreground' 
@@ -281,7 +330,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   <Icon className="h-5 w-5 mr-3" />
                   {item.label}
-                </Link>
+                </a>
               );
             })}
           </div>
@@ -519,6 +568,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </a>
               </nav>
             </div>
+            {/* Debug indicator - only in dev */}
+            {import.meta.env.DEV && (
+              <div className="mt-2 text-[10px] font-mono text-muted-foreground/50 text-center">
+                Build: {BUILD_ID.slice(0, 19)} | SW: {swController} | Route: {location.pathname}
+              </div>
+            )}
           </footer>
         </div>
         
