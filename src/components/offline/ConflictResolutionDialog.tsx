@@ -97,7 +97,8 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh]" data-owner="conflict-resolution">
+      {open && (
+        <DialogContent className="max-w-3xl max-h-[90vh]" data-owner="conflict-resolution">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
@@ -285,6 +286,7 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
           )}
         </DialogFooter>
       </DialogContent>
+      )}
     </Dialog>
   );
 };
