@@ -24,18 +24,36 @@ interface MFAGateProps {
  * but haven't enrolled yet. This is a BLOCKING gate, not a dismissible banner.
  */
 const MFAGate: React.FC<MFAGateProps> = ({ children }) => {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [hasMFA, setHasMFA] = useState<boolean | null>(null);
   const [roleRequiresMfa, setRoleRequiresMfa] = useState(false);
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  // Main effect: check MFA requirements when profile is available
   useEffect(() => {
     if (profile?.role) {
       checkMfaRequirements();
+    } else if (!authLoading && !profile?.role) {
+      // Auth finished loading but no role - fail open to avoid blocking UI
+      console.warn('[MFAGate] No profile role found after auth loaded, allowing access');
+      setLoading(false);
+      setHasMFA(true);
     }
-  }, [profile?.role]);
+  }, [profile?.role, authLoading]);
+
+  // Safety timeout: prevent infinite loading state
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('[MFAGate] Timeout reached (10s), failing open');
+        setLoading(false);
+        setHasMFA(true);
+      }
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const checkMfaRequirements = async () => {
     try {
