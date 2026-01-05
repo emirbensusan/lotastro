@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import { CommandPalette } from '@/components/keyboard/CommandPalette';
 import { ShortcutsHelp } from '@/components/keyboard/ShortcutsHelp';
 import { HelpPanel } from '@/components/help/HelpPanel';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { OverlayDetector } from '@/components/debug/OverlayDetector';
 // useTour removed for debugging
 import { useOffline } from '@/contexts/OfflineContext';
 import { 
@@ -86,9 +87,41 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
   const { conflicts, showConflictDialog, setShowConflictDialog, syncStatus, resolveConflict } = useOffline();
   const [swController, setSwController] = useState<string>('checking');
+  const sidebarContainerRef = useRef<HTMLDivElement>(null);
   
   // Tour context removed for debugging
   const tourContext = null;
+  
+  // Sidebar click telemetry - detect blocked clicks
+  useEffect(() => {
+    const container = sidebarContainerRef.current;
+    if (!container) return;
+
+    let pointerDownTime = 0;
+    
+    const handlePointerDown = (e: PointerEvent) => {
+      pointerDownTime = Date.now();
+      console.log('[SIDEBAR-CONTAINER] pointerdown at:', pointerDownTime, 'target:', (e.target as HTMLElement).tagName);
+    };
+    
+    const handleClick = (e: MouseEvent) => {
+      const clickTime = Date.now();
+      const delay = pointerDownTime ? clickTime - pointerDownTime : -1;
+      console.log('[SIDEBAR-CONTAINER] click received at:', clickTime, 'delay:', delay, 'ms', 'target:', (e.target as HTMLElement).tagName);
+      
+      if (delay > 200) {
+        console.warn('[SIDEBAR-CONTAINER] Abnormally slow click detected (>200ms delay)');
+      }
+    };
+
+    container.addEventListener('pointerdown', handlePointerDown, true);
+    container.addEventListener('click', handleClick, true);
+    
+    return () => {
+      container.removeEventListener('pointerdown', handlePointerDown, true);
+      container.removeEventListener('click', handleClick, true);
+    };
+  }, []);
 
   // Check service worker status on mount
   useEffect(() => {
@@ -347,9 +380,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <SidebarProvider>
+      {/* Overlay Detector - only shows in dev mode */}
+      <OverlayDetector />
+      
       <div className="min-h-screen-safe bg-background flex w-full">
-        {/* Desktop Sidebar - direct flex child, no wrapper */}
-        <AppSidebar />
+        {/* Desktop Sidebar - wrapped with telemetry container */}
+        <div 
+          ref={sidebarContainerRef} 
+          data-sidebar-container
+          className="relative z-30"
+        >
+          <AppSidebar />
+        </div>
 
         {/* Main content area including header */}
         <div className="flex-1 flex flex-col min-h-screen-safe min-w-0 overflow-hidden">
