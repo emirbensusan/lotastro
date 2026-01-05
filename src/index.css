@@ -169,6 +169,48 @@ All colors MUST be HSL.
   }
 }
 
+/* =============================================================
+   DEFENSIVE OVERLAY FIXES
+   Prevent closed Radix dialogs/sheets from blocking pointer events
+   ============================================================= */
+
+/* Closed Radix overlays should never intercept clicks */
+[data-state="closed"] {
+  pointer-events: none !important;
+}
+
+/* Radix overlay/backdrop specific - ensure closed state is truly non-interactive */
+[data-radix-portal] [data-state="closed"],
+[role="dialog"][data-state="closed"],
+[data-radix-dialog-overlay][data-state="closed"],
+[data-radix-alert-dialog-overlay][data-state="closed"] {
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Sidebar container should always receive pointer events */
+[data-sidebar-container] {
+  pointer-events: auto;
+  position: relative;
+  z-index: 30;
+}
+
+/* Sidebar itself should be interactive */
+[data-sidebar="sidebar"] {
+  pointer-events: auto;
+  position: relative;
+  z-index: 30;
+}
+
+/* Ensure sidebar menu items are always clickable */
+[data-sidebar="menu"] a,
+[data-sidebar="menu"] button,
+[data-sidebar="menu-button"] {
+  pointer-events: auto;
+  position: relative;
+  z-index: 31;
+}
+
 /* Simple print styles for A4 format */
 @media print {
   @page {
