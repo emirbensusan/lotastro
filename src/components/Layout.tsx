@@ -21,7 +21,7 @@ import { CommandPalette } from '@/components/keyboard/CommandPalette';
 import { ShortcutsHelp } from '@/components/keyboard/ShortcutsHelp';
 import { HelpPanel } from '@/components/help/HelpPanel';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
-import { useTour } from '@/components/tour/TourProvider';
+// useTour removed for debugging
 import { useOffline } from '@/contexts/OfflineContext';
 import { 
   Home,
@@ -83,13 +83,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
   const { conflicts, showConflictDialog, setShowConflictDialog, syncStatus, resolveConflict } = useOffline();
   
-  // Get tour context
-  let tourContext: ReturnType<typeof useTour> | null = null;
-  try {
-    tourContext = useTour();
-  } catch {
-    // TourProvider not available yet
-  }
+  // Tour context removed for debugging
+  const tourContext = null;
   
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
@@ -530,34 +525,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </footer>
         </div>
         
-        {/* Conflict Resolution Dialog */}
-        <ConflictResolutionDialog
-          open={showConflictDialog}
-          onOpenChange={setShowConflictDialog}
-          conflicts={conflicts}
-          onResolve={resolveConflict}
-        />
-        
-        {/* Command Palette */}
-        <CommandPalette 
-          open={commandPaletteOpen} 
-          onOpenChange={setCommandPaletteOpen} 
-        />
-        
-        {/* Shortcuts Help */}
-        <ShortcutsHelp 
-          open={shortcutsHelpOpen} 
-          onOpenChange={setShortcutsHelpOpen} 
-        />
-        
-        {/* Help Panel */}
-        <HelpPanel 
-          open={helpPanelOpen} 
-          onOpenChange={setHelpPanelOpen} 
-        />
-        
-        {/* PWA Install Prompt */}
-        <InstallPrompt />
+        {/* All overlays temporarily disabled for debugging */}
       </div>
     </SidebarProvider>
   );
