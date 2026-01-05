@@ -12,12 +12,17 @@ const DialogPortal = DialogPrimitive.Portal
 
 const DialogClose = DialogPrimitive.Close
 
+interface DialogOverlayProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> {
+  'data-owner'?: string;
+}
+
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+  DialogOverlayProps
+>(({ className, 'data-owner': dataOwner, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
+    data-owner={dataOwner}
     className={cn(
       "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       // CRITICAL FIX: Prevent closed overlay from intercepting clicks
@@ -29,14 +34,19 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  'data-owner'?: string;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  DialogContentProps
+>(({ className, children, 'data-owner': dataOwner, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay data-owner={dataOwner} />
     <DialogPrimitive.Content
       ref={ref}
+      data-owner={dataOwner}
       className={cn(
         // Mobile: full-screen with safe areas
         "fixed inset-0 z-50 flex flex-col bg-background pt-safe pb-safe overflow-y-auto overscroll-contain",
