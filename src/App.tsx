@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ViewAsRoleProvider } from "@/contexts/ViewAsRoleContext";
 import Layout from "@/components/Layout";
 import { POCartProvider } from "./contexts/POCartProvider";
@@ -159,6 +160,7 @@ const App = () => (
           <BrowserRouter>
             <AuthProvider>
               <ViewAsRoleProvider>
+                <PermissionsProvider>
                   <POCartProvider>
                     <ErrorBoundary>
                       <Routes>
@@ -221,6 +223,7 @@ const App = () => (
                       <CookieConsent />
                     </ErrorBoundary>
                   </POCartProvider>
+                </PermissionsProvider>
               </ViewAsRoleProvider>
               </AuthProvider>
             </BrowserRouter>

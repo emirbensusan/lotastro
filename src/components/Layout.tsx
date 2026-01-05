@@ -108,8 +108,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     console.log('[ROUTE] Changed to:', location.pathname, 'at:', Date.now());
   }, [location.pathname]);
 
-  // Safe navigate with fallback for debugging
+  // Safe navigate with same-route guard and fallback
   const safeNavigate = useCallback((path: string, source: string) => {
+    // Guard: don't navigate if already on this route
+    if (location.pathname === path) {
+      console.log(`[NAV] Already on ${path}, skipping navigation`);
+      return;
+    }
+    
     const before = location.pathname;
     console.log(`[NAV] ${source} click:`, path, 'from:', before);
     
