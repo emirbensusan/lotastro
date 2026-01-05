@@ -13,11 +13,16 @@ const SheetClose = SheetPrimitive.Close
 
 const SheetPortal = SheetPrimitive.Portal
 
+interface SheetOverlayProps extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay> {
+  'data-owner'?: string;
+}
+
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+  SheetOverlayProps
+>(({ className, 'data-owner': dataOwner, ...props }, ref) => (
   <SheetPrimitive.Overlay
+    data-owner={dataOwner}
     className={cn(
       "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       // CRITICAL FIX: Prevent closed overlay from intercepting clicks
@@ -51,16 +56,19 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-  VariantProps<typeof sheetVariants> { }
+  VariantProps<typeof sheetVariants> {
+  'data-owner'?: string;
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(({ side = "right", className, children, 'data-owner': dataOwner, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    <SheetOverlay data-owner={dataOwner} />
     <SheetPrimitive.Content
       ref={ref}
+      data-owner={dataOwner}
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >

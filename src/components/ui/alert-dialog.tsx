@@ -10,11 +10,16 @@ const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 
 const AlertDialogPortal = AlertDialogPrimitive.Portal
 
+interface AlertDialogOverlayProps extends React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay> {
+  'data-owner'?: string;
+}
+
 const AlertDialogOverlay = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+  AlertDialogOverlayProps
+>(({ className, 'data-owner': dataOwner, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
+    data-owner={dataOwner}
     className={cn(
       "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       // CRITICAL FIX: Prevent closed overlay from intercepting clicks
@@ -27,14 +32,19 @@ const AlertDialogOverlay = React.forwardRef<
 ))
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 
+interface AlertDialogContentProps extends React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content> {
+  'data-owner'?: string;
+}
+
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
+  AlertDialogContentProps
+>(({ className, 'data-owner': dataOwner, ...props }, ref) => (
   <AlertDialogPortal>
-    <AlertDialogOverlay />
+    <AlertDialogOverlay data-owner={dataOwner} />
     <AlertDialogPrimitive.Content
       ref={ref}
+      data-owner={dataOwner}
       className={cn(
         // Mobile: full-screen with safe areas
         "fixed inset-0 z-50 flex flex-col bg-background pt-safe pb-safe px-6 overflow-y-auto overscroll-contain",

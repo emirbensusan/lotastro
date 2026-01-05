@@ -8,6 +8,7 @@ interface BlockerInfo {
   rect: { top: number; left: number; width: number; height: number };
   pointerEvents: string;
   dataState?: string;
+  dataOwner?: string;
   timestamp: number;
 }
 
@@ -122,6 +123,7 @@ export const OverlayDetector: React.FC = () => {
           rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
           pointerEvents,
           dataState: htmlEl.getAttribute('data-state') || undefined,
+          dataOwner: htmlEl.getAttribute('data-owner') || undefined,
           timestamp: Date.now(),
         });
       }
@@ -198,6 +200,9 @@ export const OverlayDetector: React.FC = () => {
         <div className="bg-destructive text-destructive-foreground px-3 py-2 rounded-md shadow-lg pointer-events-auto max-w-xs">
           <div className="font-bold mb-1">⚠️ SIDEBAR BLOCKED</div>
           <div className="space-y-0.5 text-[10px]">
+            {blocker.dataOwner && (
+              <div className="font-bold text-yellow-300">Owner: {blocker.dataOwner}</div>
+            )}
             <div>Tag: {blocker.tagName}</div>
             <div>z-index: {blocker.zIndex}</div>
             {blocker.id && <div>id: {blocker.id}</div>}
