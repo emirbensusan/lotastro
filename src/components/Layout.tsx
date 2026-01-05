@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,40 +86,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Tour context removed for debugging
   const tourContext = null;
   
-  // DEBUG: Click Intercept Detector - REMOVE AFTER DEBUGGING
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      const x = e.clientX;
-      const y = e.clientY;
-      const elements = document.elementsFromPoint(x, y).slice(0, 8);
-      const top = elements[0];
-      
-      if (top) {
-        const style = window.getComputedStyle(top);
-        console.log('=== CLICK INTERCEPT DETECTOR ===');
-        console.log('Event:', e.type, '| Default Prevented:', e.defaultPrevented);
-        console.log('Target:', e.target, '| Tag:', (e.target as HTMLElement)?.tagName, '| Class:', (e.target as HTMLElement)?.className);
-        console.log('TOP Element:', top.tagName, '| Class:', top.className);
-        console.log('TOP Style:', {
-          position: style.position,
-          zIndex: style.zIndex,
-          pointerEvents: style.pointerEvents,
-          opacity: style.opacity
-        });
-        console.log('Element Stack:', elements.map(el => `${el.tagName}.${el.className?.toString().split(' ')[0] || 'no-class'}`));
-        console.log('================================');
-      }
-    };
-    
-    // Capture phase to see events before they're handled
-    document.addEventListener('pointerdown', handleClick, true);
-    document.addEventListener('click', handleClick, true);
-    
-    return () => {
-      document.removeEventListener('pointerdown', handleClick, true);
-      document.removeEventListener('click', handleClick, true);
-    };
-  }, []);
   
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
@@ -264,18 +230,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       return (
                         <SidebarMenuItem key={item.path} data-tour={item.tourId}>
                           <SidebarMenuButton
-                            asChild
                             isActive={active}
                             size="sm"
-                            className="flex items-center justify-start"
+                            className="flex items-center justify-start cursor-pointer"
+                            onClick={() => navigate(item.path)}
+                            title={isCollapsed ? item.label : undefined}
                           >
-                            <Link 
-                              to={item.path}
-                              title={isCollapsed ? item.label : undefined}
-                            >
-                              <Icon className="h-4 w-4 flex-shrink-0" />
-                              <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
-                            </Link>
+                            <Icon className="h-4 w-4 flex-shrink-0" />
+                            <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
