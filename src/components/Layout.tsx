@@ -22,6 +22,7 @@ import { ShortcutsHelp } from '@/components/keyboard/ShortcutsHelp';
 import { HelpPanel } from '@/components/help/HelpPanel';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { OverlayDetector } from '@/components/debug/OverlayDetector';
+import { HMRHealthMonitor } from '@/components/debug/HMRHealthMonitor';
 // useTour removed for debugging
 import { useOffline } from '@/contexts/OfflineContext';
 import { 
@@ -386,8 +387,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <SidebarProvider>
-      {/* Overlay Detector - only shows in dev mode */}
+      {/* Debug monitors - only show in dev mode */}
       <OverlayDetector />
+      <HMRHealthMonitor />
       
       <div className="min-h-screen-safe bg-background flex w-full">
         {/* Desktop Sidebar - wrapped with telemetry container */}
