@@ -122,15 +122,17 @@ const MFAGate: React.FC<MFAGateProps> = ({ children }) => {
     await signOut();
   };
 
-  // Show loading state while checking MFA
+  // NON-BLOCKING loading state: render children immediately with corner indicator
+  // This prevents the MFA check from blocking pointer events on the sidebar
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Verifying security status...</p>
+      <>
+        {children}
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-card border rounded-lg px-3 py-2 shadow-lg pointer-events-none">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">Verifying security...</span>
         </div>
-      </div>
+      </>
     );
   }
 
