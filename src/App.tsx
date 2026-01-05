@@ -16,7 +16,7 @@ import MFAGate from "./components/auth/MFAGate";
 import CookieConsent from "./components/CookieConsent";
 import { OfflineBanner } from "./components/ui/network-status-indicator";
 import { OfflineProvider } from "./contexts/OfflineContext";
-import { TourProvider } from "./components/tour/TourProvider";
+// TourProvider removed for debugging
 import { Skeleton } from "./components/ui/skeleton";
 
 // Lazy load pages for bundle splitting
@@ -159,7 +159,6 @@ const App = () => (
           <BrowserRouter>
             <AuthProvider>
               <ViewAsRoleProvider>
-                <TourProvider>
                   <POCartProvider>
                     <ErrorBoundary>
                       <Routes>
@@ -222,7 +221,6 @@ const App = () => (
                       <CookieConsent />
                     </ErrorBoundary>
                   </POCartProvider>
-                </TourProvider>
               </ViewAsRoleProvider>
               </AuthProvider>
             </BrowserRouter>
