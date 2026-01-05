@@ -565,6 +565,12 @@ const SidebarMenuButton = React.forwardRef<
     const Comp = asChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
 
+    // Tooltips can break click navigation on touch devices (pointer: coarse)
+    // because the TooltipTrigger may preventDefault on pointer events.
+    const canHover =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches
+
     const button = (
       <Comp
         ref={ref}
@@ -576,7 +582,8 @@ const SidebarMenuButton = React.forwardRef<
       />
     )
 
-    if (!tooltip) {
+    // Disable tooltips when device can't hover (touch) to keep clicks working
+    if (!tooltip || !canHover) {
       return button
     }
 
