@@ -1,9 +1,9 @@
 # LotAstro Development Roadmap
 
-> **Version**: 4.0.0  
-> **Last Updated**: 2026-01-02  
-> **Planning Horizon**: 19.5 days remaining  
-> **Architecture**: Multi-Project Ecosystem  
+> **Version**: 4.1.0  
+> **Last Updated**: 2026-01-05  
+> **Planning Horizon**: 16.5 days remaining  
+> **Architecture**: Multi-Project Ecosystem
 > **Philosophy**: Reliability → Intelligence → Connectivity → Delight
 
 ---
@@ -119,10 +119,11 @@ LotAstro WMS is not just warehouse software—it's the **operational nervous sys
 | **E** | User Delight & Onboarding (Tours, Help) | 2025-12-27 |
 | **G** | Performance & Mobile Polish | 2025-12-28 |
 | **H** | Analytics & Insights (Dashboard Widgets) | 2025-12-28 |
-| **K** | Webhook & Integration Events | 2026-01-02 |
+| **K** | Webhook & Integration Events | 2026-01-05 |
 | **N** | Admin & Security Enhancements | 2026-01-02 |
 | **L** | Report Builder Execution | 2026-01-02 |
 | **J** | Offline & Reliability | 2026-01-02 |
+| **M** | Advanced Forecasting | 2026-01-05 |
 | **O** | Quality of Life & Polish | 2026-01-02 |
 
 ### Completed Work Summary
@@ -202,16 +203,19 @@ LotAstro WMS is not just warehouse software—it's the **operational nervous sys
 
 **Owner:** Backend  
 **Theme:** Event-Driven Architecture  
-**Status:** 🟡 PARTIAL
+**Status:** ✅ COMPLETE (2026-01-05)
 
 | Task | File | Priority | Status |
 |------|------|----------|--------|
 | Webhook dispatcher | `supabase/functions/webhook-dispatcher/index.ts` | - | ✅ Complete |
 | HMAC signing | Dispatcher | - | ✅ Complete |
-| Order events (created, fulfilled, cancelled) | Webhook payloads | P0 | 🔴 Not Started |
-| Inventory events (low_stock, updated) | Webhook payloads | P1 | 🔴 Not Started |
-| Retry/dead letter queue | Edge function + table | P1 | 🔴 Not Started |
-| Integration logs dashboard | Admin UI | P2 | 🔴 Not Started |
+| Order events (created, fulfilled, cancelled) | Webhook payloads | P0 | ✅ Complete |
+| Inventory events (low_stock, updated) | Webhook payloads | P1 | ✅ Complete |
+| Lot received event | `src/components/ReceiveStockDialog.tsx` | P1 | ✅ Complete |
+| Reservation events | `src/components/ReservationDialog.tsx` | P1 | ✅ Complete |
+| Catalog updated event | `src/pages/CatalogDetail.tsx` | P1 | ✅ Complete |
+| Retry/dead letter queue | `webhook_dead_letters` table | P1 | ✅ Complete |
+| Integration logs dashboard | Admin UI | P2 | 🔴 Deferred
 
 ---
 
@@ -254,14 +258,17 @@ LotAstro WMS is not just warehouse software—it's the **operational nervous sys
 
 **Owner:** Full-Stack  
 **Theme:** Predictive Intelligence  
-**Status:** 🔴 NOT STARTED
+**Status:** ✅ COMPLETE (2026-01-05)
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Forecast algorithm refinement | P1 | 🔴 Not Started |
-| Seasonal adjustment settings | P1 | 🔴 Not Started |
-| Forecast vs. actual comparison | P2 | 🔴 Not Started |
-| Alert threshold configuration | P2 | 🔴 Not Started |
+| Forecast algorithm refinement | P1 | ✅ Complete |
+| Seasonal adjustment settings | P1 | ✅ Complete |
+| Trend detection settings | P1 | ✅ Complete |
+| Forecast vs. actual comparison | P2 | ✅ Complete |
+| Alert threshold configuration | P2 | ✅ Complete |
+| Per-quality overrides | P2 | ✅ Complete |
+| Forecast accuracy metrics | P2 | ✅ Complete |
 
 ---
 
