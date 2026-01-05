@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 interface BlockerInfo {
   tagName: string;
@@ -8,17 +8,53 @@ interface BlockerInfo {
   rect: { top: number; left: number; width: number; height: number };
   pointerEvents: string;
   dataState?: string;
+  timestamp: number;
 }
 
+interface TelemetryEvent {
+  type: 'blocker_detected' | 'blocker_cleared' | 'blocked_click';
+  blocker?: BlockerInfo;
+  clickTarget?: string;
+  timestamp: number;
+  url: string;
+}
+
+// Telemetry storage key
+const TELEMETRY_KEY = 'overlay_detector_telemetry';
+const MAX_EVENTS = 50;
+
 /**
- * Debug component that detects invisible overlays blocking the sidebar region.
- * Only renders in development mode.
- * 
- * Shows a red warning badge when a blocking element is detected.
+ * Production-ready component that detects invisible overlays blocking the sidebar region.
+ * In dev mode: Shows visual badge
+ * In production: Silently logs telemetry to localStorage for debugging
  */
 export const OverlayDetector: React.FC = () => {
   const [blocker, setBlocker] = useState<BlockerInfo | null>(null);
   const [lastCheck, setLastCheck] = useState<number>(Date.now());
+  const previousBlockerRef = useRef<BlockerInfo | null>(null);
+
+  // Log telemetry event (works in both dev and prod)
+  const logTelemetry = useCallback((event: TelemetryEvent) => {
+    try {
+      const stored = localStorage.getItem(TELEMETRY_KEY);
+      const events: TelemetryEvent[] = stored ? JSON.parse(stored) : [];
+      events.push(event);
+      // Keep only last MAX_EVENTS
+      const trimmed = events.slice(-MAX_EVENTS);
+      localStorage.setItem(TELEMETRY_KEY, JSON.stringify(trimmed));
+      
+      // Also log to console in dev mode
+      if (import.meta.env.DEV) {
+        if (event.type === 'blocker_detected') {
+          console.warn('[OVERLAY-TELEMETRY] Blocker detected:', event.blocker);
+        } else if (event.type === 'blocked_click') {
+          console.error('[OVERLAY-TELEMETRY] Click blocked!', event);
+        }
+      }
+    } catch (e) {
+      // Silently fail if localStorage is unavailable
+    }
+  }, []);
 
   const checkForBlockers = useCallback(() => {
     // Define sidebar region (left 280px, full height)
@@ -86,6 +122,7 @@ export const OverlayDetector: React.FC = () => {
           rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
           pointerEvents,
           dataState: htmlEl.getAttribute('data-state') || undefined,
+          timestamp: Date.now(),
         });
       }
     });
@@ -94,13 +131,53 @@ export const OverlayDetector: React.FC = () => {
     potentialBlockers.sort((a, b) => b.zIndex - a.zIndex);
     
     const topBlocker = potentialBlockers[0] || null;
+    
+    // Log telemetry on state changes
+    if (topBlocker && !previousBlockerRef.current) {
+      logTelemetry({
+        type: 'blocker_detected',
+        blocker: topBlocker,
+        timestamp: Date.now(),
+        url: window.location.pathname,
+      });
+    } else if (!topBlocker && previousBlockerRef.current) {
+      logTelemetry({
+        type: 'blocker_cleared',
+        blocker: previousBlockerRef.current,
+        timestamp: Date.now(),
+        url: window.location.pathname,
+      });
+    }
+    
+    previousBlockerRef.current = topBlocker;
     setBlocker(topBlocker);
     setLastCheck(Date.now());
-    
-    if (topBlocker) {
-      console.warn('[OVERLAY-DETECTOR] Found blocking element:', topBlocker);
-    }
-  }, []);
+  }, [logTelemetry]);
+
+  // Detect blocked clicks in sidebar region
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      // Only check clicks in sidebar region (left 280px)
+      if (e.clientX > 280) return;
+      
+      // If there's a known blocker and click didn't reach a sidebar element
+      const target = e.target as HTMLElement;
+      const clickedSidebar = target.closest('[data-sidebar]') !== null;
+      
+      if (blocker && !clickedSidebar) {
+        logTelemetry({
+          type: 'blocked_click',
+          blocker,
+          clickTarget: `${target.tagName}.${target.className}`,
+          timestamp: Date.now(),
+          url: window.location.pathname,
+        });
+      }
+    };
+
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, [blocker, logTelemetry]);
 
   // Run check every 500ms
   useEffect(() => {
@@ -109,7 +186,7 @@ export const OverlayDetector: React.FC = () => {
     return () => clearInterval(interval);
   }, [checkForBlockers]);
 
-  // Only show in development
+  // Only show visual UI in development
   if (!import.meta.env.DEV) return null;
 
   return (
@@ -137,5 +214,21 @@ export const OverlayDetector: React.FC = () => {
     </div>
   );
 };
+
+// Helper to retrieve telemetry logs (call from console: window.getOverlayTelemetry())
+if (typeof window !== 'undefined') {
+  (window as any).getOverlayTelemetry = () => {
+    try {
+      const stored = localStorage.getItem(TELEMETRY_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+  (window as any).clearOverlayTelemetry = () => {
+    localStorage.removeItem(TELEMETRY_KEY);
+    console.log('[OVERLAY-TELEMETRY] Cleared');
+  };
+}
 
 export default OverlayDetector;
