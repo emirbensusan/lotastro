@@ -188,6 +188,16 @@ All colors MUST be HSL.
   visibility: hidden !important;
 }
 
+/* Force remove scroll lock when no dialogs are open */
+body:not([data-scroll-locked]) {
+  overflow: auto !important;
+}
+
+/* Ensure scroll-locked body still allows pointer events on visible content */
+body[data-scroll-locked] > *:not([data-radix-portal]) {
+  pointer-events: auto;
+}
+
 /* Sidebar container should always receive pointer events */
 [data-sidebar-container] {
   pointer-events: auto;
