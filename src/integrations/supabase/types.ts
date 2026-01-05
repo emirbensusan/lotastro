@@ -3793,6 +3793,50 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_dead_letters: {
+        Row: {
+          attempts: number
+          created_at: string
+          error_message: string | null
+          event: string
+          first_attempted_at: string
+          id: string
+          last_attempted_at: string
+          payload: Json
+          subscription_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          event: string
+          first_attempted_at?: string
+          id?: string
+          last_attempted_at?: string
+          payload: Json
+          subscription_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          event?: string
+          first_attempted_at?: string
+          id?: string
+          last_attempted_at?: string
+          payload?: Json
+          subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_dead_letters_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_deliveries: {
         Row: {
           delivered_at: string | null
@@ -3801,6 +3845,7 @@ export type Database = {
           event: string | null
           event_type: string
           id: string
+          is_dead_lettered: boolean | null
           next_retry_at: string | null
           payload: Json
           response_body: string | null
@@ -3817,6 +3862,7 @@ export type Database = {
           event?: string | null
           event_type: string
           id?: string
+          is_dead_lettered?: boolean | null
           next_retry_at?: string | null
           payload: Json
           response_body?: string | null
@@ -3833,6 +3879,7 @@ export type Database = {
           event?: string | null
           event_type?: string
           id?: string
+          is_dead_lettered?: boolean | null
           next_retry_at?: string | null
           payload?: Json
           response_body?: string | null

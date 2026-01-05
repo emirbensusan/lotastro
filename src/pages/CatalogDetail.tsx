@@ -36,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { dispatchCatalogUpdated } from '@/lib/webhookTrigger';
 
 interface CatalogItem {
   id: string;
@@ -325,6 +326,14 @@ const CatalogDetail: React.FC = () => {
           field_changes: { new: saveData },
         }]);
 
+        // Dispatch webhook event for catalog item creation
+        dispatchCatalogUpdated({
+          id: data.id,
+          lastro_sku_code: data.lastro_sku_code,
+          code: data.code,
+          change_type: 'created',
+        });
+
         toast({ title: 'Success', description: 'Catalog item created successfully' });
         navigate(`/catalog/${data.id}`);
       } else {
@@ -357,6 +366,14 @@ const CatalogDetail: React.FC = () => {
             ? { ...saveData, trigger_fields_changed: changedTriggerFields, status: { old: 'active', new: 'pending_approval' } }
             : saveData,
         }]);
+
+        // Dispatch webhook event for catalog update
+        dispatchCatalogUpdated({
+          id: item.id,
+          lastro_sku_code: item.lastro_sku_code,
+          code: item.code,
+          change_type: 'updated',
+        });
 
         if (needsReApproval) {
           // Show re-approval toast

@@ -1,7 +1,7 @@
 # LotAstro Production Readiness Assessment
 
-> **Version**: 3.1.0  
-> **Assessment Date**: 2026-01-02  
+> **Version**: 3.2.0  
+> **Assessment Date**: 2026-01-05  
 > **Assessor**: Principal Product Manager & Production Readiness Lead  
 > **Classification**: Internal - Critical Review  
 > **Architecture**: Multi-Project Ecosystem  
@@ -17,7 +17,7 @@
 |--------|---------|
 | ✅ **PRODUCTION READY** | Core functionality complete with comprehensive security foundation. Minor improvements recommended. |
 
-### Overall Score: 4.0/5
+### Overall Score: 4.2/5
 
 The LotAstro WMS has achieved production readiness with:
 - ✅ Complete security hardening (CRON, XSS, session timeout, password policy)
@@ -25,6 +25,8 @@ The LotAstro WMS has achieved production readiness with:
 - ✅ **Rate limiting with lockout** on login attempts
 - ✅ Full legal compliance (Terms, Privacy, Cookies, KVKK)
 - ✅ Integration API foundation (OpenAPI spec, 4 endpoints, webhook dispatcher)
+- ✅ **Webhook events wired** (order.fulfilled, lot.received, inventory.low_stock, reservation.created, catalog.updated)
+- ✅ **Dead letter queue** for failed webhook deliveries
 - ✅ Comprehensive audit logging and RBAC
 - ✅ Advanced forecasting with seasonal adjustments and trend detection
 
@@ -92,7 +94,7 @@ The LotAstro WMS has achieved production readiness with:
 | **Business Continuity** | 3.5/5 | Good audit logging; Supabase backups |
 | **UX & Adoption** | 4.5/5 | Excellent mobile experience; bilingual support |
 | **Admin & Operations** | 4.5/5 | Comprehensive admin panel; permission management |
-| **Integrations** | 3.5/5 | Foundation complete; webhook events pending |
+| **Integrations** | 4.0/5 | APIs complete; **webhook events wired with dead letter queue** |
 | **Intelligence Features** | 3.5/5 | Forecasting complete; OCR/AI extraction need accuracy fixes |
 
 ### Score Justifications
@@ -126,14 +128,15 @@ The LotAstro WMS has achieved production readiness with:
 - ✅ Audit logging comprehensive
 - 🔶 GDPR data export not implemented
 
-#### Integrations (3.5/5)
+#### Integrations (4.0/5)
 - ✅ `api-get-inventory` endpoint
 - ✅ `api-get-catalog` endpoint
 - ✅ `api-create-order` endpoint
 - ✅ `webhook-dispatcher` ready
 - ✅ HMAC webhook signatures
 - ✅ API key management UI
-- 🔶 Webhook events not defined
+- ✅ **Webhook events wired** (order.created, order.fulfilled, lot.received, inventory.low_stock, reservation.created, catalog.updated)
+- ✅ **Dead letter queue** for failed deliveries with retry tracking
 - 🔶 CRM sync not implemented
 
 ---
@@ -158,14 +161,15 @@ The LotAstro WMS has achieved production readiness with:
 | Report Builder | 🔄 In Progress | Full execution |
 | Demand Forecasting | ✅ Complete | - |
 
-### Pillar 3: Connectivity ✅ 70% Complete
+### Pillar 3: Connectivity ✅ 85% Complete
 
 | Component | Status |
 |-----------|--------|
 | Public APIs | ✅ Complete |
 | OpenAPI Spec | ✅ Complete |
 | Webhook Foundation | ✅ Complete |
-| Webhook Events | 📅 Planned |
+| Webhook Events | ✅ **Wired** (6 event types) |
+| Dead Letter Queue | ✅ **Complete** |
 | CRM Integration | 📅 Planned |
 
 ### Pillar 4: Delight 🔶 50% Complete
@@ -195,7 +199,7 @@ The LotAstro WMS has achieved production readiness with:
 | Task | Owner | Effort | Impact |
 |------|-------|--------|--------|
 | ~~Rate limiting enforcement~~ | ~~Backend~~ | ~~1 day~~ | ✅ **Complete** |
-| Webhook event definitions | Backend | 3 days | Integration |
+| ~~Webhook event definitions~~ | ~~Backend~~ | ~~3 days~~ | ✅ **Complete** |
 | Interactive Swagger UI | Frontend | 2 days | Developer experience |
 | RLS audit on rolls table | Backend | 2 hours | Security |
 
@@ -330,3 +334,4 @@ LotAstro WMS is **production ready** with a strong foundation:
 | 2.0.0 | 2025-12-25 | Multi-project ecosystem context |
 | 3.0.0 | 2025-12-26 | Production ready; Four Pillars framework; Security complete |
 | 3.1.0 | 2026-01-02 | MFA enforcement via MFAGate; Rate limiting wired; Dynamic password reset URL |
+| 3.2.0 | 2026-01-05 | Webhook events wired (6 types); Dead letter queue; Integrations score 3.5→4.0 |
