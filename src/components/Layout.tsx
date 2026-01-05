@@ -12,6 +12,7 @@ import { usePOCart } from '@/contexts/POCartProvider';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { logNavigationMetric } from '@/hooks/useNavigationMetrics';
 import GlobalSearch from '@/components/GlobalSearch';
 import { NetworkStatusIndicator } from '@/components/ui/network-status-indicator';
 import { SyncStatusBadge } from '@/components/offline/SyncStatusBadge';
@@ -148,27 +149,131 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setSidebarOpen(false); // Mobile sheet
   }, [location.pathname]);
 
-  // Safe navigate with same-route guard and fallback
-  const safeNavigate = useCallback((path: string, source: string) => {
+  // Safe navigate with same-route guard, timing metrics, and fallback
+  const safeNavigate = useCallback((path: string, source: string, startTime?: number) => {
+    const navStartTime = startTime || performance.now();
+    
     // Guard: don't navigate if already on this route
     if (location.pathname === path) {
       console.log(`[NAV] Already on ${path}, skipping navigation`);
       return;
     }
     
-    const before = location.pathname;
-    console.log(`[NAV] ${source} click:`, path, 'from:', before);
+    console.log(`[NAV] ${source} → ${path} at ${navStartTime.toFixed(1)}ms`);
     
     navigate(path);
     
-    // Fallback check after 300ms
+    // Measure time to next animation frame
+    requestAnimationFrame(() => {
+      const rAFTime = performance.now();
+      const delta = rAFTime - navStartTime;
+      console.log(`[NAV-METRIC] ${source}: ${delta.toFixed(1)}ms to rAF`);
+      
+      logNavigationMetric({
+        source: source as any,
+        path,
+        startTime: navStartTime,
+        routeChangeTime: rAFTime,
+        delta,
+        usedFallback: false,
+      });
+    });
+    
+    // Fallback check after 250ms - compare router location.pathname
+    const targetPath = path;
     setTimeout(() => {
-      if (window.location.pathname === before && before !== path) {
-        console.warn('[NAV] navigate() did not change route, using fallback');
-        window.location.href = path;
+      // Use router location (captured in closure) vs target
+      if (location.pathname !== targetPath && window.location.pathname !== targetPath) {
+        console.error(`[NAV-FALLBACK] Router path still ${location.pathname}, expected ${targetPath}. Using location.assign`);
+        
+        logNavigationMetric({
+          source: source as any,
+          path: targetPath,
+          startTime: navStartTime,
+          routeChangeTime: performance.now(),
+          delta: performance.now() - navStartTime,
+          usedFallback: true,
+          fallbackReason: `Router stayed at ${location.pathname}`,
+        });
+        
+        window.location.assign(targetPath);
       }
-    }, 300);
+    }, 250);
   }, [location.pathname, navigate]);
+  
+  // Instant navigation hook for pointerup-based navigation
+  const pointerStateRef = useRef<{
+    startX: number;
+    startY: number;
+    startTime: number;
+    path: string;
+    handled: boolean;
+  } | null>(null);
+  
+  const handlePointerDown = useCallback((e: React.PointerEvent, path: string) => {
+    // Only primary button (left click)
+    if (e.button !== 0) return;
+    
+    // If modifier keys pressed, let browser handle natively (new tab, etc.)
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    
+    // Record start position for movement threshold
+    pointerStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startTime: performance.now(),
+      path,
+      handled: false,
+    };
+  }, []);
+  
+  const handlePointerUp = useCallback((e: React.PointerEvent, path: string) => {
+    const state = pointerStateRef.current;
+    if (!state || state.path !== path || state.handled) return;
+    
+    // Check movement threshold (5px) - prevent drag/scroll misfires
+    const moveDistance = Math.hypot(
+      e.clientX - state.startX,
+      e.clientY - state.startY
+    );
+    
+    if (moveDistance > 5) {
+      console.log(`[NAV] Pointer moved ${moveDistance.toFixed(1)}px, treating as drag`);
+      pointerStateRef.current = null;
+      return;
+    }
+    
+    // Navigate immediately
+    state.handled = true;
+    e.preventDefault();
+    
+    const startTime = state.startTime;
+    safeNavigate(path, 'Sidebar-Instant', startTime);
+    
+    pointerStateRef.current = null;
+  }, [safeNavigate]);
+  
+  const handleLinkClick = useCallback((e: React.MouseEvent, path: string, closeMobile = false) => {
+    // If modifier keys, let browser handle natively (skip preventDefault)
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+      // Don't preventDefault - browser will open in new tab
+      return;
+    }
+    
+    // Prevent default navigation (we handle it)
+    e.preventDefault();
+    
+    // If pointer already handled it, skip
+    if (pointerStateRef.current?.handled) return;
+    
+    // Close mobile sidebar if needed
+    if (closeMobile) {
+      setSidebarOpen(false);
+    }
+    
+    // Fallback for non-pointer devices (keyboard Enter, etc.)
+    safeNavigate(path, closeMobile ? 'Mobile-Sidebar' : 'Sidebar-Click-Fallback');
+  }, [safeNavigate]);
   
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
@@ -320,10 +425,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           >
                             <a
                               href={item.path}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                safeNavigate(item.path, 'Sidebar');
-                              }}
+                              onPointerDown={(e) => handlePointerDown(e, item.path)}
+                              onPointerUp={(e) => handlePointerUp(e, item.path)}
+                              onClick={(e) => handleLinkClick(e, item.path)}
                               title={isCollapsed ? item.label : undefined}
                             >
                               <Icon className="h-4 w-4 flex-shrink-0" />
@@ -363,11 +467,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <a
                   key={item.path}
                   href={item.path}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setSidebarOpen(false);
-                    safeNavigate(item.path, 'Mobile');
-                  }}
+                  onPointerDown={(e) => handlePointerDown(e, item.path)}
+                  onPointerUp={(e) => handlePointerUp(e, item.path)}
+                  onClick={(e) => handleLinkClick(e, item.path, true)}
                   className={`flex items-center w-full justify-start min-h-touch px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive 
                       ? 'bg-secondary text-secondary-foreground' 
