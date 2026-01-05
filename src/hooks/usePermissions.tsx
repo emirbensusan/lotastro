@@ -19,6 +19,11 @@ export const usePermissions = () => {
   useEffect(() => {
     if (effectiveRole) {
       fetchPermissions();
+    } else {
+      // No role available - stop loading to prevent UI deadlock
+      // This allows navigation to render even if profile is missing
+      console.warn('[usePermissions] No effective role, stopping load state');
+      setLoading(false);
     }
   }, [effectiveRole]);
 

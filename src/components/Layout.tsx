@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -234,14 +234,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       return (
                         <SidebarMenuItem key={item.path} data-tour={item.tourId}>
                           <SidebarMenuButton
-                            onClick={() => navigate(item.path)}
+                            asChild
                             isActive={active}
                             size="sm"
                             className="flex items-center justify-start"
                             tooltip={isCollapsed ? item.label : undefined}
                           >
-                            <Icon className="h-4 w-4 flex-shrink-0" />
-                            <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
+                            <Link to={item.path}>
+                              <Icon className="h-4 w-4 flex-shrink-0" />
+                              <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
+                            </Link>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
@@ -273,18 +275,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               const isActive = location.pathname === item.path;
               
               return (
-                <Button
+                <Link
                   key={item.path}
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start min-h-touch"
-                  onClick={() => {
-                    navigate(item.path);
-                    setSidebarOpen(false);
-                  }}
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center w-full justify-start min-h-touch px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive 
+                      ? 'bg-secondary text-secondary-foreground' 
+                      : 'hover:bg-accent hover:text-accent-foreground'
+                  }`}
                 >
                   <Icon className="h-5 w-5 mr-3" />
                   {item.label}
-                </Button>
+                </Link>
               );
             })}
           </div>
