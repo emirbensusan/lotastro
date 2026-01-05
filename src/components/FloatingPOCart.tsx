@@ -137,7 +137,7 @@ const FloatingPOCart = () => {
             </Button>
           </SheetTrigger>
           
-          <SheetContent className="w-full sm:max-w-lg">
+          <SheetContent className="w-full sm:max-w-lg" data-owner="po-cart">
             <SheetHeader>
               <SheetTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">

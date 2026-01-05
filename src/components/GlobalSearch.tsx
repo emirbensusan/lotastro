@@ -339,7 +339,7 @@ const GlobalSearch: React.FC = () => {
             <Search className="h-4 w-4" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="top" className="h-auto max-h-[80vh]">
+        <SheetContent side="top" className="h-auto max-h-[80vh]" data-owner="mobile-search">
           <SheetHeader className="pb-2">
             <SheetTitle>{t('search')}</SheetTitle>
           </SheetHeader>

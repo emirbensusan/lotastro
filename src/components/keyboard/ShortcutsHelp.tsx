@@ -34,7 +34,7 @@ export function ShortcutsHelp({ open, onOpenChange }: ShortcutsHelpProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]" data-owner="shortcuts-help">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Keyboard className="h-5 w-5" />

@@ -49,7 +49,7 @@ export function HelpPanel({ open, onOpenChange, topic: initialTopic }: HelpPanel
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[540px]">
+      <SheetContent className="w-[400px] sm:w-[540px]" data-owner="help-panel">
         <SheetHeader>
           <SheetTitle className="text-lg font-semibold">{title}</SheetTitle>
         </SheetHeader>
