@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+// Placeholder value for "All" option in Select components (empty string not allowed)
+const ALL_FILTER_VALUE = "__all__";
+
 export type SortDirection = "asc" | "desc" | null;
 
 interface SortableTableHeadProps {
@@ -94,6 +97,7 @@ export function SortableTableHead({
               className="w-56 p-2" 
               align="start"
               onPointerDownOutside={(e) => e.preventDefault()}
+              onInteractOutside={(e) => e.preventDefault()}
             >
               <div className="space-y-2">
                 <p className="text-sm font-medium">{t('table.filter')} {label}</p>
@@ -105,12 +109,15 @@ export function SortableTableHead({
                     className="h-8"
                   />
                 ) : (
-                  <Select value={filterValue} onValueChange={onFilterChange}>
+                  <Select 
+                    value={filterValue || ALL_FILTER_VALUE} 
+                    onValueChange={(v) => onFilterChange(v === ALL_FILTER_VALUE ? "" : v)}
+                  >
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder={`${t('filter')}...`} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">
+                      <SelectItem value={ALL_FILTER_VALUE}>
                         {t('all')}
                       </SelectItem>
                       {filterOptions.map((option) => (
