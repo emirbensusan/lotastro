@@ -647,7 +647,12 @@ const Catalog: React.FC = () => {
                             )}
                             <Popover>
                               <PopoverTrigger asChild>
-                                <Button variant="ghost" size="sm" className={`h-5 w-5 p-0 ${hasFilter ? 'text-primary' : 'text-muted-foreground'}`}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className={`h-6 w-6 p-0 ml-1 ${hasFilter ? 'text-primary' : 'text-muted-foreground'}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <Filter className="h-3 w-3" />
                                 </Button>
                               </PopoverTrigger>
