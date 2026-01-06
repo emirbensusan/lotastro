@@ -54,8 +54,8 @@ export function InsightsWidget({ className }: InsightsWidgetProps) {
           id: 'aging-inventory',
           type: 'warning',
           icon: <Clock className="h-4 w-4" />,
-          title: 'Aging Inventory',
-          description: `${agingCount} lots are older than 90 days`,
+          title: t('agingInventory') as string,
+          description: (t('agingInventoryDesc', { count: agingCount }) as string),
           link: '/inventory',
           count: agingCount,
         });
@@ -72,8 +72,8 @@ export function InsightsWidget({ className }: InsightsWidgetProps) {
           id: 'pending-approvals',
           type: 'info',
           icon: <CheckCircle className="h-4 w-4" />,
-          title: 'Pending Approvals',
-          description: `${approvalCount} items need review`,
+          title: t('pendingApprovals') as string,
+          description: (t('pendingApprovalsDesc', { count: approvalCount }) as string),
           link: '/approvals',
           count: approvalCount,
         });
@@ -90,8 +90,8 @@ export function InsightsWidget({ className }: InsightsWidgetProps) {
           id: 'active-reservations',
           type: 'info',
           icon: <AlertTriangle className="h-4 w-4" />,
-          title: 'Active Reservations',
-          description: `${activeCount} active reservations`,
+          title: t('activeReservationsInsight') as string,
+          description: (t('activeReservationsDesc', { count: activeCount }) as string),
           link: '/reservations',
           count: activeCount,
         });
@@ -103,8 +103,8 @@ export function InsightsWidget({ className }: InsightsWidgetProps) {
           id: 'all-good',
           type: 'success',
           icon: <CheckCircle className="h-4 w-4" />,
-          title: 'All Good!',
-          description: 'No immediate actions required',
+          title: t('allGood') as string,
+          description: t('allGoodDesc') as string,
         });
       }
 
@@ -145,7 +145,7 @@ export function InsightsWidget({ className }: InsightsWidgetProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
-            Key Insights
+            {t('keyInsights')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -161,7 +161,7 @@ export function InsightsWidget({ className }: InsightsWidgetProps) {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
-          Key Insights
+          {t('keyInsights')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">

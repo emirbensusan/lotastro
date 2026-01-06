@@ -75,12 +75,12 @@ const AuditRetentionSettings: React.FC = () => {
   const handleSave = async () => {
     const days = parseInt(retentionDays);
     if (isNaN(days) || days < 30) {
-      toast.error(t('minRetentionDays') || 'Minimum retention period is 30 days');
+      toast.error(t('minRetentionDays') as string);
       return;
     }
 
     if (days > 3650) {
-      toast.error(t('maxRetentionDays') || 'Maximum retention period is 10 years (3650 days)');
+      toast.error(t('maxRetentionDays') as string);
       return;
     }
 
@@ -98,9 +98,9 @@ const AuditRetentionSettings: React.FC = () => {
 
       if (error) throw error;
 
-      toast.success(t('retentionSettingsSaved') || 'Retention settings saved');
+      toast.success(t('retentionSettingsSaved') as string);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to save retention settings');
+      toast.error(error.message || t('failedToSaveSettings') as string);
     } finally {
       setSaving(false);
     }
@@ -134,23 +134,23 @@ const AuditRetentionSettings: React.FC = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock className="h-5 w-5" />
-          {t('auditLogRetention') || 'Audit Log Retention'}
+          {t('auditLogRetention')}
         </CardTitle>
         <CardDescription>
-          {t('auditLogRetentionDescription') || 'Configure how long audit logs are kept before automatic cleanup.'}
+          {t('auditLogRetentionDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4">
           <div className="p-4 bg-muted rounded-lg">
-            <div className="text-sm text-muted-foreground">{t('totalAuditLogs') || 'Total Audit Logs'}</div>
+            <div className="text-sm text-muted-foreground">{t('totalAuditLogs')}</div>
             <div className="text-2xl font-bold">
               {auditLogCount !== null ? auditLogCount.toLocaleString() : '—'}
             </div>
           </div>
           <div className="p-4 bg-muted rounded-lg">
-            <div className="text-sm text-muted-foreground">{t('oldestLogDate') || 'Oldest Log'}</div>
+            <div className="text-sm text-muted-foreground">{t('oldestLogDate')}</div>
             <div className="text-2xl font-bold">
               {oldestLogDate ? new Date(oldestLogDate).toLocaleDateString() : '—'}
             </div>
@@ -159,7 +159,7 @@ const AuditRetentionSettings: React.FC = () => {
 
         {/* Retention Setting */}
         <div className="space-y-2">
-          <Label htmlFor="retention_days">{t('retentionPeriod') || 'Retention Period (days)'}</Label>
+          <Label htmlFor="retention_days">{t('retentionPeriod')}</Label>
           <div className="flex gap-2">
             <Input
               id="retention_days"
@@ -176,11 +176,11 @@ const AuditRetentionSettings: React.FC = () => {
               ) : (
                 <Save className="mr-2 h-4 w-4" />
               )}
-              {t('save') || 'Save'}
+              {t('save')}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            {t('retentionHint') || 'Logs older than this will be automatically deleted. Minimum: 30 days, Maximum: 3650 days (10 years).'}
+            {t('retentionHint')}
           </p>
         </div>
 
@@ -189,7 +189,7 @@ const AuditRetentionSettings: React.FC = () => {
           <div className="flex items-center gap-2 text-sm">
             <Trash2 className="h-4 w-4 text-muted-foreground" />
             <span>
-              {t('cleanupWillDelete') || 'Cleanup will delete logs older than'}{' '}
+              {t('cleanupWillDelete')}{' '}
               <strong>{new Date(Date.now() - parseInt(retentionDays) * 24 * 60 * 60 * 1000).toLocaleDateString()}</strong>
             </span>
           </div>
@@ -197,9 +197,9 @@ const AuditRetentionSettings: React.FC = () => {
 
         {/* Info */}
         <div className="text-xs text-muted-foreground space-y-1">
-          <p>• {t('cleanupRunsDaily') || 'Cleanup runs automatically every day at midnight UTC.'}</p>
-          <p>• {t('reversedLogsKept') || 'Logs marked as reversed are also deleted when older than retention period.'}</p>
-          <p>• {t('cleanupIrreversible') || 'Deletion is irreversible. Ensure you have backups if needed.'}</p>
+          <p>• {t('cleanupRunsDaily')}</p>
+          <p>• {t('reversedLogsKept')}</p>
+          <p>• {t('cleanupIrreversible')}</p>
         </div>
       </CardContent>
     </Card>
