@@ -217,6 +217,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     handled: boolean;
   } | null>(null);
   
+  // Phase 1 fix: Flag to suppress click after pointerup already navigated
+  const suppressNextClickRef = useRef(false);
+  
   const handlePointerDown = useCallback((e: React.PointerEvent, path: string) => {
     // Only primary button (left click)
     if (e.button !== 0) return;
@@ -252,7 +255,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     
     // Navigate immediately
     state.handled = true;
-    e.preventDefault();
+    // Phase 1 fix: Do NOT preventDefault here - it blocks scroll and subsequent clicks
+    // Instead, flag to suppress the click event that will follow
+    suppressNextClickRef.current = true;
     
     const startTime = state.startTime;
     safeNavigate(path, 'Sidebar-Instant', startTime);
@@ -261,6 +266,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [safeNavigate]);
   
   const handleLinkClick = useCallback((e: React.MouseEvent, path: string, closeMobile = false) => {
+    // Phase 1 fix: If pointerup already handled navigation, suppress this click
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      e.preventDefault();
+      return;
+    }
+    
     // If modifier keys, let browser handle natively (skip preventDefault)
     if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
       // Don't preventDefault - browser will open in new tab
@@ -269,9 +281,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     
     // Prevent default navigation (we handle it)
     e.preventDefault();
-    
-    // If pointer already handled it, skip
-    if (pointerStateRef.current?.handled) return;
     
     // Close mobile sidebar if needed
     if (closeMobile) {
