@@ -13,7 +13,7 @@ interface MFAVerifyProps {
 }
 
 const MFAVerify: React.FC<MFAVerifyProps> = ({ onVerificationComplete, onCancel }) => {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
@@ -45,9 +45,7 @@ const MFAVerify: React.FC<MFAVerifyProps> = ({ onVerificationComplete, onCancel 
       if (totpFactor) {
         setFactorId(totpFactor.id);
       } else {
-        setError(language === 'tr' 
-          ? 'MFA faktörü bulunamadı' 
-          : 'No MFA factor found');
+        setError(String(t('mfa.noFactor')));
       }
     } catch (err: any) {
       console.error('Error loading MFA factors:', err);
@@ -81,27 +79,21 @@ const MFAVerify: React.FC<MFAVerifyProps> = ({ onVerificationComplete, onCancel 
       if (verifyError) throw verifyError;
 
       toast({
-        title: language === 'tr' ? 'Doğrulandı' : 'Verified',
-        description: language === 'tr' 
-          ? 'Başarıyla giriş yaptınız'
-          : 'You have successfully signed in'
+        title: String(t('mfa.verified')),
+        description: String(t('mfa.signedIn'))
       });
 
       onVerificationComplete();
     } catch (err: any) {
       console.error('MFA verification error:', err);
       setAttempts(prev => prev + 1);
-      setError(language === 'tr' 
-        ? 'Geçersiz kod. Lütfen tekrar deneyin.'
-        : 'Invalid code. Please try again.');
+      setError(String(t('mfa.invalidCode')));
       setVerificationCode('');
       
       if (attempts >= 4) {
         toast({
-          title: language === 'tr' ? 'Çok Fazla Deneme' : 'Too Many Attempts',
-          description: language === 'tr' 
-            ? 'Lütfen birkaç dakika bekleyin ve tekrar deneyin'
-            : 'Please wait a few minutes and try again',
+          title: String(t('mfa.tooManyAttempts')),
+          description: String(t('mfa.waitAndRetry')),
           variant: 'destructive'
         });
       }
@@ -117,7 +109,7 @@ const MFAVerify: React.FC<MFAVerifyProps> = ({ onVerificationComplete, onCancel 
           <CardContent className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span className="ml-3 text-muted-foreground">
-              {language === 'tr' ? 'Yükleniyor...' : 'Loading...'}
+              {String(t('loading'))}
             </span>
           </CardContent>
         </Card>
@@ -135,12 +127,10 @@ const MFAVerify: React.FC<MFAVerifyProps> = ({ onVerificationComplete, onCancel 
             </div>
           </div>
           <CardTitle>
-            {language === 'tr' ? 'İki Faktörlü Doğrulama' : 'Two-Factor Authentication'}
+            {String(t('mfa.title'))}
           </CardTitle>
           <CardDescription>
-            {language === 'tr' 
-              ? 'Kimlik doğrulama uygulamanızdaki 6 haneli kodu girin'
-              : 'Enter the 6-digit code from your authenticator app'}
+            {String(t('mfa.enterCode'))}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -175,21 +165,19 @@ const MFAVerify: React.FC<MFAVerifyProps> = ({ onVerificationComplete, onCancel 
           {verifying && (
             <div className="flex items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>{language === 'tr' ? 'Doğrulanıyor...' : 'Verifying...'}</span>
+              <span>{String(t('mfa.verifying'))}</span>
             </div>
           )}
 
           <div className="text-center">
             <Button variant="ghost" onClick={onCancel} disabled={verifying}>
-              {language === 'tr' ? 'Farklı bir hesapla giriş yap' : 'Sign in with a different account'}
+              {String(t('mfa.signInDifferent'))}
             </Button>
           </div>
 
           {attempts > 0 && (
             <p className="text-xs text-center text-muted-foreground">
-              {language === 'tr' 
-                ? `${5 - attempts} deneme hakkınız kaldı`
-                : `${5 - attempts} attempts remaining`}
+              {String(t('mfa.attemptsRemaining', { count: 5 - attempts }))}
             </p>
           )}
         </CardContent>

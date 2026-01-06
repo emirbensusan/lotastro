@@ -5,6 +5,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Shield, AlertTriangle, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import MFAEnroll from './MFAEnroll';
 
 interface MfaRequiredRoles {
@@ -30,6 +31,7 @@ const MFAEnrollmentBanner: React.FC<MFAEnrollmentBannerProps> = ({
   message,
 }) => {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [hasMFA, setHasMFA] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
@@ -110,14 +112,14 @@ const MFAEnrollmentBanner: React.FC<MFAEnrollmentBannerProps> = ({
     return null;
   }
 
-  const defaultMessage = 'As an administrator, you should enable Two-Factor Authentication (MFA) to protect your account and the system.';
+  const defaultMessage = String(t('mfa.adminMfaMessage'));
 
   return (
     <>
       <Alert variant="destructive" className="mb-4 border-orange-500 bg-orange-50 dark:bg-orange-950/20">
         <AlertTriangle className="h-4 w-4 text-orange-600" />
         <AlertTitle className="text-orange-700 dark:text-orange-400 flex items-center justify-between">
-          <span>Security Recommendation</span>
+          <span>{String(t('mfa.securityRecommendation'))}</span>
           {dismissible && (
             <Button
               variant="ghost"
@@ -138,7 +140,7 @@ const MFAEnrollmentBanner: React.FC<MFAEnrollmentBannerProps> = ({
             onClick={() => setShowEnrollDialog(true)}
           >
             <Shield className="h-4 w-4 mr-2" />
-            Set Up MFA Now
+            {String(t('mfa.setUpMfaNow'))}
           </Button>
         </AlertDescription>
       </Alert>

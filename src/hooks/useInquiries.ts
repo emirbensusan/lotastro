@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { Database } from '@/integrations/supabase/types';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type InquiryStatus = Database['public']['Enums']['inquiry_status'];
 type InquiryReason = Database['public']['Enums']['inquiry_reason'];
@@ -47,6 +48,7 @@ export interface CreateInquiryInput {
 
 export function useInquiries() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   const fetchInquiries = useCallback(async (filters?: {
@@ -91,12 +93,12 @@ export function useInquiries() {
         profiles: profileMap.get(d.created_by) || undefined,
       })) as Inquiry[];
     } catch (error: any) {
-      toast.error(`Failed to fetch inquiries: ${error.message}`);
+      toast.error(`${String(t('inquiry.fetchError'))}: ${error.message}`);
       return [];
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchInquiry = useCallback(async (id: string) => {
     try {
@@ -124,16 +126,16 @@ export function useInquiries() {
         profiles: profile || undefined,
       } as Inquiry;
     } catch (error: any) {
-      toast.error(`Failed to fetch inquiry: ${error.message}`);
+      toast.error(`${String(t('inquiry.fetchSingleError'))}: ${error.message}`);
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const createInquiry = useCallback(async (input: CreateInquiryInput) => {
     if (!user) {
-      toast.error('You must be logged in to create an inquiry');
+      toast.error(String(t('inquiry.loginRequired')));
       return null;
     }
 
@@ -183,15 +185,15 @@ export function useInquiries() {
         if (linesError) throw linesError;
       }
 
-      toast.success(`Inquiry ${inquiry.inquiry_number} created successfully`);
+      toast.success(String(t('inquiry.createdSuccess', { number: inquiry.inquiry_number })));
       return inquiry;
     } catch (error: any) {
-      toast.error(`Failed to create inquiry: ${error.message}`);
+      toast.error(`${String(t('inquiry.createError'))}: ${error.message}`);
       return null;
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   const updateInquiryStatus = useCallback(async (id: string, status: InquiryStatus) => {
     try {
@@ -202,15 +204,15 @@ export function useInquiries() {
         .eq('id', id);
 
       if (error) throw error;
-      toast.success('Inquiry status updated');
+      toast.success(String(t('inquiry.statusUpdated')));
       return true;
     } catch (error: any) {
-      toast.error(`Failed to update inquiry: ${error.message}`);
+      toast.error(`${String(t('inquiry.updateError'))}: ${error.message}`);
       return false;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const cancelInquiry = useCallback(async (id: string) => {
     return updateInquiryStatus(id, 'cancelled');
@@ -258,6 +260,7 @@ export function useInquiries() {
 
 export function useStockTakeSessions() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   const fetchActiveSessions = useCallback(async () => {
@@ -272,12 +275,12 @@ export function useStockTakeSessions() {
       if (error) throw error;
       return data;
     } catch (error: any) {
-      toast.error(`Failed to fetch sessions: ${error.message}`);
+      toast.error(`${String(t('stockTakeSession.fetchError'))}: ${error.message}`);
       return [];
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const startSession = useCallback(async (input: {
     reason: string;
@@ -285,7 +288,7 @@ export function useStockTakeSessions() {
     expires_at?: string;
   }) => {
     if (!user) {
-      toast.error('You must be logged in');
+      toast.error(String(t('stockTakeSession.loginRequired')));
       return null;
     }
 
@@ -312,15 +315,15 @@ export function useStockTakeSessions() {
         .single();
 
       if (error) throw error;
-      toast.success(`Stock take session ${data.session_number} started`);
+      toast.success(String(t('stockTakeSession.startedSuccess', { number: data.session_number })));
       return data;
     } catch (error: any) {
-      toast.error(`Failed to start session: ${error.message}`);
+      toast.error(`${String(t('stockTakeSession.startError'))}: ${error.message}`);
       return null;
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   const endSession = useCallback(async (id: string) => {
     try {
@@ -334,15 +337,15 @@ export function useStockTakeSessions() {
         .eq('id', id);
 
       if (error) throw error;
-      toast.success('Stock take session ended');
+      toast.success(String(t('stockTakeSession.endedSuccess')));
       return true;
     } catch (error: any) {
-      toast.error(`Failed to end session: ${error.message}`);
+      toast.error(`${String(t('stockTakeSession.endError'))}: ${error.message}`);
       return false;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const hasActiveSession = useCallback(async () => {
     if (!user) return false;

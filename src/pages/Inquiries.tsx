@@ -180,10 +180,10 @@ const Inquiries = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">{String(t('all'))}</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="converted">Converted</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="active">{String(t('inquiry.status.active'))}</SelectItem>
+                <SelectItem value="converted">{String(t('inquiry.status.converted'))}</SelectItem>
+                <SelectItem value="expired">{String(t('inquiry.status.expired'))}</SelectItem>
+                <SelectItem value="cancelled">{String(t('inquiry.status.cancelled'))}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={reasonFilter} onValueChange={setReasonFilter}>
@@ -287,7 +287,7 @@ const Inquiries = () => {
                       <TableCell>{totalMeters.toFixed(2)}m</TableCell>
                       <TableCell>
                         <Badge className={STATUS_COLORS[inquiry.status]}>
-                          {inquiry.status.toUpperCase()}
+                          {String(t(`inquiry.status.${inquiry.status}`))}
                         </Badge>
                       </TableCell>
                       <TableCell>{format(new Date(inquiry.created_at), 'PP')}</TableCell>

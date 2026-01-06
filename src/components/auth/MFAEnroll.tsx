@@ -13,7 +13,7 @@ interface MFAEnrollProps {
 }
 
 const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel }) => {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
@@ -49,7 +49,7 @@ const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel })
       console.error('MFA enrollment error:', err);
       setError(err.message || 'Failed to start MFA enrollment');
       toast({
-        title: language === 'tr' ? 'Hata' : 'Error',
+        title: String(t('error')),
         description: err.message || 'Failed to start MFA enrollment',
         variant: 'destructive'
       });
@@ -80,19 +80,17 @@ const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel })
       if (verifyError) throw verifyError;
 
       toast({
-        title: language === 'tr' ? 'MFA Etkinleştirildi' : 'MFA Enabled',
-        description: language === 'tr' 
-          ? 'İki faktörlü kimlik doğrulama başarıyla etkinleştirildi'
-          : 'Two-factor authentication has been successfully enabled'
+        title: String(t('mfa.enabled')),
+        description: String(t('mfa.enabledDesc'))
       });
 
       onEnrollmentComplete();
     } catch (err: any) {
       console.error('MFA verification error:', err);
-      setError(err.message || 'Invalid verification code');
+      setError(err.message || String(t('mfa.invalidCode')));
       toast({
-        title: language === 'tr' ? 'Doğrulama Hatası' : 'Verification Error',
-        description: err.message || 'Invalid verification code. Please try again.',
+        title: String(t('mfa.verificationError')),
+        description: err.message || String(t('mfa.invalidCode')),
         variant: 'destructive'
       });
     } finally {
@@ -106,8 +104,8 @@ const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel })
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast({
-        title: language === 'tr' ? 'Kopyalandı' : 'Copied',
-        description: language === 'tr' ? 'Gizli anahtar panoya kopyalandı' : 'Secret key copied to clipboard'
+        title: String(t('mfa.copied')),
+        description: String(t('mfa.copiedDesc'))
       });
     }
   };
@@ -118,7 +116,7 @@ const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel })
         <CardContent className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="ml-3 text-muted-foreground">
-            {language === 'tr' ? 'MFA kurulumu hazırlanıyor...' : 'Preparing MFA setup...'}
+            {String(t('mfa.preparing'))}
           </span>
         </CardContent>
       </Card>
@@ -133,10 +131,10 @@ const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel })
           <p className="text-destructive">{error}</p>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onCancel}>
-              {language === 'tr' ? 'İptal' : 'Cancel'}
+              {String(t('cancel'))}
             </Button>
             <Button onClick={enrollMFA}>
-              {language === 'tr' ? 'Tekrar Dene' : 'Try Again'}
+              {String(t('mfa.tryAgain'))}
             </Button>
           </div>
         </CardContent>
@@ -149,24 +147,20 @@ const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel })
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary" />
-          {language === 'tr' ? 'İki Faktörlü Kimlik Doğrulama Kurulumu' : 'Set Up Two-Factor Authentication'}
+          {String(t('mfa.setupTitle'))}
         </CardTitle>
         <CardDescription>
-          {language === 'tr' 
-            ? 'Hesabınızı korumak için bir kimlik doğrulama uygulaması kullanın'
-            : 'Use an authenticator app to protect your account'}
+          {String(t('mfa.setupDescription'))}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Step 1: QR Code */}
         <div className="space-y-4">
           <h3 className="font-medium">
-            {language === 'tr' ? 'Adım 1: QR Kodunu Tarayın' : 'Step 1: Scan the QR Code'}
+            {String(t('mfa.step1Title'))}
           </h3>
           <p className="text-sm text-muted-foreground">
-            {language === 'tr' 
-              ? 'Google Authenticator, Authy veya benzer bir uygulama ile tarayın'
-              : 'Scan with Google Authenticator, Authy, or a similar app'}
+            {String(t('mfa.step1Description'))}
           </p>
           {qrCode && (
             <div className="flex justify-center p-4 bg-white rounded-lg">
@@ -178,9 +172,7 @@ const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel })
         {/* Manual Entry Option */}
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            {language === 'tr' 
-              ? 'Veya bu kodu manuel olarak girin:'
-              : 'Or enter this code manually:'}
+            {String(t('mfa.manualEntry'))}
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 p-2 bg-muted rounded text-sm font-mono break-all">
@@ -195,12 +187,10 @@ const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel })
         {/* Step 2: Verify */}
         <div className="space-y-4">
           <h3 className="font-medium">
-            {language === 'tr' ? 'Adım 2: Doğrulama Kodunu Girin' : 'Step 2: Enter Verification Code'}
+            {String(t('mfa.step2Title'))}
           </h3>
           <p className="text-sm text-muted-foreground">
-            {language === 'tr' 
-              ? 'Uygulamanızdaki 6 haneli kodu girin'
-              : 'Enter the 6-digit code from your authenticator app'}
+            {String(t('mfa.step2Description'))}
           </p>
           
           <div className="flex justify-center">
@@ -231,14 +221,14 @@ const MFAEnroll: React.FC<MFAEnrollProps> = ({ onEnrollmentComplete, onCancel })
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4">
           <Button variant="outline" onClick={onCancel} disabled={verifying}>
-            {language === 'tr' ? 'İptal' : 'Cancel'}
+            {String(t('cancel'))}
           </Button>
           <Button 
             onClick={verifyAndComplete} 
             disabled={verificationCode.length !== 6 || verifying}
           >
             {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {language === 'tr' ? 'MFA\'yı Etkinleştir' : 'Enable MFA'}
+            {String(t('mfa.enableButton'))}
           </Button>
         </div>
       </CardContent>
