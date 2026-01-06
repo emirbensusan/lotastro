@@ -43,6 +43,7 @@ const CatalogDetail = lazyWithRetry(() => import("./pages/CatalogDetail"));
 // Orders module
 const Orders = lazyWithRetry(() => import("./pages/Orders"));
 const Reservations = lazyWithRetry(() => import("./pages/Reservations"));
+const Inquiries = lazyWithRetry(() => import("./pages/Inquiries"));
 const OrderQueue = lazyWithRetry(() => import("./pages/OrderQueue"));
 const LotSelection = lazyWithRetry(() => import("./pages/LotSelection"));
 const BulkSelection = lazyWithRetry(() => import("./pages/BulkSelection"));
@@ -189,6 +190,7 @@ const App = () => (
                         {/* Orders Module */}
                         <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                         <Route path="/reservations" element={<ProtectedRoute><Reservations /></ProtectedRoute>} />
+                        <Route path="/inquiries" element={<ProtectedRoute><Inquiries /></ProtectedRoute>} />
                         <Route path="/order-queue" element={<ProtectedRoute><OrderQueue /></ProtectedRoute>} />
                         <Route path="/lot-selection" element={<ProtectedRoute><LotSelection /></ProtectedRoute>} />
                         <Route path="/bulk-selection" element={<ProtectedRoute><BulkSelection /></ProtectedRoute>} />
