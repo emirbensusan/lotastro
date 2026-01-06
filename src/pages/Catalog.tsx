@@ -77,17 +77,46 @@ const TextFilterInput: React.FC<TextFilterInputProps> = ({
   // Store callback in ref to avoid triggering effect on reference changes
   const onFilterChangeRef = React.useRef(onFilterChange);
   onFilterChangeRef.current = onFilterChange;
+  const onClearFilterRef = React.useRef(onClearFilter);
+  onClearFilterRef.current = onClearFilter;
+  
+  // Track if this is the initial mount
+  const isInitialMount = React.useRef(true);
+  
+  // Track the last applied filter to avoid redundant calls
+  const lastAppliedFilter = React.useRef(currentFilter);
   
   // Sync local value when external filter changes
   React.useEffect(() => {
     setLocalValue(currentFilter);
+    lastAppliedFilter.current = currentFilter;
   }, [currentFilter]);
   
-  // Debounced filter application - only when 3+ chars or empty
+  // Debounced filter application - only when 3+ chars or clearing an existing filter
   React.useEffect(() => {
-    if (localValue === '' || localValue.length >= 3) {
+    // Skip initial mount to prevent triggering on popover open
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    // Only apply filter if 3+ characters
+    if (localValue.length >= 3) {
+      // Don't re-apply if value hasn't changed
+      if (localValue === lastAppliedFilter.current) return;
+      
       const timer = setTimeout(() => {
         onFilterChangeRef.current(column, localValue);
+        lastAppliedFilter.current = localValue;
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    
+    // Clear filter only if there was a previously applied filter
+    if (localValue === '' && lastAppliedFilter.current) {
+      const timer = setTimeout(() => {
+        onClearFilterRef.current(column);
+        lastAppliedFilter.current = '';
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -102,6 +131,7 @@ const TextFilterInput: React.FC<TextFilterInputProps> = ({
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
         className="h-8 text-xs"
+        autoFocus
       />
       {localValue.length > 0 && localValue.length < 3 && (
         <p className="text-xs text-muted-foreground">
@@ -110,6 +140,7 @@ const TextFilterInput: React.FC<TextFilterInputProps> = ({
       )}
       {currentFilter && (
         <Button 
+          type="button"
           variant="ghost" 
           size="sm" 
           className="w-full h-7 text-xs" 
@@ -340,9 +371,11 @@ const Catalog: React.FC = () => {
   };
 
   const handleColumnFilter = React.useCallback((column: string, value: string) => {
-    // Treat ALL_FILTER_VALUE as clearing the filter
-    if (value === ALL_FILTER_VALUE) {
+    // Treat ALL_FILTER_VALUE or empty string as clearing the filter
+    if (value === ALL_FILTER_VALUE || value === '' || !value.trim()) {
       setColumnFilters(prev => {
+        // No-op if column doesn't exist (avoids unnecessary re-render)
+        if (!(column in prev)) return prev;
         const newFilters = { ...prev };
         delete newFilters[column];
         return newFilters;
@@ -350,15 +383,21 @@ const Catalog: React.FC = () => {
       setPage(1);
       return;
     }
-    setColumnFilters(prev => ({
-      ...prev,
-      [column]: value
-    }));
+    setColumnFilters(prev => {
+      // No-op if value is the same (avoids unnecessary re-render)
+      if (prev[column] === value) return prev;
+      return {
+        ...prev,
+        [column]: value
+      };
+    });
     setPage(1);
   }, []);
 
   const clearColumnFilter = React.useCallback((column: string) => {
     setColumnFilters(prev => {
+      // No-op if column doesn't exist (avoids unnecessary re-render)
+      if (!(column in prev)) return prev;
       const newFilters = { ...prev };
       delete newFilters[column];
       return newFilters;
@@ -661,12 +700,15 @@ const Catalog: React.FC = () => {
 
       {/* Data Table */}
       <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center h-48">
+        <CardContent className="p-0 relative">
+          {/* Loading overlay - keeps table mounted */}
+          {loading && (
+            <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>
-          ) : items.length === 0 ? (
+          )}
+          
+          {!loading && items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
               <BookOpen className="h-10 w-10 mb-3 opacity-50" />
               <p className="text-sm">{t('catalog.noItems')}</p>
@@ -724,6 +766,7 @@ const Catalog: React.FC = () => {
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button 
+                                  type="button"
                                   variant="ghost" 
                                   size="sm" 
                                   className={`h-6 w-6 p-0 ml-1 ${hasFilter ? 'text-primary' : 'text-muted-foreground'}`}
