@@ -36,6 +36,7 @@ interface UseKeyboardShortcutsOptions {
   onPrint?: () => void;
   onNewItem?: () => void;
   onFocusSearch?: () => void;
+  onPendingKeyChange?: (key: string | null) => void;
   enabled?: boolean;
 }
 
@@ -48,9 +49,16 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
     onPrint,
     onNewItem,
     onFocusSearch,
+    onPendingKeyChange,
     enabled = true 
   } = options;
-  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [pendingKey, setPendingKeyInternal] = useState<string | null>(null);
+  
+  // Wrapper to also call the callback when pending key changes
+  const setPendingKey = useCallback((key: string | null) => {
+    setPendingKeyInternal(key);
+    onPendingKeyChange?.(key);
+  }, [onPendingKeyChange]);
 
   const handleAction = useCallback((action: string) => {
     switch (action) {
@@ -129,8 +137,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
         }
       }
 
-      // Handle escape
+      // Handle escape - also clear pending key
       if (key === 'escape') {
+        if (pendingKey) {
+          setPendingKey(null);
+        }
         handleAction('close');
         return;
       }

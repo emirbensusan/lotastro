@@ -11,6 +11,7 @@ import { usePOCart } from '@/contexts/POCartProvider';
 import { useViewAsRole } from '@/contexts/ViewAsRoleContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { ShortcutHintsProvider, useShortcutHints } from '@/contexts/ShortcutHintsContext';
 import GlobalSearch from '@/components/GlobalSearch';
 import { NetworkStatusIndicator } from '@/components/ui/network-status-indicator';
 import { SyncStatusBadge } from '@/components/offline/SyncStatusBadge';
@@ -25,7 +26,6 @@ import {
   LogOut, 
   Menu,
   ShoppingCart,
-  BookOpen,
   HelpCircle,
   Keyboard
 } from 'lucide-react';
@@ -38,7 +38,8 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const LayoutV2: React.FC<LayoutProps> = ({ children }) => {
+// Inner layout component that uses the shortcut hints context
+const LayoutInner: React.FC<LayoutProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const { getItemCount, setIsCartOpen } = usePOCart();
@@ -50,13 +51,14 @@ const LayoutV2: React.FC<LayoutProps> = ({ children }) => {
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
   const [helpPanelOpen, setHelpPanelOpen] = useState(false);
   const { conflicts, showConflictDialog, setShowConflictDialog, resolveConflict } = useOffline();
+  const { setPendingKey } = useShortcutHints();
 
   // Close mobile sidebar on route change
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  // Initialize keyboard shortcuts
+  // Initialize keyboard shortcuts with pending key callback
   useKeyboardShortcuts({
     onCommandPalette: () => setCommandPaletteOpen(true),
     onShowShortcuts: () => setShortcutsHelpOpen(true),
@@ -65,6 +67,7 @@ const LayoutV2: React.FC<LayoutProps> = ({ children }) => {
       setShortcutsHelpOpen(false);
       setHelpPanelOpen(false);
     },
+    onPendingKeyChange: setPendingKey,
     enabled: true
   });
 
@@ -347,6 +350,15 @@ const LayoutV2: React.FC<LayoutProps> = ({ children }) => {
         )}
       </div>
     </SidebarProvider>
+  );
+};
+
+// Main layout component wrapping with providers
+const LayoutV2: React.FC<LayoutProps> = ({ children }) => {
+  return (
+    <ShortcutHintsProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </ShortcutHintsProvider>
   );
 };
 
