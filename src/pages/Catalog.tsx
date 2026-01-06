@@ -56,6 +56,71 @@ interface CatalogItem {
 // Placeholder value for "All" option in Select components (empty string not allowed)
 const ALL_FILTER_VALUE = "__all__";
 
+// Text filter component with 3-character minimum and debounce
+interface TextFilterInputProps {
+  column: string;
+  currentFilter: string;
+  onFilterChange: (column: string, value: string) => void;
+  onClearFilter: (column: string) => void;
+  t: (key: string, params?: Record<string, string | number>) => string | string[];
+}
+
+const TextFilterInput: React.FC<TextFilterInputProps> = ({ 
+  column, 
+  currentFilter, 
+  onFilterChange, 
+  onClearFilter,
+  t 
+}) => {
+  const [localValue, setLocalValue] = React.useState(currentFilter);
+  
+  // Sync local value when external filter changes
+  React.useEffect(() => {
+    setLocalValue(currentFilter);
+  }, [currentFilter]);
+  
+  // Debounced filter application - only when 3+ chars or empty
+  React.useEffect(() => {
+    if (localValue === '' || localValue.length >= 3) {
+      const timer = setTimeout(() => {
+        onFilterChange(column, localValue);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [localValue, column, onFilterChange]);
+  
+  const charsNeeded = 3 - localValue.length;
+  
+  return (
+    <div className="space-y-2 p-2">
+      <Input
+        placeholder={`${t('filter')}...`}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        className="h-8 text-xs"
+      />
+      {localValue.length > 0 && localValue.length < 3 && (
+        <p className="text-xs text-muted-foreground">
+          {charsNeeded} more character{charsNeeded > 1 ? 's' : ''} needed
+        </p>
+      )}
+      {currentFilter && (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="w-full h-7 text-xs" 
+          onClick={() => {
+            setLocalValue('');
+            onClearFilter(column);
+          }}
+        >
+          <X className="h-3 w-3 mr-1" /> {t('clearFilters')}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 const STATUS_COLORS: Record<string, string> = {
   pending_approval: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
   active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -448,21 +513,15 @@ const Catalog: React.FC = () => {
       );
     }
     
-    // Default text filter
+    // Default text filter with 3-character minimum
     return (
-      <div className="space-y-2 p-2">
-        <Input
-          placeholder={`${t('filter')}...`}
-          value={currentFilter}
-          onChange={(e) => handleColumnFilter(column, e.target.value)}
-          className="h-8 text-xs"
-        />
-        {currentFilter && (
-          <Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => clearColumnFilter(column)}>
-            <X className="h-3 w-3 mr-1" /> {t('clearFilters')}
-          </Button>
-        )}
-      </div>
+      <TextFilterInput
+        column={column}
+        currentFilter={currentFilter}
+        onFilterChange={handleColumnFilter}
+        onClearFilter={clearColumnFilter}
+        t={t}
+      />
     );
   };
 
