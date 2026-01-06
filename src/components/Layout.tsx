@@ -439,16 +439,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             size="sm"
                             className="flex items-center justify-start"
                           >
-                            <a
-                              href={item.path}
-                              onPointerDown={(e) => handlePointerDown(e, item.path)}
-                              onPointerUp={(e) => handlePointerUp(e, item.path)}
+                            <Link
+                              to={item.path}
                               onClick={(e) => handleLinkClick(e, item.path)}
                               title={isCollapsed ? item.label : undefined}
                             >
                               <Icon className="h-4 w-4 flex-shrink-0" />
                               <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
-                            </a>
+                            </Link>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
@@ -480,11 +478,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               const isActive = location.pathname === item.path;
               
               return (
-                <a
+                <Link
                   key={item.path}
-                  href={item.path}
-                  onPointerDown={(e) => handlePointerDown(e, item.path)}
-                  onPointerUp={(e) => handlePointerUp(e, item.path)}
+                  to={item.path}
                   onClick={(e) => handleLinkClick(e, item.path, true)}
                   className={`flex items-center w-full justify-start min-h-touch px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive 
@@ -494,7 +490,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   <Icon className="h-5 w-5 mr-3" />
                   {item.label}
-                </a>
+                </Link>
               );
             })}
           </div>
