@@ -175,15 +175,18 @@ All colors MUST be HSL.
    ============================================================= */
 
 /* Closed Radix overlays should never intercept clicks */
-[data-state="closed"] {
-  pointer-events: none !important;
-}
-
-/* Radix overlay/backdrop specific - ensure closed state is truly non-interactive */
-[data-radix-portal] [data-state="closed"],
-[role="dialog"][data-state="closed"],
+/* NOTE: Only target overlay/content elements, NOT trigger buttons */
 [data-radix-dialog-overlay][data-state="closed"],
-[data-radix-alert-dialog-overlay][data-state="closed"] {
+[data-radix-alert-dialog-overlay][data-state="closed"],
+[data-radix-popover-content][data-state="closed"],
+[data-radix-dropdown-menu-content][data-state="closed"],
+[data-radix-select-content][data-state="closed"],
+[data-radix-context-menu-content][data-state="closed"],
+[data-radix-menubar-content][data-state="closed"],
+[data-radix-navigation-menu-content][data-state="closed"],
+[data-radix-tooltip-content][data-state="closed"],
+[data-radix-hover-card-content][data-state="closed"],
+[role="dialog"][data-state="closed"] {
   pointer-events: none !important;
   visibility: hidden !important;
 }
