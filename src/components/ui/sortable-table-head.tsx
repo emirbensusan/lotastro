@@ -90,7 +90,11 @@ export function SortableTableHead({
                 <Filter className="h-3 w-3" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-56 p-2" align="start">
+            <PopoverContent 
+              className="w-56 p-2" 
+              align="start"
+              onPointerDownOutside={(e) => e.preventDefault()}
+            >
               <div className="space-y-2">
                 <p className="text-sm font-medium">{t('table.filter')} {label}</p>
                 {filterType === "text" ? (
