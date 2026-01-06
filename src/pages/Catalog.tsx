@@ -651,7 +651,11 @@ const Catalog: React.FC = () => {
                                   <Filter className="h-3 w-3" />
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-48 p-0" align="start">
+                              <PopoverContent 
+                                className="w-48 p-0" 
+                                align="start"
+                                onPointerDownOutside={(e) => e.preventDefault()}
+                              >
                                 {renderColumnFilterPopover(col)}
                               </PopoverContent>
                             </Popover>
