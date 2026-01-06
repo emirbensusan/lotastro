@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { ViewAsRoleProvider } from "@/contexts/ViewAsRoleContext";
-import Layout from "@/components/Layout";
+import Layout from "@/components/LayoutV2";
 import { POCartProvider } from "./contexts/POCartProvider";
 import FloatingPOCart from "./components/FloatingPOCart";
 import ErrorBoundary from "./components/ErrorBoundary";
