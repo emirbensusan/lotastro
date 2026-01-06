@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Default values (used if database fetch fails)
 const DEFAULT_SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -25,6 +26,7 @@ export const useSessionTimeout = ({ onTimeout, isAuthenticated }: UseSessionTime
   const warningRef = useRef<NodeJS.Timeout | null>(null);
   const warningShownRef = useRef<boolean>(false);
   const lastThrottleRef = useRef<number>(0);
+  const { t } = useLanguage();
   
   const [sessionSettings, setSessionSettings] = useState<SessionSettings>({
     session_timeout_minutes: 30,
@@ -98,8 +100,8 @@ export const useSessionTimeout = ({ onTimeout, isAuthenticated }: UseSessionTime
       if (isAuthenticated && !warningShownRef.current) {
         warningShownRef.current = true;
         toast({
-          title: "Session Expiring Soon",
-          description: `Your session will expire in ${sessionSettings.warning_before_minutes} minutes due to inactivity. Move your mouse or press a key to stay logged in.`,
+          title: String(t('session.expiringSoon')),
+          description: String(t('session.expiringDesc', { minutes: sessionSettings.warning_before_minutes })),
           variant: "destructive",
           duration: 30000, // Show for 30 seconds
         });
@@ -110,14 +112,14 @@ export const useSessionTimeout = ({ onTimeout, isAuthenticated }: UseSessionTime
     timeoutRef.current = setTimeout(() => {
       if (isAuthenticated) {
         toast({
-          title: "Session Expired",
-          description: "You have been logged out due to inactivity.",
+          title: String(t('session.expired')),
+          description: String(t('session.expiredDesc')),
           variant: "destructive",
         });
         onTimeout();
       }
     }, sessionTimeoutMs);
-  }, [isAuthenticated, onTimeout, clearTimers, sessionTimeoutMs, warningBeforeMs, settingsLoaded, sessionSettings]);
+  }, [isAuthenticated, onTimeout, clearTimers, sessionTimeoutMs, warningBeforeMs, settingsLoaded, sessionSettings, t]);
 
   const handleActivity = useCallback(() => {
     const now = Date.now();

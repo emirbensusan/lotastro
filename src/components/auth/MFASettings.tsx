@@ -20,7 +20,7 @@ interface Factor {
 }
 
 const MFASettings: React.FC = () => {
-  const { language } = useLanguage();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [factors, setFactors] = useState<Factor[]>([]);
@@ -48,7 +48,7 @@ const MFASettings: React.FC = () => {
     } catch (err: any) {
       console.error('Error loading MFA factors:', err);
       toast({
-        title: language === 'tr' ? 'Hata' : 'Error',
+        title: String(t('error')),
         description: err.message,
         variant: 'destructive'
       });
@@ -65,17 +65,15 @@ const MFASettings: React.FC = () => {
       if (error) throw error;
 
       toast({
-        title: language === 'tr' ? 'MFA Kaldırıldı' : 'MFA Removed',
-        description: language === 'tr' 
-          ? 'İki faktörlü kimlik doğrulama devre dışı bırakıldı'
-          : 'Two-factor authentication has been disabled'
+        title: String(t('mfa.removed')),
+        description: String(t('mfa.removedDesc'))
       });
 
       loadFactors();
     } catch (err: any) {
       console.error('Error unenrolling MFA:', err);
       toast({
-        title: language === 'tr' ? 'Hata' : 'Error',
+        title: String(t('error')),
         description: err.message,
         variant: 'destructive'
       });
@@ -109,12 +107,10 @@ const MFASettings: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            {language === 'tr' ? 'İki Faktörlü Kimlik Doğrulama' : 'Two-Factor Authentication'}
+            {String(t('mfa.settingsTitle'))}
           </CardTitle>
           <CardDescription>
-            {language === 'tr' 
-              ? 'Hesabınıza ekstra bir güvenlik katmanı ekleyin'
-              : 'Add an extra layer of security to your account'}
+            {String(t('mfa.settingsDesc'))}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -125,12 +121,10 @@ const MFASettings: React.FC = () => {
                   <ShieldCheck className="h-10 w-10 text-green-500" />
                   <div>
                     <p className="font-medium">
-                      {language === 'tr' ? 'MFA Etkin' : 'MFA Enabled'}
+                      {String(t('mfa.mfaEnabled'))}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {language === 'tr' 
-                        ? 'Hesabınız iki faktörlü kimlik doğrulama ile korunuyor'
-                        : 'Your account is protected with two-factor authentication'}
+                      {String(t('mfa.mfaEnabledDesc'))}
                     </p>
                   </div>
                 </>
@@ -139,12 +133,10 @@ const MFASettings: React.FC = () => {
                   <ShieldOff className="h-10 w-10 text-muted-foreground" />
                   <div>
                     <p className="font-medium">
-                      {language === 'tr' ? 'MFA Devre Dışı' : 'MFA Disabled'}
+                      {String(t('mfa.mfaDisabled'))}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {language === 'tr' 
-                        ? 'Hesabınızı korumak için MFA\'yı etkinleştirin'
-                        : 'Enable MFA to protect your account'}
+                      {String(t('mfa.mfaDisabledDesc'))}
                     </p>
                   </div>
                 </>
@@ -156,7 +148,7 @@ const MFASettings: React.FC = () => {
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
-                    {language === 'tr' ? 'MFA Ekle' : 'Add MFA'}
+                    {String(t('mfa.addMfa'))}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-lg">
@@ -176,7 +168,7 @@ const MFASettings: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">
-              {language === 'tr' ? 'Kayıtlı Cihazlar' : 'Enrolled Devices'}
+              {String(t('mfa.enrolledDevices'))}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -190,10 +182,10 @@ const MFASettings: React.FC = () => {
                     <Smartphone className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="font-medium">
-                        {factor.friendly_name || (language === 'tr' ? 'Kimlik Doğrulama Uygulaması' : 'Authenticator App')}
+                        {factor.friendly_name || String(t('mfa.authenticatorApp'))}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {language === 'tr' ? 'Eklendi:' : 'Added:'}{' '}
+                        {String(t('mfa.added'))}{' '}
                         {new Date(factor.created_at).toLocaleDateString()}
                       </p>
                     </div>
@@ -201,8 +193,8 @@ const MFASettings: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <Badge variant={factor.status === 'verified' ? 'default' : 'secondary'}>
                       {factor.status === 'verified' 
-                        ? (language === 'tr' ? 'Aktif' : 'Active')
-                        : (language === 'tr' ? 'Beklemede' : 'Pending')}
+                        ? String(t('active'))
+                        : String(t('mfa.pending'))}
                     </Badge>
                     
                     <AlertDialog>
@@ -222,23 +214,21 @@ const MFASettings: React.FC = () => {
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>
-                            {language === 'tr' ? 'MFA\'yı Kaldır?' : 'Remove MFA?'}
+                            {String(t('mfa.removeMfa'))}
                           </AlertDialogTitle>
                           <AlertDialogDescription>
-                            {language === 'tr' 
-                              ? 'Bu işlem geri alınamaz. MFA\'yı kaldırmak hesabınızın güvenliğini azaltacaktır.'
-                              : 'This action cannot be undone. Removing MFA will reduce the security of your account.'}
+                            {String(t('mfa.removeConfirm'))}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>
-                            {language === 'tr' ? 'İptal' : 'Cancel'}
+                            {String(t('cancel'))}
                           </AlertDialogCancel>
                           <AlertDialogAction 
                             onClick={() => unenrollFactor(factor.id)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            {language === 'tr' ? 'Kaldır' : 'Remove'}
+                            {String(t('delete'))}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -258,12 +248,10 @@ const MFASettings: React.FC = () => {
             <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-medium text-blue-900 dark:text-blue-100">
-                {language === 'tr' ? 'MFA Neden Önemli?' : 'Why is MFA Important?'}
+                {String(t('mfa.whyImportant'))}
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                {language === 'tr' 
-                  ? 'İki faktörlü kimlik doğrulama, şifreniz ele geçirilse bile hesabınızı korur. Giriş yapmak için hem şifrenizi hem de telefonunuzdaki bir kodu kullanmanız gerekir.'
-                  : 'Two-factor authentication protects your account even if your password is compromised. You\'ll need both your password and a code from your phone to sign in.'}
+                {String(t('mfa.whyImportantDesc'))}
               </p>
             </div>
           </div>

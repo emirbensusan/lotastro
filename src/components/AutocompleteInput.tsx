@@ -70,28 +70,28 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       if (error) {
         // Handle specific error cases
         if (error.message?.includes('401') || error.message?.includes('403')) {
-          toast.error("Session expired. Redirecting to login...");
+          toast.error(String(t('autocomplete.sessionExpired')));
           setSuggestions([]);
           setTimeout(() => navigate('/auth?redirect=/orders'), 1500);
           return;
         }
         if (error.message?.includes('404')) {
-          toast.error("Autocomplete function not found. Please contact support.");
+          toast.error(String(t('autocomplete.functionNotFound')));
           setSuggestions([]);
           return;
         }
         if (error.message?.includes('429')) {
-          toast.error("Rate limit exceeded. Please try again later.");
+          toast.error(String(t('autocomplete.rateLimitExceeded')));
           setSuggestions([]);
           return;
         }
         if (error.message?.includes('402')) {
-          toast.error("Payment required. Please check your billing settings.");
+          toast.error(String(t('autocomplete.paymentRequired')));
           setSuggestions([]);
           return;
         }
         if (error.message?.includes('5')) {
-          toast.error("Autocomplete temporarily unavailable. Please retry.");
+          toast.error(String(t('autocomplete.temporarilyUnavailable')));
           setSuggestions([]);
           return;
         }

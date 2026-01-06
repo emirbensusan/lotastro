@@ -169,34 +169,34 @@ export function HierarchicalAutocomplete({
     <div className={`space-y-4 ${className}`}>
       {/* Quality Selection */}
       <div>
-        <Label htmlFor="quality">Quality *</Label>
+        <Label htmlFor="quality">{String(t('autocomplete.qualityLabel'))} *</Label>
         <Autocomplete
           value={quality}
           onValueChange={onQualityChange}
-          placeholder={qualitiesLoading ? "Loading qualities..." : "Type to search or click dropdown"}
+          placeholder={qualitiesLoading ? String(t('autocomplete.loadingQualities')) : String(t('autocomplete.typeToSearch'))}
           items={qualities}
-          emptyText={qualitiesLoading ? "Loading qualities..." : "No qualities found."}
+          emptyText={qualitiesLoading ? String(t('autocomplete.loadingQualities')) : String(t('autocomplete.noQualities'))}
           minCharsToShow={0}
         />
         <p className="text-xs text-muted-foreground mt-1">
-          {qualitiesLoading ? 'Loading...' : `${qualities.length} qualities available. Click dropdown or type to search.`}
+          {qualitiesLoading ? String(t('loading')) : String(t('autocomplete.qualitiesAvailable', { count: qualities.length }))}
         </p>
       </div>
 
       {/* Color Selection */}
       {quality && (
         <div>
-          <Label htmlFor="color">Color *</Label>
+          <Label htmlFor="color">{String(t('autocomplete.colorLabel'))} *</Label>
           <Autocomplete
             value={color}
             onValueChange={onColorChange}
-            placeholder={loading ? "Loading colors..." : "Type to search or click dropdown"}
+            placeholder={loading ? String(t('autocomplete.loadingColors')) : String(t('autocomplete.typeToSearch'))}
             items={colors}
-            emptyText={loading ? "Loading..." : "No colors found for this quality."}
+            emptyText={loading ? String(t('loading')) : String(t('autocomplete.noColors'))}
             minCharsToShow={0}
           />
           <p className="text-xs text-muted-foreground mt-1">
-            {colors.length > 0 ? `Available: ${colors.slice(0, 3).join(', ')}${colors.length > 3 ? ', ...' : ''}` : 'Select quality first'}
+            {colors.length > 0 ? `${String(t('available'))}: ${colors.slice(0, 3).join(', ')}${colors.length > 3 ? ', ...' : ''}` : String(t('autocomplete.selectQualityFirst'))}
           </p>
         </div>
       )}
@@ -204,7 +204,7 @@ export function HierarchicalAutocomplete({
       {/* Lot Selection */}
       {quality && color && (
         <div>
-          <Label htmlFor="lot">Available Lots (Oldest First) *</Label>
+          <Label htmlFor="lot">{String(t('autocomplete.lotsLabel'))} *</Label>
           <Autocomplete
             value={selectedLot}
             onValueChange={(value) => {
@@ -214,9 +214,9 @@ export function HierarchicalAutocomplete({
                 onLotChange(value);
               }
             }}
-            placeholder={loading ? "Loading lots..." : "Enter lot number"}
+            placeholder={loading ? String(t('autocomplete.loadingLots')) : String(t('lotNumber'))}
             items={lotItems}
-            emptyText={loading ? "Loading..." : "No lots available for this quality/color combination."}
+            emptyText={loading ? String(t('loading')) : String(t('autocomplete.noLots'))}
             minCharsToShow={2}
           />
           {selectedLotData && (

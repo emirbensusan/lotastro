@@ -89,7 +89,7 @@ export default function InquiryDetailsDialog({
           <DialogTitle className="flex items-center gap-2">
             <span>{String(t('inquiry.details'))}</span>
             <Badge className={STATUS_COLORS[inquiry.status]}>
-              {inquiry.status.toUpperCase()}
+              {String(t(`inquiry.status.${inquiry.status}`))}
             </Badge>
           </DialogTitle>
         </DialogHeader>
@@ -154,7 +154,7 @@ export default function InquiryDetailsDialog({
                   <div className="mt-4 p-2 bg-green-50 dark:bg-green-950 rounded border border-green-200 dark:border-green-800">
                     <div className="text-xs text-green-700 dark:text-green-300">{String(t('inquiry.convertedTo'))}</div>
                     <div className="font-mono font-semibold text-green-800 dark:text-green-200">
-                      Order: {inquiry.converted_to_order_id}
+                      {String(t('inquiry.orderLabel'))} {inquiry.converted_to_order_id}
                     </div>
                     {inquiry.converted_at && (
                       <div className="text-xs text-green-600 dark:text-green-400">
@@ -180,7 +180,7 @@ export default function InquiryDetailsDialog({
                           <TableHead>{String(t('quality'))}</TableHead>
                           <TableHead>{String(t('color'))}</TableHead>
                           <TableHead className="text-right">{String(t('meters'))}</TableHead>
-                          <TableHead>{String(t('scope'))}</TableHead>
+                          <TableHead>{String(t('inquiry.scope'))}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>

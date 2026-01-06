@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface FilterPreset<T = Record<string, string>> {
   id: string;
@@ -45,6 +46,7 @@ export function useFilterPresets<T extends Record<string, string>>(
   options: UseFilterPresetsOptions<T>
 ): UseFilterPresetsReturn<T> {
   const { storageKey, currentFilters, onApplyFilters } = options;
+  const { t } = useLanguage();
   const [presets, setPresets] = useState<FilterPreset<T>[]>([]);
   const [activePreset, setActivePreset] = useState<FilterPreset<T> | null>(null);
 
@@ -76,10 +78,10 @@ export function useFilterPresets<T extends Record<string, string>>(
         setPresets(newPresets);
       } catch (error) {
         console.error('Failed to save filter presets:', error);
-        toast.error('Failed to save filter preset');
+        toast.error(String(t('filterPreset.saveError')));
       }
     },
-    [storageKey]
+    [storageKey, t]
   );
 
   const savePreset = useCallback(
@@ -94,9 +96,9 @@ export function useFilterPresets<T extends Record<string, string>>(
       const newPresets = [...presets, newPreset];
       persistPresets(newPresets);
       setActivePreset(newPreset);
-      toast.success(`Filter preset "${name}" saved`);
+      toast.success(String(t('filterPreset.saved', { name })));
     },
-    [currentFilters, presets, persistPresets]
+    [currentFilters, presets, persistPresets, t]
   );
 
   const loadPreset = useCallback(
@@ -105,10 +107,10 @@ export function useFilterPresets<T extends Record<string, string>>(
       if (preset) {
         onApplyFilters(preset.filters);
         setActivePreset(preset);
-        toast.success(`Loaded preset "${preset.name}"`);
+        toast.success(String(t('filterPreset.loaded', { name: preset.name })));
       }
     },
-    [presets, onApplyFilters]
+    [presets, onApplyFilters, t]
   );
 
   const deletePreset = useCallback(
@@ -122,10 +124,10 @@ export function useFilterPresets<T extends Record<string, string>>(
       }
       
       if (preset) {
-        toast.success(`Deleted preset "${preset.name}"`);
+        toast.success(String(t('filterPreset.deleted', { name: preset.name })));
       }
     },
-    [presets, activePreset, persistPresets]
+    [presets, activePreset, persistPresets, t]
   );
 
   const renamePreset = useCallback(
@@ -139,9 +141,9 @@ export function useFilterPresets<T extends Record<string, string>>(
         setActivePreset({ ...activePreset, name: newName });
       }
       
-      toast.success('Preset renamed');
+      toast.success(String(t('filterPreset.renamed')));
     },
-    [presets, activePreset, persistPresets]
+    [presets, activePreset, persistPresets, t]
   );
 
   const setDefaultPreset = useCallback(
@@ -151,9 +153,9 @@ export function useFilterPresets<T extends Record<string, string>>(
         isDefault: p.id === presetId,
       }));
       persistPresets(newPresets);
-      toast.success(presetId ? 'Default preset set' : 'Default preset cleared');
+      toast.success(presetId ? String(t('filterPreset.defaultSet')) : String(t('filterPreset.defaultCleared')));
     },
-    [presets, persistPresets]
+    [presets, persistPresets, t]
   );
 
   const clearFilters = useCallback(() => {
