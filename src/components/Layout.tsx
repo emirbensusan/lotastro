@@ -70,6 +70,16 @@ import {
 // Build ID for debugging stale bundles
 const BUILD_ID = new Date().toISOString();
 
+// Phase 4: Dev-only navigation diagnostic logging
+const logNavEvent = (event: string, data?: Record<string, unknown>) => {
+  if (import.meta.env.DEV) {
+    console.log(`[NAV-DIAG] ${event}`, {
+      timestamp: Date.now(),
+      ...data,
+    });
+  }
+};
+
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -145,6 +155,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Log route changes and close all modals/sheets on route change
   useEffect(() => {
+    logNavEvent('Route changed', { path: location.pathname });
     console.log('[ROUTE] Changed to:', location.pathname, 'at:', Date.now());
     
     // Close all overlays on route change to prevent orphaned portals blocking clicks
@@ -208,10 +219,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }, 250);
   }, [navigate]);
   
-  // Simple handler for mobile: just close sidebar
-  const handleMobileNavClick = useCallback(() => {
+  // Simple handler for mobile: just close sidebar + log
+  const handleMobileNavClick = useCallback((path: string) => {
+    logNavEvent('Mobile link clicked', { path, currentPath: location.pathname });
     setSidebarOpen(false);
-  }, []);
+  }, [location.pathname]);
   
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
@@ -363,6 +375,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           >
                             <Link
                               to={item.path}
+                              onClick={() => logNavEvent('Desktop link clicked', { path: item.path, currentPath: location.pathname })}
                               title={isCollapsed ? item.label : undefined}
                             >
                               <Icon className="h-4 w-4 flex-shrink-0" />
@@ -402,7 +415,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  onClick={handleMobileNavClick}
+                  onClick={() => handleMobileNavClick(item.path)}
                   className={`flex items-center w-full justify-start min-h-touch px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive 
                       ? 'bg-secondary text-secondary-foreground' 
