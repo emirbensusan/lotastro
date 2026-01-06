@@ -208,88 +208,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }, 250);
   }, [navigate]);
   
-  // Instant navigation hook for pointerup-based navigation
-  const pointerStateRef = useRef<{
-    startX: number;
-    startY: number;
-    startTime: number;
-    path: string;
-    handled: boolean;
-  } | null>(null);
-  
-  // Phase 1 fix: Flag to suppress click after pointerup already navigated
-  const suppressNextClickRef = useRef(false);
-  
-  const handlePointerDown = useCallback((e: React.PointerEvent, path: string) => {
-    // Only primary button (left click)
-    if (e.button !== 0) return;
-    
-    // If modifier keys pressed, let browser handle natively (new tab, etc.)
-    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-    
-    // Record start position for movement threshold
-    pointerStateRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startTime: performance.now(),
-      path,
-      handled: false,
-    };
+  // Simple handler for mobile: just close sidebar
+  const handleMobileNavClick = useCallback(() => {
+    setSidebarOpen(false);
   }, []);
-  
-  const handlePointerUp = useCallback((e: React.PointerEvent, path: string) => {
-    const state = pointerStateRef.current;
-    if (!state || state.path !== path || state.handled) return;
-    
-    // Check movement threshold (5px) - prevent drag/scroll misfires
-    const moveDistance = Math.hypot(
-      e.clientX - state.startX,
-      e.clientY - state.startY
-    );
-    
-    if (moveDistance > 5) {
-      console.log(`[NAV] Pointer moved ${moveDistance.toFixed(1)}px, treating as drag`);
-      pointerStateRef.current = null;
-      return;
-    }
-    
-    // Navigate immediately
-    state.handled = true;
-    // Phase 1 fix: Do NOT preventDefault here - it blocks scroll and subsequent clicks
-    // Instead, flag to suppress the click event that will follow
-    suppressNextClickRef.current = true;
-    
-    const startTime = state.startTime;
-    safeNavigate(path, 'Sidebar-Instant', startTime);
-    
-    pointerStateRef.current = null;
-  }, [safeNavigate]);
-  
-  const handleLinkClick = useCallback((e: React.MouseEvent, path: string, closeMobile = false) => {
-    // Phase 1 fix: If pointerup already handled navigation, suppress this click
-    if (suppressNextClickRef.current) {
-      suppressNextClickRef.current = false;
-      e.preventDefault();
-      return;
-    }
-    
-    // If modifier keys, let browser handle natively (skip preventDefault)
-    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
-      // Don't preventDefault - browser will open in new tab
-      return;
-    }
-    
-    // Prevent default navigation (we handle it)
-    e.preventDefault();
-    
-    // Close mobile sidebar if needed
-    if (closeMobile) {
-      setSidebarOpen(false);
-    }
-    
-    // Fallback for non-pointer devices (keyboard Enter, etc.)
-    safeNavigate(path, closeMobile ? 'Mobile-Sidebar' : 'Sidebar-Click-Fallback');
-  }, [safeNavigate]);
   
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
@@ -441,7 +363,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           >
                             <Link
                               to={item.path}
-                              onClick={(e) => handleLinkClick(e, item.path)}
                               title={isCollapsed ? item.label : undefined}
                             >
                               <Icon className="h-4 w-4 flex-shrink-0" />
@@ -481,7 +402,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  onClick={(e) => handleLinkClick(e, item.path, true)}
+                  onClick={handleMobileNavClick}
                   className={`flex items-center w-full justify-start min-h-touch px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive 
                       ? 'bg-secondary text-secondary-foreground' 
