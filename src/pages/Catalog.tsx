@@ -74,6 +74,10 @@ const TextFilterInput: React.FC<TextFilterInputProps> = ({
 }) => {
   const [localValue, setLocalValue] = React.useState(currentFilter);
   
+  // Store callback in ref to avoid triggering effect on reference changes
+  const onFilterChangeRef = React.useRef(onFilterChange);
+  onFilterChangeRef.current = onFilterChange;
+  
   // Sync local value when external filter changes
   React.useEffect(() => {
     setLocalValue(currentFilter);
@@ -83,11 +87,11 @@ const TextFilterInput: React.FC<TextFilterInputProps> = ({
   React.useEffect(() => {
     if (localValue === '' || localValue.length >= 3) {
       const timer = setTimeout(() => {
-        onFilterChange(column, localValue);
+        onFilterChangeRef.current(column, localValue);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [localValue, column, onFilterChange]);
+  }, [localValue, column]);
   
   const charsNeeded = 3 - localValue.length;
   
@@ -335,10 +339,15 @@ const Catalog: React.FC = () => {
     navigate(`/catalog/${item.id}?returnLoaded=true`);
   };
 
-  const handleColumnFilter = (column: string, value: string) => {
+  const handleColumnFilter = React.useCallback((column: string, value: string) => {
     // Treat ALL_FILTER_VALUE as clearing the filter
     if (value === ALL_FILTER_VALUE) {
-      clearColumnFilter(column);
+      setColumnFilters(prev => {
+        const newFilters = { ...prev };
+        delete newFilters[column];
+        return newFilters;
+      });
+      setPage(1);
       return;
     }
     setColumnFilters(prev => ({
@@ -346,16 +355,16 @@ const Catalog: React.FC = () => {
       [column]: value
     }));
     setPage(1);
-  };
+  }, []);
 
-  const clearColumnFilter = (column: string) => {
+  const clearColumnFilter = React.useCallback((column: string) => {
     setColumnFilters(prev => {
       const newFilters = { ...prev };
       delete newFilters[column];
       return newFilters;
     });
     setPage(1);
-  };
+  }, []);
 
   const handleExport = async () => {
     try {
