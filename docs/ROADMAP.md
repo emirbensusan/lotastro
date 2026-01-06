@@ -219,21 +219,61 @@ LotAstro WMS is not just warehouse software—it's the **operational nervous sys
 
 ---
 
-### PRIORITY 3: Quality of Life
+### PRIORITY 3: CRM Integration (Pending)
 
-#### Batch O: Quality of Life & Polish (2 days, ~8-13 credits)
+#### Batch F: CRM & Ecosystem Connectivity
 
-**Owner:** Frontend  
-**Theme:** Delightful UX  
+**Owner:** Full-Stack  
+**Theme:** Cross-System Integration  
+**Status:** ⏸️ PENDING CRM PROJECT COMPLETION
+
+*Waiting for CRM project to be finalized before implementing WMS integration features.*
+
+---
+
+### PRIORITY 4: AI/OCR (Active)
+
+#### Batch I: OCR Pipeline Overhaul (3 days, ~11-17 credits)
+
+**Owner:** Full-Stack  
+**Theme:** Stock Take OCR Reliability  
+**Exit Criteria:** 95%+ accuracy on clean printed labels  
 **Status:** 🔴 NOT STARTED
 
-| Task | Priority | Status |
-|------|----------|--------|
-| Bulk actions (select all, bulk delete) | P1 | 🔴 Not Started |
-| Advanced filtering presets (save/load) | P1 | 🔴 Not Started |
-| Print layout refinements | P2 | 🔴 Not Started |
-| Accessibility audit (ARIA labels) | P2 | 🔴 Not Started |
-| Keyboard navigation polish | P2 | 🔴 Not Started |
+*Will be started after CRM integration features.*
+
+---
+
+#### Batch P: AI Extraction Refactoring (2.5 days, ~10-15 credits)
+
+**Owner:** Full-Stack  
+**Theme:** AI Order Extraction Reliability  
+**Exit Criteria:** 90%+ combined extraction accuracy  
+**Status:** 🔴 NOT STARTED
+
+*Will be started after OCR Pipeline Overhaul.*
+
+---
+
+## 6. Below the Line (Backlog)
+
+The following items are nice-to-haves and have been deprioritized:
+
+### From Batch O: Quality of Life & Polish
+
+| Task | Priority | Notes |
+|------|----------|-------|
+| Bulk actions (select all, bulk delete) | P1 | Nice-to-have |
+| Advanced filtering presets (save/load) | P1 | Nice-to-have |
+| Print layout refinements | P2 | Nice-to-have |
+| Accessibility audit (ARIA labels) | P2 | Nice-to-have |
+| Keyboard navigation polish | P2 | ✅ COMPLETE (2026-01-06) - Shortcut hints overlay |
+
+### From Batch K: Webhooks
+
+| Task | Priority | Notes |
+|------|----------|-------|
+| Integration logs dashboard | P2 | Admin UI deferred |
 
 ---
 
