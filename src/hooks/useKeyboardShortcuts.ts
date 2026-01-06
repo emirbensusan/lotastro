@@ -75,7 +75,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
         navigate('/reports');
         break;
       case 'goDashboard':
-        navigate('/dashboard');
+        navigate('/'); // Dashboard is at root
         break;
       case 'goAdmin':
         navigate('/admin');
@@ -198,12 +198,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
         return;
       }
 
-      // Start a sequence
+      // Start a sequence - only 'g' activates hint mode
       if (key === 'g') {
         setPendingKey('g');
-        // Clear pending after 1 second
-        setTimeout(() => setPendingKey(null), 1000);
         return;
+      }
+      
+      // Any other key pressed while in pending mode clears it (non-matching key)
+      if (pendingKey) {
+        setPendingKey(null);
       }
     };
 
