@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { SidebarNavLink } from '@/components/navigation/SidebarNavLink';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -219,11 +220,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }, 250);
   }, [navigate]);
   
-  // Simple handler for mobile: just close sidebar + log
-  const handleMobileNavClick = useCallback((path: string) => {
-    logNavEvent('Mobile link clicked', { path, currentPath: location.pathname });
-    setSidebarOpen(false);
-  }, [location.pathname]);
   
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
@@ -373,14 +369,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             size="sm"
                             className="flex items-center justify-start"
                           >
-                            <Link
+                            <SidebarNavLink
                               to={item.path}
-                              onClick={() => logNavEvent('Desktop link clicked', { path: item.path, currentPath: location.pathname })}
                               title={isCollapsed ? item.label : undefined}
                             >
                               <Icon className="h-4 w-4 flex-shrink-0" />
                               <span className={isCollapsed ? "sr-only" : "ml-2"}>{item.label}</span>
-                            </Link>
+                            </SidebarNavLink>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
@@ -412,10 +407,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               const isActive = location.pathname === item.path;
               
               return (
-                <Link
+                <SidebarNavLink
                   key={item.path}
                   to={item.path}
-                  onClick={() => handleMobileNavClick(item.path)}
+                  onNavigate={() => setSidebarOpen(false)}
                   className={`flex items-center w-full justify-start min-h-touch px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive 
                       ? 'bg-secondary text-secondary-foreground' 
@@ -424,7 +419,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   <Icon className="h-5 w-5 mr-3" />
                   {item.label}
-                </Link>
+                </SidebarNavLink>
               );
             })}
           </div>

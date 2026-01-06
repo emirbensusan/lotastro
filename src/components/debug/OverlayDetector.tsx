@@ -298,11 +298,22 @@ export const OverlayDetector: React.FC = () => {
     return () => document.removeEventListener('click', handleClick, true);
   }, [blocker, logTelemetry]);
 
-  // Run check every 500ms
+  // Phase 6: On-demand checking instead of interval
+  // Run initial check on mount and when route changes
   useEffect(() => {
-    const interval = setInterval(checkForBlockers, 500);
-    checkForBlockers(); // Initial check
-    return () => clearInterval(interval);
+    checkForBlockers();
+  }, [checkForBlockers]);
+  
+  // Expose function to trigger check on demand (e.g., after fallback navigation)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).triggerOverlayCheck = checkForBlockers;
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).triggerOverlayCheck;
+      }
+    };
   }, [checkForBlockers]);
 
   // Suppress lastCheck warning - it's used for debugging
