@@ -53,12 +53,34 @@ Deno.serve(async (req) => {
     const includeIncoming = url.searchParams.get('include_incoming') === 'true';
     const includeReserved = url.searchParams.get('include_reserved') !== 'false'; // default true
     
+    // Inquiry context for audit logging (optional for API, but logged if provided)
+    const inquiryId = url.searchParams.get('inquiry_id');
+    const inquiryNumber = url.searchParams.get('inquiry_number');
+    
     // Pagination
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = Math.min(parseInt(url.searchParams.get('page_size') || '100'), 500);
     const offset = (page - 1) * pageSize;
 
-    console.log(`[api-get-inventory] Request from ${validation.service}: quality=${quality}, color=${color}, status=${status}, page=${page}`);
+    console.log(`[api-get-inventory] Request from ${validation.service}: quality=${quality}, color=${color}, status=${status}, page=${page}, inquiry=${inquiryNumber || inquiryId || 'none'}`);
+
+    // Log API inventory view for audit (if inquiry context provided)
+    if (inquiryId || inquiryNumber) {
+      try {
+        await supabase.from('inquiry_view_logs').insert({
+          inquiry_id: inquiryId || null,
+          user_id: null, // API requests don't have a user_id
+          action: 'api_view_inventory',
+          is_bypass: false,
+          bypass_reason: null,
+          qualities_viewed: quality ? [quality] : null,
+          colors_viewed: color ? [color] : null,
+          filters_used: { quality, color, status, min_meters: minMeters, max_meters: maxMeters },
+        });
+      } catch (logError) {
+        console.warn('[api-get-inventory] Failed to log view:', logError);
+      }
+    }
 
     // Get inventory pivot summary
     const { data: inventoryData, error: inventoryError } = await supabase

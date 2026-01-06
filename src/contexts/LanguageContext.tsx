@@ -2931,6 +2931,18 @@ const translations = {
       search: 'Search by inquiry number or customer...',
     },
     
+    // Inquiry Gating UI
+    inquiryRequired: 'Inquiry Required',
+    inquiryRequiredDescription: 'To view inventory, you need an active inquiry or stock take session.',
+    inquiryGatingExplanation: 'All inventory views are logged for audit purposes. Creating an inquiry helps track your stock check activities.',
+    createInquiry: 'Create Inquiry',
+    startStockTakeSession: 'Start Stock Take Session',
+    viewingWith: 'Viewing with',
+    stockTakeMode: 'Stock Take Mode',
+    managerAccess: 'Manager Access',
+    loggedInAs: 'Logged in as',
+    or: 'or',
+    
     // Stock Take Session
     stockTakeSession: {
       start: 'Start Stock Take Session',
@@ -5823,6 +5835,18 @@ const translations = {
       convertedTo: 'Siparişe Dönüştürüldü',
       search: 'Sorgulama numarası veya müşteriye göre ara...',
     },
+    
+    // Inquiry Gating UI
+    inquiryRequired: 'Sorgulama Gerekli',
+    inquiryRequiredDescription: 'Envanteri görüntülemek için aktif bir sorgulama veya sayım oturumu gerekiyor.',
+    inquiryGatingExplanation: 'Tüm envanter görüntülemeleri denetim amacıyla kaydedilir. Sorgulama oluşturmak stok kontrolü etkinliklerinizi takip etmenize yardımcı olur.',
+    createInquiry: 'Sorgulama Oluştur',
+    startStockTakeSession: 'Sayım Oturumu Başlat',
+    viewingWith: 'Görüntüleniyor',
+    stockTakeMode: 'Sayım Modu',
+    managerAccess: 'Yönetici Erişimi',
+    loggedInAs: 'Giriş yapan',
+    or: 'veya',
     
     // Stock Take Session
     stockTakeSession: {
