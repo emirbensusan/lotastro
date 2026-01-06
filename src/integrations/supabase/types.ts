@@ -2241,6 +2241,164 @@ export type Database = {
           },
         ]
       }
+      inquiries: {
+        Row: {
+          converted_at: string | null
+          converted_by: string | null
+          converted_to_order_id: string | null
+          created_at: string
+          created_by: string
+          customer_name: string | null
+          expires_at: string | null
+          id: string
+          inquiry_number: string
+          notes: string | null
+          reason: Database["public"]["Enums"]["inquiry_reason"]
+          salesperson_id: string | null
+          status: Database["public"]["Enums"]["inquiry_status"]
+          updated_at: string
+        }
+        Insert: {
+          converted_at?: string | null
+          converted_by?: string | null
+          converted_to_order_id?: string | null
+          created_at?: string
+          created_by: string
+          customer_name?: string | null
+          expires_at?: string | null
+          id?: string
+          inquiry_number: string
+          notes?: string | null
+          reason: Database["public"]["Enums"]["inquiry_reason"]
+          salesperson_id?: string | null
+          status?: Database["public"]["Enums"]["inquiry_status"]
+          updated_at?: string
+        }
+        Update: {
+          converted_at?: string | null
+          converted_by?: string | null
+          converted_to_order_id?: string | null
+          created_at?: string
+          created_by?: string
+          customer_name?: string | null
+          expires_at?: string | null
+          id?: string
+          inquiry_number?: string
+          notes?: string | null
+          reason?: Database["public"]["Enums"]["inquiry_reason"]
+          salesperson_id?: string | null
+          status?: Database["public"]["Enums"]["inquiry_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inquiry_lines: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          inquiry_id: string
+          lot_id: string | null
+          notes: string | null
+          quality: string
+          requested_meters: number
+          scope: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          inquiry_id: string
+          lot_id?: string | null
+          notes?: string | null
+          quality: string
+          requested_meters: number
+          scope?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          inquiry_id?: string
+          lot_id?: string | null
+          notes?: string | null
+          quality?: string
+          requested_meters?: number
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_lines_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiry_lines_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inquiry_view_logs: {
+        Row: {
+          action: string
+          bypass_reason: string | null
+          colors_viewed: string[] | null
+          created_at: string
+          filters_used: Json | null
+          id: string
+          inquiry_id: string | null
+          ip_address: string | null
+          is_bypass: boolean
+          meters_visible: number | null
+          qualities_viewed: string[] | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          bypass_reason?: string | null
+          colors_viewed?: string[] | null
+          created_at?: string
+          filters_used?: Json | null
+          id?: string
+          inquiry_id?: string | null
+          ip_address?: string | null
+          is_bypass?: boolean
+          meters_visible?: number | null
+          qualities_viewed?: string[] | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          bypass_reason?: string | null
+          colors_viewed?: string[] | null
+          created_at?: string
+          filters_used?: Json | null
+          id?: string
+          inquiry_id?: string | null
+          ip_address?: string | null
+          is_bypass?: boolean
+          meters_visible?: number | null
+          qualities_viewed?: string[] | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_view_logs_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_snapshots: {
         Row: {
           by_color: Json | null
@@ -3664,6 +3822,48 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_take_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          ended_by: string | null
+          expires_at: string
+          id: string
+          notes: string | null
+          reason: string
+          session_number: string
+          started_at: string
+          started_by: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at: string
+          id?: string
+          notes?: string | null
+          reason: string
+          session_number: string
+          started_at?: string
+          started_by: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          ended_by?: string | null
+          expires_at?: string
+          id?: string
+          notes?: string | null
+          reason?: string
+          session_number?: string
+          started_at?: string
+          started_by?: string
+          status?: string
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           created_at: string
@@ -3955,6 +4155,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_bypass_inquiry: { Args: { p_user_id: string }; Returns: boolean }
       can_reverse_action:
         | {
             Args: { p_audit_id: string }
@@ -4002,10 +4203,12 @@ export type Database = {
       }
       cleanup_old_api_logs: { Args: never; Returns: undefined }
       generate_count_session_number: { Args: never; Returns: string }
+      generate_inquiry_number: { Args: never; Returns: string }
       generate_lastro_sku_code: { Args: never; Returns: string }
       generate_mo_number: { Args: never; Returns: string }
       generate_order_number: { Args: never; Returns: string }
       generate_reservation_number: { Args: never; Returns: string }
+      generate_stock_take_session_number: { Args: never; Returns: string }
       get_available_rolls_count: { Args: { p_lot_id: string }; Returns: number }
       get_available_rolls_meters: {
         Args: { p_lot_id: string }
@@ -4116,6 +4319,11 @@ export type Database = {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      has_active_inquiry: { Args: { p_user_id: string }; Returns: boolean }
+      has_active_stock_take_session: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           required_role: Database["public"]["Enums"]["user_role"]
@@ -4198,6 +4406,13 @@ export type Database = {
         | "knee_lining"
       catalog_unit: "meters" | "kilograms"
       convert_reason_type: "payment_confirmation" | "manager_confirmation"
+      inquiry_reason:
+        | "customer_quote"
+        | "stock_check"
+        | "management_review"
+        | "stock_take"
+        | "qa_investigation"
+      inquiry_status: "draft" | "active" | "converted" | "expired" | "cancelled"
       order_line_type: "sample" | "standard"
       reservation_status: "active" | "released" | "converted" | "canceled"
       stock_status: "in_stock" | "out_of_stock" | "partially_fulfilled"
@@ -4396,6 +4611,14 @@ export const Constants = {
       ],
       catalog_unit: ["meters", "kilograms"],
       convert_reason_type: ["payment_confirmation", "manager_confirmation"],
+      inquiry_reason: [
+        "customer_quote",
+        "stock_check",
+        "management_review",
+        "stock_take",
+        "qa_investigation",
+      ],
+      inquiry_status: ["draft", "active", "converted", "expired", "cancelled"],
       order_line_type: ["sample", "standard"],
       reservation_status: ["active", "released", "converted", "canceled"],
       stock_status: ["in_stock", "out_of_stock", "partially_fulfilled"],
