@@ -1,7 +1,7 @@
 # LotAstro Development Roadmap
 
-> **Version**: 4.1.0  
-> **Last Updated**: 2026-01-05  
+> **Version**: 4.2.0  
+> **Last Updated**: 2026-01-06
 > **Planning Horizon**: 16.5 days remaining  
 > **Architecture**: Multi-Project Ecosystem
 > **Philosophy**: Reliability → Intelligence → Connectivity → Delight
@@ -255,7 +255,133 @@ LotAstro WMS is not just warehouse software—it's the **operational nervous sys
 
 ---
 
-## 6. Below the Line (Backlog)
+## 6. WMS Architecture Enhancement Batches
+
+> **Added**: 2026-01-06  
+> **Goal**: Align LotAstro with enterprise WMS standards for inventory integrity and auditability
+
+### PRD Alignment Decisions
+
+| PRD Module | Decision | Rationale |
+|------------|----------|-----------|
+| DEP-M1: Items + Variants | **Use catalog_items** | Existing catalog serves as item master; no separate items/item_variants needed |
+| DEP-M2: Warehouses + Locations | **Phase 2** | Single-warehouse operation currently; defer multi-location support |
+| DEP-M3: Inventory Transactions | **Priority 1** | Critical architectural foundation for auditability |
+| DEP-M4: Transfers | **Phase 2** | Depends on DEP-M2 (locations) |
+| DEP-M5: Lot/Serial Tracking | **Already Implemented** | Lots and rolls tables provide this capability |
+| DEP-M6: Reservations | **Already Implemented** | reservation_lines + reserved_meters on lots |
+| DEP-M7: Picking/Packing | **Minimal Implementation** | Capture roll selection on fulfillment, defer full picking workflow |
+| DEP-M8: Stock Count Adjustments | **Priority 2** | Extend count_sessions with manager-approved adjustments |
+
+---
+
+### Phase 1 Batches (Current Priority)
+
+#### Batch WMS-1: Inventory Transaction Ledger (DEP-M3)
+
+**Status:** 🔴 NOT STARTED  
+**Effort:** 3-4 days  
+**Dependencies:** None  
+**Theme:** Single Source of Truth for Inventory Movements
+
+Creates the foundational transaction ledger for inventory auditability.
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Create `inventory_transactions` table | P0 | 🔴 Not Started |
+| Define `transaction_type` enum | P0 | 🔴 Not Started |
+| Add `source_type`/`source_id` columns | P0 | 🔴 Not Started |
+| Create `/inventory-transactions` page | P0 | 🔴 Not Started |
+| Retrofit lot intake to create 'receipt' transaction | P1 | 🔴 Not Started |
+| Retrofit order fulfillment to create 'pick' transaction | P1 | 🔴 Not Started |
+| Add balance consistency check RPC | P2 | 🔴 Not Started |
+
+**Transaction Types:**
+- `receipt` - Lot intake (goods received)
+- `adjustment_in` - Stock count positive adjustment
+- `adjustment_out` - Stock count negative adjustment
+- `pick` - Order fulfillment (stock out)
+- `return` - Customer return
+- `write_off` - Damaged/expired stock
+- `transfer_out` - (Phase 2) Inter-location transfer out
+- `transfer_in` - (Phase 2) Inter-location transfer in
+
+---
+
+#### Batch WMS-2: Stock Count Adjustments (DEP-M8)
+
+**Status:** 🔴 NOT STARTED  
+**Effort:** 2-3 days  
+**Dependencies:** WMS-1  
+**Theme:** Manager-Approved Inventory Corrections
+
+Adds manager-approved adjustments after stock count reconciliation.
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Create `stock_count_adjustments` table | P0 | 🔴 Not Started |
+| Add adjustment workflow (draft → approved → applied) | P0 | 🔴 Not Started |
+| Require manager approval for adjustments | P0 | 🔴 Not Started |
+| Create adjustment transactions on approval | P1 | 🔴 Not Started |
+| Add adjustment UI in stock take review | P1 | 🔴 Not Started |
+| Variance calculation helper | P2 | 🔴 Not Started |
+
+---
+
+#### Batch WMS-3: Order Fulfillment Traceability (Minimal DEP-M7)
+
+**Status:** 🔴 NOT STARTED  
+**Effort:** 1-2 days  
+**Dependencies:** WMS-1  
+**Theme:** Know Which Rolls Fulfilled Each Order
+
+Captures which rolls were used when fulfilling orders.
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Require roll selection on fulfillment | P0 | 🔴 Not Started |
+| Store selected rolls in `order_fulfillment_rolls` | P0 | 🔴 Not Started |
+| Create 'pick' transactions on fulfillment | P1 | 🔴 Not Started |
+| Show used rolls in order history | P2 | 🔴 Not Started |
+
+---
+
+### Phase 2 Batches (Future)
+
+#### Batch WMS-4: Warehouses + Locations (DEP-M2)
+
+**Status:** ⏸️ SIDELINED  
+**Effort:** 2-3 days  
+**Dependencies:** None  
+**Theme:** Multi-Location Inventory
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Create `warehouses` table | P0 | ⏸️ Sidelined |
+| Create `locations` table | P0 | ⏸️ Sidelined |
+| Add `warehouse_id` to lots | P1 | ⏸️ Sidelined |
+| Add `location_id` to rolls | P1 | ⏸️ Sidelined |
+| Warehouse management UI | P2 | ⏸️ Sidelined |
+
+---
+
+#### Batch WMS-5: Transfers (DEP-M4)
+
+**Status:** ⏸️ SIDELINED  
+**Effort:** 2-3 days  
+**Dependencies:** WMS-4  
+**Theme:** Inter-Location Stock Movement
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Create `transfer_orders` table | P0 | ⏸️ Sidelined |
+| Create `transfer_lines` table | P0 | ⏸️ Sidelined |
+| Transfer approval workflow | P1 | ⏸️ Sidelined |
+| Transfer transactions (out + in) | P1 | ⏸️ Sidelined |
+
+---
+
+## 7. Below the Line (Backlog)
 
 The following items are nice-to-haves and have been deprioritized:
 
@@ -481,7 +607,19 @@ await worker.setParameters({
 
 ---
 
-## 7. Changelog
+## 8. Changelog
+
+### 2026-01-06 (v4.2.0) - WMS Architecture Enhancement
+
+- 📋 Added Section 6: WMS Architecture Enhancement Batches
+- 📋 Documented PRD alignment decisions for DEP-M1 through DEP-M8
+- ➕ Added Batch WMS-1: Inventory Transaction Ledger (P0)
+- ➕ Added Batch WMS-2: Stock Count Adjustments (P0)
+- ➕ Added Batch WMS-3: Order Fulfillment Traceability (P1)
+- ⏸️ Sidelined Batch WMS-4: Warehouses + Locations (Phase 2)
+- ⏸️ Sidelined Batch WMS-5: Transfers (Phase 2)
+- 🎯 Decision: Use `catalog_items` as item master (no separate items table)
+- 🎯 Decision: Existing lots/rolls provide lot tracking (no changes needed for DEP-M5)
 
 ### 2026-01-02 (v4.0.0) - Batch Consolidation
 
@@ -529,3 +667,4 @@ await worker.setParameters({
 | 3.1.0 | 2025-12-27 | Batch E complete |
 | 3.2.0 | 2025-12-28 | Batches G, H complete |
 | 4.0.0 | 2026-01-02 | Batch consolidation; AI Extraction batch added |
+| 4.2.0 | 2026-01-06 | WMS Architecture Enhancement batches (WMS-1 to WMS-5) |
