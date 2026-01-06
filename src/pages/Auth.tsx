@@ -135,8 +135,8 @@ const Auth = () => {
       // MFA is required - show MFA verification screen
       setShowMfaVerify(true);
       toast({
-        title: t('mfaRequired') as string || 'MFA Required',
-        description: t('mfaRequiredDescription') as string || 'Please enter your verification code',
+        title: t('mfaRequired') as string,
+        description: t('mfaRequiredDescription') as string,
       });
     } else {
       // Record successful attempt

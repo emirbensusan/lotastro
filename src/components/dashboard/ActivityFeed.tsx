@@ -98,7 +98,7 @@ export function ActivityFeed({ className }: ActivityFeedProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <History className="h-4 w-4" />
-            {t('recentActivity') || 'Recent Activity'}
+            {t('recentActivity')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -124,7 +124,7 @@ export function ActivityFeed({ className }: ActivityFeedProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <History className="h-4 w-4" />
-            {t('recentActivity') || 'Recent Activity'}
+            {t('recentActivity')}
           </CardTitle>
           <Button
             variant="ghost"
@@ -132,7 +132,7 @@ export function ActivityFeed({ className }: ActivityFeedProps) {
             className="h-6 px-2 text-xs"
             onClick={() => navigate('/audit-logs')}
           >
-            {t('viewAll') || 'View all'}
+            {t('viewAll')}
             <ArrowRight className="h-3 w-3 ml-1" />
           </Button>
         </div>
@@ -142,7 +142,7 @@ export function ActivityFeed({ className }: ActivityFeedProps) {
           <div className="space-y-3">
             {activities?.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                {t('noRecentActivity') || 'No recent activity'}
+                {t('noRecentActivity')}
               </p>
             ) : (
               activities?.map((activity) => (
