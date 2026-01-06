@@ -53,6 +53,9 @@ interface CatalogItem {
   approved_at: string | null;
 }
 
+// Placeholder value for "All" option in Select components (empty string not allowed)
+const ALL_FILTER_VALUE = "__all__";
+
 const STATUS_COLORS: Record<string, string> = {
   pending_approval: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
   active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -268,6 +271,11 @@ const Catalog: React.FC = () => {
   };
 
   const handleColumnFilter = (column: string, value: string) => {
+    // Treat ALL_FILTER_VALUE as clearing the filter
+    if (value === ALL_FILTER_VALUE) {
+      clearColumnFilter(column);
+      return;
+    }
     setColumnFilters(prev => ({
       ...prev,
       [column]: value
@@ -375,12 +383,12 @@ const Catalog: React.FC = () => {
     if (column === 'status') {
       return (
         <div className="space-y-2 p-2">
-          <Select value={currentFilter} onValueChange={(v) => handleColumnFilter(column, v)}>
+          <Select value={currentFilter || ALL_FILTER_VALUE} onValueChange={(v) => handleColumnFilter(column, v)}>
             <SelectTrigger className="w-full h-8 text-xs">
               <SelectValue placeholder={t('catalog.allStatuses')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{t('catalog.allStatuses')}</SelectItem>
+              <SelectItem value={ALL_FILTER_VALUE}>{t('catalog.allStatuses')}</SelectItem>
               {Object.entries(STATUS_LABELS).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
@@ -398,12 +406,12 @@ const Catalog: React.FC = () => {
     if (column === 'type') {
       return (
         <div className="space-y-2 p-2">
-          <Select value={currentFilter} onValueChange={(v) => handleColumnFilter(column, v)}>
+          <Select value={currentFilter || ALL_FILTER_VALUE} onValueChange={(v) => handleColumnFilter(column, v)}>
             <SelectTrigger className="w-full h-8 text-xs">
               <SelectValue placeholder={t('catalog.allTypes')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{t('catalog.allTypes')}</SelectItem>
+              <SelectItem value={ALL_FILTER_VALUE}>{t('catalog.allTypes')}</SelectItem>
               {Object.entries(TYPE_LABELS).map(([key, label]) => (
                 <SelectItem key={key} value={key}>{label}</SelectItem>
               ))}
@@ -421,12 +429,12 @@ const Catalog: React.FC = () => {
     if (column === 'eu_origin') {
       return (
         <div className="space-y-2 p-2">
-          <Select value={currentFilter} onValueChange={(v) => handleColumnFilter(column, v)}>
+          <Select value={currentFilter || ALL_FILTER_VALUE} onValueChange={(v) => handleColumnFilter(column, v)}>
             <SelectTrigger className="w-full h-8 text-xs">
               <SelectValue placeholder={t('all')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{t('all')}</SelectItem>
+              <SelectItem value={ALL_FILTER_VALUE}>{t('all')}</SelectItem>
               <SelectItem value="true">Yes</SelectItem>
               <SelectItem value="false">No</SelectItem>
             </SelectContent>
@@ -660,6 +668,7 @@ const Catalog: React.FC = () => {
                                 className="w-48 p-0" 
                                 align="start"
                                 onPointerDownOutside={(e) => e.preventDefault()}
+                                onInteractOutside={(e) => e.preventDefault()}
                               >
                                 {renderColumnFilterPopover(col)}
                               </PopoverContent>
