@@ -79,6 +79,7 @@ export const useNavigationGroups = (): NavigationGroup[] => {
       items: [
         { path: '/orders', label: String(t('orders')), icon: Truck, permission: { category: 'orders', action: 'vieworders' }, tourId: 'orders', shortcutKey: 'o' },
         { path: '/reservations', label: String(t('reservations')), icon: Calendar, permission: { category: 'orders', action: 'vieworders' }, tourId: 'reservations' },
+        { path: '/inquiries', label: String(t('inquiry.title')), icon: FileSearch, permission: { category: 'inventory', action: 'viewinventory' }, tourId: 'inquiries' },
         { path: '/order-queue', label: String(t('orderQueue')), icon: ListOrdered, permission: { category: 'orders', action: 'createorders' }, tourId: 'order-queue' },
       ]
     },
