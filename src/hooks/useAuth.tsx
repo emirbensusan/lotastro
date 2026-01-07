@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { queryClient } from '@/lib/queryClient';
+import { markPerformance } from '@/hooks/usePerformanceMetrics';
 
 // Error patterns that indicate invalid/expired refresh tokens
 const REFRESH_TOKEN_ERROR_PATTERNS = [
@@ -193,6 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       setLoading(false);
+      markPerformance('auth_ready');
     });
 
     return () => subscription.unsubscribe();

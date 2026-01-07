@@ -7,6 +7,7 @@ import { Shield, AlertTriangle, LogOut, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import MFAEnroll from './MFAEnroll';
+import { markPerformance } from '@/hooks/usePerformanceMetrics';
 
 interface MfaRequiredRoles {
   admin: boolean;
@@ -182,6 +183,7 @@ const MFAGate: React.FC<MFAGateProps> = ({ children }) => {
       setLoading(false);
       const totalElapsed = performance.now() - startTimeRef.current;
       console.info(`[MFAGate] Total gate time: ${totalElapsed.toFixed(0)}ms`);
+      markPerformance('mfa_check_complete');
     }
   };
 

@@ -21,6 +21,7 @@ import { OfflineProvider } from "./contexts/OfflineContext";
 import { Skeleton } from "./components/ui/skeleton";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { queryClient } from "./lib/queryClient";
+import { PerformanceOverlay } from "./components/debug/PerformanceOverlay";
 
 // Core pages - loaded immediately (no lazy loading)
 import Auth from "./pages/Auth";
@@ -203,6 +204,7 @@ const App = () => (
                       </Routes>
                       <FloatingPOCart />
                       <CookieConsent />
+                      <PerformanceOverlay />
                     </ErrorBoundary>
                   </POCartProvider>
                 </PermissionsProvider>
