@@ -25,7 +25,9 @@ import {
   ClipboardCheck,
   Wrench,
   Calendar as CalendarIcon,
-  X
+  X,
+  ClipboardList,
+  Unlock
 } from 'lucide-react';
 
 // Simple date picker component
@@ -79,7 +81,7 @@ const TRANSACTION_TYPE_CONFIG: Record<string, {
   },
   'STOCK_ADJUSTMENT': { 
     label: { en: 'Stock Adjustment', tr: 'Stok Düzeltme' }, 
-    icon: ClipboardCheck, 
+    icon: ClipboardList, 
     color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
     isPositive: false
   },
