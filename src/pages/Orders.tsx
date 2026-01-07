@@ -13,6 +13,7 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { usePOCart } from '@/contexts/POCartProvider';
 import { toast } from "sonner";
 import { Truck, Plus, CheckCircle, FileText, Trash2, FileSpreadsheet, FlaskConical, ChevronDown, Layers, Share2 } from 'lucide-react';
+import { useInventoryTransaction } from '@/hooks/useInventoryTransaction';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import OrderPrintDialog from '@/components/OrderPrintDialog';
 import OrderBulkUpload from '@/components/OrderBulkUpload';
@@ -60,6 +61,7 @@ const Orders = () => {
   const { clearCart } = usePOCart();
   const { t } = useLanguage();
   const { hasPermission } = usePermissions();
+  const { logOrderFulfillment } = useInventoryTransaction();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -403,6 +405,16 @@ const Orders = () => {
       if (error) throw error;
 
       const order = orders.find(o => o.id === orderId);
+      
+      // Collect all fulfilled rolls for transaction logging
+      const fulfillments: Array<{
+        rollId: string;
+        meters: number;
+        lotNumber: string;
+        quality: string;
+        color: string;
+      }> = [];
+      
       if (order) {
         for (const orderLot of order.order_lots) {
           const selectedRollIds = orderLot.selected_roll_ids?.split(',').filter(id => id.trim()) || [];
@@ -415,8 +427,21 @@ const Orders = () => {
 
             const { data: fulfilledRolls } = await supabase
               .from('rolls')
-              .select('meters')
+              .select('id, meters')
               .in('id', selectedRollIds);
+
+            // Add to fulfillments array for transaction logging
+            if (fulfilledRolls) {
+              for (const roll of fulfilledRolls) {
+                fulfillments.push({
+                  rollId: roll.id,
+                  meters: Number(roll.meters),
+                  lotNumber: orderLot.lot.lot_number,
+                  quality: orderLot.quality,
+                  color: orderLot.color,
+                });
+              }
+            }
 
             const totalFulfilledMeters = fulfilledRolls?.reduce((sum, roll) => sum + Number(roll.meters), 0) || 0;
 
@@ -444,6 +469,21 @@ const Orders = () => {
                 .update(updateData)
                 .eq('lot_number', orderLot.lot.lot_number);
             }
+          }
+        }
+
+        // Log inventory transactions for order fulfillment (WMS-3)
+        if (fulfillments.length > 0) {
+          try {
+            await logOrderFulfillment({
+              orderId,
+              orderNumber: order.order_number,
+              customerName: order.customer_name,
+              fulfillments,
+            });
+          } catch (txError) {
+            console.error('[Orders] Failed to log fulfillment transactions:', txError);
+            // Don't fail the entire operation if transaction logging fails
           }
         }
       }
