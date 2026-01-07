@@ -175,10 +175,108 @@ export const useInventoryTransaction = () => {
     });
   }, [logTransaction]);
 
+  /**
+   * Log order fulfillment transactions (ORDER_FULFILLMENT type)
+   * Creates individual transactions for each fulfilled roll
+   */
+  const logOrderFulfillment = useCallback(async ({
+    orderId,
+    orderNumber,
+    customerName,
+    fulfillments,
+  }: {
+    orderId: string;
+    orderNumber: string;
+    customerName: string;
+    fulfillments: Array<{
+      rollId: string;
+      meters: number;
+      lotNumber: string;
+      quality: string;
+      color: string;
+    }>;
+  }) => {
+    const transactions: LogTransactionParams[] = fulfillments.map(item => ({
+      rollId: item.rollId,
+      transactionType: 'ORDER_FULFILLMENT' as TransactionType,
+      quantityChange: -item.meters, // Negative because stock is leaving
+      unit: 'meters',
+      sourceType: 'order',
+      sourceId: orderId,
+      sourceIdentifier: orderNumber,
+      notes: `Order fulfilled for ${customerName}: ${item.quality} / ${item.color} / Lot ${item.lotNumber}`,
+      metadata: {
+        order_id: orderId,
+        order_number: orderNumber,
+        customer_name: customerName,
+        quality: item.quality,
+        color: item.color,
+        lot_number: item.lotNumber,
+        meters: item.meters,
+      },
+    }));
+
+    if (transactions.length > 0) {
+      await logBatchTransactions({ transactions });
+    }
+
+    return { fulfillmentsLogged: transactions.length };
+  }, [logBatchTransactions]);
+
+  /**
+   * Log incoming stock receipt (INCOMING_RECEIPT type)
+   * Creates transactions for received rolls
+   */
+  const logIncomingReceipt = useCallback(async ({
+    lotId,
+    lotNumber,
+    quality,
+    color,
+    rolls,
+    supplierId,
+    supplierName,
+  }: {
+    lotId: string;
+    lotNumber: string;
+    quality: string;
+    color: string;
+    rolls: Array<{ rollId: string; meters: number }>;
+    supplierId?: string;
+    supplierName?: string;
+  }) => {
+    const transactions: LogTransactionParams[] = rolls.map(roll => ({
+      rollId: roll.rollId,
+      transactionType: 'INCOMING_RECEIPT' as TransactionType,
+      quantityChange: roll.meters, // Positive because stock is entering
+      unit: 'meters',
+      sourceType: 'lot',
+      sourceId: lotId,
+      sourceIdentifier: lotNumber,
+      notes: `Stock received: ${quality} / ${color} / Lot ${lotNumber}`,
+      metadata: {
+        lot_id: lotId,
+        lot_number: lotNumber,
+        quality,
+        color,
+        supplier_id: supplierId,
+        supplier_name: supplierName,
+        meters: roll.meters,
+      },
+    }));
+
+    if (transactions.length > 0) {
+      await logBatchTransactions({ transactions });
+    }
+
+    return { receiptsLogged: transactions.length };
+  }, [logBatchTransactions]);
+
   return {
     logTransaction,
     logBatchTransactions,
     logStockAdjustment,
     logSessionReconciliation,
+    logOrderFulfillment,
+    logIncomingReceipt,
   };
 };

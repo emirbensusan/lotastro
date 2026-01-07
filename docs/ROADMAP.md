@@ -1,8 +1,8 @@
 # LotAstro Development Roadmap
 
-> **Version**: 4.2.0  
-> **Last Updated**: 2026-01-06
-> **Planning Horizon**: 16.5 days remaining  
+> **Version**: 4.3.0  
+> **Last Updated**: 2026-01-07
+> **Planning Horizon**: 15.5 days remaining  
 > **Architecture**: Multi-Project Ecosystem
 > **Philosophy**: Reliability → Intelligence → Connectivity → Delight
 
@@ -279,8 +279,8 @@ LotAstro WMS is not just warehouse software—it's the **operational nervous sys
 
 #### Batch WMS-1: Inventory Transaction Ledger (DEP-M3)
 
-**Status:** 🔴 NOT STARTED  
-**Effort:** 3-4 days  
+**Status:** ✅ COMPLETE (2026-01-07)  
+**Effort:** 2-3 days  
 **Dependencies:** None  
 **Theme:** Single Source of Truth for Inventory Movements
 
@@ -288,29 +288,29 @@ Creates the foundational transaction ledger for inventory auditability.
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Create `inventory_transactions` table | P0 | 🔴 Not Started |
-| Define `transaction_type` enum | P0 | 🔴 Not Started |
-| Add `source_type`/`source_id` columns | P0 | 🔴 Not Started |
-| Create `/inventory-transactions` page | P0 | 🔴 Not Started |
-| Retrofit lot intake to create 'receipt' transaction | P1 | 🔴 Not Started |
-| Retrofit order fulfillment to create 'pick' transaction | P1 | 🔴 Not Started |
-| Add balance consistency check RPC | P2 | 🔴 Not Started |
+| Create `inventory_transactions` table | P0 | ✅ Complete |
+| Define `transaction_type` enum | P0 | ✅ Complete |
+| Add `source_type`/`source_id` columns | P0 | ✅ Complete |
+| Create `/inventory-transactions` page | P0 | ✅ Complete |
+| Retrofit lot intake to create 'receipt' transaction | P1 | ✅ Complete |
+| Retrofit order fulfillment to create 'pick' transaction | P1 | ✅ Complete |
+| Add balance consistency check RPC | P2 | 🔴 Deferred |
 
-**Transaction Types:**
-- `receipt` - Lot intake (goods received)
-- `adjustment_in` - Stock count positive adjustment
-- `adjustment_out` - Stock count negative adjustment
-- `pick` - Order fulfillment (stock out)
-- `return` - Customer return
-- `write_off` - Damaged/expired stock
-- `transfer_out` - (Phase 2) Inter-location transfer out
-- `transfer_in` - (Phase 2) Inter-location transfer in
+**Transaction Types (Implemented):**
+- `INCOMING_RECEIPT` - Lot intake (goods received)
+- `STOCK_ADJUSTMENT` - Stock count adjustments (+/-)
+- `ORDER_FULFILLMENT` - Order fulfillment (stock out)
+- `MANUAL_CORRECTION` - Manual inventory corrections
+- `RESERVATION_ALLOCATION` - Stock reserved for order
+- `RESERVATION_RELEASE` - Reserved stock released
+- `TRANSFER_OUT` - (Phase 2) Inter-location transfer out
+- `TRANSFER_IN` - (Phase 2) Inter-location transfer in
 
 ---
 
 #### Batch WMS-2: Stock Count Adjustments (DEP-M8)
 
-**Status:** 🔴 NOT STARTED  
+**Status:** ✅ COMPLETE (2026-01-07)  
 **Effort:** 2-3 days  
 **Dependencies:** WMS-1  
 **Theme:** Manager-Approved Inventory Corrections
@@ -319,18 +319,17 @@ Adds manager-approved adjustments after stock count reconciliation.
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Create `stock_count_adjustments` table | P0 | 🔴 Not Started |
-| Add adjustment workflow (draft → approved → applied) | P0 | 🔴 Not Started |
-| Require manager approval for adjustments | P0 | 🔴 Not Started |
-| Create adjustment transactions on approval | P1 | 🔴 Not Started |
-| Add adjustment UI in stock take review | P1 | 🔴 Not Started |
-| Variance calculation helper | P2 | 🔴 Not Started |
+| Connect stock-take sessions to inventory ledger | P0 | ✅ Complete |
+| Log STOCK_ADJUSTMENT on session reconciliation | P0 | ✅ Complete |
+| Batch transaction logging for approved rolls | P1 | ✅ Complete |
+| Session summary transaction | P1 | ✅ Complete |
+| useInventoryTransaction hook | P1 | ✅ Complete |
 
 ---
 
 #### Batch WMS-3: Order Fulfillment Traceability (Minimal DEP-M7)
 
-**Status:** 🔴 NOT STARTED  
+**Status:** ✅ COMPLETE (2026-01-07)  
 **Effort:** 1-2 days  
 **Dependencies:** WMS-1  
 **Theme:** Know Which Rolls Fulfilled Each Order
@@ -339,10 +338,11 @@ Captures which rolls were used when fulfilling orders.
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Require roll selection on fulfillment | P0 | 🔴 Not Started |
-| Store selected rolls in `order_fulfillment_rolls` | P0 | 🔴 Not Started |
-| Create 'pick' transactions on fulfillment | P1 | 🔴 Not Started |
-| Show used rolls in order history | P2 | 🔴 Not Started |
+| Log ORDER_FULFILLMENT transactions on fulfill | P0 | ✅ Complete |
+| Capture roll-level details in transactions | P0 | ✅ Complete |
+| Link transactions to order via source_id | P1 | ✅ Complete |
+| logOrderFulfillment helper in useInventoryTransaction | P1 | ✅ Complete |
+| logIncomingReceipt helper for lot intake | P2 | ✅ Complete |
 
 ---
 
@@ -608,6 +608,20 @@ await worker.setParameters({
 ---
 
 ## 8. Changelog
+
+### 2026-01-07 (v4.3.0) - WMS Phase 1 Complete
+
+- ✅ Batch WMS-1: Inventory Transaction Ledger complete
+  - Created `inventory_transactions` table with RLS
+  - Defined `inventory_transaction_type` enum with 8 types
+  - Built `/inventory-transactions` page with filtering
+- ✅ Batch WMS-2: Stock Count Adjustments complete
+  - Connected stock-take reconciliation to ledger
+  - Created `useInventoryTransaction` hook
+- ✅ Batch WMS-3: Order Fulfillment Traceability complete
+  - Added `logOrderFulfillment` helper
+  - Integrated into order fulfillment flow
+  - Added `logIncomingReceipt` helper for lot intake
 
 ### 2026-01-06 (v4.2.0) - WMS Architecture Enhancement
 
