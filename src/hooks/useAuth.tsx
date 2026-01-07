@@ -1,8 +1,23 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { User, Session, AuthenticatorAssuranceLevels } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
+import { queryClient } from '@/lib/queryClient';
+
+// Error patterns that indicate invalid/expired refresh tokens
+const REFRESH_TOKEN_ERROR_PATTERNS = [
+  'refresh token not found',
+  'invalid refresh token',
+  'refresh_token_not_found',
+  'invalid_grant',
+  'token has expired',
+  'jwt expired',
+  'session_not_found',
+];
+
+// MFA cache key
+const MFA_STATUS_CACHE_KEY = 'lotastro_mfa_status';
 
 interface Profile {
   id: string;
@@ -50,6 +65,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaVerified, setMfaVerified] = useState(false);
+  const authErrorHandledRef = useRef(false);
+
+  /**
+   * Check if an error indicates an invalid/expired refresh token
+   */
+  const isRefreshTokenError = (error: AuthError | Error | string): boolean => {
+    const errorMessage = typeof error === 'string' 
+      ? error.toLowerCase() 
+      : error.message.toLowerCase();
+    return REFRESH_TOKEN_ERROR_PATTERNS.some(pattern => 
+      errorMessage.includes(pattern.toLowerCase())
+    );
+  };
+
+  /**
+   * Clear all caches when auth error occurs
+   */
+  const clearAllCaches = () => {
+    queryClient.clear();
+    try {
+      sessionStorage.removeItem(MFA_STATUS_CACHE_KEY);
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key?.startsWith('lotastro_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => sessionStorage.removeItem(key));
+    } catch {
+      // Ignore storage errors
+    }
+  };
 
   // Fetch role-based MFA requirements from system settings
   const fetchMfaRoleSettings = async (): Promise<Record<string, boolean>> => {

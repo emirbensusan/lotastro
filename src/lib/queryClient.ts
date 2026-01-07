@@ -139,3 +139,6 @@ export function createQueryClient() {
     },
   });
 }
+
+// Singleton query client instance for use across the app
+export const queryClient = createQueryClient();

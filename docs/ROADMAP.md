@@ -391,7 +391,7 @@ Captures which rolls were used when fulfilling orders.
 | Batch | Theme | Effort | Status |
 |-------|-------|--------|--------|
 | PERF-1 | MFAGate Optimization | 2-3 hours | ✅ COMPLETE (2026-01-07) |
-| PERF-2 | Auth Refresh Token Hardening | 3-4 hours | 🔴 NOT STARTED |
+| PERF-2 | Auth Refresh Token Hardening | 3-4 hours | ✅ COMPLETE (2026-01-07) |
 | PERF-3 | Dashboard Stats with React Query | 2-3 hours | 🔴 NOT STARTED |
 | PERF-4 | Performance Instrumentation | 2-3 hours | 🔴 NOT STARTED |
 | PERF-5 | Additional Optimizations | 2-3 hours | 🔴 NOT STARTED |
@@ -416,17 +416,18 @@ Captures which rolls were used when fulfilling orders.
 
 #### Batch PERF-2: Auth Refresh Token Hardening
 
-**Status:** 🔴 NOT STARTED  
+**Status:** ✅ COMPLETE (2026-01-07)  
 **Effort:** 3-4 hours  
 **Theme:** Stabilize Auth, Prevent Refresh Loops
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Create useAuthErrorHandler hook | P0 | 🔴 Not Started |
-| Detect invalid refresh token errors | P0 | 🔴 Not Started |
-| Clean sign-out without retry on auth errors | P0 | 🔴 Not Started |
-| Clear all caches on auth errors | P1 | 🔴 Not Started |
-| Add retry limit for token refresh | P1 | 🔴 Not Started |
+| Create useAuthErrorHandler hook | P0 | ✅ Complete |
+| Detect invalid refresh token errors | P0 | ✅ Complete |
+| Clean sign-out without retry on auth errors | P0 | ✅ Complete |
+| Clear all caches on auth errors | P1 | ✅ Complete |
+| Add retry limit for token refresh | P1 | ✅ Complete |
+| Export singleton queryClient from lib | P1 | ✅ Complete |
 
 ---
 
