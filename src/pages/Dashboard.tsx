@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Package, Truck, AlertTriangle, TrendingUp, TruckIcon, Lock, PackageCheck, Calendar, Factory, Palette, BookOpen, PackageX, RefreshCw } from 'lucide-react';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
+import { Package, Truck, AlertTriangle, TrendingUp, TruckIcon, Lock, PackageCheck, Calendar, Factory, Palette, BookOpen, PackageX, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
@@ -29,159 +29,22 @@ const WidgetSkeleton = () => (
   </Card>
 );
 
-interface DashboardStats {
-  totalLots: number;
-  totalRolls: number;
-  totalMeters: number;
-  inStockLots: number;
-  outOfStockLots: number;
-  pendingOrders: number;
-  oldestLotDays: number;
-  incomingMeters: number;
-  reservedMeters: number;
-  activeReservations: number;
-  pendingReceipts: number;
-  metersInProduction: number;
-  inStockQualityColorPairs: number;
-  outOfStockQualityColorPairs: number;
-  activeCatalogItems: number;
-}
-
 const Dashboard = () => {
   const { profile } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { success: hapticSuccess } = useHapticFeedback();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalLots: 0,
-    totalRolls: 0,
-    totalMeters: 0,
-    inStockLots: 0,
-    outOfStockLots: 0,
-    pendingOrders: 0,
-    oldestLotDays: 0,
-    incomingMeters: 0,
-    reservedMeters: 0,
-    activeReservations: 0,
-    pendingReceipts: 0,
-    metersInProduction: 0,
-    inStockQualityColorPairs: 0,
-    outOfStockQualityColorPairs: 0,
-    activeCatalogItems: 0,
+  
+  // Use React Query for dashboard stats - with stale-while-revalidate
+  const { stats, isLoading, isFetching, refresh } = useDashboardStats({
+    refetchInterval: 60000, // Auto-refresh every 60 seconds
   });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchDashboardStats();
-    
-    // Auto-refresh every 60 seconds
-    const interval = setInterval(() => {
-      fetchDashboardStats();
-    }, 60000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchDashboardStats = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      // Use DB-side aggregation to avoid client limits and ensure accuracy
-      const { data, error } = await supabase
-        .rpc('get_dashboard_stats')
-        .single();
-
-      if (error) throw error;
-
-      // Count pending receipts (incoming stock with status pending/partial)
-      const { count: pendingReceiptCount } = await supabase
-        .from('incoming_stock')
-        .select('*', { count: 'exact', head: true })
-        .in('status', ['pending_inbound', 'partially_received']);
-
-      // Get meters in production from manufacturing orders (not shipped/cancelled)
-      const { data: moData } = await supabase
-        .from('manufacturing_orders')
-        .select('ordered_amount')
-        .not('status', 'in', '("SHIPPED","CANCELLED")');
-
-      const metersInProduction = moData?.reduce((sum, mo) => sum + Number(mo.ordered_amount || 0), 0) || 0;
-
-      // Count distinct quality-color pairs for in-stock lots
-      const { data: inStockPairs } = await supabase
-        .from('lots')
-        .select('quality, color')
-        .eq('status', 'in_stock');
-      const inStockQualityColorPairs = new Set(inStockPairs?.map(l => `${l.quality}|${l.color}`)).size;
-
-      // Count distinct quality-color pairs for out-of-stock lots
-      const { data: outOfStockPairs } = await supabase
-        .from('lots')
-        .select('quality, color')
-        .eq('status', 'out_of_stock');
-      const outOfStockQualityColorPairs = new Set(outOfStockPairs?.map(l => `${l.quality}|${l.color}`)).size;
-
-      // Count active catalog items
-      const { count: activeCatalogItems } = await supabase
-        .from('catalog_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-
-      const inStockLots = Number(data?.total_in_stock_lots || 0);
-      const outOfStockLots = Number(data?.total_out_of_stock_lots || 0);
-      const totalRolls = Number(data?.total_rolls || 0);
-      const totalMeters = Number(data?.total_meters || 0);
-      const oldestLotDays = Number(data?.oldest_lot_days || 0);
-      const pendingOrders = Number(data?.pending_orders || 0);
-      const incomingMeters = Number(data?.total_incoming_meters || 0);
-      const reservedMeters = Number(data?.total_reserved_meters || 0);
-      const activeReservations = Number(data?.active_reservations_count || 0);
-
-      console.info('Dashboard Stats (DB Aggregated):', {
-        inStockLots,
-        totalRolls,
-        totalMeters,
-        oldestLotDays,
-        pendingOrders,
-        incomingMeters,
-        reservedMeters,
-        activeReservations,
-        pendingReceipts: pendingReceiptCount,
-        metersInProduction,
-        inStockQualityColorPairs,
-        outOfStockQualityColorPairs,
-        activeCatalogItems,
-      });
-
-      setStats({
-        totalLots: inStockLots,
-        totalRolls,
-        totalMeters,
-        inStockLots,
-        outOfStockLots,
-        pendingOrders,
-        oldestLotDays,
-        incomingMeters,
-        reservedMeters,
-        activeReservations,
-        pendingReceipts: pendingReceiptCount || 0,
-        metersInProduction,
-        inStockQualityColorPairs,
-        outOfStockQualityColorPairs,
-        activeCatalogItems: activeCatalogItems || 0,
-      });
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const handleRefresh = useCallback(async () => {
-    await fetchDashboardStats();
+    await refresh();
     hapticSuccess();
-  }, [fetchDashboardStats, hapticSuccess]);
+  }, [refresh, hapticSuccess]);
 
   const statCards = [
     {
@@ -270,23 +133,24 @@ const Dashboard = () => {
     },
   ];
 
-  if (loading) {
+  // Only show full skeleton on initial load (no cached data)
+  if (isLoading && stats.totalLots === 0 && stats.totalRolls === 0) {
     return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader className="pb-2">
-              <div className="h-4 bg-muted rounded w-3/4"></div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
-              <div className="h-3 bg-muted rounded w-full"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-2">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -294,7 +158,13 @@ const Dashboard = () => {
   const content = (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
+          {/* Show subtle refresh indicator when fetching in background */}
+          {isFetching && !isLoading && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+        </div>
         <div className="text-sm text-muted-foreground">
           {t('welcomeBack')}, {profile?.full_name || profile?.email}
         </div>
