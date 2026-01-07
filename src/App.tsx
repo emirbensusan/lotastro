@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -20,6 +20,7 @@ import { OfflineProvider } from "./contexts/OfflineContext";
 // TourProvider removed for debugging
 import { Skeleton } from "./components/ui/skeleton";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
+import { queryClient } from "./lib/queryClient";
 
 // Core pages - loaded immediately (no lazy loading)
 import Auth from "./pages/Auth";
@@ -86,29 +87,6 @@ const PageLoader = () => (
     <Skeleton className="h-64 mt-6" />
   </div>
 );
-
-// Configure QueryClient with retry logic for failed queries
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => {
-        // Don't retry on 4xx errors (except 429)
-        const message = error instanceof Error ? error.message.toLowerCase() : '';
-        if (message.includes('401') || message.includes('403') || message.includes('404')) {
-          return false;
-        }
-        // Retry up to 3 times for other errors
-        return failureCount < 3;
-      },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    },
-    mutations: {
-      retry: 1,
-      retryDelay: 1000,
-    },
-  },
-});
 
 // Protected Route Component with Error Boundary
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
