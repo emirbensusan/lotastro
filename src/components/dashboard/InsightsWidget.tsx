@@ -35,7 +35,7 @@ export function InsightsWidget({ className }: InsightsWidgetProps) {
   const navigate = useNavigate();
 
   const { data: insights, isLoading } = useQuery({
-    queryKey: queryKeys.dashboard.stats(),
+    queryKey: queryKeys.dashboard.insights(),
     queryFn: async (): Promise<Insight[]> => {
       const insightsList: Insight[] = [];
 
