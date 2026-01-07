@@ -3,8 +3,9 @@ import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, queryKeys, staleTime } from '@/lib/queryClient';
 import { markPerformance } from '@/hooks/usePerformanceMetrics';
+import { prefetchDashboardStats } from '@/hooks/useDashboardStats';
 
 // Error patterns that indicate invalid/expired refresh tokens
 const REFRESH_TOKEN_ERROR_PATTERNS = [
@@ -100,6 +101,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  /**
+   * Prefetch permissions for a role into React Query cache
+   * This runs after successful auth to have permissions ready immediately
+   */
+  const prefetchPermissions = async (role: string): Promise<void> => {
+    try {
+      console.info('[Auth] Prefetching permissions for role:', role);
+      await queryClient.prefetchQuery({
+        queryKey: queryKeys.permissions.byRole(role),
+        queryFn: async () => {
+          const { data, error } = await supabase
+            .from('role_permissions')
+            .select('permission_category, permission_action, is_allowed')
+            .eq('role', role as 'accounting' | 'admin' | 'senior_manager' | 'warehouse_staff');
+          
+          if (error) throw error;
+          
+          // Build permission cache
+          const cache: Record<string, boolean> = {};
+          data?.forEach(perm => {
+            const key = `${perm.permission_category}:${perm.permission_action}`;
+            cache[key] = perm.is_allowed;
+          });
+          
+          console.info('[Auth] Prefetched', Object.keys(cache).length, 'permissions');
+          return cache;
+        },
+        staleTime: staleTime.preferences, // 1 hour
+      });
+    } catch (error) {
+      console.warn('[Auth] Permissions prefetch failed:', error);
+      // Non-fatal - PermissionsContext will fetch on mount
+    }
+  };
+
+  /**
+   * Prefetch critical data after successful auth
+   * Runs in parallel for maximum speed
+   */
+  const prefetchCriticalData = async (role: string): Promise<void> => {
+    console.info('[Auth] Starting critical data prefetch');
+    await Promise.all([
+      prefetchPermissions(role),
+      prefetchDashboardStats(queryClient),
+    ]);
+    console.info('[Auth] Critical data prefetch complete');
+  };
   // Fetch role-based MFA requirements from system settings
   const fetchMfaRoleSettings = async (): Promise<Record<string, boolean>> => {
     try {
@@ -243,6 +291,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       setMfaVerified(true);
+      
+      // Prefetch critical data after successful auth (non-blocking)
+      if (profileData?.role) {
+        prefetchCriticalData(profileData.role).catch(console.warn);
+      }
     }
     
     return { error };

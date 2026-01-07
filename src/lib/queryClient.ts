@@ -76,6 +76,11 @@ export const queryKeys = {
     list: () => [...queryKeys.users.all, 'list'] as const,
     profile: (id: string) => [...queryKeys.users.all, 'profile', id] as const,
   },
+  // Permissions
+  permissions: {
+    all: ['permissions'] as const,
+    byRole: (role: string) => [...queryKeys.permissions.all, 'role', role] as const,
+  },
 };
 
 // Stale time configurations for different data types

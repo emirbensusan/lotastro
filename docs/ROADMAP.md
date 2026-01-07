@@ -394,7 +394,7 @@ Captures which rolls were used when fulfilling orders.
 | PERF-2 | Auth Refresh Token Hardening | 3-4 hours | ✅ COMPLETE (2026-01-07) |
 | PERF-3 | Dashboard Stats with React Query | 2-3 hours | ✅ COMPLETE (2026-01-07) |
 | PERF-4 | Performance Instrumentation | 2-3 hours | ✅ COMPLETE (2026-01-07) |
-| PERF-5 | Additional Optimizations | 2-3 hours | 🔴 NOT STARTED |
+| PERF-5 | Additional Optimizations | 2-3 hours | ✅ COMPLETE (2026-01-07) |
 
 ---
 
@@ -469,16 +469,19 @@ Captures which rolls were used when fulfilling orders.
 
 #### Batch PERF-5: Additional Optimizations
 
-**Status:** 🔴 NOT STARTED  
+**Status:** ✅ COMPLETE (2026-01-07)  
 **Effort:** 2-3 hours  
 **Theme:** Consolidate Queries, Preload Critical Data
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Create shared useDashboardStats hook | P1 | 🔴 Not Started |
-| Consolidate get_dashboard_stats calls | P1 | 🔴 Not Started |
-| Prefetch permissions on auth success | P2 | 🔴 Not Started |
-| Update ROADMAP.md | P2 | 🔴 Not Started |
+| Create shared useDashboardStats hook | P1 | ✅ Complete (in PERF-3) |
+| Add prefetchDashboardStats function | P1 | ✅ Complete |
+| Add permissions query keys | P1 | ✅ Complete |
+| Prefetch permissions on auth success | P2 | ✅ Complete |
+| Prefetch dashboard stats on auth success | P2 | ✅ Complete |
+| Parallel prefetch for critical data | P2 | ✅ Complete |
+| Update ROADMAP.md | P2 | ✅ Complete |
 
 ---
 
@@ -637,21 +640,132 @@ await worker.setParameters({
 
 ---
 
-### SIDELINED
+### NEXT: CRM & Ecosystem Connectivity
 
-#### Batch F: CRM & Ecosystem Connectivity (2 days, ~8-13 credits)
+#### Batch F: CRM & Ecosystem Connectivity (2.5-3 days, ~10-15 credits)
 
-**Owner:** Backend  
-**Theme:** Bidirectional Sync  
-**Status:** ⏸️ SIDELINED (awaiting CRM project readiness)
+**Owner:** Backend/Full-Stack  
+**Theme:** Bidirectional Sync Between WMS ↔ CRM  
+**Status:** 🔴 NOT STARTED (ready to begin)
 
-| Task | Priority | Status |
-|------|----------|--------|
-| CRM data sync (customers) | P1 | ⏸️ Sidelined |
-| Customer Portal API enhancements | P1 | ⏸️ Sidelined |
-| "View in CRM" deep links | P2 | ⏸️ Sidelined |
-| Shared OAuth authentication | P2 | ⏸️ Sidelined |
-| Activity timeline sync | P3 | ⏸️ Sidelined |
+##### Overview
+
+Enable seamless data flow between LotAstro WMS and LotAstro CRM to create a unified customer experience. Orders placed in WMS should be visible in CRM, and customer data from CRM should be accessible in WMS.
+
+##### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       WMS ↔ CRM INTEGRATION                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────┐          Webhooks          ┌─────────────────┐        │
+│   │  LotAstro WMS   │  ───────────────────────▶  │  LotAstro CRM   │        │
+│   │  (This Project) │                            │  (Separate)     │        │
+│   │                 │  ◀───────────────────────  │                 │        │
+│   │  • Orders       │         API Calls          │  • Customers    │        │
+│   │  • Reservations │                            │  • Leads        │        │
+│   │  • Inquiries    │         Shared IDs         │  • Sales Ops    │        │
+│   └────────┬────────┘  ◀─────────────────────▶  └────────┬────────┘        │
+│            │                                              │                  │
+│            └──────────────────────────────────────────────┘                  │
+│                              Supabase DB                                     │
+│                         (Cross-project access)                               │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+##### Phase F-1: WMS → CRM Webhook Events (1 day)
+
+**Goal:** CRM receives real-time updates when orders/reservations change in WMS
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Register CRM webhook endpoint | Admin UI | P0 | 🔴 Not Started |
+| Send `order.created` event to CRM | `webhook-dispatcher` | P0 | 🔴 Not Started |
+| Send `order.fulfilled` event to CRM | `webhook-dispatcher` | P0 | 🔴 Not Started |
+| Send `reservation.created` event to CRM | `webhook-dispatcher` | P1 | 🔴 Not Started |
+| Send `inquiry.converted` event to CRM | `webhook-dispatcher` | P1 | 🔴 Not Started |
+| Include customer_ref in webhook payloads | Edge functions | P1 | 🔴 Not Started |
+
+##### Phase F-2: CRM → WMS Customer Lookup (1 day)
+
+**Goal:** WMS can lookup and display customer data from CRM
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Create `api-get-customer` edge function | `supabase/functions/api-get-customer/index.ts` | P0 | 🔴 Not Started |
+| Add CRM_API_KEY secret configuration | Secrets | P0 | 🔴 Not Started |
+| Customer autocomplete in order forms | `src/components/OrderBulkUpload.tsx` | P1 | 🔴 Not Started |
+| Display customer info in order details | `src/pages/Orders.tsx` | P1 | 🔴 Not Started |
+| "View in CRM" deep link button | Order details UI | P2 | 🔴 Not Started |
+
+##### Phase F-3: CRM-Side Receiver Functions (0.5-1 day) - **IN CRM PROJECT**
+
+**Goal:** CRM project receives and processes WMS webhook events
+
+| Task | CRM File | Priority | Status |
+|------|----------|----------|--------|
+| Create `wms-webhook-receiver` edge function | `supabase/functions/wms-webhook-receiver/index.ts` | P0 | 🔴 Not Started |
+| Map WMS order to CRM activity/deal | CRM DB schema | P0 | 🔴 Not Started |
+| Validate webhook signature | Edge function | P1 | 🔴 Not Started |
+| Create activity on order events | Edge function | P1 | 🔴 Not Started |
+| Update customer last_order_date | Edge function | P2 | 🔴 Not Started |
+
+##### Phase F-4: Shared Entity Mapping (0.5 day)
+
+**Goal:** Enable cross-referencing between WMS and CRM entities
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Add `crm_customer_id` column to orders | Migration | P1 | 🔴 Not Started |
+| Add `wms_order_id` column to CRM activities | CRM Migration | P1 | 🔴 Not Started |
+| Bidirectional link in UIs | Both projects | P2 | 🔴 Not Started |
+
+##### Data Model Reference
+
+**WMS → CRM Webhook Payload (order.created)**
+```json
+{
+  "event": "order.created",
+  "timestamp": "2026-01-07T12:00:00Z",
+  "data": {
+    "order_id": "uuid",
+    "po_number": "PO-2026-001",
+    "customer_ref": "ACME Corp",
+    "crm_customer_id": "uuid (if linked)",
+    "total_meters": 500,
+    "status": "pending",
+    "created_at": "2026-01-07T12:00:00Z",
+    "lines": [
+      { "quality": "COTTON-100", "color": "Navy", "meters": 250 }
+    ]
+  }
+}
+```
+
+**CRM → WMS Customer Lookup Response**
+```json
+{
+  "id": "uuid",
+  "company_name": "ACME Corp",
+  "contact_name": "John Doe",
+  "email": "john@acme.com",
+  "phone": "+1-555-1234",
+  "address": "123 Main St",
+  "credit_limit": 50000,
+  "payment_terms": "Net 30",
+  "total_orders": 42,
+  "lifetime_value": 125000
+}
+```
+
+##### Success Criteria
+
+- [ ] Orders created in WMS appear as activities in CRM within 30 seconds
+- [ ] Customer lookup in WMS shows CRM customer data
+- [ ] Deep links work bidirectionally
+- [ ] Webhook signature validation prevents unauthorized events
 
 ---
 

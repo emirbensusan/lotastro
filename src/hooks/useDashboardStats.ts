@@ -1,8 +1,7 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, QueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { queryKeys, staleTime } from '@/lib/queryClient';
-
+import { queryKeys, staleTime, queryClient as defaultQueryClient } from '@/lib/queryClient';
 export interface DashboardStats {
   totalLots: number;
   totalRolls: number;
@@ -181,6 +180,34 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
     // For components that need to know if we have real data
     hasData: query.data !== undefined && !query.isLoading,
   };
+}
+
+/**
+ * Prefetch dashboard stats into the query cache
+ * Call this on auth success to have data ready when dashboard loads
+ */
+export async function prefetchDashboardStats(qc?: QueryClient): Promise<void> {
+  const client = qc ?? defaultQueryClient;
+  
+  // Only prefetch if not already in cache or stale
+  const existingData = client.getQueryData(queryKeys.dashboard.stats());
+  if (existingData) {
+    console.info('[DashboardStats] Already in cache, skipping prefetch');
+    return;
+  }
+
+  try {
+    console.info('[DashboardStats] Prefetching...');
+    await client.prefetchQuery({
+      queryKey: queryKeys.dashboard.stats(),
+      queryFn: fetchDashboardStats,
+      staleTime: staleTime.dashboard,
+    });
+    console.info('[DashboardStats] Prefetch complete');
+  } catch (error) {
+    console.warn('[DashboardStats] Prefetch failed:', error);
+    // Non-fatal - dashboard will fetch on mount
+  }
 }
 
 export default useDashboardStats;
