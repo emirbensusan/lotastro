@@ -44,8 +44,8 @@ const Inquiries = () => {
 
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [reasonFilter, setReasonFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [reasonFilter, setReasonFilter] = useState<string>('all');
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -69,8 +69,8 @@ const Inquiries = () => {
 
   const loadInquiries = async () => {
     const data = await fetchInquiries({
-      status: statusFilter as InquiryStatus || undefined,
-      reason: reasonFilter as InquiryReason || undefined,
+      status: statusFilter !== 'all' ? statusFilter as InquiryStatus : undefined,
+      reason: reasonFilter !== 'all' ? reasonFilter as InquiryReason : undefined,
     });
     setInquiries(data);
   };
@@ -179,7 +179,7 @@ const Inquiries = () => {
                 <SelectValue placeholder={String(t('status'))} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{String(t('all'))}</SelectItem>
+                <SelectItem value="all">{String(t('all'))}</SelectItem>
                 <SelectItem value="active">{String(t('inquiry.status.active'))}</SelectItem>
                 <SelectItem value="converted">{String(t('inquiry.status.converted'))}</SelectItem>
                 <SelectItem value="expired">{String(t('inquiry.status.expired'))}</SelectItem>
@@ -191,7 +191,7 @@ const Inquiries = () => {
                 <SelectValue placeholder={String(t('inquiry.reason'))} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{String(t('all'))}</SelectItem>
+                <SelectItem value="all">{String(t('all'))}</SelectItem>
                 {Object.entries(REASON_LABELS).map(([key, labels]) => (
                   <SelectItem key={key} value={key}>
                     {language === 'tr' ? labels.tr : labels.en}
