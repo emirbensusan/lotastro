@@ -1,6 +1,6 @@
 # LotAstro Development Roadmap
 
-> **Version**: 4.3.0  
+> **Version**: 4.4.0  
 > **Last Updated**: 2026-01-07
 > **Planning Horizon**: 15.5 days remaining  
 > **Architecture**: Multi-Project Ecosystem
@@ -381,7 +381,102 @@ Captures which rolls were used when fulfilling orders.
 
 ---
 
-## 7. Below the Line (Backlog)
+## 7. Performance & Auth Hardening Phase
+
+> **Added**: 2026-01-07  
+> **Goal**: Make the app feel "instant" by removing startup blockers, fixing auth refresh issues, and eliminating duplicate queries
+
+### Phase Overview
+
+| Batch | Theme | Effort | Status |
+|-------|-------|--------|--------|
+| PERF-1 | MFAGate Optimization | 2-3 hours | ✅ COMPLETE (2026-01-07) |
+| PERF-2 | Auth Refresh Token Hardening | 3-4 hours | 🔴 NOT STARTED |
+| PERF-3 | Dashboard Stats with React Query | 2-3 hours | 🔴 NOT STARTED |
+| PERF-4 | Performance Instrumentation | 2-3 hours | 🔴 NOT STARTED |
+| PERF-5 | Additional Optimizations | 2-3 hours | 🔴 NOT STARTED |
+
+---
+
+#### Batch PERF-1: MFAGate Optimization
+
+**Status:** ✅ COMPLETE (2026-01-07)  
+**Effort:** 2-3 hours  
+**Theme:** Remove Startup Blocking
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Reduce timeout from 10s to 3s | P0 | ✅ Complete |
+| Parallel fetch settings + MFA factors | P0 | ✅ Complete |
+| Session-level MFA status caching | P0 | ✅ Complete |
+| Add timing instrumentation | P1 | ✅ Complete |
+| Prevent duplicate checks with ref | P1 | ✅ Complete |
+
+---
+
+#### Batch PERF-2: Auth Refresh Token Hardening
+
+**Status:** 🔴 NOT STARTED  
+**Effort:** 3-4 hours  
+**Theme:** Stabilize Auth, Prevent Refresh Loops
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Create useAuthErrorHandler hook | P0 | 🔴 Not Started |
+| Detect invalid refresh token errors | P0 | 🔴 Not Started |
+| Clean sign-out without retry on auth errors | P0 | 🔴 Not Started |
+| Clear all caches on auth errors | P1 | 🔴 Not Started |
+| Add retry limit for token refresh | P1 | 🔴 Not Started |
+
+---
+
+#### Batch PERF-3: Dashboard Stats with React Query
+
+**Status:** 🔴 NOT STARTED  
+**Effort:** 2-3 hours  
+**Theme:** Eliminate Duplicate Fetches, Add Caching
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Replace useState/useEffect with useQuery | P0 | 🔴 Not Started |
+| Configure staleTime (60s) | P0 | 🔴 Not Started |
+| Implement stale-while-revalidate | P1 | 🔴 Not Started |
+| Add proper query keys | P1 | 🔴 Not Started |
+| Remove interval-based refresh | P1 | 🔴 Not Started |
+
+---
+
+#### Batch PERF-4: Performance Instrumentation
+
+**Status:** 🔴 NOT STARTED  
+**Effort:** 2-3 hours  
+**Theme:** Observability for Performance Metrics
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Create usePerformanceMetrics hook | P0 | 🔴 Not Started |
+| Create PerformanceOverlay component (dev-only) | P1 | 🔴 Not Started |
+| Add timing logs in main.tsx, useAuth, MFAGate | P1 | 🔴 Not Started |
+| Record dashboard ready time | P2 | 🔴 Not Started |
+
+---
+
+#### Batch PERF-5: Additional Optimizations
+
+**Status:** 🔴 NOT STARTED  
+**Effort:** 2-3 hours  
+**Theme:** Consolidate Queries, Preload Critical Data
+
+| Task | Priority | Status |
+|------|----------|--------|
+| Create shared useDashboardStats hook | P1 | 🔴 Not Started |
+| Consolidate get_dashboard_stats calls | P1 | 🔴 Not Started |
+| Prefetch permissions on auth success | P2 | 🔴 Not Started |
+| Update ROADMAP.md | P2 | 🔴 Not Started |
+
+---
+
+## 8. Below the Line (Backlog)
 
 The following items are nice-to-haves and have been deprioritized:
 
