@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -19,21 +19,94 @@ interface MFAGateProps {
   children: React.ReactNode;
 }
 
+// Session storage key for caching MFA status
+const MFA_STATUS_CACHE_KEY = 'lotastro_mfa_status';
+const MFA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+interface MFACacheEntry {
+  hasMFA: boolean;
+  roleRequiresMfa: boolean;
+  timestamp: number;
+  userId: string;
+}
+
 /**
- * MFAGate - Blocks access to protected routes for users whose role requires MFA
- * but haven't enrolled yet. This is a BLOCKING gate, not a dismissible banner.
+ * MFAGate - Checks MFA requirements without blocking initial render.
+ * Optimizations:
+ * - Reduced timeout from 10s to 3s
+ * - Parallel fetching of settings + MFA status
+ * - Session-level caching to avoid re-checks on navigation
+ * - Timing instrumentation for performance monitoring
  */
 const MFAGate: React.FC<MFAGateProps> = ({ children }) => {
-  const { profile, signOut, loading: authLoading } = useAuth();
+  const { profile, signOut, loading: authLoading, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [hasMFA, setHasMFA] = useState<boolean | null>(null);
   const [roleRequiresMfa, setRoleRequiresMfa] = useState(false);
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const startTimeRef = useRef<number>(performance.now());
+  const hasCheckedRef = useRef(false);
+
+  // Try to load cached MFA status
+  const loadCachedStatus = useCallback((): MFACacheEntry | null => {
+    try {
+      const cached = sessionStorage.getItem(MFA_STATUS_CACHE_KEY);
+      if (!cached) return null;
+      
+      const entry: MFACacheEntry = JSON.parse(cached);
+      const now = Date.now();
+      
+      // Validate cache: same user and not expired
+      if (entry.userId === user?.id && (now - entry.timestamp) < MFA_CACHE_TTL_MS) {
+        return entry;
+      }
+      
+      // Cache expired or different user
+      sessionStorage.removeItem(MFA_STATUS_CACHE_KEY);
+      return null;
+    } catch {
+      return null;
+    }
+  }, [user?.id]);
+
+  // Save MFA status to cache
+  const saveCachedStatus = useCallback((hasMFA: boolean, roleRequiresMfa: boolean) => {
+    if (!user?.id) return;
+    
+    try {
+      const entry: MFACacheEntry = {
+        hasMFA,
+        roleRequiresMfa,
+        timestamp: Date.now(),
+        userId: user.id,
+      };
+      sessionStorage.setItem(MFA_STATUS_CACHE_KEY, JSON.stringify(entry));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [user?.id]);
 
   // Main effect: check MFA requirements when profile is available
   useEffect(() => {
-    if (profile?.role) {
+    if (hasCheckedRef.current) return;
+    
+    if (profile?.role && user?.id) {
+      hasCheckedRef.current = true;
+      
+      // Check cache first
+      const cached = loadCachedStatus();
+      if (cached) {
+        console.info(`[MFAGate] Using cached status (age: ${Date.now() - cached.timestamp}ms)`);
+        setHasMFA(cached.hasMFA);
+        setRoleRequiresMfa(cached.roleRequiresMfa);
+        setLoading(false);
+        const elapsed = performance.now() - startTimeRef.current;
+        console.info(`[MFAGate] Check completed in ${elapsed.toFixed(0)}ms (cached)`);
+        return;
+      }
+      
+      // No cache, perform fresh check
       checkMfaRequirements();
     } else if (!authLoading && !profile?.role) {
       // Auth finished loading but no role - fail open to avoid blocking UI
@@ -41,30 +114,36 @@ const MFAGate: React.FC<MFAGateProps> = ({ children }) => {
       setLoading(false);
       setHasMFA(true);
     }
-  }, [profile?.role, authLoading]);
+  }, [profile?.role, authLoading, user?.id, loadCachedStatus]);
 
-  // Safety timeout: prevent infinite loading state
+  // Safety timeout: reduced from 10s to 3s
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (loading) {
-        console.warn('[MFAGate] Timeout reached (10s), failing open');
+        console.warn('[MFAGate] Timeout reached (3s), failing open');
         setLoading(false);
         setHasMFA(true);
       }
-    }, 10000);
+    }, 3000);
     return () => clearTimeout(timeout);
-  }, []);
+  }, [loading]);
 
   const checkMfaRequirements = async () => {
+    const checkStart = performance.now();
+    
     try {
-      // Fetch role-based MFA settings from system_settings
-      const { data: settingsData } = await (supabase
-        .from('system_settings' as any)
-        .select('setting_value')
-        .eq('setting_key', 'session_config')
-        .maybeSingle() as unknown as Promise<{ data: { setting_value: { mfa_required_roles?: MfaRequiredRoles } } | null; error: any }>);
+      // Parallel fetch: system settings AND MFA factors at the same time
+      const [settingsResult, factorsResult] = await Promise.all([
+        supabase
+          .from('system_settings' as any)
+          .select('setting_value')
+          .eq('setting_key', 'session_config')
+          .maybeSingle() as unknown as Promise<{ data: { setting_value: { mfa_required_roles?: MfaRequiredRoles } } | null; error: any }>,
+        supabase.auth.mfa.listFactors(),
+      ]);
       
-      const mfaRoles = settingsData?.setting_value?.mfa_required_roles || {
+      // Process settings
+      const mfaRoles = settingsResult.data?.setting_value?.mfa_required_roles || {
         admin: true,
         senior_manager: true,
         accounting: true,
@@ -75,55 +154,54 @@ const MFAGate: React.FC<MFAGateProps> = ({ children }) => {
       const requiresMfa = userRole ? mfaRoles[userRole] ?? false : false;
       setRoleRequiresMfa(requiresMfa);
       
-      // Only check MFA status if role requires it
-      if (requiresMfa) {
-        await checkMFAStatus();
-      } else {
-        setHasMFA(true); // Role doesn't require MFA, treat as enrolled
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error('Error checking MFA requirements:', error);
-      // On error, allow access (fail open for availability, but log the error)
-      setHasMFA(true);
-      setLoading(false);
-    }
-  };
-
-  const checkMFAStatus = async () => {
-    try {
-      const { data, error } = await supabase.auth.mfa.listFactors();
+      // Process MFA factors
+      let userHasMFA = true; // Default to true (fail open)
       
-      if (error) {
-        console.error('Error checking MFA status:', error);
-        // On error, allow access but log
-        setHasMFA(true);
-        return;
+      if (requiresMfa) {
+        if (factorsResult.error) {
+          console.error('[MFAGate] Error checking MFA status:', factorsResult.error);
+        } else {
+          const verifiedFactors = factorsResult.data?.totp?.filter(f => f.status === 'verified') || [];
+          userHasMFA = verifiedFactors.length > 0;
+        }
       }
-
-      // Check if user has any verified TOTP factors
-      const verifiedFactors = data?.totp?.filter(f => f.status === 'verified') || [];
-      setHasMFA(verifiedFactors.length > 0);
-    } catch (err) {
-      console.error('MFA check failed:', err);
-      setHasMFA(true); // Fail open
+      
+      setHasMFA(userHasMFA);
+      
+      // Cache the result
+      saveCachedStatus(userHasMFA, requiresMfa);
+      
+      const elapsed = performance.now() - checkStart;
+      console.info(`[MFAGate] Check completed in ${elapsed.toFixed(0)}ms (role: ${userRole}, requiresMfa: ${requiresMfa}, hasMFA: ${userHasMFA})`);
+      
+    } catch (error) {
+      console.error('[MFAGate] Error checking MFA requirements:', error);
+      // On error, allow access (fail open for availability)
+      setHasMFA(true);
     } finally {
       setLoading(false);
+      const totalElapsed = performance.now() - startTimeRef.current;
+      console.info(`[MFAGate] Total gate time: ${totalElapsed.toFixed(0)}ms`);
     }
   };
 
   const handleEnrollmentComplete = () => {
     setShowEnrollDialog(false);
     setHasMFA(true);
+    // Update cache with new MFA status
+    saveCachedStatus(true, roleRequiresMfa);
+    // Clear the cached status to force re-check on next navigation
+    sessionStorage.removeItem(MFA_STATUS_CACHE_KEY);
   };
 
   const handleSignOut = async () => {
     setSigningOut(true);
+    // Clear MFA cache on sign out
+    sessionStorage.removeItem(MFA_STATUS_CACHE_KEY);
     await signOut();
   };
 
   // NON-BLOCKING loading state: render children immediately with corner indicator
-  // This prevents the MFA check from blocking pointer events on the sidebar
   if (loading) {
     return (
       <>
