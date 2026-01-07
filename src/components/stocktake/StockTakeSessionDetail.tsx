@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useClientOCR } from '@/hooks/useClientOCR';
 import { preprocessForOCR } from '@/utils/ocrPreprocessing';
 import { useStockTakeSettings } from '@/hooks/useStockTakeSettings';
+import { useInventoryTransaction } from '@/hooks/useInventoryTransaction';
 import { 
   ArrowLeft, 
   CheckCircle, 
@@ -119,6 +120,7 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
   const { user } = useAuth();
   const { runOCR, isProcessing: isOCRProcessing, progress: ocrProgress, terminateWorker } = useClientOCR();
   const { settings: stockTakeSettings } = useStockTakeSettings();
+  const { logSessionReconciliation, logBatchTransactions } = useInventoryTransaction();
   
   const [rolls, setRolls] = useState<CountRoll[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -748,6 +750,51 @@ export const StockTakeSessionDetail = ({ session, onBack }: Props) => {
 
   const handleCompleteReview = async () => {
     try {
+      // Fetch all approved rolls to log their adjustments
+      const { data: approvedRolls, error: fetchError } = await supabase
+        .from('count_rolls')
+        .select('id, counter_quality, counter_color, counter_lot_number, counter_meters, admin_quality, admin_color, admin_lot_number, admin_meters')
+        .eq('session_id', session.id)
+        .eq('status', 'approved');
+
+      if (fetchError) throw fetchError;
+
+      // Log individual adjustments for each approved roll
+      if (approvedRolls && approvedRolls.length > 0) {
+        const transactions = approvedRolls.map(roll => ({
+          transactionType: 'STOCK_ADJUSTMENT' as const,
+          quantityChange: roll.admin_meters ?? roll.counter_meters,
+          unit: 'meters',
+          sourceType: 'count_session',
+          sourceId: session.id,
+          sourceIdentifier: session.session_number,
+          notes: `Stock count: ${roll.admin_quality || roll.counter_quality} / ${roll.admin_color || roll.counter_color} / Lot ${roll.admin_lot_number || roll.counter_lot_number}`,
+          metadata: {
+            quality: roll.admin_quality || roll.counter_quality,
+            color: roll.admin_color || roll.counter_color,
+            lot_number: roll.admin_lot_number || roll.counter_lot_number,
+            counted_meters: roll.counter_meters,
+            admin_meters: roll.admin_meters,
+            final_meters: roll.admin_meters ?? roll.counter_meters,
+          },
+        }));
+
+        await logBatchTransactions({ transactions });
+      }
+
+      // Log session reconciliation summary
+      const totalMeters = (approvedRolls || []).reduce((sum, roll) => 
+        sum + (roll.admin_meters ?? roll.counter_meters), 0
+      );
+      
+      await logSessionReconciliation({
+        sessionId: session.id,
+        sessionNumber: session.session_number,
+        rollsApproved: approvedRolls?.length || 0,
+        totalMetersAdjusted: totalMeters,
+      });
+
+      // Update session status
       const { error } = await supabase
         .from('count_sessions')
         .update({
