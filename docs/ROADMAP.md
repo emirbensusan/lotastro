@@ -392,7 +392,7 @@ Captures which rolls were used when fulfilling orders.
 |-------|-------|--------|--------|
 | PERF-1 | MFAGate Optimization | 2-3 hours | ✅ COMPLETE (2026-01-07) |
 | PERF-2 | Auth Refresh Token Hardening | 3-4 hours | ✅ COMPLETE (2026-01-07) |
-| PERF-3 | Dashboard Stats with React Query | 2-3 hours | 🔴 NOT STARTED |
+| PERF-3 | Dashboard Stats with React Query | 2-3 hours | ✅ COMPLETE (2026-01-07) |
 | PERF-4 | Performance Instrumentation | 2-3 hours | 🔴 NOT STARTED |
 | PERF-5 | Additional Optimizations | 2-3 hours | 🔴 NOT STARTED |
 
@@ -433,17 +433,19 @@ Captures which rolls were used when fulfilling orders.
 
 #### Batch PERF-3: Dashboard Stats with React Query
 
-**Status:** 🔴 NOT STARTED  
+**Status:** ✅ COMPLETE (2026-01-07)  
 **Effort:** 2-3 hours  
 **Theme:** Eliminate Duplicate Fetches, Add Caching
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Replace useState/useEffect with useQuery | P0 | 🔴 Not Started |
-| Configure staleTime (60s) | P0 | 🔴 Not Started |
-| Implement stale-while-revalidate | P1 | 🔴 Not Started |
-| Add proper query keys | P1 | 🔴 Not Started |
-| Remove interval-based refresh | P1 | 🔴 Not Started |
+| Create useDashboardStats hook | P0 | ✅ Complete |
+| Replace useState/useEffect with useQuery | P0 | ✅ Complete |
+| Configure staleTime (5 min) | P0 | ✅ Complete |
+| Implement stale-while-revalidate | P1 | ✅ Complete |
+| Add proper query keys | P1 | ✅ Complete |
+| Parallel fetch all stats queries | P1 | ✅ Complete |
+| Background refresh indicator | P2 | ✅ Complete |
 
 ---
 
