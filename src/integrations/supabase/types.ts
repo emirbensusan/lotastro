@@ -2447,6 +2447,59 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          quantity_change: number
+          roll_id: string | null
+          source_id: string | null
+          source_identifier: string | null
+          source_type: string
+          transaction_type: Database["public"]["Enums"]["inventory_transaction_type"]
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          quantity_change: number
+          roll_id?: string | null
+          source_id?: string | null
+          source_identifier?: string | null
+          source_type: string
+          transaction_type: Database["public"]["Enums"]["inventory_transaction_type"]
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          quantity_change?: number
+          roll_id?: string | null
+          source_id?: string | null
+          source_identifier?: string | null
+          source_type?: string
+          transaction_type?: Database["public"]["Enums"]["inventory_transaction_type"]
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transactions_roll_id_fkey"
+            columns: ["roll_id"]
+            isOneToOne: false
+            referencedRelation: "rolls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_attempts: {
         Row: {
           attempted_at: string
@@ -4413,6 +4466,15 @@ export type Database = {
         | "stock_take"
         | "qa_investigation"
       inquiry_status: "draft" | "active" | "converted" | "expired" | "cancelled"
+      inventory_transaction_type:
+        | "INCOMING_RECEIPT"
+        | "ORDER_FULFILLMENT"
+        | "STOCK_ADJUSTMENT"
+        | "MANUAL_CORRECTION"
+        | "RESERVATION_ALLOCATION"
+        | "RESERVATION_RELEASE"
+        | "TRANSFER_OUT"
+        | "TRANSFER_IN"
       order_line_type: "sample" | "standard"
       reservation_status: "active" | "released" | "converted" | "canceled"
       stock_status: "in_stock" | "out_of_stock" | "partially_fulfilled"
@@ -4619,6 +4681,16 @@ export const Constants = {
         "qa_investigation",
       ],
       inquiry_status: ["draft", "active", "converted", "expired", "cancelled"],
+      inventory_transaction_type: [
+        "INCOMING_RECEIPT",
+        "ORDER_FULFILLMENT",
+        "STOCK_ADJUSTMENT",
+        "MANUAL_CORRECTION",
+        "RESERVATION_ALLOCATION",
+        "RESERVATION_RELEASE",
+        "TRANSFER_OUT",
+        "TRANSFER_IN",
+      ],
       order_line_type: ["sample", "standard"],
       reservation_status: ["active", "released", "converted", "canceled"],
       stock_status: ["in_stock", "out_of_stock", "partially_fulfilled"],

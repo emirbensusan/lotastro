@@ -24,6 +24,7 @@ import {
   ClipboardCheck,
   FileSearch,
   CheckCircle,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { 
   Sidebar,
@@ -68,6 +69,7 @@ export const useNavigationGroups = (): NavigationGroup[] => {
         { path: '/lot-intake', label: String(t('lotIntake')), icon: PackagePlus, permission: { category: 'inventory', action: 'createlotentries' }, tourId: 'lot-intake' },
         { path: '/lot-queue', label: String(t('lotQueue')), icon: Timer, permission: { category: 'inventory', action: 'viewlotqueue' } },
         { path: '/inventory', label: String(t('inventory')), icon: ClipboardList, permission: { category: 'inventory', action: 'viewinventory' }, tourId: 'inventory', shortcutKey: 'i' },
+        { path: '/inventory-transactions', label: String(t('inventoryTransactions')), icon: ArrowLeftRight, permission: { category: 'inventory', action: 'viewinventory' }, shortcutKey: 't' },
         { path: '/incoming-stock', label: String(t('incomingStockLabel')), icon: TruckIcon, permission: { category: 'inventory', action: 'viewincoming' }, tourId: 'incoming-stock' },
         { path: '/manufacturing-orders', label: String(t('mo.title')), icon: Factory, permission: { category: 'inventory', action: 'viewincoming' } },
         { path: '/forecast', label: String(t('forecast.title') || 'Forecast'), icon: TrendingUp, permission: { category: 'forecasting', action: 'viewforecasts' }, tourId: 'forecast' },

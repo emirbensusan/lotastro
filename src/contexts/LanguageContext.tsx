@@ -164,6 +164,7 @@ const translations = {
     dateRange: 'Date Range',
     executionHistory: 'Execution History',
     history: 'History',
+    inventoryTransactions: 'Transactions',
     
     // Missing common keys (avoiding duplicates)
     selected: 'Selected',
@@ -3207,6 +3208,7 @@ const translations = {
     // Navigation and sections
     overview: 'Genel Bakış',
     inventoryManagement: 'Stok Yönetimi',
+    inventoryTransactions: 'Hareketler',
     incomingStockLabel: 'Yoldaki Envanter',
     goodsReceipt: 'Gelen Envanteri Stoğa Al',
     ordersAndReservations: 'Siparişler ve Rezerveler',

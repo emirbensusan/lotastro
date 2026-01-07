@@ -39,6 +39,7 @@ const Forecast = lazyWithRetry(() => import("./pages/Forecast"));
 const ForecastSettings = lazyWithRetry(() => import("./pages/ForecastSettings"));
 const Catalog = lazyWithRetry(() => import("./pages/Catalog"));
 const CatalogDetail = lazyWithRetry(() => import("./pages/CatalogDetail"));
+const InventoryTransactions = lazyWithRetry(() => import("./pages/InventoryTransactions"));
 
 // Orders module
 const Orders = lazyWithRetry(() => import("./pages/Orders"));
@@ -186,6 +187,7 @@ const App = () => (
                         <Route path="/forecast-settings" element={<ProtectedRoute><ForecastSettings /></ProtectedRoute>} />
                         <Route path="/catalog" element={<ProtectedRoute><Catalog /></ProtectedRoute>} />
                         <Route path="/catalog/:id" element={<ProtectedRoute><CatalogDetail /></ProtectedRoute>} />
+                        <Route path="/inventory-transactions" element={<ProtectedRoute><InventoryTransactions /></ProtectedRoute>} />
                         
                         {/* Orders Module */}
                         <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
