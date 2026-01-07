@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { markPerformance } from '@/hooks/usePerformanceMetrics';
 
 // Lazy load dashboard widgets for better initial load
 const InsightsWidget = lazy(() => import('@/components/dashboard/InsightsWidget').then(m => ({ default: m.InsightsWidget })));
@@ -37,9 +38,16 @@ const Dashboard = () => {
   const { success: hapticSuccess } = useHapticFeedback();
   
   // Use React Query for dashboard stats - with stale-while-revalidate
-  const { stats, isLoading, isFetching, refresh } = useDashboardStats({
+  const { stats, isLoading, isFetching, refresh, hasData } = useDashboardStats({
     refetchInterval: 60000, // Auto-refresh every 60 seconds
   });
+
+  // Mark dashboard ready when we have data
+  useEffect(() => {
+    if (hasData) {
+      markPerformance('dashboard_ready');
+    }
+  }, [hasData]);
 
   const handleRefresh = useCallback(async () => {
     await refresh();

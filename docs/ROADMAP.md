@@ -393,7 +393,7 @@ Captures which rolls were used when fulfilling orders.
 | PERF-1 | MFAGate Optimization | 2-3 hours | ✅ COMPLETE (2026-01-07) |
 | PERF-2 | Auth Refresh Token Hardening | 3-4 hours | ✅ COMPLETE (2026-01-07) |
 | PERF-3 | Dashboard Stats with React Query | 2-3 hours | ✅ COMPLETE (2026-01-07) |
-| PERF-4 | Performance Instrumentation | 2-3 hours | 🔴 NOT STARTED |
+| PERF-4 | Performance Instrumentation | 2-3 hours | ✅ COMPLETE (2026-01-07) |
 | PERF-5 | Additional Optimizations | 2-3 hours | 🔴 NOT STARTED |
 
 ---
@@ -451,16 +451,19 @@ Captures which rolls were used when fulfilling orders.
 
 #### Batch PERF-4: Performance Instrumentation
 
-**Status:** 🔴 NOT STARTED  
+**Status:** ✅ COMPLETE (2026-01-07)  
 **Effort:** 2-3 hours  
 **Theme:** Observability for Performance Metrics
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Create usePerformanceMetrics hook | P0 | 🔴 Not Started |
-| Create PerformanceOverlay component (dev-only) | P1 | 🔴 Not Started |
-| Add timing logs in main.tsx, useAuth, MFAGate | P1 | 🔴 Not Started |
-| Record dashboard ready time | P2 | 🔴 Not Started |
+| Create usePerformanceMetrics hook | P0 | ✅ Complete |
+| Create PerformanceOverlay component (dev-only) | P1 | ✅ Complete |
+| Add timing logs in main.tsx | P1 | ✅ Complete |
+| Add timing logs in useAuth | P1 | ✅ Complete |
+| Add timing logs in MFAGate | P1 | ✅ Complete |
+| Record dashboard ready time | P2 | ✅ Complete |
+| Keyboard shortcut toggle (Ctrl+Shift+P) | P2 | ✅ Complete |
 
 ---
 
