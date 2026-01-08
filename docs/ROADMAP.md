@@ -1,7 +1,7 @@
 # LotAstro Development Roadmap
 
-> **Version**: 4.4.0  
-> **Last Updated**: 2026-01-07
+> **Version**: 5.0.0  
+> **Last Updated**: 2026-01-08
 > **Planning Horizon**: 15.5 days remaining  
 > **Architecture**: Multi-Project Ecosystem
 > **Philosophy**: Reliability → Intelligence → Connectivity → Delight
@@ -640,136 +640,548 @@ await worker.setParameters({
 
 ---
 
-### NEXT: CRM & Ecosystem Connectivity
+---
 
-#### Batch F: CRM & Ecosystem Connectivity (2.5-3 days, ~10-15 credits)
+## 9. CRM ↔ WMS Integration (Batch F)
 
-**Owner:** Backend/Full-Stack  
-**Theme:** Bidirectional Sync Between WMS ↔ CRM  
-**Status:** 🔴 NOT STARTED (ready to begin)
+> **Added**: 2026-01-08  
+> **Architecture**: Two Separate Supabase Projects with Sync  
+> **Goal**: Seamless bidirectional integration between LotAstro WMS and LotAstro CRM
 
-##### Overview
+### Executive Summary
 
-Enable seamless data flow between LotAstro WMS and LotAstro CRM to create a unified customer experience. Orders placed in WMS should be visible in CRM, and customer data from CRM should be accessible in WMS.
+1. **Two Projects, Same Org**: CRM and WMS are separate Supabase projects under the same organization
+2. **Webhook-First**: Primary sync via webhooks with outbox pattern for reliability
+3. **API Gateway**: Cross-system queries via edge functions with mutual API key auth
+4. **Entity Ownership**: CRM owns Customers/Leads/Deals; WMS owns Inventory/Orders/Reservations
+5. **Shared IDs**: `crm_customer_id` on WMS tables, `wms_order_id` on CRM tables
+6. **Cache Strategy**: Local cache tables for performance, reconciled via CRON
+7. **Security**: Mutual API keys with scoped permissions, RLS on all tables
+8. **Rollback**: Each phase independently reversible with feature flags
 
-##### Architecture
+### Target Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       WMS ↔ CRM INTEGRATION                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────┐          Webhooks          ┌─────────────────┐        │
-│   │  LotAstro WMS   │  ───────────────────────▶  │  LotAstro CRM   │        │
-│   │  (This Project) │                            │  (Separate)     │        │
-│   │                 │  ◀───────────────────────  │                 │        │
-│   │  • Orders       │         API Calls          │  • Customers    │        │
-│   │  • Reservations │                            │  • Leads        │        │
-│   │  • Inquiries    │         Shared IDs         │  • Sales Ops    │        │
-│   └────────┬────────┘  ◀─────────────────────▶  └────────┬────────┘        │
-│            │                                              │                  │
-│            └──────────────────────────────────────────────┘                  │
-│                              Supabase DB                                     │
-│                         (Cross-project access)                               │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                        CRM ↔ WMS INTEGRATION ARCHITECTURE                            │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │                          SUPABASE ORG (Same Owner)                             │  │
+│  │                                                                                │  │
+│  │  ┌─────────────────────────┐              ┌─────────────────────────┐         │  │
+│  │  │    CRM SUPABASE         │              │    WMS SUPABASE         │         │  │
+│  │  │  ─────────────────      │              │  ─────────────────      │         │  │
+│  │  │                         │              │                         │         │  │
+│  │  │  ┌─────────────────┐    │              │  ┌─────────────────┐    │         │  │
+│  │  │  │   customers     │    │   customer   │  │  crm_customer   │    │         │  │
+│  │  │  │   leads         │◀───┼──── sync ────┼──│  _cache         │    │         │  │
+│  │  │  │   deals         │    │   (webhook)  │  └─────────────────┘    │         │  │
+│  │  │  │   contacts      │    │              │                         │         │  │
+│  │  │  └─────────────────┘    │              │  ┌─────────────────┐    │         │  │
+│  │  │                         │              │  │   orders        │    │         │  │
+│  │  │  ┌─────────────────┐    │   order/res  │  │   reservations  │────┼──┐      │  │
+│  │  │  │wms_inventory    │    │   events     │  │   inquiries     │    │  │      │  │
+│  │  │  │  _cache         │◀───┼──(webhook)───┼──│   lots/rolls    │    │  │      │  │
+│  │  │  └─────────────────┘    │              │  └─────────────────┘    │  │      │  │
+│  │  │                         │              │                         │  │      │  │
+│  │  │  ┌─────────────────┐    │              │  ┌─────────────────┐    │  │      │  │
+│  │  │  │wms_events       │    │              │  │integration      │    │  │      │  │
+│  │  │  │  _received      │    │              │  │  _outbox        │────┼──┘      │  │
+│  │  │  └─────────────────┘    │              │  └─────────────────┘    │         │  │
+│  │  │                         │              │                         │         │  │
+│  │  │  ┌─────────────────┐    │              │  ┌─────────────────┐    │         │  │
+│  │  │  │crm-get-customer │    │   API Call   │  │api-get-inventory│    │         │  │
+│  │  │  │  Edge Func      │◀───┼──────────────┼──│  Edge Func      │    │         │  │
+│  │  │  └─────────────────┘    │              │  └─────────────────┘    │         │  │
+│  │  │                         │              │                         │         │  │
+│  │  │  ┌─────────────────┐    │              │  ┌─────────────────┐    │         │  │
+│  │  │  │wms-webhook      │◀───┼── Webhook ───┼──│webhook-dispatcher│   │         │  │
+│  │  │  │  -receiver      │    │   Events     │  │  (existing)     │    │         │  │
+│  │  │  └─────────────────┘    │              │  └─────────────────┘    │         │  │
+│  │  └─────────────────────────┘              └─────────────────────────┘         │  │
+│  │                                                                                │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                      │
+│  ┌───────────────────────────────────────────────────────────────────────────────┐  │
+│  │                            SYNC RECONCILER (CRON)                              │  │
+│  │  • Runs every 6 hours                                                          │  │
+│  │  • Compares cache vs source                                                    │  │
+│  │  • Logs discrepancies to integration_sync_log                                  │  │
+│  │  • Auto-heals stale cache entries                                              │  │
+│  └───────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-##### Phase F-1: WMS → CRM Webhook Events (1 day)
+### Integration Contracts
 
-**Goal:** CRM receives real-time updates when orders/reservations change in WMS
+#### Entity Ownership Matrix
+
+| Entity | CRM Owner? | WMS Owner? | Sync Direction | Conflict Resolution |
+|--------|------------|------------|----------------|---------------------|
+| Customers | ✅ | ❌ | CRM → WMS | CRM wins |
+| Leads | ✅ | ❌ | CRM → WMS | CRM wins |
+| Deals | ✅ | ❌ | CRM → WMS | CRM wins |
+| Contacts | ✅ | ❌ | CRM → WMS | CRM wins |
+| Inventory | ❌ | ✅ | WMS → CRM | WMS wins |
+| Orders | ❌ | ✅ | WMS → CRM | WMS wins |
+| Reservations | ❌ | ✅ | WMS → CRM | WMS wins |
+| Inquiries | ❌ | ✅ | WMS → CRM | WMS wins |
+| Products/Catalog | ❌ | ✅ | WMS → CRM | WMS wins |
+
+#### Webhook Event Types
+
+**WMS → CRM Events:**
+
+| Event Type | Trigger | Payload Summary |
+|------------|---------|-----------------|
+| `inquiry.created` | New inquiry | customer_ref, quality, color, meters |
+| `inquiry.converted` | Inquiry → Order | inquiry_id, order_id |
+| `reservation.created` | New reservation | customer_ref, lines[], expires_at |
+| `reservation.released` | Reservation released | reservation_id, reason |
+| `order.created` | New order | po_number, lines[], total_meters |
+| `order.fulfilled` | Order fulfilled | order_id, shipped_rolls[] |
+| `order.cancelled` | Order cancelled | order_id, reason |
+| `shipment.posted` | Shipment dispatched | order_id, tracking_info |
+| `inventory.low_stock` | Below threshold | quality, color, current_stock |
+
+**CRM → WMS Events:**
+
+| Event Type | Trigger | Payload Summary |
+|------------|---------|-----------------|
+| `customer.created` | New customer | id, company_name, address, terms |
+| `customer.updated` | Customer modified | id, changed_fields |
+| `deal.won` | Deal closed-won | deal_id, customer_id, value |
+| `deal.lost` | Deal closed-lost | deal_id, reason |
+
+#### API Endpoints
+
+**WMS Exposes:**
+- `POST /api-get-inventory` - Query stock by quality/color
+- `POST /api-get-catalog` - Get catalog items
+- `POST /api-create-order` - Create order from CRM
+
+**CRM Exposes:**
+- `POST /crm-get-customer` - Lookup customer by ID or code
+- `POST /crm-search-customers` - Search customers
+
+---
+
+### Phase F-0: Foundation (1 day)
+
+**Goal:** Instrumentation, shared secrets, outbox table
+
+**Status:** 🔴 NOT STARTED
 
 | Task | File | Priority | Status |
 |------|------|----------|--------|
-| Register CRM webhook endpoint | Admin UI | P0 | 🔴 Not Started |
-| Send `order.created` event to CRM | `webhook-dispatcher` | P0 | 🔴 Not Started |
-| Send `order.fulfilled` event to CRM | `webhook-dispatcher` | P0 | 🔴 Not Started |
-| Send `reservation.created` event to CRM | `webhook-dispatcher` | P1 | 🔴 Not Started |
-| Send `inquiry.converted` event to CRM | `webhook-dispatcher` | P1 | 🔴 Not Started |
-| Include customer_ref in webhook payloads | Edge functions | P1 | 🔴 Not Started |
+| Create `integration_outbox` table | Migration | P0 | 🔴 Not Started |
+| Create `integration_sync_log` table | Migration | P0 | 🔴 Not Started |
+| Add `crm_customer_id` column to `orders` | Migration | P0 | 🔴 Not Started |
+| Add `crm_customer_id` column to `reservations` | Migration | P0 | 🔴 Not Started |
+| Add `crm_customer_id` column to `inquiries` | Migration | P0 | 🔴 Not Started |
+| Create `crm_customer_cache` table | Migration | P0 | 🔴 Not Started |
+| Add `CRM_API_KEY` secret | Secrets | P0 | 🔴 Not Started |
+| Add `CRM_API_URL` secret | Secrets | P0 | 🔴 Not Started |
+| Add `CRM_WEBHOOK_SECRET` secret | Secrets | P0 | 🔴 Not Started |
 
-##### Phase F-2: CRM → WMS Customer Lookup (1 day)
+**Acceptance Criteria:**
+- [ ] All tables created with RLS policies
+- [ ] Secrets configured in both projects
+- [ ] Feature flags for integration enable/disable
 
-**Goal:** WMS can lookup and display customer data from CRM
+**Rollback:** Drop new columns and tables
+
+---
+
+### Phase F-1: Customer Sync + Reservation Flow (2 days)
+
+**Goal:** CRM customers available in WMS, reservations trigger CRM events
+
+**Status:** 🔴 NOT STARTED
 
 | Task | File | Priority | Status |
 |------|------|----------|--------|
-| Create `api-get-customer` edge function | `supabase/functions/api-get-customer/index.ts` | P0 | 🔴 Not Started |
-| Add CRM_API_KEY secret configuration | Secrets | P0 | 🔴 Not Started |
+| Create `crm-get-customer` edge function | `supabase/functions/crm-get-customer/index.ts` | P0 | 🔴 Not Started |
 | Customer autocomplete in order forms | `src/components/OrderBulkUpload.tsx` | P1 | 🔴 Not Started |
-| Display customer info in order details | `src/pages/Orders.tsx` | P1 | 🔴 Not Started |
+| Customer autocomplete in reservation dialog | `src/components/ReservationDialog.tsx` | P1 | 🔴 Not Started |
+| Link customer on order creation | Order creation flow | P0 | 🔴 Not Started |
+| Send `reservation.created` to outbox | `src/components/ReservationDialog.tsx` | P0 | 🔴 Not Started |
+| Trigger `trg_notify_crm_reservation` | DB trigger | P0 | 🔴 Not Started |
+| Process outbox → webhook dispatcher | Edge function | P0 | 🔴 Not Started |
+| Display CRM customer info in order details | `src/pages/Orders.tsx` | P1 | 🔴 Not Started |
 | "View in CRM" deep link button | Order details UI | P2 | 🔴 Not Started |
 
-##### Phase F-3: CRM-Side Receiver Functions (0.5-1 day) - **IN CRM PROJECT**
+**Acceptance Criteria:**
+- [ ] Customer search in WMS returns CRM customers
+- [ ] Orders created with `crm_customer_id` populated
+- [ ] Reservations trigger `reservation.created` webhook
+- [ ] CRM receives and processes webhook within 30s
 
-**Goal:** CRM project receives and processes WMS webhook events
+**Success Metrics:**
+- Customer lookup latency < 500ms
+- Webhook delivery success rate > 99%
+
+**Rollback:** Disable outbox processing, hide customer autocomplete
+
+---
+
+### Phase F-2: Order Fulfillment + Shipment (2 days)
+
+**Goal:** Order lifecycle events flow to CRM, inventory visibility in CRM
+
+**Status:** 🔴 NOT STARTED
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Send `order.created` on order confirm | Order flow | P0 | 🔴 Not Started |
+| Send `order.fulfilled` on fulfill | Order flow | P0 | 🔴 Not Started |
+| Send `shipment.posted` on shipment | Shipment flow | P0 | 🔴 Not Started |
+| Handle order cancel → `reservation.released` | Cancel flow | P1 | 🔴 Not Started |
+| Create `api-check-inventory` for CRM | Edge function | P1 | 🔴 Not Started |
+| CRM displays WMS stock availability | CRM UI | P1 | 🔴 Not Started |
+| CRM displays order/shipment status | CRM UI | P1 | 🔴 Not Started |
+| Quantity change → adjust reservation | Order edit flow | P1 | 🔴 Not Started |
+
+**CRM-Side Tasks (IN CRM PROJECT):**
 
 | Task | CRM File | Priority | Status |
 |------|----------|----------|--------|
 | Create `wms-webhook-receiver` edge function | `supabase/functions/wms-webhook-receiver/index.ts` | P0 | 🔴 Not Started |
-| Map WMS order to CRM activity/deal | CRM DB schema | P0 | 🔴 Not Started |
-| Validate webhook signature | Edge function | P1 | 🔴 Not Started |
-| Create activity on order events | Edge function | P1 | 🔴 Not Started |
-| Update customer last_order_date | Edge function | P2 | 🔴 Not Started |
+| Validate HMAC signature | Edge function | P0 | 🔴 Not Started |
+| Create `wms_events_received` table | Migration | P0 | 🔴 Not Started |
+| Map order events → CRM activities | Edge function | P1 | 🔴 Not Started |
+| Update deal stage on order events | Edge function | P1 | 🔴 Not Started |
+| Create `wms_inventory_cache` table | Migration | P1 | 🔴 Not Started |
+| Display inventory in deal view | CRM UI | P2 | 🔴 Not Started |
 
-##### Phase F-4: Shared Entity Mapping (0.5 day)
+**Acceptance Criteria:**
+- [ ] Order lifecycle events appear in CRM within 30s
+- [ ] CRM can query WMS inventory via API
+- [ ] Order quantity changes update reservations
+- [ ] Shipment status visible in CRM deal timeline
 
-**Goal:** Enable cross-referencing between WMS and CRM entities
+**Success Metrics:**
+- Order → CRM activity latency < 30s
+- Inventory API latency < 1s
 
-| Task | File | Priority | Status |
-|------|------|----------|--------|
-| Add `crm_customer_id` column to orders | Migration | P1 | 🔴 Not Started |
-| Add `wms_order_id` column to CRM activities | CRM Migration | P1 | 🔴 Not Started |
-| Bidirectional link in UIs | Both projects | P2 | 🔴 Not Started |
-
-##### Data Model Reference
-
-**WMS → CRM Webhook Payload (order.created)**
-```json
-{
-  "event": "order.created",
-  "timestamp": "2026-01-07T12:00:00Z",
-  "data": {
-    "order_id": "uuid",
-    "po_number": "PO-2026-001",
-    "customer_ref": "ACME Corp",
-    "crm_customer_id": "uuid (if linked)",
-    "total_meters": 500,
-    "status": "pending",
-    "created_at": "2026-01-07T12:00:00Z",
-    "lines": [
-      { "quality": "COTTON-100", "color": "Navy", "meters": 250 }
-    ]
-  }
-}
-```
-
-**CRM → WMS Customer Lookup Response**
-```json
-{
-  "id": "uuid",
-  "company_name": "ACME Corp",
-  "contact_name": "John Doe",
-  "email": "john@acme.com",
-  "phone": "+1-555-1234",
-  "address": "123 Main St",
-  "credit_limit": 50000,
-  "payment_terms": "Net 30",
-  "total_orders": 42,
-  "lifetime_value": 125000
-}
-```
-
-##### Success Criteria
-
-- [ ] Orders created in WMS appear as activities in CRM within 30 seconds
-- [ ] Customer lookup in WMS shows CRM customer data
-- [ ] Deep links work bidirectionally
-- [ ] Webhook signature validation prevents unauthorized events
+**Rollback:** Disable webhook types, feature flag inventory API
 
 ---
 
-## 6. Priority Decision Matrix
+### Phase F-3: Edge Cases + Reconciliation (1 day)
+
+**Goal:** Handle failures, returns, stock adjustments, CRON reconciliation
+
+**Status:** 🔴 NOT STARTED
+
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Create `integration-reconciler` CRON job | Edge function | P0 | 🔴 Not Started |
+| Compare cache vs source every 6 hours | CRON | P0 | 🔴 Not Started |
+| Log discrepancies to `integration_sync_log` | CRON | P0 | 🔴 Not Started |
+| Auto-heal stale cache entries | CRON | P1 | 🔴 Not Started |
+| Dead-letter queue handling | Webhook dispatcher | P1 | 🔴 Not Started |
+| Manual retry button for failed events | Admin UI | P2 | 🔴 Not Started |
+| Returns/RMA flow (if supported) | TBD | P2 | 🔴 Not Started |
+
+**Acceptance Criteria:**
+- [ ] CRON detects and heals stale data
+- [ ] Failed webhooks retried with exponential backoff
+- [ ] Admin can view/retry failed integration events
+
+**Success Metrics:**
+- Data consistency > 99.9%
+- Failed webhook recovery rate > 95%
+
+**Rollback:** Disable reconciler CRON
+
+---
+
+### Data Model Changes
+
+#### WMS Database Additions
+
+```sql
+-- Add CRM linkage columns
+ALTER TABLE orders ADD COLUMN crm_customer_id UUID;
+ALTER TABLE orders ADD COLUMN crm_deal_id UUID;
+ALTER TABLE reservations ADD COLUMN crm_customer_id UUID;
+ALTER TABLE inquiries ADD COLUMN crm_customer_id UUID;
+
+-- CRM customer cache (for performance)
+CREATE TABLE crm_customer_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  crm_customer_id UUID NOT NULL UNIQUE,
+  company_name TEXT NOT NULL,
+  unique_code TEXT,
+  contact_name TEXT,
+  contact_email TEXT,
+  contact_phone TEXT,
+  payment_terms TEXT,
+  address_line_1 TEXT,
+  city TEXT,
+  country TEXT,
+  cached_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  stale_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '24 hours')
+);
+
+-- Integration outbox for reliable event delivery
+CREATE TABLE integration_outbox (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  target_system TEXT NOT NULL DEFAULT 'crm',
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  processed_at TIMESTAMPTZ,
+  retry_count INTEGER DEFAULT 0,
+  next_retry_at TIMESTAMPTZ,
+  error_message TEXT,
+  idempotency_key TEXT UNIQUE
+);
+
+-- Integration sync log for reconciliation
+CREATE TABLE integration_sync_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sync_type TEXT NOT NULL,
+  source_system TEXT NOT NULL,
+  records_checked INTEGER,
+  records_synced INTEGER,
+  records_failed INTEGER,
+  discrepancies JSONB,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'running'
+);
+```
+
+#### CRM Database Additions
+
+```sql
+-- Add WMS linkage columns
+ALTER TABLE customers ADD COLUMN wms_synced_at TIMESTAMPTZ;
+ALTER TABLE customers ADD COLUMN wms_last_order_id UUID;
+ALTER TABLE customers ADD COLUMN wms_total_orders INTEGER DEFAULT 0;
+ALTER TABLE deals ADD COLUMN wms_reservation_id UUID;
+ALTER TABLE deals ADD COLUMN wms_order_id UUID;
+ALTER TABLE deals ADD COLUMN wms_shipment_status TEXT;
+
+-- WMS inventory cache
+CREATE TABLE wms_inventory_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  quality_code TEXT NOT NULL,
+  color_code TEXT NOT NULL,
+  available_meters NUMERIC,
+  reserved_meters NUMERIC,
+  total_meters NUMERIC,
+  cached_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(quality_code, color_code)
+);
+
+-- WMS events received (for idempotency)
+CREATE TABLE wms_events_received (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID REFERENCES organizations(id),
+  event_id UUID NOT NULL,
+  event_type TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  processed_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'pending',
+  error_message TEXT,
+  UNIQUE(event_id)
+);
+```
+
+---
+
+### RLS & Security Model
+
+#### Role Matrix (Integration Permissions)
+
+| Role | WMS Functions | CRM Functions |
+|------|---------------|---------------|
+| admin | Full access | Full access |
+| senior_manager | Read + Link customers | Read inventory |
+| warehouse_staff | Link customers on orders | N/A |
+| accounting | Read-only | N/A |
+| salesperson | N/A | Read inventory, create orders |
+
+#### API Key Scopes
+
+| Scope | WMS Grants | CRM Grants |
+|-------|------------|------------|
+| `inventory:read` | Query stock levels | Query stock levels |
+| `catalog:read` | Query catalog items | Query catalog items |
+| `order:write` | Create orders | Create orders |
+| `customer:read` | N/A | Query customer data |
+| `webhook:receive` | N/A | Process WMS events |
+
+#### RLS Policies
+
+```sql
+-- WMS: integration_outbox (only system can insert/update)
+CREATE POLICY "System can manage outbox"
+  ON integration_outbox FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- WMS: crm_customer_cache (authenticated users can read)
+CREATE POLICY "Authenticated can read customer cache"
+  ON crm_customer_cache FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+-- CRM: wms_events_received (organization isolation)
+CREATE POLICY "Organization isolation for WMS events"
+  ON wms_events_received FOR ALL
+  USING (organization_id = get_user_organization_id(auth.uid()));
+```
+
+---
+
+### Workflow Mapping
+
+#### Workflow 1: Quote/Inquiry → Order → Reservation → Shipment
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  CRM Sales User                                                                   │
+│       │                                                                          │
+│       ├──[Creates Deal]──► CRM Deal (status: negotiation)                        │
+│       │                                                                          │
+│       ├──[Checks Inventory]──► WMS API: /api-get-inventory                       │
+│       │                          └──► Returns: {quality, color, available_meters}│
+│       │                                                                          │
+│       ├──[Wins Deal]──► CRM triggers: deal.won webhook to WMS                    │
+│       │                                                                          │
+└───────┼──────────────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  WMS System (receives deal.won or manual order creation)                          │
+│       │                                                                          │
+│       ├──[Creates Reservation]──► WMS reservation_lines                          │
+│       │       └──► Outbox: reservation.created                                   │
+│       │                                                                          │
+│       ├──[Creates Order]──► WMS orders (crm_customer_id, crm_deal_id linked)     │
+│       │       └──► Outbox: order.created                                         │
+│       │                                                                          │
+│       ├──[Fulfills Order]──► WMS rolls picked, lots updated                      │
+│       │       └──► Outbox: order.fulfilled                                       │
+│       │                                                                          │
+│       ├──[Ships Order]──► WMS shipment record                                    │
+│       │       └──► Outbox: shipment.posted                                       │
+│       │                                                                          │
+└───────┼──────────────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  CRM System (receives WMS webhooks)                                               │
+│       │                                                                          │
+│       ├──[Receives reservation.created]──► Creates activity, updates deal stage  │
+│       ├──[Receives order.created]──► Links wms_order_id to deal                  │
+│       ├──[Receives order.fulfilled]──► Updates deal stage to "fulfillment"       │
+│       ├──[Receives shipment.posted]──► Updates wms_shipment_status on deal       │
+│       │                                                                          │
+│       └──► CRM User sees complete order timeline in deal view                    │
+│                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Test Plan
+
+#### Unit Tests
+
+| Test | Location | Coverage |
+|------|----------|----------|
+| Customer cache lookup | `crm-get-customer` | Cache hit/miss, stale refresh |
+| Outbox event creation | DB trigger tests | All event types |
+| Webhook payload format | `webhook-dispatcher` | Schema validation |
+| HMAC signature | Both projects | Sign/verify round-trip |
+
+#### Integration Tests
+
+| Test | Systems | Scenario |
+|------|---------|----------|
+| Customer sync | WMS + CRM | Create customer in CRM, query in WMS |
+| Order flow | WMS + CRM | Create order, verify CRM activity |
+| Webhook delivery | WMS → CRM | Full round-trip with retry |
+| Inventory API | CRM → WMS | Query stock, verify response |
+
+#### E2E Tests
+
+| Test | Description |
+|------|-------------|
+| Full order lifecycle | Deal → Reservation → Order → Fulfill → Ship |
+| Webhook failure recovery | Kill CRM, queue events, recover, verify sync |
+| Concurrent operations | Multiple orders, verify no race conditions |
+
+#### Rollback Plan
+
+| Phase | Rollback Action | Time |
+|-------|-----------------|------|
+| F-0 | Drop columns, tables, secrets | 5 min |
+| F-1 | Disable outbox processing | 1 min |
+| F-2 | Disable webhook types | 1 min |
+| F-3 | Disable reconciler CRON | 1 min |
+
+---
+
+### Open Questions / Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Network failures between projects | Missed events | Outbox pattern + retry + reconciler |
+| CRM customer ID format mismatch | Broken links | Validate UUID format, fallback to code |
+| High webhook volume | CRM overload | Rate limit + batch events |
+| Cache staleness | Stale customer data | 24h TTL + reconciler |
+| API key rotation | Auth failures | Support key overlap period |
+| Multi-tenant WMS (future) | Schema changes | Design with org_id from start |
+
+---
+
+### Deliverables Summary
+
+#### SQL Migrations
+
+| File | Purpose |
+|------|---------|
+| `add_crm_columns.sql` | Add crm_customer_id to orders/reservations/inquiries |
+| `create_integration_tables.sql` | Create outbox, sync_log, cache tables |
+| `create_integration_rls.sql` | RLS policies for integration tables |
+
+#### Edge Functions
+
+| Function | Purpose |
+|----------|---------|
+| `crm-get-customer` | Lookup CRM customer from WMS |
+| `process-integration-outbox` | Process outbox → send webhooks |
+| `integration-reconciler` | CRON: sync cache, detect discrepancies |
+
+#### CRM Edge Functions (in CRM project)
+
+| Function | Purpose |
+|----------|---------|
+| `wms-webhook-receiver` | Receive/validate WMS webhooks |
+| `api-get-customer` | Expose customer data to WMS |
+
+### Success Criteria (Definition of Done)
+
+- [ ] Orders created in WMS appear as CRM activities within 30s
+- [ ] Customer lookup in WMS returns CRM data with < 500ms latency
+- [ ] Webhook delivery success rate > 99%
+- [ ] Data consistency > 99.9% after reconciliation
+- [ ] Deep links work bidirectionally between apps
+- [ ] All integration tables have RLS policies
+- [ ] Feature flags allow disabling integration per-component
+
+---
+
+## 10. Priority Decision Matrix
 
 ### Recommended Execution Order
 
@@ -778,32 +1190,29 @@ Enable seamless data flow between LotAstro WMS and LotAstro CRM to create a unif
 │                    RECOMMENDED PRIORITY ORDER                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  1. Batch L: Report Builder Execution    (2.5 days, ~9-14 credits)          │
-│     → Users expecting reports to actually work                              │
+│  ✅ Batch L: Report Builder Execution    (2.5 days) - COMPLETE               │
+│  ✅ Batch J: Offline & Reliability       (2 days) - COMPLETE                 │
+│  ✅ Batch K: Webhook & Integration       (1.5 days) - COMPLETE               │
+│  ✅ Batch O: Quality of Life             (2 days) - COMPLETE                 │
+│  ✅ Batch N: Admin & Security            (1.5 days) - COMPLETE               │
+│  ✅ Batch M: Advanced Forecasting        (2.5 days) - COMPLETE               │
+│  ✅ Batch WMS-1/2/3: WMS Architecture    (5-7 days) - COMPLETE               │
+│  ✅ Batch PERF-1/2/3/4/5: Performance    (1-2 days) - COMPLETE               │
 │                                                                              │
-│  2. Batch J: Offline & Reliability       (2 days, ~8-12 credits)            │
-│     → Critical for warehouse floor use                                      │
+│  🎯 NEXT: Batch F: CRM ↔ WMS Integration (6 days, ~25-35 credits)            │
+│     Phase F-0: Foundation (1 day)                                            │
+│     Phase F-1: Customer Sync + Reservation (2 days)                          │
+│     Phase F-2: Order Fulfillment + Shipment (2 days)                         │
+│     Phase F-3: Edge Cases + Reconciliation (1 day)                           │
 │                                                                              │
-│  3. Batch K: Webhook & Integration       (1.5 days, ~6-9 credits)           │
-│     → Enables CRM/Portal connectivity                                       │
-│                                                                              │
-│  4. Batch O: Quality of Life             (2 days, ~8-13 credits)            │
-│     → User satisfaction improvements                                        │
-│                                                                              │
-│  5. Batch N: Admin & Security            (1.5 days, ~6-10 credits)          │
-│     → Enterprise requirements                                               │
-│                                                                              │
-│  6. Batch M: Advanced Forecasting        (2.5 days, ~9-14 credits)          │
-│     → After core features stable                                            │
-│                                                                              │
-│  7. Batch P: AI Extraction Refactoring   (2.5 days, ~10-15 credits)         │
+│  🔴 Batch P: AI Extraction Refactoring   (2.5 days, ~10-15 credits)          │
 │     → Deferred per user request                                             │
 │                                                                              │
-│  8. Batch I: OCR Pipeline Overhaul       (3 days, ~11-17 credits)           │
+│  🔴 Batch I: OCR Pipeline Overhaul       (3 days, ~11-17 credits)            │
 │     → Deferred per user request                                             │
 │                                                                              │
-│  ⏸️ Batch F: CRM & Ecosystem             (2 days, ~8-13 credits)            │
-│     → Sidelined until CRM ready                                             │
+│  ⏸️ Batch WMS-4/5: Warehouses + Transfers (4-6 days)                         │
+│     → Sidelined until multi-location needed                                 │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -812,17 +1221,36 @@ Enable seamless data flow between LotAstro WMS and LotAstro CRM to create a unif
 
 | Priority | Batches | Days | Credits |
 |----------|---------|------|---------|
-| Core Features | L, J | 4.5 | ~17-26 |
-| Connectivity | K | 1.5 | ~6-9 |
-| Quality of Life | O, N | 3.5 | ~14-23 |
-| Advanced | M | 2.5 | ~9-14 |
+| **CRM Integration** | F (F-0, F-1, F-2, F-3) | 6 | ~25-35 |
 | AI/OCR (deferred) | P, I | 5.5 | ~21-32 |
-| Sidelined | F | 2 | ~8-13 |
-| **TOTAL** | 9 | **19.5** | **~75-117** |
+| Sidelined | WMS-4, WMS-5 | 4-6 | ~15-25 |
+| **TOTAL REMAINING** | 6 batches | **15.5-17.5** | **~61-92** |
 
 ---
 
-## 8. Changelog
+## 11. Changelog
+
+### 2026-01-08 (v5.0.0) - CRM ↔ WMS Integration Architecture
+
+- 🎯 **Major**: Added comprehensive CRM ↔ WMS Integration plan (Batch F)
+- 📋 Added Section 9: CRM ↔ WMS Integration with 4 phases:
+  - Phase F-0: Foundation (outbox tables, secrets, schema changes)
+  - Phase F-1: Customer Sync + Reservation Flow
+  - Phase F-2: Order Fulfillment + Shipment Events
+  - Phase F-3: Edge Cases + CRON Reconciliation
+- 📋 Defined integration contracts:
+  - Entity ownership matrix (CRM owns customers, WMS owns inventory)
+  - 9 WMS → CRM webhook event types
+  - 4 CRM → WMS webhook event types
+  - API endpoint specifications for both projects
+- 📋 Detailed data model changes for both WMS and CRM databases
+- 📋 RLS & security model with role matrix and API key scopes
+- 📋 Workflow mapping with sequence diagrams
+- 📋 Test plan (unit, integration, E2E)
+- 📋 Rollback plan for each phase
+- 📋 Open questions and risk mitigations
+- 🎯 Decision: Two Supabase projects with webhook sync (not shared DB)
+- 🎯 Decision: Outbox pattern for reliable event delivery
 
 ### 2026-01-07 (v4.3.0) - WMS Phase 1 Complete
 
@@ -897,3 +1325,5 @@ Enable seamless data flow between LotAstro WMS and LotAstro CRM to create a unif
 | 3.2.0 | 2025-12-28 | Batches G, H complete |
 | 4.0.0 | 2026-01-02 | Batch consolidation; AI Extraction batch added |
 | 4.2.0 | 2026-01-06 | WMS Architecture Enhancement batches (WMS-1 to WMS-5) |
+| 4.3.0 | 2026-01-07 | WMS Phase 1 complete; Performance batches complete |
+| **5.0.0** | **2026-01-08** | **CRM ↔ WMS Integration Architecture (Batch F rewrite)** |
