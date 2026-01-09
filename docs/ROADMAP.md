@@ -1028,6 +1028,7 @@ ALTER TABLE orders ADD COLUMN crm_customer_id UUID;
 ALTER TABLE orders ADD COLUMN crm_deal_id UUID;
 ALTER TABLE reservations ADD COLUMN crm_customer_id UUID;
 ALTER TABLE reservations ADD COLUMN crm_deal_id UUID;
+ALTER TABLE reservations ADD COLUMN crm_organization_id TEXT;  -- CRM org for multi-tenant prep
 ALTER TABLE inquiries ADD COLUMN crm_customer_id UUID;
 
 -- CRM customer cache (for performance)
@@ -1170,12 +1171,23 @@ CREATE TABLE wms_events_received (
 );
 
 -- Integration settings (admin configuration)
+-- NOTE: CRM uses feature_flags JSONB for granular control
 CREATE TABLE integration_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID REFERENCES organizations(id) UNIQUE,
   wms_api_endpoint TEXT,
   stock_visibility_threshold NUMERIC(12,2) DEFAULT 100,  -- Meters threshold for "available"
   sync_enabled BOOLEAN DEFAULT false,
+  feature_flags JSONB DEFAULT '{
+    "integration_enabled": false,
+    "stock_visibility": false,
+    "auto_reserve": false,
+    "customer_sync": false,
+    "order_events": false,
+    "reservation_events": false,
+    "inquiry_events": false,
+    "deep_links": false
+  }'::jsonb,
   last_full_sync_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -1557,9 +1569,11 @@ CREATE POLICY "Users can view integration settings for their org"
   "timestamp": 1704700000000,
   "payload": {
     "wms_reservation_id": "uuid",
+    "crm_organization_id": "uuid",
     "crm_customer_id": "uuid",
     "crm_deal_id": "uuid",
     "reservation_number": "RES-20260108-001",
+    "customer_ref": "ACME001",
     "lines": [
       {
         "quality_code": "FABRIC-A",
