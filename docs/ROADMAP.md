@@ -1034,6 +1034,7 @@ ALTER TABLE inquiries ADD COLUMN crm_customer_id UUID;
 CREATE TABLE crm_customer_cache (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   crm_customer_id UUID NOT NULL UNIQUE,
+  crm_organization_id UUID,  -- CRM organization for multi-tenant prep
   crm_unique_code TEXT,
   company_name TEXT NOT NULL,
   contact_name TEXT,
@@ -1056,6 +1057,7 @@ CREATE INDEX idx_crm_customer_cache_code ON crm_customer_cache(crm_unique_code);
 -- Integration outbox for reliable event delivery
 CREATE TABLE integration_outbox (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  crm_organization_id TEXT,  -- CRM organization ID for multi-tenant prep
   event_type TEXT NOT NULL,
   payload JSONB NOT NULL,
   target_system TEXT NOT NULL DEFAULT 'crm',
@@ -1088,6 +1090,8 @@ CREATE TABLE integration_sync_log (
 );
 
 -- Integration feature flags for gradual rollout
+-- NOTE: CRM uses JSONB in integration_settings.feature_flags
+-- WMS uses separate table for finer-grained control (both approaches valid)
 CREATE TABLE integration_feature_flags (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   flag_key TEXT NOT NULL UNIQUE,
