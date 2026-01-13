@@ -1393,7 +1393,7 @@ export function IntegrationFeatureFlags() {
 - Outbox → Webhook delivery cycle
 - Customer search → Cache update
 - Reservation create → CRM notification
-- Deal confirmed → Reservation creation
+- Deal won → Reservation creation
 
 ### End-to-End Tests
 - Full order flow: Customer select → Order → Fulfill → Ship
