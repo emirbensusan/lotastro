@@ -1,6 +1,9 @@
 # CRM ↔ WMS Integration Specification
 
-> **Status:** Planning Complete | **Last Updated:** 2026-01-09  
+> **Canonical Contract:** See [integration_contract_v1.md](./integration_contract_v1.md)
+> for authoritative event names, status dictionaries, and idempotency format.
+
+> **Status:** Planning Complete | **Last Updated:** 2026-01-13  
 > **Integration Partners:** WMS (LotAstro) ↔ CRM System
 
 ---
@@ -49,7 +52,7 @@ Enable seamless bidirectional data flow between WMS (warehouse/inventory) and CR
 │                                                                         │
 │  ┌─────────────┐         Events (Webhooks)         ┌─────────────┐     │
 │  │             │ ──────────────────────────────▶   │             │     │
-│  │     CRM     │    deal.confirmed                 │     WMS     │     │
+│  │     CRM     │    deal.won                       │     WMS     │     │
 │  │   System    │    deal.cancelled                 │   System    │     │
 │  │             │    deal.lines_updated             │             │     │
 │  │             │ ◀──────────────────────────────   │             │     │
@@ -232,7 +235,7 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 ```json
 {
   "event_type": "reservation.created",
-  "idempotency_key": "res_uuid_v1",
+  "idempotency_key": "wms:reservation:<id>:created:v1",
   "timestamp": 1704700000000,
   "payload": {
     "wms_reservation_id": "uuid",
@@ -259,12 +262,12 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 ```json
 {
   "event_type": "reservation.released",
-  "idempotency_key": "res_uuid_released_v1",
+  "idempotency_key": "wms:reservation:<id>:released:v1",
   "timestamp": 1704700000000,
   "payload": {
     "wms_reservation_id": "uuid",
     "crm_deal_id": "uuid",
-    "reason": "expired|cancelled|converted",
+    "release_reason": "expired|cancelled|converted",
     "released_meters": 500
   }
 }
@@ -274,7 +277,7 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 ```json
 {
   "event_type": "order.created",
-  "idempotency_key": "order_uuid_v1",
+  "idempotency_key": "wms:order:<id>:created:v1",
   "timestamp": 1704700000000,
   "payload": {
     "wms_order_id": "uuid",
@@ -298,7 +301,7 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 ```json
 {
   "event_type": "order.fulfilled",
-  "idempotency_key": "order_uuid_fulfilled_v1",
+  "idempotency_key": "wms:order:<id>:fulfilled:v1",
   "timestamp": 1704700000000,
   "payload": {
     "wms_order_id": "uuid",
@@ -321,7 +324,7 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 ```json
 {
   "event_type": "shipment.posted",
-  "idempotency_key": "shipment_uuid_v1",
+  "idempotency_key": "wms:shipment:<id>:posted:v1",
   "timestamp": 1704700000000,
   "payload": {
     "wms_shipment_id": "uuid",
@@ -338,7 +341,7 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 ```json
 {
   "event_type": "inquiry.created",
-  "idempotency_key": "inq_uuid_v1",
+  "idempotency_key": "wms:inquiry:<id>:created:v1",
   "timestamp": 1704700000000,
   "payload": {
     "wms_inquiry_id": "uuid",
@@ -359,7 +362,7 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 ```json
 {
   "event_type": "inventory.low_stock",
-  "idempotency_key": "stock_quality_color_timestamp",
+  "idempotency_key": "wms:stock_item:<quality>|<color>:low_stock:v1",
   "timestamp": 1704700000000,
   "payload": {
     "quality_code": "FABRIC-A",
@@ -373,11 +376,11 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 
 ### CRM → WMS Events
 
-#### `deal.confirmed`
+#### `deal.won`
 ```json
 {
-  "event_type": "deal.confirmed",
-  "idempotency_key": "deal_uuid_confirmed_v1",
+  "event_type": "deal.won",
+  "idempotency_key": "crm:deal:<id>:won:v1",
   "timestamp": 1704700000000,
   "payload": {
     "crm_deal_id": "uuid",
@@ -403,7 +406,7 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 ```json
 {
   "event_type": "deal.cancelled",
-  "idempotency_key": "deal_uuid_cancelled_v1",
+  "idempotency_key": "crm:deal:<id>:cancelled:v1",
   "timestamp": 1704700000000,
   "payload": {
     "crm_deal_id": "uuid",
@@ -417,7 +420,7 @@ INSERT INTO integration_feature_flags (flag_key, flag_value, description) VALUES
 ```json
 {
   "event_type": "deal.lines_updated",
-  "idempotency_key": "deal_uuid_lines_v2",
+  "idempotency_key": "crm:deal:<id>:lines_updated:rev<N>:v1",
   "timestamp": 1704700000000,
   "payload": {
     "crm_deal_id": "uuid",
@@ -684,8 +687,8 @@ serve(async (req) => {
   
   // Process event
   switch (event.event_type) {
-    case "deal.confirmed":
-      await handleDealConfirmed(supabase, event.payload);
+    case "deal.won":
+      await handleDealWon(supabase, event.payload);
       break;
     case "deal.cancelled":
       await handleDealCancelled(supabase, event.payload);
