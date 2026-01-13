@@ -844,6 +844,48 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_customer_cache: {
+        Row: {
+          cached_at: string | null
+          company_name: string
+          contacts: Json | null
+          crm_customer_id: string
+          crm_organization_id: string | null
+          email: string | null
+          id: string
+          payment_terms: Json | null
+          phone: string | null
+          stale_at: string | null
+          unique_code: string | null
+        }
+        Insert: {
+          cached_at?: string | null
+          company_name: string
+          contacts?: Json | null
+          crm_customer_id: string
+          crm_organization_id?: string | null
+          email?: string | null
+          id?: string
+          payment_terms?: Json | null
+          phone?: string | null
+          stale_at?: string | null
+          unique_code?: string | null
+        }
+        Update: {
+          cached_at?: string | null
+          company_name?: string
+          contacts?: Json | null
+          crm_customer_id?: string
+          crm_organization_id?: string | null
+          email?: string | null
+          id?: string
+          payment_terms?: Json | null
+          phone?: string | null
+          stale_at?: string | null
+          unique_code?: string | null
+        }
+        Relationships: []
+      }
       database_export_logs: {
         Row: {
           completed_at: string | null
@@ -2399,6 +2441,81 @@ export type Database = {
           },
         ]
       }
+      integration_feature_flags: {
+        Row: {
+          description: string | null
+          flag_key: string
+          flag_value: boolean | null
+          id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          flag_key: string
+          flag_value?: boolean | null
+          id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          flag_key?: string
+          flag_value?: boolean | null
+          id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      integration_outbox: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          max_retries: number | null
+          next_retry_at: string | null
+          organization_id: string | null
+          payload: Json
+          processed_at: string | null
+          retry_count: number | null
+          status: string
+          target_system: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          organization_id?: string | null
+          payload: Json
+          processed_at?: string | null
+          retry_count?: number | null
+          status?: string
+          target_system?: string
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          organization_id?: string | null
+          payload?: Json
+          processed_at?: string | null
+          retry_count?: number | null
+          status?: string
+          target_system?: string
+        }
+        Relationships: []
+      }
       inventory_snapshots: {
         Row: {
           by_color: Json | null
@@ -3025,33 +3142,63 @@ export type Database = {
       }
       orders: {
         Row: {
+          action_required: boolean | null
           created_at: string
           created_by: string
+          crm_customer_id: string | null
+          crm_deal_id: string | null
           customer_name: string
+          delivered_at: string | null
           fulfilled_at: string | null
           fulfilled_by: string | null
+          fulfillment_blocker_status: string | null
+          fulfillment_outcome: string | null
           id: string
+          invoiced_at: string | null
           order_number: string
+          picked_at: string | null
+          shipped_at: string | null
+          status: string | null
           updated_at: string
         }
         Insert: {
+          action_required?: boolean | null
           created_at?: string
           created_by: string
+          crm_customer_id?: string | null
+          crm_deal_id?: string | null
           customer_name: string
+          delivered_at?: string | null
           fulfilled_at?: string | null
           fulfilled_by?: string | null
+          fulfillment_blocker_status?: string | null
+          fulfillment_outcome?: string | null
           id?: string
+          invoiced_at?: string | null
           order_number?: string
+          picked_at?: string | null
+          shipped_at?: string | null
+          status?: string | null
           updated_at?: string
         }
         Update: {
+          action_required?: boolean | null
           created_at?: string
           created_by?: string
+          crm_customer_id?: string | null
+          crm_deal_id?: string | null
           customer_name?: string
+          delivered_at?: string | null
           fulfilled_at?: string | null
           fulfilled_by?: string | null
+          fulfillment_blocker_status?: string | null
+          fulfillment_outcome?: string | null
           id?: string
+          invoiced_at?: string | null
           order_number?: string
+          picked_at?: string | null
+          shipped_at?: string | null
+          status?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -3615,11 +3762,15 @@ export type Database = {
           converted_by: string | null
           created_at: string
           created_by: string
+          crm_customer_id: string | null
+          crm_deal_id: string | null
+          crm_organization_id: string | null
           customer_id: string | null
           customer_name: string
           hold_until: string | null
           id: string
           notes: string | null
+          release_reason: string | null
           reservation_number: string
           reserved_date: string
           status: Database["public"]["Enums"]["reservation_status"]
@@ -3639,11 +3790,15 @@ export type Database = {
           converted_by?: string | null
           created_at?: string
           created_by: string
+          crm_customer_id?: string | null
+          crm_deal_id?: string | null
+          crm_organization_id?: string | null
           customer_id?: string | null
           customer_name: string
           hold_until?: string | null
           id?: string
           notes?: string | null
+          release_reason?: string | null
           reservation_number?: string
           reserved_date?: string
           status?: Database["public"]["Enums"]["reservation_status"]
@@ -3663,11 +3818,15 @@ export type Database = {
           converted_by?: string | null
           created_at?: string
           created_by?: string
+          crm_customer_id?: string | null
+          crm_deal_id?: string | null
+          crm_organization_id?: string | null
           customer_id?: string | null
           customer_name?: string
           hold_until?: string | null
           id?: string
           notes?: string | null
+          release_reason?: string | null
           reservation_number?: string
           reserved_date?: string
           status?: Database["public"]["Enums"]["reservation_status"]
