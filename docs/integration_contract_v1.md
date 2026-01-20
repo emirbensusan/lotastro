@@ -1,32 +1,36 @@
-# Integration Contract v1.0.3
+# Integration Contract v1.0.7
 
-> **Status:** CANONICAL (Locked)
-> **Applies To:** CRM Phase 6, WMS Batch F
-> **Last Updated:** 2026-01-13
-> **Contract Identifier:** integration_contract_v1
-
-**This file must be byte-identical in both CRM and WMS repositories.**
+> **Status:** CANONICAL (Locked)  
+> **Applies To:** CRM Phase 6+, WMS Batch F+  
+> **Last Updated:** 2026-01-20  
+> **Contract Identifier:** integration_contract_v1  
+>
+> **This file must be byte-identical in both CRM and WMS repositories.**
 
 ---
 
 ## Table of Contents
 
-1. [Canonical Entities](#1-canonical-entities)
-2. [Canonical Event Names](#2-canonical-event-names)
-3. [Canonical Status Dictionaries](#3-canonical-status-dictionaries)
-4. [Event to Status Transition Table](#4-event-to-status-transition-table)
-5. [Idempotency Key Standard](#5-idempotency-key-standard)
-6. [Partial Flows and Backorder Modeling](#6-partial-flows-and-backorder-modeling)
-7. [Cancellation Rules](#7-cancellation-rules)
-8. [Picking Behavior Requirements](#8-picking-behavior-requirements)
-9. [Pricing and Cost Ownership](#9-pricing-and-cost-ownership)
-10. [Required Schema Changes](#10-required-schema-changes)
-11. [API and Webhook Contracts](#11-api-and-webhook-contracts)
-12. [Secrets Required](#12-secrets-required)
-13. [Implementation Note for WMS](#13-implementation-note-for-wms)
-14. [Contract Lock Checklist](#14-contract-lock-checklist)
-15. [Version History](#15-version-history)
-16. [Lock Statement](#16-lock-statement)
+1. [Canonical Entities](#1-canonical-entities)  
+2. [Canonical Identifier Rules](#2-canonical-identifier-rules)  
+3. [Canonical Event Names](#3-canonical-event-names)  
+4. [Canonical Status Dictionaries](#4-canonical-status-dictionaries)  
+5. [Event to Status Transition Table](#5-event-to-status-transition-table)  
+6. [Idempotency Key Standard](#6-idempotency-key-standard)  
+7. [PO Fulfillment Rules](#7-po-fulfillment-rules)  
+8. [Partaj Allocation Model (Reservation-First)](#8-partaj-allocation-model-reservation-first)  
+9. [Supply Requests (Manufacturing + Import-from-Central)](#9-supply-requests-manufacturing--import-from-central)  
+10. [Cancellation Rules](#10-cancellation-rules)  
+11. [Picking Behavior Requirements](#11-picking-behavior-requirements)  
+12. [Pricing and Cost Ownership](#12-pricing-and-cost-ownership)  
+13. [Required Schema Changes](#13-required-schema-changes)  
+14. [API and Webhook Contracts](#14-api-and-webhook-contracts)  
+15. [Notifications & Email Rules](#15-notifications--email-rules)  
+16. [Required Pages & Views](#16-required-pages--views)  
+17. [Implementation Notes](#17-implementation-notes)  
+18. [Contract Lock Checklist](#18-contract-lock-checklist)  
+19. [Version History](#19-version-history)  
+20. [Lock Statement](#20-lock-statement)
 
 ---
 
@@ -34,20 +38,52 @@
 
 | Entity | Owner | CRM Column | WMS Column | Notes |
 |--------|-------|------------|------------|-------|
-| Customer | CRM | `id` | `crm_customer_id` | CRM is source of truth |
-| Deal | CRM | `id` | `crm_deal_id` | CRM is source of truth |
 | Organization | CRM | `organization_id` | `crm_organization_id` | Multi-tenant isolation |
-| Reservation | WMS | `wms_reservation_id` | `id` | WMS is source of truth |
-| Order | WMS | `wms_order_id` | `id` | WMS is source of truth |
+| Customer | CRM | `id` | `crm_customer_id` | CRM is source of truth |
+| Deal | CRM | `id` | `crm_deal_id` | Commercial umbrella container (may create multiple POs) |
+| DealLine | CRM | `deal_lines.id` | `crm_deal_line_id` | CRM is canonical for line tracking; WMS MUST persist `crm_deal_line_id` on reservation/order lines and echo it in events |
+| SupplyRequest | CRM | `id` | `crm_supply_request_id` | Tracks manufacturing or import-from-central; mirrored to WMS |
+| Reservation | WMS | `wms_reservation_id` | `id` | WMS is source of truth (includes Partaj allocation fields) |
+| Order (WMS Order) | WMS | `wms_order_id` | `id` | WMS execution object for a PO |
+| PO Number | WMS | `po_number` | `po_number` | Human-facing unique identifier per org; generated in WMS |
 | Shipment | WMS | `wms_shipment_id` | `id` | WMS is source of truth |
-| Inquiry | WMS | — | `id` | WMS-only, optional CRM ref |
+| Inquiry | WMS | — | `id` | Optional (not mandatory) |
 | Inventory | WMS | — | `id` | CRM sees masked availability only |
+
+**Terminology (LOCKED):**
+- **Deal ID (`crm_deal_id`)**: umbrella container shown in CRM (commercial).  
+- **PO Number (`po_number`)**: primary human identifier for ops + customers; shown in WMS, CRM, and customer emails.  
+- **WMS Order ID (`wms_order_id`)**: internal WMS identifier; may be hidden from humans.
 
 ---
 
-## 2. Canonical Event Names
+## 2. Canonical Identifier Rules
 
-### 2.1 CRM to WMS Events (7 events)
+### 2.1 Must-have identifiers in UI (LOCKED)
+
+- **WMS UI primary identifier:** `po_number`  
+- **CRM UI ops/comms primary identifier:** `po_number`  
+- **CRM umbrella grouping:** Deal (Deal ID/Deal Number) groups multiple POs and reservations  
+- **Customer emails:** MUST include `po_number` and line items; may include optional `customer_reference_po`
+
+### 2.2 PO Number uniqueness (LOCKED)
+
+- `po_number` MUST be unique per `crm_organization_id`.  
+- Generated in WMS at `order.created`.  
+- CRM MUST store `po_number` exactly as received (CRM must never invent PO numbers).
+
+### 2.3 Required cross-links (LOCKED)
+
+Every WMS Reservation and WMS Order created from CRM demand MUST carry:
+- `crm_deal_id`
+- `crm_customer_id`
+- `crm_organization_id`
+
+---
+
+## 3. Canonical Event Names
+
+### 3.1 CRM to WMS Events (9 events)
 
 | Event | Description |
 |-------|-------------|
@@ -58,447 +94,535 @@
 | `deal.won` | Deal finalized, ready for WMS fulfillment |
 | `deal.cancelled` | Deal cancelled by CRM |
 | `deal.lines_updated` | Deal line items modified |
+| `supply_request.created` | Manufacturing/import-from-central request created in CRM |
+| `shipment.approved` | CRM approves shipment for a reservation (ON-HAND or INCOMING-BACKED). WMS creates PO/Order and generates `po_number`. |
 
-### 2.2 WMS to CRM Events (15 events)
+### 3.2 WMS to CRM Events (18 events)
 
 | Event | Description |
 |-------|-------------|
 | `inquiry.created` | New inquiry created in WMS |
 | `inquiry.converted` | Inquiry converted to reservation |
-| `reservation.created` | Stock reserved for deal |
+| `reservation.created` | Reservation created |
 | `reservation.released` | Reservation released (see release_reason) |
 | `reservation.converted` | Reservation converted to order |
-| `order.created` | Order created from reservation |
+| `reservation.allocation_planned` | Reservation planned for arrived supply (no roll/lot yet) |
+| `reservation.allocated` | Lot/roll/meters assigned; may require shipment approval |
+| `order.created` | WMS Order created (MUST include `po_number`) |
 | `order.picking_started` | Warehouse began picking |
 | `order.prepared` | Warehouse finished picking and packing |
 | `shipment.posted` | Shipment dispatched |
-| `shipment.delivered` | Shipment delivered to customer |
-| `order.invoiced` | Invoice created (manual WMS action) |
-| `order.fulfilled` | Order fully completed (closure state) |
-| `order.cancelled` | Order cancelled in WMS |
+| `shipment.delivered` | Shipment delivered |
+| `order.invoiced` | Invoice milestone (manual WMS action) |
+| `order.fulfilled` | Closed and completed |
+| `order.cancelled` | Cancelled in WMS |
 | `stock.changed` | Inventory levels changed |
-| `inventory.low_stock` | Stock below threshold alert |
+| `inventory.low_stock` | Low stock alert |
+| `supply_request.status_updated` | Supply request milestone updated |
 
-### 2.3 Removed Events
-
-The following event names are NOT canonical and must NOT be used:
+### 3.3 Removed Events (LOCKED)
 
 - `deal.confirmed` — REMOVED, use `deal.won` instead
 
 ---
 
-## 3. Canonical Status Dictionaries
+## 4. Canonical Status Dictionaries
 
-### 3.1 CRM Status: deals.fulfillment_status
+### 4.1 CRM: deals.fulfillment_status (UNCHANGED)
 
-| Value | Description |
-|-------|-------------|
-| `pending` | Default, no WMS action yet |
-| `reserved` | Reservation created in WMS |
-| `picking` | Picking started or prepared |
-| `shipped` | Shipment posted |
-| `delivered` | Shipment delivered |
-| `cancelled` | Deal cancelled |
+`pending`, `reserved`, `picking`, `shipped`, `delivered`, `cancelled`
 
-### 3.2 WMS Status: orders.status
+### 4.2 WMS: orders.status (UNCHANGED)
 
-| Value | Description |
-|-------|-------------|
-| `draft` | Manual WMS-only orders |
-| `confirmed` | Order confirmed |
-| `reserved` | Stock reserved |
-| `picking` | Picking in progress |
-| `shipped` | Shipment posted |
-| `delivered` | Delivery confirmed |
-| `invoiced` | Invoice created |
-| `fulfilled` | Closed and completed |
-| `cancelled` | Cancelled |
+`draft`, `confirmed`, `reserved`, `picking`, `shipped`, `delivered`, `invoiced`, `fulfilled`, `cancelled`
 
-### 3.3 WMS Status: reservations (two-field model)
+### 4.3 WMS: reservations status (UNCHANGED)
 
-**Column: reservations.status**
+- `reservations.status`: `active`, `released`  
+- `reservations.release_reason` (when released): `expired`, `cancelled`, `converted`
 
-| Value | Description |
-|-------|-------------|
-| `active` | Reservation is active |
-| `released` | Reservation has been released |
+### 4.4 WMS: orders.fulfillment_blocker_status (UNCHANGED)
 
-**Column: reservations.release_reason** (only when status is released)
+`none`, `backordered`, `awaiting_incoming`, `needs_central_check`, `production_required`, `rejected`
 
-| Value | Description |
-|-------|-------------|
-| `expired` | TTL exceeded |
-| `cancelled` | User or system cancelled |
-| `converted` | Converted to order |
+### 4.5 SupplyRequest types (LOCKED)
 
-### 3.4 WMS Status: orders.fulfillment_blocker_status
+`supply_requests.type`: `manufacturing`, `import_from_central`
 
-| Value | Description |
-|-------|-------------|
-| `none` | No blockers |
-| `backordered` | Waiting for stock |
-| `awaiting_incoming` | Stock expected from supplier |
-| `needs_central_check` | Requires central warehouse review |
-| `production_required` | Needs manufacturing |
-| `rejected` | Rejected from fulfillment |
+### 4.6 SupplyRequest status (LOCKED)
 
-### 3.5 WMS Status: orders.fulfillment_outcome
+`supply_requests.status`:
+- `planned`
+- `eta_confirmed`
+- `in_transit`
+- `arrived_soft` (**Arrived (Soft)**: no roll/lot yet, inventory NOT increased)
+- `allocated`
+- `closed`
+- `cancelled`
 
-| Value | Description |
-|-------|-------------|
-| `complete` | Fully fulfilled |
-| `partial_closed` | Partially fulfilled then closed |
-| `cancelled` | Cancelled |
+### 4.7 Reservation allocation state (LOCKED)
 
----
+`reservations.allocation_state`:
+- `unallocated`
+- `planned`
+- `allocated`
 
-## 4. Event to Status Transition Table
+### 4.8 Reservation ship intent (LOCKED)
 
-**Note:** `orders.status` is NOT set to `reserved` by reservation events; reservation state is tracked only in the `reservations` table.
+`reservations.ship_intent`:
+- `immediate`
+- `ship_on_date`
+- `unknown`
 
-| Event | CRM fulfillment_status | WMS orders.status | Notes |
-|-------|------------------------|-------------------|-------|
-| `deal.won` | pending | — | WMS receives, shows as pending |
-| `deal.cancelled` | cancelled | cancelled | WMS sets action_required=true, requires soft-close |
-| `reservation.created` | reserved | — | Updates reservations.status=active |
-| `reservation.released` | conditional | — | See rules below |
-| `reservation.converted` | no change | — | Continue from order flow |
-| `order.created` | no change | confirmed | Order shell created |
-| `order.picking_started` | picking | picking | CRM shows picking |
-| `order.prepared` | picking | picking | Same CRM status |
-| `shipment.posted` | shipped | shipped | In transit |
-| `shipment.delivered` | delivered | delivered | Customer received |
-| `order.invoiced` | no change | invoiced | WMS internal milestone |
-| `order.fulfilled` | no change | fulfilled | Closure state |
-| `order.cancelled` | cancelled | cancelled | Both systems mark cancelled |
+### 4.9 Reservation action required (LOCKED)
 
-### 4.1 reservation.released Transition Rules
+`reservations.action_required` BOOLEAN  
+`reservations.action_required_reason` TEXT allowed values:
+- `needs_allocation_plan`
+- `needs_roll_entry`
+- `needs_ship_date`
+- `needs_customer_confirmation`
+- `needs_shipment_approval`
+- `needs_shortage_decision`
+- `override_used`
 
-- If `release_reason` is `cancelled` or `expired` AND reservation was NOT converted: CRM reverts to `pending` (if currently `reserved`)
-- If `release_reason` is `converted`: Do NOT revert CRM status; continue from order flow
+### 4.10 Shipment approval override reasons (LOCKED)
 
-The `reservation.released` webhook payload MUST include `release_reason` with allowed values: `expired`, `cancelled`, or `converted`.
-
-**Example Payload:**
-
-```json
-{
-  "event_type": "reservation.released",
-  "idempotency_key": "wms:reservation:ghi789:released:v1",
-  "payload": {
-    "wms_reservation_id": "ghi789",
-    "crm_deal_id": "def456",
-    "release_reason": "converted",
-    "released_meters": 150.00
-  }
-}
-```
-
-### 4.2 order.invoiced Ordering Rules
-
-- `order.invoiced` is REQUIRED before `order.fulfilled`
-- `order.invoiced` may occur after `shipment.posted`
-- `order.invoiced` may occur before OR after `shipment.delivered` (policy-dependent)
-- `order.fulfilled` is always the final closure state
+If WMS Manager overrides shipment approval, WMS MUST record `override_reason` as one of:
+- `customer_confirmed_email`
+- `customer_confirmed_whatsapp`
+- `customer_confirmed_phone`
+- `customer_confirmed_text`
+- `approval_link_received`
+- `ship_immediate_policy`
+- `manager_directive`
+- `ops_emergency`
+- `other`
 
 ---
 
-## 5. Idempotency Key Standard
+## 5. Event to Status Transition Table
 
-### 5.1 Format (LOCKED)
-
-```text
-<source_system>:<entity>:<entity_id>:<action>:v1
-```
-
-### 5.2 Standard Examples
-
-```text
-crm:customer:abc123:created:v1
-crm:customer:abc123:updated:v1
-crm:deal:def456:approved:v1
-crm:deal:def456:accepted:v1
-crm:deal:def456:won:v1
-crm:deal:def456:cancelled:v1
-wms:reservation:ghi789:created:v1
-wms:reservation:ghi789:released:v1
-wms:reservation:ghi789:converted:v1
-wms:order:jkl012:created:v1
-wms:order:jkl012:picking_started:v1
-wms:order:jkl012:prepared:v1
-wms:order:jkl012:invoiced:v1
-wms:order:jkl012:fulfilled:v1
-wms:order:jkl012:cancelled:v1
-wms:shipment:mno345:posted:v1
-wms:shipment:mno345:delivered:v1
-```
-
-### 5.3 Repeating Actions
-
-For actions that may repeat (like line updates), use revision counter:
-
-```text
-crm:deal:<deal_id>:lines_updated:rev<increment>:v1
-```
-
-Example:
-
-```text
-crm:deal:def456:lines_updated:rev1:v1
-crm:deal:def456:lines_updated:rev2:v1
-crm:deal:def456:lines_updated:rev3:v1
-```
-
-### 5.4 Stock Events
-
-Stock events use compound entity ID with pipe separator. NO TIMESTAMPS.
-
-```text
-wms:stock_item:FABRIC-A|BLUE-001:changed:v1
-wms:stock_item:FABRIC-A|BLUE-001:low_stock:v1
-wms:stock_item:SILK-B|RED-042:changed:v1
-```
+| Event | CRM deal fulfillment_status | WMS orders.status | Notes |
+|-------|-----------------------------|-------------------|-------|
+| `deal.won` | pending | — | Deal ready |
+| `reservation.created` | reserved | — | Reservation exists |
+| `supply_request.created` | no change | — | Supply request mirrored in WMS |
+| `supply_request.status_updated` | no change | — | CRM mirrors milestones |
+| `reservation.allocation_planned` | reserved | — | Planned; no roll/lot yet |
+| `reservation.allocated` | reserved | — | Roll/lot entered; may need approval |
+| `shipment.approved` | reserved | — | Triggers WMS to create PO/Order |
+| `order.created` | reserved | confirmed | MUST include `po_number` |
+| `order.picking_started` | picking | picking | |
+| `order.prepared` | picking | picking | |
+| `shipment.posted` | shipped | shipped | |
+| `shipment.delivered` | delivered | delivered | |
+| `order.invoiced` | no change | invoiced | |
+| `order.fulfilled` | no change | fulfilled | |
+| `deal.cancelled` | cancelled | cancelled | WMS sets action_required=true; requires soft-close |
 
 ---
 
-## 6. Partial Flows and Backorder Modeling
+## 6. Idempotency Key Standard (LOCKED)
 
-### 6.1 Partial Reservations
+Format:
+`<source_system>:<entity>:<entity_id>:<action>:v1`
 
-- Track at line level: `reserved_meters` vs `requested_meters`
-- Compute `is_partial` flag when `reserved_meters < requested_meters`
-- Order remains open until all lines completed
-
-### 6.2 Partial Shipments
-
-- Track at line level: `shipped_meters` vs `ordered_meters`
-- Multiple shipments per order are allowed
-- Do NOT create extra CRM statuses like `partially_shipped`
-- CRM shows line-level progress meters
-
-### 6.3 Backorder View
-
-- Use `fulfillment_blocker_status` to filter orders in WMS
-- Dedicated Backorders view shows orders where `fulfillment_blocker_status != 'none'`
-- Does NOT corrupt lifecycle status
+Examples:
+- `crm:supply_request:<id>:created:v1`
+- `wms:supply_request:<id>:status_updated:v1`
+- `wms:reservation:<id>:allocation_planned:v1`
+- `wms:reservation:<id>:allocated:v1`
+- `crm:reservation:<id>:shipment_approved:v1`
 
 ---
 
-## 7. Cancellation Rules
+## 7. PO Fulfillment Rules
 
-### 7.1 CRM Cancellation After Reservation Exists
+### 7.1 Single-PO Full Fulfillment (LOCKED)
 
-1. CRM sends `deal.cancelled` event
-2. WMS does NOT hard delete automatically
-3. WMS sets `orders.status = 'cancelled'` and `action_required = true`
-4. WMS user performs soft-close or soft-delete (logged in audit)
-5. CRM customer page shows cancelled orders historically
+A **PO (`po_number` / WMS Order)** is a fully shipped unit.
 
-### 7.2 Cancellation After Picking Started
+- A PO MUST NOT be partially shipped.
+- If only part of a deal can ship now, create a PO for the shippable portion and keep the remainder as a reservation for later PO.
 
-Setting: `allow_cancel_after_picking_started`
+### 7.2 PO Number generation (LOCKED)
 
-| Value | Behavior |
-|-------|----------|
-| `false` (default) | Require manager override to cancel |
-| `true` | Allow cancel with warning |
+- WMS generates `po_number` at `order.created`.
+- WMS MUST include `po_number` in the `order.created` webhook payload to CRM.
+- CRM MUST store `po_number` and use it as the primary reference in:
+  - shipment approval inbox
+  - deal “POs” section
+  - customer email templates
 
----
+### 7.3 Shipments per PO (DEFAULT POLICY)
 
-## 8. Picking Behavior Requirements
-
-When picking starts in WMS:
-
-1. Picker records actual lot, roll, and meters picked
-2. Order content may change based on:
-   - **Single-lot preference**: Customer prefers one lot, may reduce meters
-   - **Allowed variance**: 5 to 10 percent higher than requested allowed
-   - **Substitutions**: Require approval (permission-gated)
-
-These are line-level adjustments, not status changes.
+- Default expectation: **1 shipment per PO**.
+- If implementation supports multiple shipments, WMS MUST still enforce that a PO is fully shipped (no partial quantities).
+- Any exception MUST be permission-gated and audit logged.
 
 ---
 
-## 9. Pricing and Cost Ownership
+## 8. Partaj Allocation Model (Reservation-First)
 
-| Aspect | Owner | Notes |
-|--------|-------|-------|
-| Sales quote prices | CRM | Deal lines include unit_price |
-| Price approvals | CRM | Discount approval workflow |
-| Inbound stock costs | WMS | Customs, supplier costs |
-| COGS calculation | WMS | Based on actual lots picked |
-| Landed cost | Future | Pricing Engine app (WIP) |
-| Margin calculation | Future | Pricing Engine app (WIP) |
+**Definition (LOCKED):**  
+Partaj is implemented using reservation allocation states and shipment approval gates. There is no separate “Partaj” entity.
 
-### 9.1 Future Pricing Engine
+**Reservation source rule (LOCKED):**
+- If `reservations.crm_supply_request_id IS NULL` → reservation is **ON-HAND** (warehouse stock already exists).
+- If `reservations.crm_supply_request_id IS NOT NULL` → reservation is **INCOMING-BACKED** (Partaj allocation flow applies).
 
-A separate Pricing Engine app will compute prices using WMS costs and market data, feeding calculated prices to CRM for quotes. This is not yet implemented and documented for reference only.
+
+### 8.1 Soft Arrival (LOCKED)
+
+WMS MUST support `arrived_soft` where:
+- supply is marked arrived
+- reservations can be planned
+- inventory is NOT increased
+- roll/lot entry is NOT required yet
+
+### 8.2 Reservation-first allocation (LOCKED)
+
+Allocation happens in two steps:
+
+1) `reservation.allocation_planned`  
+   - ops decides which reservations will be fulfilled from arrived supply  
+   - no roll/lot entered yet
+
+2) `reservation.allocated`  
+   - after physical separation, ops enters **lot + roll + meters**  
+   - reservation becomes eligible for shipment approval flow
+
+### 8.3 Shipment gating (LOCKED)
+
+A PO (WMS Order) is created ONLY after **shipment approval** via either CRM approval or WMS manager override.
+
+**Path A — INCOMING-BACKED (Partaj) reservations**
+- Preconditions:
+  - `reservations.crm_supply_request_id IS NOT NULL`
+  - `reservation.allocation_state = allocated` (lot/roll/meters entered)
+- Then either:
+  - CRM sends `shipment.approved`, OR
+  - WMS manager override is logged with `override_reason`
+
+**Path B — ON-HAND reservations**
+- Preconditions:
+  - `reservations.crm_supply_request_id IS NULL`
+  - WMS confirms reservation lines are fulfillable from on-hand stock
+- Then either:
+  - CRM sends `shipment.approved`, OR
+  - WMS manager override is logged with `override_reason`
+
+**Important (LOCKED):** ON-HAND reservations do **not** require `allocation_state=allocated` prior to shipment approval; lot/roll is captured during picking/prep.
+
+### 8.4 Shortage handling (LOCKED)
+
+If arrived supply is insufficient to fulfill multiple promised reservations:
+- WMS MUST set `action_required=true` and `action_required_reason=needs_shortage_decision`
+- WMS MUST block PO creation until a Sales Manager decision is recorded (audit logged)
 
 ---
 
-## 10. Required Schema Changes
+## 9. Supply Requests (Manufacturing + Import-from-Central)
 
-### 10.1 CRM Database: deals Table
+### 9.1 Ownership & mirroring (LOCKED)
+
+- Supply requests are **created in CRM** and mirrored to WMS for operational tracking.
+- WMS can update milestones (in transit, soft arrival, allocated, etc.) and must notify CRM via webhook.
+
+**Manufacturing orders relationship (LOCKED):**
+- WMS may keep its existing `manufacturing_orders` table.
+- For `supply_requests.type='manufacturing'`, WMS MUST link the mirror record via `supply_requests.manufacturing_order_id` when such an operational manufacturing order exists.
+- This contract does NOT require auto-creating manufacturing orders; it requires correct linkage and normalized milestone updates via `supply_request.status_updated`.
+
+### 9.2 Relationship to reservations (LOCKED)
+
+- A deal can have multiple supply requests and multiple reservations.
+- Reservations may reference a supply request via `crm_supply_request_id`.
+
+---
+
+## 10. Cancellation Rules
+
+- `deal.cancelled`: WMS sets `orders.status='cancelled'`, sets `action_required=true`, requires soft-close (audit logged).
+- If a supply request is cancelled, WMS MUST not allocate it to reservations.
+
+---
+
+## 11. Picking Behavior Requirements (UNCHANGED)
+
+Line-level adjustments (variance/substitution) require permission-gated approvals.
+
+---
+
+## 12. Pricing and Cost Ownership (UNCHANGED)
+
+- Quote prices + commercial approvals: CRM  
+- Inbound costs + actual lots picked: WMS
+
+---
+
+## 13. Required Schema Changes
+
+### 13.1 CRM: supply_requests (NEW)
 
 ```sql
-ALTER TABLE deals ADD COLUMN wms_reservation_id TEXT;
-ALTER TABLE deals ADD COLUMN wms_order_id TEXT;
-ALTER TABLE deals ADD COLUMN wms_shipment_id TEXT;
-ALTER TABLE deals ADD COLUMN fulfillment_status TEXT DEFAULT 'pending';
-ALTER TABLE deals ADD COLUMN shipped_at TIMESTAMPTZ;
-ALTER TABLE deals ADD COLUMN delivered_at TIMESTAMPTZ;
-ALTER TABLE deals ADD COLUMN tracking_number TEXT;
-```
-
-### 10.2 CRM Database: deal_lines Table
-
-```sql
-CREATE TABLE deal_lines (
+CREATE TABLE supply_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
   organization_id UUID NOT NULL REFERENCES organizations(id),
+  deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  type TEXT NOT NULL, -- manufacturing | import_from_central
+  status TEXT DEFAULT 'planned',
   quality_code TEXT NOT NULL,
   color_code TEXT,
-  requested_meters NUMERIC(12,2) NOT NULL,
-  reserved_meters NUMERIC(12,2),
-  shipped_meters NUMERIC(12,2),
-  delivered_meters NUMERIC(12,2),
-  unit_price NUMERIC(12,2),
-  line_notes TEXT,
-  wms_reservation_line_id TEXT,
-  wms_order_line_id TEXT,
+  meters NUMERIC(12,2) NOT NULL,
+  eta_date DATE,
+  notes TEXT,
+  created_by UUID,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
-### 10.3 WMS Database: reservations Table
+### 13.2 WMS: supply_requests mirror (NEW or extend existing manufacturing module)
 
 ```sql
-ALTER TABLE reservations ADD COLUMN status TEXT DEFAULT 'active';
-ALTER TABLE reservations ADD COLUMN release_reason TEXT;
-ALTER TABLE reservations ADD COLUMN crm_deal_id TEXT;
-ALTER TABLE reservations ADD COLUMN crm_customer_id TEXT;
-ALTER TABLE reservations ADD COLUMN crm_organization_id TEXT;
+ALTER TABLE supply_requests ADD COLUMN crm_supply_request_id UUID;
+ALTER TABLE supply_requests ADD COLUMN crm_deal_id UUID;
+ALTER TABLE supply_requests ADD COLUMN crm_customer_id UUID;
+ALTER TABLE supply_requests ADD COLUMN crm_organization_id UUID;
+ALTER TABLE supply_requests ADD COLUMN type TEXT;   -- manufacturing | import_from_central
+ALTER TABLE supply_requests ADD COLUMN status TEXT; -- planned | eta_confirmed | in_transit | arrived_soft | allocated | closed | cancelled
+ALTER TABLE supply_requests ADD COLUMN eta_date DATE;
+ALTER TABLE supply_requests ADD COLUMN manufacturing_order_id UUID; -- optional FK to existing manufacturing_orders
 ```
 
-### 10.4 WMS Database: orders Table
+### 13.3 WMS: reservations fields (NEW)
 
 ```sql
-ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'confirmed';
-ALTER TABLE orders ADD COLUMN fulfillment_blocker_status TEXT DEFAULT 'none';
-ALTER TABLE orders ADD COLUMN fulfillment_outcome TEXT;
-ALTER TABLE orders ADD COLUMN action_required BOOLEAN DEFAULT false;
-ALTER TABLE orders ADD COLUMN crm_customer_id UUID;
-ALTER TABLE orders ADD COLUMN crm_deal_id UUID;
+ALTER TABLE reservations ADD COLUMN crm_supply_request_id UUID;
+ALTER TABLE reservations ADD COLUMN ship_intent TEXT DEFAULT 'unknown';
+ALTER TABLE reservations ADD COLUMN ship_date DATE;
+ALTER TABLE reservations ADD COLUMN allocation_state TEXT DEFAULT 'unallocated';
+ALTER TABLE reservations ADD COLUMN action_required BOOLEAN DEFAULT false;
+ALTER TABLE reservations ADD COLUMN action_required_reason TEXT;
 ```
 
-Allowed values for `status` are exactly as defined in Section 3.2: `draft`, `confirmed`, `reserved`, `picking`, `shipped`, `delivered`, `invoiced`, `fulfilled`, `cancelled`.
+### 13.4 WMS: orders (PO number + override logging) (NEW)
 
----
-
-## 11. API and Webhook Contracts
-
-### 11.1 CRM Exposes
-
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /crm-get-customer` | Customer lookup |
-| `POST /crm-search-customers` | Customer search |
-| `POST /crm-integration-api` | Webhook receiver (HMAC validated) |
-
-### 11.2 WMS Exposes
-
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /api-get-inventory` | Stock query (masked or full) |
-| `POST /api-get-catalog` | Catalog items |
-| `POST /api-create-order` | Order creation from CRM |
-
-### 11.3 HMAC Signing
-
-| Parameter | Value |
-|-----------|-------|
-| Header | `X-Signature`, `X-Timestamp` |
-| Algorithm | HMAC-SHA256 |
-| Payload | `JSON.stringify(body) + timestamp` |
-| Window | 5 minutes |
-
----
-
-## 12. Secrets Required
-
-| Secret | CRM | WMS | Purpose |
-|--------|-----|-----|---------|
-| `WMS_API_KEY` | Yes | — | Auth to WMS |
-| `WMS_API_URL` | Yes | — | WMS endpoint |
-| `WMS_WEBHOOK_SECRET` | Yes | — | Validate incoming WMS webhooks |
-| `CRM_API_KEY` | — | Yes | Auth to CRM |
-| `CRM_API_URL` | — | Yes | CRM endpoint |
-| `CRM_WEBHOOK_SECRET` | — | Yes | Validate incoming CRM webhooks |
-
----
-
-## 13. Implementation Note for WMS
-
-### 13.1 Spelling Normalization
-
-Canonical spelling in contract and all outbound events is:
-
-```text
-cancelled
+```sql
+ALTER TABLE orders ADD COLUMN po_number TEXT;
+ALTER TABLE orders ADD COLUMN override_used BOOLEAN DEFAULT false;
+ALTER TABLE orders ADD COLUMN override_reason TEXT;
+ALTER TABLE orders ADD COLUMN override_notes TEXT;
+ALTER TABLE orders ADD COLUMN override_by UUID;
+ALTER TABLE orders ADD COLUMN override_at TIMESTAMPTZ;
 ```
 
-However, WMS currently has a legacy internal enum value:
+### 13.5 WMS: reservation_lines + order_lines (line mapping) (NEW)
 
-```text
-canceled
+WMS MUST persist CRM line linkage on line records so CRM can reconcile meters and audits deterministically.
+
+```sql
+ALTER TABLE reservation_lines ADD COLUMN crm_deal_line_id UUID NOT NULL;
+ALTER TABLE order_lines ADD COLUMN crm_deal_line_id UUID NOT NULL;
 ```
 
-**Required Actions:**
 
-- WMS MUST normalize any internal `canceled` value to `cancelled` in outbound webhook payloads and any CRM-facing displays
-- Internal DB migration to canonical spelling may be scheduled later
-- Normalization is mandatory immediately
+### 13.6 CRM: deal_orders (multi-PO support) (NEW)
 
-This note exists in the contract to ensure CRM and WMS copies remain byte-identical.
+```sql
+CREATE TABLE deal_orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id),
+  deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  wms_order_id TEXT NOT NULL,
+  po_number TEXT NOT NULL,
+  customer_reference_po TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
 
 ---
 
-## 14. Contract Lock Checklist
+## 14. API and Webhook Contracts
 
-Before copying to WMS repo, verify:
+### 14.1 CRM Exposes (UNCHANGED)
+
+- `POST /crm-get-customer`
+- `POST /crm-search-customers`
+- `POST /crm-integration-api` (webhook receiver; HMAC validated)
+
+### 14.2 WMS Exposes (UNCHANGED)
+
+- `POST /api-get-inventory`
+- `POST /api-get-catalog`
+- `POST /api-create-order`
+
+### 14.3 HMAC Signing (LOCKED)
+
+Header: `X-Signature`, `X-Timestamp`  
+Algorithm: HMAC-SHA256  
+Payload: `JSON.stringify(body) + timestamp`  
+Window: 5 minutes
+
+### 14.4 Required payload fields (LOCKED)
+
+**CRM → WMS: `shipment.approved` payload MUST include:**
+- `wms_reservation_id`
+- `crm_deal_id`
+- `crm_customer_id`
+- `crm_organization_id`
+- `ship_intent`
+- `requested_ship_date` (nullable)
+- `approver_user_id`
+
+WMS MUST:
+- determine reservation source using `crm_supply_request_id`:
+  - **INCOMING-BACKED**: validate `allocation_state=allocated`
+  - **ON-HAND**: validate reservation lines are fulfillable from on-hand stock (no `allocation_state` requirement)
+- create WMS Order (PO)
+- generate `po_number`
+- emit `order.created` including `po_number`
+
+**WMS → CRM: `order.created` payload MUST include:**
+- `wms_order_id`
+- `po_number`
+- `crm_deal_id`
+- `crm_customer_id`
+- `crm_organization_id`
+- `lines[]` array (required) containing, per line:
+  - `crm_deal_line_id`
+  - `wms_order_line_id`
+  - `quality_code`, `color_code`
+  - `ordered_meters`
+
+**WMS → CRM: `reservation.allocated` payload MUST include (line-level):**
+- `wms_reservation_id`
+- `crm_deal_id`
+- `lines[]` array (required) containing, per allocated line:
+  - `crm_deal_line_id`
+  - `wms_reservation_line_id`
+  - `quality_code`, `color_code`
+  - `allocated_meters`
+  - `lot_id` (or lot code)
+  - `roll_id` (or roll code)
+
+---
+
+## 15. Notifications & Email Rules
+
+### 15.1 Customer emails (LOCKED)
+
+- Customer shipment emails are **human-approved only** (no automatic sends).
+- Bulk send is allowed (e.g., “Loaded and on the way”, end-of-day “Delivered”).
+- Customer emails MUST include:
+  - `po_number`
+  - line item details
+  - optional `customer_reference_po` if present
+
+### 15.2 Mandatory internal emails (minimum set, LOCKED)
+
+(i) Supply request created → WMS Ops  
+(ii) ETA near → WMS Ops + Sales Owner  
+(iii) In transit confirmed → Sales Owner  
+(iv) Soft arrival confirmed → Sales Owner + visible in CRM inbox  
+(v) Approval needed (needs_shipment_approval) → Sales Owner/Manager  
+(vi) Override used → Sales Manager
+
+---
+
+## 16. Required Pages & Views (LOCKED UX REQUIREMENTS)
+
+### 16.1 CRM Pages (NEW)
+
+1) **Supply Requests Dashboard**
+- Create/manage manufacturing + import_from_central requests
+- Status timeline mirrored from WMS
+
+2) **Shipment Approval Inbox (Universal Gate)**
+- Lists reservations where `action_required_reason` is:
+  - `needs_shipment_approval` (applies to ON-HAND and INCOMING-BACKED)
+  - `needs_ship_date`
+  - `needs_shortage_decision`
+- Must show reservation source derived from `crm_supply_request_id` (ON-HAND vs INCOMING-BACKED)
+- Actions:
+  - Approve shipment → emits `shipment.approved`
+  - Set ship date / ship intent
+
+3) **Deal Detail: Supply & POs**
+- Shows:
+  - supply requests
+  - reservations (allocation_state, ship_intent)
+  - all POs (`po_number`) under the deal (from `deal_orders`)
+  - audit trail
+
+### 16.2 WMS Pages (NEW)
+
+1) **Supply Requests (Manufacturing + Import)**
+- Actions:
+  - Confirm In Transit
+  - Mark Arrived (Soft)
+
+2) **Allocation Planning Queue**
+- Select reservations → set allocation_state=planned → emit `reservation.allocation_planned`
+
+3) **Allocation Entry (Lot/Roll/Meters input)**
+- Enter allocations → set allocation_state=allocated → emit `reservation.allocated`
+
+4) **Ship Next Day (Staging Queue)**
+- Shows POs (WMS Orders) created from shipment approval/override, primary display `po_number`.
+- This is **post-PO** and is not the Partaj allocation step.
+
+---
+
+## 17. Implementation Notes
+
+### 17.1 Inquiry is optional (LOCKED)
+
+Inquiry is NOT mandatory. Flows may go directly to reservation or order, but all created objects must carry required CRM cross-links.
+
+### 17.2 Spelling normalization (LOCKED)
+
+Canonical spelling is `cancelled`. WMS must normalize any internal `canceled` to `cancelled` in outbound payloads and CRM-facing views.
+
+---
+
+## 18. Contract Lock Checklist
 
 - [ ] Filename is EXACT: `docs/integration_contract_v1.md`
-- [ ] Contract content will be copied byte-for-byte into WMS repo
-- [ ] `deal.confirmed` appears ONLY in Section 2.3 (Removed Events); zero occurrences elsewhere in repo docs & code
-- [ ] Idempotency examples conform to locked format (no timestamps)
-- [ ] All status dictionaries match between sections
-- [ ] CRM to WMS event count is 7
-- [ ] WMS to CRM event count is 15
-- [ ] Total canonical events is 22
+- [ ] Contract copied byte-for-byte into BOTH repos
+- [ ] `deal.confirmed` appears ONLY in Removed Events
+- [ ] Idempotency keys have NO timestamps
+- [ ] `po_number` is generated in WMS and included in `order.created` payload
+- [ ] CRM stores all POs under a deal via `deal_orders` (including `customer_reference_po` when provided)
+- [ ] WMS stores `crm_deal_line_id` on reservation/order lines and echoes it in events
+- [ ] Shipment approval uses `shipment.approved`; WMS creates the PO/Order
+- [ ] Single-PO full fulfillment enforced (no partial PO shipment)
+- [ ] Soft arrival does not increase inventory
+- [ ] Shipment approval for ON-HAND reservations does NOT require allocation_state=allocated (no deadlock)
+- [ ] `arrived_soft` is displayed as "Arrived (Soft)" in UI
+- [ ] Override requires reason code + audit logging
 
 ---
 
-## 15. Version History
+## 19. Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.3 | 2026-01-13 | Fix checklist so deal.confirmed can exist only in Removed Events section |
-| 1.0.2 | 2026-01-13 | Add missing WMS orders.status schema change |
-| 1.0.1 | 2026-01-13 | Clarified reservation.released payload requires release_reason |
-| 1.0.0 | 2026-01-13 | Initial canonical contract |
+| 1.0.7 | 2026-01-20 | Fix shipment.approved gating to support ON-HAND reservations (no allocation_state requirement); clarify Partaj applies only to INCOMING-BACKED reservations; lock "Arrived (Soft)" UI label; rename shipment approvals as universal gate; add manufacturing_orders linkage via supply_requests.manufacturing_order_id |
+| 1.0.6 | 2026-01-20 | Add `customer_reference_po` to `deal_orders`; require WMS line mapping with `crm_deal_line_id` on reservation/order lines; require line arrays in `order.created` and `reservation.allocated` payloads |
+| 1.0.5 | 2026-01-19 | Lock PO number as primary identifier; lock single-PO full fulfillment; lock shipment.approved trigger; expand override reasons; lock supply request ownership (CRM) + WMS mirroring; lock Partaj reservation-first allocation + soft arrival; lock required pages + notifications |
 
 ---
 
-## 16. Lock Statement
+## 20. Lock Statement
 
-**Any change to this contract requires:**
+Any change to this contract requires:
+1) Bumping version
+2) Updating Last Updated
+3) Adding Version History entry
+4) Updating BOTH repos
+5) Coordinating deployment timing
 
-1. Bumping Version to v1.0.4 or higher
-2. Updating the Last Updated date
-3. Adding entry to Version History
-4. Updating BOTH CRM and WMS repositories
-5. Coordinating deployment timing between teams
-
-This contract is now LOCKED. Do not modify without version bump.
+This contract is LOCKED.

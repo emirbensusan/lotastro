@@ -1,7 +1,7 @@
 # LotAstro Test Cases
 
-> **Version**: 1.0.0  
-> **Last Updated**: 2026-01-05  
+> **Version**: 1.1.0  
+> **Last Updated**: 2026-01-20  
 > **Coverage**: Critical User Journeys & Integration Points
 
 ---
@@ -235,7 +235,7 @@ Before each release, verify:
 
 ## 13. CRM-WMS Integration
 
-> **Contract Version**: 1.0.6  
+> **Contract Version**: 1.0.7  
 > **Reference**: `docs/integration_contract_v1.md`
 
 ### 13.1 Supply Requests
@@ -248,8 +248,11 @@ Before each release, verify:
 | CRM-004 | Mark arrived (soft) | Click "Mark Arrived" on in_transit request | Status changes to `arrived_soft`, NO inventory increase |
 | CRM-005 | arrived_soft does NOT add inventory | Check lots/rolls after Mark Arrived | No new lots or rolls created |
 | CRM-006 | Status history recorded | Change supply request status | Entry added to `supply_request_status_history` |
+| CRM-007 | UI label for arrived_soft | View supply request with arrived_soft status | Display shows "Arrived (Soft)" (LOCKED) |
+| CRM-008 | Import-from-central type | CRM sends supply_request with type=import_from_central | Record created with correct type |
+| CRM-009 | ETA date stored | CRM sends supply_request with eta_date | eta_date stored and visible in UI |
 
-### 13.2 Allocation Planning
+### 13.2 Allocation Planning (INCOMING-BACKED Only)
 
 | ID | Test Case | Steps | Expected Result |
 |----|-----------|-------|-----------------|
@@ -259,8 +262,10 @@ Before each release, verify:
 | CRM-013 | Shortage detection | Arrived meters < reserved meters | `action_required_reason=needs_shortage_decision`, Plan Allocation blocked |
 | CRM-014 | Shortage decision | Manager records decision in ShortageDecisionDialog | Audit logged, allocation unblocked |
 | CRM-015 | Shortage email sent | Complete shortage decision | Email sent to sales manager via Resend |
+| CRM-016 | Only INCOMING-BACKED shown | View Allocation Planning with ON-HAND reservations | ON-HAND reservations NOT shown (Partaj N/A) |
+| CRM-017 | Reservation source indicator | View reservation in Allocation Planning | Shows "INCOMING-BACKED" source label |
 
-### 13.3 Allocation Entry
+### 13.3 Allocation Entry (INCOMING-BACKED Only)
 
 | ID | Test Case | Steps | Expected Result |
 |----|-----------|-------|-----------------|
@@ -270,31 +275,37 @@ Before each release, verify:
 | CRM-023 | Immediate ship intent | Allocate reservation with `ship_intent=immediate` | `action_required_reason=needs_shipment_approval` |
 | CRM-024 | Ship on date without date | Allocate reservation with `ship_intent=ship_on_date`, no date | `action_required_reason=needs_ship_date` |
 | CRM-025 | crm_deal_line_id preserved | Allocate reservation from CRM deal | `reservation.allocated` payload includes `crm_deal_line_id` on each line |
+| CRM-026 | Only INCOMING-BACKED shown | View Allocation Entry with ON-HAND reservations | ON-HAND reservations NOT shown |
 
-### 13.4 Shipment Approval + PO Creation
+### 13.4 Shipment Approval + PO Creation (UNIVERSAL GATE)
 
 | ID | Test Case | Steps | Expected Result |
 |----|-----------|-------|-----------------|
-| CRM-030 | shipment.approved creates PO | CRM sends `shipment.approved` | WMS Order created with `po_number`, `order.created` webhook emitted |
-| CRM-031 | po_number = order_number | Check created order | `po_number` equals `order_number` |
-| CRM-032 | order.created includes po_number | Check webhook payload | `po_number` field present |
-| CRM-033 | order.created includes lines[] | Check webhook payload | `lines[]` array with `crm_deal_line_id` on each line |
-| CRM-034 | order.created includes CRM IDs | Check webhook payload | `crm_deal_id`, `crm_customer_id`, `crm_organization_id` present |
-| CRM-035 | Reject if not allocated | `shipment.approved` for unallocated reservation | Error response, no order created |
-| CRM-036 | Single-PO full fulfillment | Attempt partial shipment on PO | Not allowed, enforced at order level |
-| CRM-037 | order_lots has crm_deal_line_id | Check order_lots after PO creation | `crm_deal_line_id` populated from reservation_lines |
+| CRM-030 | shipment.approved creates PO (INCOMING-BACKED) | CRM sends `shipment.approved` for INCOMING-BACKED reservation | WMS Order created with `po_number`, `order.created` webhook emitted |
+| CRM-031 | shipment.approved creates PO (ON-HAND) | CRM sends `shipment.approved` for ON-HAND reservation | WMS Order created with `po_number`, `order.created` webhook emitted |
+| CRM-032 | po_number = order_number | Check created order | `po_number` equals `order_number` |
+| CRM-033 | order.created includes po_number | Check webhook payload | `po_number` field present |
+| CRM-034 | order.created includes lines[] | Check webhook payload | `lines[]` array with `crm_deal_line_id` on each line |
+| CRM-035 | order.created includes CRM IDs | Check webhook payload | `crm_deal_id`, `crm_customer_id`, `crm_organization_id` present |
+| CRM-036 | Reject INCOMING-BACKED if not allocated | `shipment.approved` for unallocated INCOMING-BACKED reservation | Error response, no order created |
+| CRM-037 | Accept ON-HAND without allocation_state | `shipment.approved` for ON-HAND reservation (no allocation_state) | Order created successfully (v1.0.7 fix) |
+| CRM-038 | Single-PO full fulfillment | Attempt partial shipment on PO | Not allowed, enforced at order level |
+| CRM-039 | order_lots has crm_deal_line_id | Check order_lots after PO creation | `crm_deal_line_id` populated from reservation_lines |
+| CRM-040 | Determine reservation source | shipment.approved handler | Uses `crm_supply_request_id IS NULL` to detect ON-HAND |
 
 ### 13.5 Manager Override
 
 | ID | Test Case | Steps | Expected Result |
 |----|-----------|-------|-----------------|
-| CRM-040 | Override without CRM approval | Manager uses ShipmentOverrideDialog | Order created, override logged in `shipment_approval_overrides` |
-| CRM-041 | Override reason required | Try to submit override without reason | Blocked, reason dropdown required |
-| CRM-042 | Override reason validated | Try invalid override reason | Constraint violation, blocked |
-| CRM-043 | Override fields populated | Complete override | `orders.override_used=true`, `override_reason`, `override_by`, `override_at` set |
-| CRM-044 | Override notifies CRM | Complete override | `order.created` webhook emitted with override info |
-| CRM-045 | Override email sent | Complete override | Email sent to CRM admin via Resend |
-| CRM-046 | action_required_reason set | Complete override | `reservation.action_required_reason=override_used` |
+| CRM-041 | Override without CRM approval | Manager uses ShipmentOverrideDialog | Order created, override logged in `shipment_approval_overrides` |
+| CRM-042 | Override reason required | Try to submit override without reason | Blocked, reason dropdown required |
+| CRM-043 | Override reason validated | Try invalid override reason | Constraint violation, blocked |
+| CRM-044 | Override fields populated | Complete override | `orders.override_used=true`, `override_reason`, `override_by`, `override_at` set |
+| CRM-045 | Override notifies CRM | Complete override | `order.created` webhook emitted with override info |
+| CRM-046 | Override email sent | Complete override | Email sent to CRM admin via Resend |
+| CRM-047 | action_required_reason set | Complete override | `reservation.action_required_reason=override_used` |
+| CRM-048 | Override allowed for ON-HAND | Manager overrides ON-HAND reservation | Override succeeds, no allocation_state check |
+| CRM-049 | Override allowed for INCOMING-BACKED | Manager overrides INCOMING-BACKED reservation | Override succeeds if allocation_state=allocated |
 
 ### 13.6 Webhook Compliance
 
@@ -307,6 +318,7 @@ Before each release, verify:
 | CRM-054 | Idempotency deduplication | Send same event twice | Second event returns 409 or is ignored |
 | CRM-055 | 5-minute timestamp window | Send webhook with timestamp > 5 min old | Rejected with 401 |
 | CRM-056 | Webhook retry logged | Outbound webhook fails | Entry in `integration_outbox` with retry info |
+| CRM-057 | Spelling normalization | Check outbound cancelled status | Uses `cancelled` not `canceled` |
 
 ### 13.7 CRM ID Tracking
 
@@ -318,15 +330,19 @@ Before each release, verify:
 | CRM-063 | crm_organization_id stored | Receive CRM webhook with org | `crm_organization_id` stored |
 | CRM-064 | crm_supply_request_id linked | Plan allocation for supply request | `crm_supply_request_id` on reservation |
 | CRM-065 | Multiple POs per deal | Create 2 orders from same deal | Both orders share same `crm_deal_id` |
+| CRM-066 | crm_deal_line_id on reservation_lines | Create reservation from CRM deal | `crm_deal_line_id` stored on each line |
+| CRM-067 | crm_deal_line_id on order_lots | Create order from reservation | `crm_deal_line_id` carried forward to order_lots |
 
-### 13.8 Partaj Staging
+### 13.8 Ship Next Day (Post-PO Staging)
 
 | ID | Test Case | Steps | Expected Result |
 |----|-----------|-------|-----------------|
-| CRM-070 | View staging queue | Open Partaj Staging page | Shows orders from approved shipments |
+| CRM-070 | View staging queue | Open Ship Next Day page | Shows orders (POs) from approved shipments |
 | CRM-071 | po_number displayed | View order in staging | `po_number` is primary display column |
 | CRM-072 | Mark staged | Click "Mark Staged" on order | Order moves to pick/pack flow |
 | CRM-073 | Ship date visible | View order with ship_date | Ship date shown in staging queue |
+| CRM-074 | Only shows POs | Verify page content | Shows WMS Orders (POs), NOT reservations |
+| CRM-075 | Filter by ship date | Filter staging queue by date | Only matching orders shown |
 
 ### 13.9 Internal Email Notifications
 
@@ -338,6 +354,16 @@ Before each release, verify:
 | CRM-083 | Soft arrival email | Status → arrived_soft | Email sent to Sales Owner |
 | CRM-084 | Approval needed email | `action_required_reason=needs_shipment_approval` | Email sent to Sales Owner/Manager |
 | CRM-085 | Override used email | Override logged | Email sent to Sales Manager |
+
+### 13.10 Reservation Source Detection
+
+| ID | Test Case | Steps | Expected Result |
+|----|-----------|-------|-----------------|
+| CRM-090 | ON-HAND detection | Reservation without crm_supply_request_id | Identified as ON-HAND |
+| CRM-091 | INCOMING-BACKED detection | Reservation with crm_supply_request_id | Identified as INCOMING-BACKED |
+| CRM-092 | ON-HAND skips Partaj | Process ON-HAND reservation | Allocation Planning/Entry pages skip it |
+| CRM-093 | INCOMING-BACKED requires Partaj | Process INCOMING-BACKED reservation | Must go through Allocation Planning → Entry |
+| CRM-094 | UI shows source | View reservation details | Source type (ON-HAND / INCOMING-BACKED) displayed |
 
 ---
 
@@ -351,10 +377,30 @@ Before each release, verify:
 - Webhook test endpoint configured
 
 ### Test Scenarios Data
+
 | Scenario | Requirements |
 |----------|--------------|
 | Supply request flow | 1 manufacturing + 1 import_from_central supply request |
-| Allocation planning | 2 reservations matching supply request quality/color |
+| Allocation planning | 2 INCOMING-BACKED reservations matching supply request quality/color |
 | Shortage scenario | Supply request with 100m, reservations totaling 150m |
-| Override scenario | Allocated reservation without CRM approval |
+| Override scenario | Allocated INCOMING-BACKED reservation without CRM approval |
 | Multi-line scenario | Deal with 3 lines, different quality/color each |
+| ON-HAND scenario | Reservation without crm_supply_request_id |
+| INCOMING-BACKED scenario | Reservation with crm_supply_request_id |
+| Mixed scenario | Deal with 1 ON-HAND + 1 INCOMING-BACKED reservation |
+
+---
+
+## v1.0.7 Specific Test Cases
+
+> These test cases verify the key changes introduced in contract v1.0.7
+
+| ID | Test Case | v1.0.7 Requirement | Expected Result |
+|----|-----------|-------------------|-----------------|
+| V107-001 | Universal shipment approval gate | Shipment approval applies to both ON-HAND and INCOMING-BACKED | Both types processed correctly |
+| V107-002 | ON-HAND no allocation_state check | ON-HAND reservations don't require allocation_state=allocated | Shipment approved without deadlock |
+| V107-003 | INCOMING-BACKED requires allocated | INCOMING-BACKED requires allocation_state=allocated | Error if not allocated |
+| V107-004 | arrived_soft UI label | Status must display as "Arrived (Soft)" | Exact string in all UI locations |
+| V107-005 | Ship Next Day is post-PO | Page shows POs, not reservations | Only WMS Orders displayed |
+| V107-006 | manufacturing_order_id FK | Supply requests link to manufacturing_orders | FK populated when applicable |
+| V107-007 | Partaj only for INCOMING-BACKED | Allocation Planning/Entry filter by source | ON-HAND excluded from Partaj flow |
