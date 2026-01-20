@@ -1,4 +1,4 @@
-# Integration Contract v1.0.7
+# Integration Contract v1.0.9
 
 > **Status:** CANONICAL (Locked)  
 > **Applies To:** CRM Phase 6+, WMS Batch F+  
@@ -588,7 +588,67 @@ Canonical spelling is `cancelled`. WMS must normalize any internal `canceled` to
 
 ---
 
+
+**Auto-reservation on `deal.won` (LOCKED):**
+- When WMS receives `deal.won`, it MUST attempt to create a reservation immediately.
+- If on-hand stock is sufficient: create reservation (`reservations.crm_supply_request_id IS NULL`) and emit `reservation.created`.
+- If on-hand stock is insufficient: create a reservation in **unallocated** state with `action_required_reason='needs_shortage_decision'` OR attach/require a `supply_request` flow (manufacturing/import) per business rules; do not silently drop.
+- A deal must not remain in "won but not reserved" state without an explicit blocker/action_required path.
+
+### 17.3 Derived UI stages (LOCKED)
+
+**Command Center stage ordering (LOCKED):**
+- Default ordering for display: Pending/Reserved → Awaiting Approval → PO Created → Picking/Prepared → Shipped → Delivered → Invoiced → Fulfilled/Closed → Cancelled.
+- Note: Invoicing may occur after delivery; dashboards MUST show **Delivered** before **Invoiced** when both apply.
+
+
+**Purpose:** enable "command center" dashboards without creating new canonical lifecycle states.
+
+**Rule (LOCKED):** Derived UI stages are **computed** from canonical fields/events and may be displayed in UI, but MUST NOT be written as new values into:
+- CRM `deals.fulfillment_status`
+- WMS `orders.status`
+- any other locked status dictionary
+
+#### CRM: Fulfillment Command Center derived stages
+- `pending_reserve` (exception only): `deals.fulfillment_status='pending'` AND no active reservation (`wms_reservation_id IS NULL`) — should be rare because `deal.won` must auto-attempt reservation
+- `reserved`: `deals.fulfillment_status='reserved'`
+- `awaiting_shipment_approval`: any linked reservation where `action_required_reason='needs_shipment_approval'`
+- `awaiting_ship_date`: any linked reservation where `action_required_reason='needs_ship_date'`
+- `po_created`: deal has ≥1 row in `deal_orders` (show all) 
+- `in_progress`: `deals.fulfillment_status='picking'`
+- `shipped`: `deals.fulfillment_status='shipped'`
+- `delivered`: `deals.fulfillment_status='delivered'`
+- `cancelled`: `deals.fulfillment_status='cancelled'`
+
+
+**Deal aggregation rule (LOCKED):**
+- A Deal is considered **OPEN** until the **last active PO** under the deal reaches a closure outcome.
+- Closure outcomes for POs: `fulfilled` or `cancelled` (and `partial_closed` only if explicitly used as a closure outcome).
+- In Command Center, if any PO is not closed, the Deal must remain OPEN and show a "PO Breakdown" with per-PO stages.
+
+#### WMS: PO Command Center derived stages
+- `incoming_soft_arrived`: supply_request.status='arrived_soft'
+- `awaiting_allocation_plan`: reservations where `allocation_state='unallocated'` AND `crm_supply_request_id IS NOT NULL`
+- `allocation_planned`: reservations where `allocation_state='planned'`
+- `allocated_waiting_approval`: reservations where `allocation_state='allocated'` AND `action_required_reason='needs_shipment_approval'`
+- `po_created`: orders where `po_number IS NOT NULL` AND `orders.status IN ('confirmed','picking','shipped','delivered','invoiced','fulfilled','cancelled')`
+- `picking`: `orders.status='picking'` AND last_order_event != 'order.prepared'
+- `prepared`: last_order_event = 'order.prepared' (UI-only; `orders.status` remains 'picking')
+- `shipped`: `orders.status='shipped'` (driven by `shipment.posted`)
+- `delivered`: `orders.status='delivered'` (driven by `shipment.delivered`)
+- `invoiced`: `orders.status='invoiced'`
+- `fulfilled`: `orders.status='fulfilled'`
+- `blocked`: `orders.fulfillment_blocker_status != 'none'` OR `orders.action_required=true`
+
+**Canonical constraint (LOCKED):** shipment movement states MUST use canonical shipment events (`shipment.posted`, `shipment.delivered`). Do NOT introduce `order.shipped` / `order.delivered` events.
+
 ## 18. Contract Lock Checklist
+
+- [ ] Auto-reservation on `deal.won` is enforced (deal should not sit in won-without-reservation without action_required)
+- [ ] Deal aggregation rule: Deal remains OPEN until last PO is closed; UI shows PO breakdown when mixed
+- [ ] Command Center dashboards use Derived UI stages only; they do NOT write new lifecycle values into locked status dictionaries
+- [ ] Pre-PO work anchors on reservation id; PO number is shown only after `order.created` generates it
+
 
 - [ ] Filename is EXACT: `docs/integration_contract_v1.md`
 - [ ] Contract copied byte-for-byte into BOTH repos
@@ -610,6 +670,8 @@ Canonical spelling is `cancelled`. WMS must normalize any internal `canceled` to
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.9 | 2026-01-20 | Lock Command Center stage set and aggregation rules; require auto-reservation attempt on `deal.won`; define derived stage ordering (Delivered before Invoiced); define deal-level stage as OPEN until last PO fulfilled/closed |
+| 1.0.8 | 2026-01-20 | Add CRM `/fulfillment` and WMS `/po-command-center` command center dashboards; lock Derived UI stages as computed-only (no new canonical statuses); clarify pre-PO anchoring on reservation id; reinforce shipment events as canonical |
 | 1.0.7 | 2026-01-20 | Fix shipment.approved gating to support ON-HAND reservations (no allocation_state requirement); clarify Partaj applies only to INCOMING-BACKED reservations; lock "Arrived (Soft)" UI label; rename shipment approvals as universal gate; add manufacturing_orders linkage via supply_requests.manufacturing_order_id |
 | 1.0.6 | 2026-01-20 | Add `customer_reference_po` to `deal_orders`; require WMS line mapping with `crm_deal_line_id` on reservation/order lines; require line arrays in `order.created` and `reservation.allocated` payloads |
 | 1.0.5 | 2026-01-19 | Lock PO number as primary identifier; lock single-PO full fulfillment; lock shipment.approved trigger; expand override reasons; lock supply request ownership (CRM) + WMS mirroring; lock Partaj reservation-first allocation + soft arrival; lock required pages + notifications |
