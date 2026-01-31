@@ -59,23 +59,36 @@ All idempotency keys MUST:
 
 Per PRD Section 2 and Agent Checklist Section 1:
 
-### Single-Org Roles (warehouse_staff)
-- **No** org column in tables
-- **No** "All Orgs" toggle visible
-- Operate in Active Org context only
-- Org badge hidden in WMS UI
+### Scope UI Rules (what users see)
 
-### Multi-Org Roles (senior_manager, admin)
-- **Active/All** toggle available in header
-- When scope = Active Org: No org column
-- When scope = All Orgs: Org column visible, filter by org available
-- Org badge visible on order/reservation cards
+All list pages implement two org scopes:
+- **Active Org** (default)
+- **All Orgs** (optional, gated)
 
-### Implementation Rule
+### Toggle + Org-Label Policy (LOCKED)
+
+**Hard rule:** UI gating MUST NOT be derived from `COUNT(DISTINCT org)`.
+
+Instead, use a WMS-side policy function that maps:
+- **Contract-defined CRM roles** in `user_org_grants_mirror.role_in_org` (MUST remain exactly):
+  - `sales_owner | sales_manager | pricing | accounting | admin`
+- **WMS operational roles** (stored separately, e.g., `public.user_roles`) for UI minimization.
+
+Policy requirements:
+- **Can toggle “All Orgs”**: `sales_manager`, `accounting`, `pricing`, `admin`
+- **Cannot toggle “All Orgs”**: `sales_owner` (even if multi-org grants exist)
+- **Warehouse roles** (e.g., `warehouse_staff`) may have multi-org grants but:
+  - **Org toggle hidden**
+  - **Org badges/columns hidden** (minimized UI)
+
+### Implementation Rule (use policy, not grant-count)
 ```typescript
 // Use this pattern in all list pages
-const showOrgColumn = userHasMultiOrgAccess && orgScope === 'all';
-const showOrgToggle = userHasMultiOrgAccess;
+const { data: uiPolicy } = await supabase.rpc('user_wms_ui_policy', { p_user_id: user.id });
+
+const showOrgToggle = Boolean(uiPolicy?.show_org_toggle);
+const showOrgColumn = Boolean(uiPolicy?.show_org_labels_in_all_scope) && orgScope === 'all';
+const showOrgBadge = Boolean(uiPolicy?.show_org_labels_in_all_scope) && orgScope === 'all';
 ```
 
 ---
@@ -694,7 +707,7 @@ async function handleInboundEvent(supabase: any, payload: any, idempotencyKey: s
   // Check for existing entry
   const { data: existing } = await supabase
     .from('integration_inbox')
-    .select('id, status, payload_hash')
+    .select('id, status, payload_hash, attempt_count')
     .eq('idempotency_key', idempotencyKey)
     .single();
   
@@ -716,7 +729,7 @@ async function handleInboundEvent(supabase: any, payload: any, idempotencyKey: s
       await supabase.from('integration_inbox')
         .update({
           status: 'pending',
-          attempt_count: existing.attempt_count + 1,
+          attempt_count: (existing.attempt_count ?? 0) + 1,
           last_error: null,
           next_retry_at: null,
           last_attempt_at: null
@@ -844,19 +857,44 @@ AS $$
   WHERE user_id = p_user_id AND is_active = true;
 $$;
 
--- Check if user has multi-org access (for UI toggle visibility)
-CREATE OR REPLACE FUNCTION user_has_multi_org_access(p_user_id UUID)
-RETURNS BOOLEAN
-LANGUAGE SQL
+-- UI gating MUST NOT be derived from multi-org grant count.
+-- Keep `role_in_org` contract-defined (CRM taxonomy). Implement WMS UI policy here.
+-- Returns a JSON policy consumed by frontend list pages.
+CREATE OR REPLACE FUNCTION public.user_wms_ui_policy(p_user_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT (
-    SELECT COUNT(DISTINCT crm_organization_id) 
-    FROM user_org_grants_mirror 
-    WHERE user_id = p_user_id AND is_active = true
-  ) > 1;
+DECLARE
+  v_is_warehouse_role BOOLEAN;
+  v_can_toggle_all_orgs BOOLEAN;
+BEGIN
+  -- WMS operational role override: warehouse users do NOT get org toggle/labels.
+  v_is_warehouse_role := public.has_role(p_user_id, 'warehouse_staff'::user_role);
+
+  IF v_is_warehouse_role THEN
+    v_can_toggle_all_orgs := false;
+  ELSE
+    -- Contract-defined CRM taxonomy gating (NOT org-count):
+    -- Allowed: sales_manager, accounting, pricing, admin
+    -- Disallowed: sales_owner
+    v_can_toggle_all_orgs := EXISTS (
+      SELECT 1
+      FROM public.user_org_grants_mirror g
+      WHERE g.user_id = p_user_id
+        AND g.is_active = true
+        AND g.role_in_org IN ('sales_manager', 'accounting', 'pricing', 'admin')
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'show_org_toggle', v_can_toggle_all_orgs,
+    'show_org_labels_in_all_scope', v_can_toggle_all_orgs AND NOT v_is_warehouse_role,
+    'default_scope', 'active'
+  );
+END;
 $$;
 ```
 
@@ -934,7 +972,9 @@ async function handleOrgAccessUpdated(supabase: any, payload: OrgAccessUpdatedPa
 |-------|--------|
 | Table populated | Send `org_access.updated` event, verify rows in `user_org_grants_mirror` |
 | Function works | `SELECT user_has_org_access('user-uuid', 'org-uuid')` returns correct boolean |
-| Multi-org check | `SELECT user_has_multi_org_access('user-uuid')` returns true for multi-org users |
+| UI policy (warehouse) | For a `warehouse_staff` user with **multiple** org grants: `SELECT (user_wms_ui_policy('user-uuid')->>'show_org_toggle')::boolean` returns false |
+| UI policy (manager) | For a user with any grant `role_in_org IN ('sales_manager','accounting','pricing','admin')`: policy returns `show_org_toggle=true` and `show_org_labels_in_all_scope=true` |
+| UI policy (sales_owner) | For a user with only `role_in_org='sales_owner'` grants (even across orgs): policy returns `show_org_toggle=false` |
 | Sequence guard | Send older seq, verify warning log and no data change |
 
 ### QA Test IDs
@@ -944,6 +984,10 @@ async function handleOrgAccessUpdated(supabase: any, payload: OrgAccessUpdatedPa
 - RLS-03: Out-of-order sequence rejected
 - F-01: Org grants snapshot replacement
 - D-01: Missing org access handled gracefully
+- QA Addendum (UI policy):
+  - Warehouse multi-org grants do NOT show org toggle
+  - Manager roles show toggle + org column only when scope=All
+  - sales_owner never sees org toggle even if multi-org grants exist
 - QA Addendum F: Ordering/sequence handling
 
 ---
