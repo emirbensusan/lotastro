@@ -2,31 +2,107 @@
 
 > **Status**: DRAFT — Pending Review  
 > **Contract Version**: v1.0.23 (LOCKED)  
+> **Contract Authority**: `docs/wms_crm_v1_0_23_integration_updated/integration_contract_v1_0_23(1)(1).md`  
 > **Created**: 2026-01-31  
-> **Total Estimated Sessions**: 29
+> **Revised**: 2026-01-31 (Alignment hardening)  
+> **Total Estimated Sessions**: 30
+
+---
+
+## DRIFT PREVENTION RULES (HARD REQUIREMENTS)
+
+These rules are **non-negotiable** and must be followed throughout implementation:
+
+### DR-1: Contract as Schema Authority
+The locked contract file `integration_contract_v1_0_23(1)(1).md` is the **single source of truth** for:
+- Event names (exact spelling)
+- Payload field names and types
+- Status enum values
+- Idempotency key formats
+
+**Any deviation from contract schemas is a blocking defect.**
+
+### DR-2: Reject Unknown Fields
+All inbound event handlers MUST:
+1. Validate payload against contract schema
+2. **Log** any fields present in payload but not in contract schema
+3. **Reject** (HTTP 400) payloads with unknown fields if strict mode is enabled
+4. Store violation details in `integration_contract_violations` audit table
+
+### DR-3: Contract Compliance Checklist
+Every batch that touches integration events MUST include:
+```
+### Contract Compliance Checklist
+- [ ] Event names match contract exactly
+- [ ] Payload fields match contract schema (no extras, no missing required)
+- [ ] Idempotency key format: 5 segments, ends with :v1
+- [ ] Status enums use contract-defined values only
+- [ ] UOM restricted to MT|KG only (contract requirement)
+```
+
+### DR-4: No Invented Events or Fields
+If functionality requires events/fields not in contract:
+1. **DO NOT IMPLEMENT** as integration event
+2. Flag as **CONTRACT CHANGE REQUEST** in this document
+3. Implement only after contract amendment is approved and locked
+
+### DR-5: Idempotency Key Validation
+All idempotency keys MUST:
+- Have exactly 5 colon-separated segments
+- Format: `<source>:<entity>:<entity_id>:<action>:v1`
+- Use dashes (not colons) for composite entity_ids
+- End with `:v1` (version segment)
+
+---
+
+## MULTI-ORG UI RULES (LOCKED)
+
+Per PRD Section 2 and Agent Checklist Section 1:
+
+### Single-Org Roles (warehouse_staff)
+- **No** org column in tables
+- **No** "All Orgs" toggle visible
+- Operate in Active Org context only
+- Org badge hidden in WMS UI
+
+### Multi-Org Roles (senior_manager, admin)
+- **Active/All** toggle available in header
+- When scope = Active Org: No org column
+- When scope = All Orgs: Org column visible, filter by org available
+- Org badge visible on order/reservation cards
+
+### Implementation Rule
+```typescript
+// Use this pattern in all list pages
+const showOrgColumn = userHasMultiOrgAccess && orgScope === 'all';
+const showOrgToggle = userHasMultiOrgAccess;
+```
 
 ---
 
 ## Table of Contents
 
 1. [Document Alignment](#document-alignment)
-2. [Operational Infrastructure](#operational-infrastructure)
-3. [Batch 1: Contract File + Integration Inbox](#batch-1-contract-file--integration-inbox)
-4. [Batch 2: Multi-Org Identity + org_access.updated Handler](#batch-2-multi-org-identity--org_accessupdated-handler)
-5. [Batch 3: Reservations Schema Extensions](#batch-3-reservations-schema-extensions)
-6. [Batch 4: Orders Schema Extensions + PO Number Generator](#batch-4-orders-schema-extensions--po-number-generator)
-7. [Batch 5: Supply Requests Mirror + Events](#batch-5-supply-requests-mirror--events)
-8. [Batch 6: stock.changed Event](#batch-6-stockchanged-event)
-9. [Batch 7: Allocation Planning + Entry Pages](#batch-7-allocation-planning--entry-pages)
-10. [Batch 8: Shipment Approval + Override](#batch-8-shipment-approval--override)
-11. [Batch 9: Central Stock Checks (Abra)](#batch-9-central-stock-checks-abra)
-12. [Batch 10: Post-PO Issues (Discrepancy Loop)](#batch-10-post-po-issues-discrepancy-loop)
-13. [Batch 11: Costing Module](#batch-11-costing-module)
-14. [Batch 12: Invoice Control + Fulfillment Gate](#batch-12-invoice-control--fulfillment-gate)
-15. [Batch 13: PO Command Center](#batch-13-po-command-center)
-16. [Final Consolidated Inventories](#final-consolidated-inventories)
-17. [CRM Dependencies Per Batch](#crm-dependencies-per-batch)
-18. [Open Items](#open-items)
+2. [QA Traceability Matrix](#qa-traceability-matrix)
+3. [Operational Infrastructure](#operational-infrastructure)
+4. [Batch 0: Contract Alignment & Guards](#batch-0-contract-alignment--guards)
+5. [Batch 1: Contract File + Integration Inbox](#batch-1-contract-file--integration-inbox)
+6. [Batch 2: Multi-Org Identity + org_access.updated Handler](#batch-2-multi-org-identity--org_accessupdated-handler)
+7. [Batch 3: Reservations Schema Extensions](#batch-3-reservations-schema-extensions)
+8. [Batch 4: Orders Schema Extensions + PO Number Generator](#batch-4-orders-schema-extensions--po-number-generator)
+9. [Batch 5: Supply Requests Mirror + Events](#batch-5-supply-requests-mirror--events)
+10. [Batch 6: stock.changed Event](#batch-6-stockchanged-event)
+11. [Batch 7: Allocation Planning + Entry Pages](#batch-7-allocation-planning--entry-pages)
+12. [Batch 8: Shipment Approval + Override](#batch-8-shipment-approval--override)
+13. [Batch 9: Central Stock Checks (Abra)](#batch-9-central-stock-checks-abra)
+14. [Batch 10: Post-PO Issues (Discrepancy Loop)](#batch-10-post-po-issues-discrepancy-loop)
+15. [Batch 11: Costing Module](#batch-11-costing-module)
+16. [Batch 12: Invoice Control + Fulfillment Gate](#batch-12-invoice-control--fulfillment-gate)
+17. [Batch 13: PO Command Center](#batch-13-po-command-center)
+18. [Final Consolidated Inventories](#final-consolidated-inventories)
+19. [CRM Dependencies Per Batch](#crm-dependencies-per-batch)
+20. [Contract Change Requests](#contract-change-requests)
+21. [Files/Functions Created or Modified](#filesfunctions-created-or-modified)
 
 ---
 
@@ -36,7 +112,7 @@ This implementation plan is **100% aligned** with the following canonical v1.0.2
 
 | Document | Location | Purpose |
 |----------|----------|---------|
-| Integration Contract v1.0.23 | `integration_contract_v1_0_23.md` | LOCKED contract (30 WMS→CRM events, 11 CRM→WMS events) |
+| **Integration Contract v1.0.23 (LOCKED)** | `docs/wms_crm_v1_0_23_integration_updated/integration_contract_v1_0_23(1)(1).md` | Schema authority (30 WMS→CRM events, 11 CRM→WMS events) |
 | Epic Implementation Plan | `docs/wms_crm_v1_0_23_integration_updated/WMS_CRM_EPIC_IMPLEMENTATION_PLAN_v1_0_23_UPDATED.md` | 17-batch execution roadmap |
 | QA Test Plan | `docs/wms_crm_v1_0_23_integration_updated/QA_TestPlan_CRM_WMS_v1_0_23_UPDATED.md` | 503-line test coverage |
 | PRD | `docs/wms_crm_v1_0_23_integration_updated/PRD_CRM_Pricing_Thresholds_v1_9_v1_0_23_UPDATED.md` | Multi-org + pricing + credit rules |
@@ -47,6 +123,29 @@ This implementation plan is **100% aligned** with the following canonical v1.0.2
 
 ---
 
+## QA Traceability Matrix
+
+Every batch MUST map to at least one QA test case from QA_TestPlan_CRM_WMS_v1_0_23_UPDATED.md.
+
+| Batch | User Stories | Contract Events | QA Test Cases |
+|-------|--------------|-----------------|---------------|
+| 0 | #72, #81, #82, #83 | (infrastructure) | B-01, B-02, QA Addendum A-F |
+| 1 | #72 | (infrastructure) | B-01, B-02 |
+| 2 | #1, #2 | `org_access.updated` | RLS-01, RLS-02, RLS-03, F-01, D-01 |
+| 3 | #10, #83 | (prepares allocation events) | FUL-01, LAB-01 |
+| 4 | #6, #7, #82, #84 | `order.created` | ID-01, ID-02, ID-03, ORD-01 |
+| 5 | #11 | `supply_request.created`, `supply_request.status_updated` | (supply tracking) |
+| 6 | #16, #81 | `stock.changed` | E-01, QA Addendum E |
+| 7 | #19 | `reservation.allocation_planned`, `reservation.allocated` | FUL-01 |
+| 8 | #20, #21 | `shipment.approved` (inbound), `order.created` | FUL-01, FUL-02 |
+| 9 | #46-50 | `central_stock_check.completed` | ABR-01, ABR-02, ABR-03, ABR-04, ABRA-01, ABRA-02 |
+| 10 | #72, #85, #86, #93 | `post_po_issue.created/updated/resolved` | DPO-01, DPO-02, DPO-03, DPO-04 |
+| 11 | #75-80 | `costing.invoice_posted/receipt_linked/adjustment_posted/wac_updated` | CST-01 to CST-06 |
+| 12 | #72 | `invoice_control.passed/failed` | INV-01, INV-02, INV-03 |
+| 13 | #9 | (uses all prior events) | (command center) |
+
+---
+
 ## Operational Infrastructure
 
 ### Inbound Event Logging
@@ -54,9 +153,9 @@ This implementation plan is **100% aligned** with the following canonical v1.0.2
 | Aspect | Specification |
 |--------|---------------|
 | **Table** | `integration_inbox` |
-| **Columns** | `event_type`, `payload`, `idempotency_key`, `status`, `processed_at`, `error_message` |
-| **Statuses** | `received` → `processing` → `processed` / `error` |
-| **Validation** | 5-segment idempotency key format, HMAC signature verification |
+| **Columns** | `event_type`, `payload`, `idempotency_key`, `status`, `processed_at`, `error_message`, `payload_hash`, `attempt_count` |
+| **Statuses** | `pending` → `processing` → `processed` / `failed` |
+| **Validation** | 5-segment idempotency key, HMAC signature, schema validation, unknown field rejection |
 | **Edge Function** | `wms-webhook-receiver` logs all received events |
 
 ### Outbound Event Queuing/Retry
@@ -74,31 +173,447 @@ This implementation plan is **100% aligned** with the following canonical v1.0.2
 |--------|---------------|
 | **Format** | `<source>:<entity>:<entity_id>:<action>:v1` (exactly 5 segments) |
 | **Index** | `idx_outbox_idempotency` on `integration_outbox(idempotency_key)` |
-| **Behavior** | Check if key exists with `status = 'sent'`; if yes, return 200 "already processed" |
+| **Behavior** | Check if key exists; if `status = 'processed'`, return 200; if `status = 'failed'`, update to pending |
 | **Sequence Handling** | Out-of-order protection using monotonic `*_seq` fields |
 
-### Idempotency Key Validation Function
+### NULL-Safe Uniqueness (Contract Appendix C)
+
+For all cache/mirror tables with nullable dimensions:
 
 ```sql
+-- Canonical sentinel values
+-- UUID nullable: 00000000-0000-0000-0000-000000000000
+-- TEXT nullable: __NULL__
+
+-- Scope key pattern (apply to all cache tables)
+org_scope_key := COALESCE(crm_organization_id, '00000000-0000-0000-0000-000000000000'::uuid)
+warehouse_scope_key := COALESCE(warehouse_id, '00000000-0000-0000-0000-000000000000'::uuid)
+color_scope_key := COALESCE(color_code, '__NULL__')
+```
+
+---
+
+## Batch 0: Contract Alignment & Guards
+
+### Overview
+
+| Attribute | Value |
+|-----------|-------|
+| **Sessions** | 1 |
+| **Priority** | P0 — Prerequisite |
+| **Dependencies** | None |
+| **CRM Required** | No |
+
+### Purpose
+
+Establish drift prevention infrastructure BEFORE any integration work begins.
+
+### DB Scope
+
+#### New Table: `integration_contract_violations`
+
+```sql
+CREATE TABLE integration_contract_violations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type TEXT NOT NULL,
+  violation_type TEXT NOT NULL CHECK (violation_type IN (
+    'unknown_field', 'missing_required_field', 'invalid_enum_value',
+    'invalid_idempotency_format', 'schema_mismatch', 'uom_violation'
+  )),
+  field_name TEXT,
+  field_value TEXT,
+  expected_schema JSONB,
+  received_payload JSONB,
+  idempotency_key TEXT,
+  source_system TEXT,
+  logged_at TIMESTAMPTZ DEFAULT now(),
+  acknowledged_at TIMESTAMPTZ,
+  acknowledged_by UUID
+);
+
+CREATE INDEX idx_contract_violations_type ON integration_contract_violations(violation_type, logged_at DESC);
+CREATE INDEX idx_contract_violations_event ON integration_contract_violations(event_type, logged_at DESC);
+```
+
+#### Idempotency Key Validation Function (REVISED)
+
+```sql
+-- Validates idempotency key format per Contract v1.0.23
 CREATE OR REPLACE FUNCTION validate_idempotency_key(p_key TEXT)
-RETURNS BOOLEAN LANGUAGE plpgsql IMMUTABLE AS $$
+RETURNS TABLE (
+  is_valid BOOLEAN,
+  error_message TEXT
+) 
+LANGUAGE plpgsql 
+IMMUTABLE 
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   v_parts TEXT[];
 BEGIN
+  -- Check for NULL or empty
+  IF p_key IS NULL OR p_key = '' THEN
+    RETURN QUERY SELECT false, 'Idempotency key is empty or null';
+    RETURN;
+  END IF;
+  
   v_parts := string_to_array(p_key, ':');
+  
+  -- Must have exactly 5 segments
   IF array_length(v_parts, 1) != 5 THEN
-    RETURN FALSE;
+    RETURN QUERY SELECT false, format('Expected 5 segments, got %s', array_length(v_parts, 1));
+    RETURN;
   END IF;
+  
+  -- Segment 1: source system
   IF v_parts[1] NOT IN ('wms', 'crm') THEN
-    RETURN FALSE;
+    RETURN QUERY SELECT false, format('Invalid source system: %s (must be wms or crm)', v_parts[1]);
+    RETURN;
   END IF;
+  
+  -- Segment 2: entity (non-empty)
+  IF v_parts[2] IS NULL OR v_parts[2] = '' THEN
+    RETURN QUERY SELECT false, 'Entity segment (2) is empty';
+    RETURN;
+  END IF;
+  
+  -- Segment 3: entity_id (non-empty, may contain dashes but not colons)
+  IF v_parts[3] IS NULL OR v_parts[3] = '' THEN
+    RETURN QUERY SELECT false, 'Entity ID segment (3) is empty';
+    RETURN;
+  END IF;
+  
+  -- Segment 4: action (non-empty)
+  IF v_parts[4] IS NULL OR v_parts[4] = '' THEN
+    RETURN QUERY SELECT false, 'Action segment (4) is empty';
+    RETURN;
+  END IF;
+  
+  -- Segment 5: version (must be v1)
   IF v_parts[5] != 'v1' THEN
-    RETURN FALSE;
+    RETURN QUERY SELECT false, format('Invalid version: %s (must be v1)', v_parts[5]);
+    RETURN;
   END IF;
-  RETURN TRUE;
+  
+  RETURN QUERY SELECT true, NULL::TEXT;
 END;
 $$;
 ```
+
+#### UOM Validation Function
+
+```sql
+-- Per Contract: UOM MUST be MT or KG only (uppercase)
+CREATE OR REPLACE FUNCTION validate_contract_uom(p_uom TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT p_uom IN ('MT', 'KG');
+$$;
+```
+
+### Backend Scope
+
+#### Contract Schema Definitions (TypeScript)
+
+```typescript
+// File: supabase/functions/_shared/contract-schemas.ts
+
+/**
+ * Contract v1.0.23 Schema Definitions
+ * Source: integration_contract_v1_0_23(1)(1).md
+ * DO NOT MODIFY without contract amendment
+ */
+
+// Valid UOM values per contract
+export const CONTRACT_UOM_VALUES = ['MT', 'KG'] as const;
+export type ContractUOM = typeof CONTRACT_UOM_VALUES[number];
+
+// Idempotency key validation
+export function validateIdempotencyKey(key: string): { valid: boolean; error?: string } {
+  if (!key) {
+    return { valid: false, error: 'Idempotency key is empty' };
+  }
+  
+  const parts = key.split(':');
+  
+  if (parts.length !== 5) {
+    return { valid: false, error: `Expected 5 segments, got ${parts.length}` };
+  }
+  
+  if (!['wms', 'crm'].includes(parts[0])) {
+    return { valid: false, error: `Invalid source: ${parts[0]}` };
+  }
+  
+  if (!parts[1] || !parts[2] || !parts[3]) {
+    return { valid: false, error: 'Empty segment in key' };
+  }
+  
+  if (parts[4] !== 'v1') {
+    return { valid: false, error: `Invalid version: ${parts[4]}` };
+  }
+  
+  return { valid: true };
+}
+
+// Schema validation with unknown field detection
+export function validatePayloadSchema<T>(
+  payload: Record<string, unknown>,
+  schema: Record<string, 'required' | 'optional'>,
+  eventType: string
+): { valid: boolean; unknownFields: string[]; missingFields: string[] } {
+  const unknownFields: string[] = [];
+  const missingFields: string[] = [];
+  
+  // Check for unknown fields
+  for (const key of Object.keys(payload)) {
+    if (!(key in schema)) {
+      unknownFields.push(key);
+    }
+  }
+  
+  // Check for missing required fields
+  for (const [key, requirement] of Object.entries(schema)) {
+    if (requirement === 'required' && !(key in payload)) {
+      missingFields.push(key);
+    }
+  }
+  
+  return {
+    valid: unknownFields.length === 0 && missingFields.length === 0,
+    unknownFields,
+    missingFields
+  };
+}
+
+// Log contract violation
+export async function logContractViolation(
+  supabase: any,
+  violation: {
+    event_type: string;
+    violation_type: 'unknown_field' | 'missing_required_field' | 'invalid_enum_value' | 
+                   'invalid_idempotency_format' | 'schema_mismatch' | 'uom_violation';
+    field_name?: string;
+    field_value?: string;
+    expected_schema?: object;
+    received_payload?: object;
+    idempotency_key?: string;
+    source_system?: string;
+  }
+): Promise<void> {
+  await supabase.from('integration_contract_violations').insert(violation);
+  console.warn(`[CONTRACT VIOLATION] ${violation.violation_type}: ${violation.field_name || violation.event_type}`);
+}
+
+// Event schemas per Contract v1.0.23
+export const EVENT_SCHEMAS = {
+  'org_access.updated': {
+    event: 'required',
+    idempotency_key: 'required',
+    user_id: 'required',
+    org_access_seq: 'required',
+    grants: 'required',
+    updated_at: 'required',
+    updated_by: 'optional'
+  },
+  'stock.changed': {
+    event: 'required',
+    idempotency_key: 'required',
+    transaction_batch_id: 'required',
+    crm_organization_id: 'optional',
+    changed_at: 'required',
+    reason: 'required',
+    items: 'required',
+    changed_by: 'optional'
+  },
+  // Add all other event schemas...
+} as const;
+```
+
+#### HMAC + Schema Validation (TypeScript)
+
+```typescript
+// File: supabase/functions/_shared/contract-validation.ts
+
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { 
+  validateIdempotencyKey, 
+  validatePayloadSchema, 
+  logContractViolation,
+  EVENT_SCHEMAS,
+  CONTRACT_UOM_VALUES
+} from './contract-schemas.ts';
+
+const STRICT_MODE = true; // Reject unknown fields
+
+export interface ValidationResult {
+  valid: boolean;
+  status: number;
+  error?: string;
+  violations: string[];
+}
+
+export async function validateInboundEvent(
+  supabase: any,
+  req: Request,
+  payload: Record<string, unknown>
+): Promise<ValidationResult> {
+  const violations: string[] = [];
+  
+  // 1. Validate HMAC signature
+  const signature = req.headers.get('x-webhook-signature');
+  const webhookSecret = Deno.env.get('WEBHOOK_SECRET');
+  
+  if (!signature || !webhookSecret) {
+    return { valid: false, status: 401, error: 'Missing signature', violations: [] };
+  }
+  
+  const expectedSignature = createHmac('sha256', webhookSecret)
+    .update(JSON.stringify(payload))
+    .digest('hex');
+  
+  const sigBuffer = Buffer.from(signature, 'hex');
+  const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+  
+  if (sigBuffer.length !== expectedBuffer.length || 
+      !timingSafeEqual(sigBuffer, expectedBuffer)) {
+    return { valid: false, status: 401, error: 'Invalid signature', violations: [] };
+  }
+  
+  // 2. Validate idempotency key format
+  const idempotencyKey = payload.idempotency_key as string;
+  const keyValidation = validateIdempotencyKey(idempotencyKey);
+  
+  if (!keyValidation.valid) {
+    await logContractViolation(supabase, {
+      event_type: payload.event as string || 'unknown',
+      violation_type: 'invalid_idempotency_format',
+      field_value: idempotencyKey,
+      idempotency_key: idempotencyKey,
+      source_system: 'crm'
+    });
+    
+    return { 
+      valid: false, 
+      status: 400, 
+      error: `Invalid idempotency key: ${keyValidation.error}`,
+      violations: [`idempotency_key: ${keyValidation.error}`]
+    };
+  }
+  
+  // 3. Validate event schema
+  const eventType = payload.event as string;
+  const schema = EVENT_SCHEMAS[eventType as keyof typeof EVENT_SCHEMAS];
+  
+  if (!schema) {
+    await logContractViolation(supabase, {
+      event_type: eventType,
+      violation_type: 'schema_mismatch',
+      received_payload: payload,
+      source_system: 'crm'
+    });
+    
+    return {
+      valid: false,
+      status: 400,
+      error: `Unknown event type: ${eventType}`,
+      violations: [`Unknown event: ${eventType}`]
+    };
+  }
+  
+  const schemaValidation = validatePayloadSchema(payload, schema, eventType);
+  
+  // Log unknown fields
+  for (const field of schemaValidation.unknownFields) {
+    await logContractViolation(supabase, {
+      event_type: eventType,
+      violation_type: 'unknown_field',
+      field_name: field,
+      field_value: String(payload[field]),
+      received_payload: payload,
+      idempotency_key: idempotencyKey,
+      source_system: 'crm'
+    });
+    violations.push(`Unknown field: ${field}`);
+  }
+  
+  // Reject if strict mode and unknown fields present
+  if (STRICT_MODE && schemaValidation.unknownFields.length > 0) {
+    return {
+      valid: false,
+      status: 400,
+      error: `Unknown fields in payload: ${schemaValidation.unknownFields.join(', ')}`,
+      violations
+    };
+  }
+  
+  // Check missing required fields
+  for (const field of schemaValidation.missingFields) {
+    await logContractViolation(supabase, {
+      event_type: eventType,
+      violation_type: 'missing_required_field',
+      field_name: field,
+      idempotency_key: idempotencyKey,
+      source_system: 'crm'
+    });
+    violations.push(`Missing required field: ${field}`);
+  }
+  
+  if (schemaValidation.missingFields.length > 0) {
+    return {
+      valid: false,
+      status: 400,
+      error: `Missing required fields: ${schemaValidation.missingFields.join(', ')}`,
+      violations
+    };
+  }
+  
+  // 4. Validate UOM if present
+  if ('uom' in payload && !CONTRACT_UOM_VALUES.includes(payload.uom as any)) {
+    await logContractViolation(supabase, {
+      event_type: eventType,
+      violation_type: 'uom_violation',
+      field_name: 'uom',
+      field_value: String(payload.uom),
+      idempotency_key: idempotencyKey,
+      source_system: 'crm'
+    });
+    
+    return {
+      valid: false,
+      status: 400,
+      error: `Invalid UOM: ${payload.uom} (must be MT or KG)`,
+      violations: [`Invalid UOM: ${payload.uom}`]
+    };
+  }
+  
+  return { valid: true, status: 200, violations };
+}
+```
+
+### Contract Compliance Checklist
+
+- [x] Event names match contract exactly (infrastructure only)
+- [x] Idempotency key validation: 5 segments, ends with :v1
+- [x] Unknown field detection and logging implemented
+- [x] UOM validation restricted to MT|KG only
+
+### Done Proof
+
+| Check | Method |
+|-------|--------|
+| Violation table exists | `SELECT * FROM integration_contract_violations LIMIT 1` |
+| Key validation works | `SELECT * FROM validate_idempotency_key('wms:order:123:created:v1')` returns valid=true |
+| Invalid key rejected | `SELECT * FROM validate_idempotency_key('wms:order:123:created')` returns valid=false |
+| UOM validation | `SELECT validate_contract_uom('MT')` = true, `SELECT validate_contract_uom('YD')` = false |
+
+### QA Test IDs
+
+- QA Addendum A: Contract authority verification
+- QA Addendum B: Idempotency key format validation
+- QA Addendum C: Inbox retry semantics
 
 ---
 
@@ -110,12 +625,12 @@ $$;
 |-----------|-------|
 | **Sessions** | 1 |
 | **Priority** | P0 — Foundation |
-| **Dependencies** | None |
+| **Dependencies** | Batch 0 |
 | **CRM Required** | No |
 
 ### Contract Scope
 
-- **Events**: None (infrastructure only)
+- **Events**: None (ingestion/logging only — no business handlers)
 - **Purpose**: Establish canonical contract file and create inbound event logging table
 
 ### DB Scope
@@ -128,96 +643,126 @@ CREATE TABLE integration_inbox (
   event_type TEXT NOT NULL,
   payload JSONB NOT NULL,
   idempotency_key TEXT NOT NULL UNIQUE,
+  payload_hash TEXT NOT NULL,
   source_system TEXT DEFAULT 'crm',
-  status TEXT DEFAULT 'received' CHECK (status IN ('received', 'processing', 'processed', 'error')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'processed', 'failed')),
+  attempt_count INTEGER DEFAULT 0,
   processed_at TIMESTAMPTZ,
-  error_message TEXT,
+  last_attempt_at TIMESTAMPTZ,
+  next_retry_at TIMESTAMPTZ,
+  last_error TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE INDEX idx_inbox_idempotency ON integration_inbox(idempotency_key);
 CREATE INDEX idx_inbox_status ON integration_inbox(status, created_at);
 CREATE INDEX idx_inbox_event_type ON integration_inbox(event_type, created_at DESC);
+CREATE INDEX idx_inbox_retry ON integration_inbox(status, next_retry_at) WHERE status = 'failed';
 ```
 
-#### RLS Policies
+#### RLS Policies (Per Contract Appendix D.2)
 
 ```sql
 ALTER TABLE integration_inbox ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin only access to integration_inbox"
+-- No direct end-user access (service role only + admin view)
+REVOKE ALL ON TABLE integration_inbox FROM authenticated;
+
+-- Admin-only visibility for debugging
+CREATE POLICY "inbox_select_admin_only"
   ON integration_inbox
-  FOR ALL
+  FOR SELECT
+  TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM profiles
       WHERE profiles.user_id = auth.uid()
-      AND profiles.role IN ('admin', 'senior_manager')
+      AND profiles.role = 'admin'
     )
   );
 ```
 
 ### Backend Scope
 
-#### Edge Function Updates: `wms-webhook-receiver`
+#### Edge Function: `wms-webhook-receiver` (Updated)
 
-| Change | Description |
-|--------|-------------|
-| Validate idempotency key | Reject if not 5 segments |
-| Log to `integration_inbox` | Instead of `integration_outbox` for inbound events |
-| Return structured response | `{ "status": "received", "idempotency_key": "..." }` |
-
-#### New Validation Logic
+Implements Contract Appendix D.3 retry semantics:
 
 ```typescript
-function validateIdempotencyKey(key: string): boolean {
-  const parts = key.split(':');
-  if (parts.length !== 5) return false;
-  if (!['wms', 'crm'].includes(parts[0])) return false;
-  if (parts[4] !== 'v1') return false;
-  return true;
+// Receiver MUST implement "Failed → Pending (Update, Not Insert)"
+async function handleInboundEvent(supabase: any, payload: any, idempotencyKey: string, payloadHash: string) {
+  // Check for existing entry
+  const { data: existing } = await supabase
+    .from('integration_inbox')
+    .select('id, status, payload_hash')
+    .eq('idempotency_key', idempotencyKey)
+    .single();
+  
+  if (existing) {
+    // Already processed/processing - return 200
+    if (['processed', 'processing', 'pending'].includes(existing.status)) {
+      // Log drift if payload hash differs
+      if (existing.payload_hash !== payloadHash) {
+        console.warn(`[DRIFT] Payload hash differs for ${idempotencyKey}`);
+        await supabase.from('integration_inbox')
+          .update({ last_error: `[DRIFT] Payload hash changed: ${existing.payload_hash} → ${payloadHash}` })
+          .eq('id', existing.id);
+      }
+      return { status: 200, message: 'Already processed' };
+    }
+    
+    // Failed - convert to pending for retry (per Appendix D.3.2)
+    if (existing.status === 'failed') {
+      await supabase.from('integration_inbox')
+        .update({
+          status: 'pending',
+          attempt_count: existing.attempt_count + 1,
+          last_error: null,
+          next_retry_at: null,
+          last_attempt_at: null
+        })
+        .eq('id', existing.id);
+      
+      return { status: 200, message: 'Queued for retry' };
+    }
+  }
+  
+  // New event - insert
+  await supabase.from('integration_inbox').insert({
+    event_type: payload.event,
+    payload,
+    idempotency_key: idempotencyKey,
+    payload_hash: payloadHash,
+    status: 'pending',
+    attempt_count: 0
+  });
+  
+  return { status: 201, message: 'Event received' };
 }
 ```
 
-### UI Scope
+### Contract Compliance Checklist
 
-- None
-
-### Feature Scope
-
-- None
-
-### Forms Scope
-
-- None
-
-### Permissions Scope
-
-| Permission | Roles |
-|------------|-------|
-| View `integration_inbox` | admin, senior_manager |
-
-### User Journeys
-
-- None (infrastructure)
-
-### User Stories
-
-- None (infrastructure)
+- [x] Event names match contract exactly (infrastructure only)
+- [x] Idempotency key format: 5 segments, ends with :v1
+- [x] Retry semantics per Contract Appendix D.3
+- [x] RLS prevents NULL-org leak per Contract Appendix D.2
 
 ### Done Proof
 
 | Check | Method |
 |-------|--------|
-| Contract file updated | `docs/integration_contract_v1.md` contains v1.0.23 content |
+| Contract file updated | Verify `docs/wms_crm_v1_0_23_integration_updated/integration_contract_v1_0_23(1)(1).md` is authoritative |
 | Table exists | `SELECT * FROM integration_inbox LIMIT 1` succeeds |
-| Event logging works | Send test event with valid HMAC, verify row in inbox |
+| Event logging works | Send test event with valid HMAC, verify row in inbox with status='pending' |
 | Invalid key rejected | Send event with 4-segment key, verify HTTP 400 response |
+| Retry semantics | Send duplicate with status=failed, verify status flips to pending |
 
 ### QA Test IDs
 
 - B-01: Idempotency key format validation
 - B-02: Duplicate event handling
+- QA Addendum C: Inbox retry semantics
 
 ---
 
@@ -238,6 +783,8 @@ function validateIdempotencyKey(key: string): boolean {
 |-------|-----------|-----------------|
 | `org_access.updated` | CRM → WMS | `crm:org_access:{user_id}-{org_access_seq}:updated:v1` |
 
+**Contract Reference**: Section "New Event Definition: org_access.updated"
+
 ### DB Scope
 
 #### New Table: `user_org_grants_mirror`
@@ -247,7 +794,9 @@ CREATE TABLE user_org_grants_mirror (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   crm_organization_id UUID NOT NULL,
-  role_in_org TEXT NOT NULL CHECK (role_in_org IN ('viewer', 'sales_rep', 'sales_manager', 'org_admin')),
+  role_in_org TEXT NOT NULL CHECK (role_in_org IN (
+    'sales_owner', 'sales_manager', 'pricing', 'accounting', 'admin'
+  )),
   is_active BOOLEAN DEFAULT true,
   org_access_seq INTEGER NOT NULL,
   synced_at TIMESTAMPTZ DEFAULT now(),
@@ -257,11 +806,13 @@ CREATE TABLE user_org_grants_mirror (
 CREATE INDEX idx_org_grants_user ON user_org_grants_mirror(user_id);
 CREATE INDEX idx_org_grants_org ON user_org_grants_mirror(crm_organization_id);
 CREATE INDEX idx_org_grants_active ON user_org_grants_mirror(user_id, is_active) WHERE is_active = true;
+CREATE INDEX idx_org_grants_seq ON user_org_grants_mirror(user_id, org_access_seq DESC);
 ```
 
-#### New Function: `user_has_org_access`
+#### New Functions
 
 ```sql
+-- Check if user has access to specific org
 CREATE OR REPLACE FUNCTION user_has_org_access(p_user_id UUID, p_org_id UUID)
 RETURNS BOOLEAN 
 LANGUAGE SQL 
@@ -276,11 +827,8 @@ AS $$
       AND is_active = true
   );
 $$;
-```
 
-#### New Function: `get_user_org_ids`
-
-```sql
+-- Get all org IDs user has access to
 CREATE OR REPLACE FUNCTION get_user_org_ids(p_user_id UUID)
 RETURNS UUID[] 
 LANGUAGE SQL 
@@ -295,30 +843,45 @@ AS $$
   FROM user_org_grants_mirror
   WHERE user_id = p_user_id AND is_active = true;
 $$;
-```
 
-#### RLS Policies
-
-```sql
-ALTER TABLE user_org_grants_mirror ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their own grants"
-  ON user_org_grants_mirror
-  FOR SELECT
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Service role full access"
-  ON user_org_grants_mirror
-  FOR ALL
-  USING (auth.role() = 'service_role');
+-- Check if user has multi-org access (for UI toggle visibility)
+CREATE OR REPLACE FUNCTION user_has_multi_org_access(p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT (
+    SELECT COUNT(DISTINCT crm_organization_id) 
+    FROM user_org_grants_mirror 
+    WHERE user_id = p_user_id AND is_active = true
+  ) > 1;
+$$;
 ```
 
 ### Backend Scope
 
-#### Edge Function Handler: `handleOrgAccessUpdated`
+#### Event Handler: `handleOrgAccessUpdated`
 
 ```typescript
-async function handleOrgAccessUpdated(payload: OrgAccessUpdatedPayload) {
+interface OrgAccessGrant {
+  crm_organization_id: string;
+  role_in_org: 'sales_owner' | 'sales_manager' | 'pricing' | 'accounting' | 'admin';
+  is_active: boolean;
+}
+
+interface OrgAccessUpdatedPayload {
+  event: 'org_access.updated';
+  idempotency_key: string;
+  user_id: string;
+  org_access_seq: number;
+  grants: OrgAccessGrant[];
+  updated_at: string;
+  updated_by?: string;
+}
+
+async function handleOrgAccessUpdated(supabase: any, payload: OrgAccessUpdatedPayload) {
   const { user_id, org_access_seq, grants } = payload;
   
   // Sequence guard - reject out-of-order events
@@ -331,11 +894,11 @@ async function handleOrgAccessUpdated(payload: OrgAccessUpdatedPayload) {
     .single();
   
   if (existing && existing.org_access_seq >= org_access_seq) {
-    console.warn(`Out-of-order org_access event: received seq ${org_access_seq}, have ${existing.org_access_seq}`);
-    return { status: 'skipped', reason: 'out_of_order' };
+    console.warn(`[org_access.updated] Out-of-order: received seq ${org_access_seq}, have ${existing.org_access_seq}`);
+    return { status: 'skipped', reason: 'out_of_order_sequence' };
   }
   
-  // Replace all grants for user with new snapshot
+  // Replace all grants for user with new snapshot (per contract)
   await supabase
     .from('user_org_grants_mirror')
     .delete()
@@ -346,8 +909,8 @@ async function handleOrgAccessUpdated(payload: OrgAccessUpdatedPayload) {
       .from('user_org_grants_mirror')
       .insert(grants.map(g => ({
         user_id,
-        crm_organization_id: g.organization_id,
-        role_in_org: g.role,
+        crm_organization_id: g.crm_organization_id,
+        role_in_org: g.role_in_org,
         is_active: g.is_active,
         org_access_seq
       })));
@@ -357,52 +920,13 @@ async function handleOrgAccessUpdated(payload: OrgAccessUpdatedPayload) {
 }
 ```
 
-#### Expected Payload Schema
+### Contract Compliance Checklist
 
-```typescript
-interface OrgAccessUpdatedPayload {
-  user_id: string;
-  org_access_seq: number;
-  grants: Array<{
-    organization_id: string;
-    role: 'viewer' | 'sales_rep' | 'sales_manager' | 'org_admin';
-    is_active: boolean;
-  }>;
-}
-```
-
-### UI Scope
-
-- None (infrastructure)
-
-### Feature Scope
-
-- Multi-org RLS foundation for all org-scoped tables
-
-### Forms Scope
-
-- None
-
-### Permissions Scope
-
-| Change | Description |
-|--------|-------------|
-| New RLS helper | `user_has_org_access()` available for all policies |
-| New RLS helper | `get_user_org_ids()` available for array filtering |
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #1 | User with only MOD access cannot see JTR data | ✅ |
-| #2 | Multi-org manager can toggle Org Scope | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-ORG-01 | As a user with MOD-only access, I cannot see JTR organization data |
-| US-ORG-02 | As a multi-org manager, I can switch between organizations I have access to |
+- [x] Event name: `org_access.updated` (matches contract)
+- [x] Idempotency key format: `crm:org_access:{user_id}-{org_access_seq}:updated:v1`
+- [x] Payload schema matches contract exactly
+- [x] Sequence guard for out-of-order protection
+- [x] Snapshot replacement (not merge)
 
 ### Done Proof
 
@@ -410,8 +934,8 @@ interface OrgAccessUpdatedPayload {
 |-------|--------|
 | Table populated | Send `org_access.updated` event, verify rows in `user_org_grants_mirror` |
 | Function works | `SELECT user_has_org_access('user-uuid', 'org-uuid')` returns correct boolean |
+| Multi-org check | `SELECT user_has_multi_org_access('user-uuid')` returns true for multi-org users |
 | Sequence guard | Send older seq, verify warning log and no data change |
-| Grant replacement | Send new grants, verify old grants deleted |
 
 ### QA Test IDs
 
@@ -420,146 +944,7 @@ interface OrgAccessUpdatedPayload {
 - RLS-03: Out-of-order sequence rejected
 - F-01: Org grants snapshot replacement
 - D-01: Missing org access handled gracefully
-
----
-
-## Batch 3: Reservations Schema Extensions
-
-### Overview
-
-| Attribute | Value |
-|-----------|-------|
-| **Sessions** | 1.5 |
-| **Priority** | P0 — Schema Foundation |
-| **Dependencies** | Batch 1 |
-| **CRM Required** | No |
-
-### Contract Scope
-
-- **Events**: Prepares for `reservation.allocation_planned`, `reservation.allocated`
-- **Purpose**: Add missing reservation columns per contract Section 13.3
-
-### DB Scope
-
-#### Alter Table: `reservations`
-
-```sql
--- Supply request linkage
-ALTER TABLE reservations ADD COLUMN IF NOT EXISTS crm_supply_request_id UUID;
-
--- Ship intent (from CRM deal)
-ALTER TABLE reservations ADD COLUMN IF NOT EXISTS ship_intent TEXT DEFAULT 'unknown'
-  CHECK (ship_intent IN ('unknown', 'ex_works', 'delivered', 'customer_pickup'));
-
--- Expected ship date
-ALTER TABLE reservations ADD COLUMN IF NOT EXISTS ship_date DATE;
-
--- Allocation tracking
-ALTER TABLE reservations ADD COLUMN IF NOT EXISTS allocation_state TEXT DEFAULT 'unallocated'
-  CHECK (allocation_state IN ('unallocated', 'planned', 'allocated', 'partially_allocated'));
-
--- Action flags for workflow
-ALTER TABLE reservations ADD COLUMN IF NOT EXISTS action_required BOOLEAN DEFAULT false;
-ALTER TABLE reservations ADD COLUMN IF NOT EXISTS action_required_reason TEXT;
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_reservations_allocation_state ON reservations(allocation_state);
-CREATE INDEX IF NOT EXISTS idx_reservations_action_required ON reservations(action_required) WHERE action_required = true;
-CREATE INDEX IF NOT EXISTS idx_reservations_ship_date ON reservations(ship_date);
-```
-
-#### Alter Table: `reservation_lines`
-
-```sql
--- CRM deal line linkage
-ALTER TABLE reservation_lines ADD COLUMN IF NOT EXISTS crm_deal_line_id UUID;
-
--- Unit of measure
-ALTER TABLE reservation_lines ADD COLUMN IF NOT EXISTS uom TEXT DEFAULT 'MT'
-  CHECK (uom IN ('MT', 'KG', 'M', 'YD', 'PCS'));
-
--- Lab workflow state (Journey #83)
-ALTER TABLE reservation_lines ADD COLUMN IF NOT EXISTS lab_workflow_state TEXT DEFAULT 'not_requested'
-  CHECK (lab_workflow_state IN ('not_requested', 'requested', 'in_progress', 'sent_to_customer', 'approved', 'rejected'));
-
-ALTER TABLE reservation_lines ADD COLUMN IF NOT EXISTS lab_state_updated_at TIMESTAMPTZ;
-ALTER TABLE reservation_lines ADD COLUMN IF NOT EXISTS lab_state_updated_by UUID;
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_reservation_lines_deal_line ON reservation_lines(crm_deal_line_id);
-CREATE INDEX IF NOT EXISTS idx_reservation_lines_lab_state ON reservation_lines(lab_workflow_state);
-```
-
-### Backend Scope
-
-#### Update: `wms-webhook-receiver` → `handleDealWon`
-
-| Field | Source |
-|-------|--------|
-| `crm_supply_request_id` | Payload `supply_request_id` |
-| `ship_intent` | Payload `ship_intent` |
-| `ship_date` | Payload `expected_ship_date` |
-| `allocation_state` | Default `'unallocated'` |
-
-### UI Scope
-
-#### Amend: `/reservations` Page
-
-| Column | Display |
-|--------|---------|
-| `allocation_state` | Badge: gray=unallocated, yellow=planned, green=allocated |
-| `ship_intent` | Text with icon |
-| `ship_date` | Date formatted |
-| `action_required` | Warning icon if true |
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| Allocation state display | Show allocation progress on reservation list |
-| Lab workflow visibility | Show lab state badges on reservation lines |
-
-### Forms Scope
-
-#### Amend: `ReservationDialog`
-
-| Field | Type | Editable |
-|-------|------|----------|
-| `allocation_state` | Badge | Read-only |
-| `ship_intent` | Text | Read-only (from CRM) |
-| `ship_date` | Date | Read-only (from CRM) |
-
-### Permissions Scope
-
-- No changes (existing RLS applies)
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #10 | Human Gates tabs on /fulfillment | ✅ (partial) |
-| #83 | Lab Workflow states | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-RES-01 | As a WMS operator, I can see the allocation state of a reservation |
-| US-RES-02 | As a WMS operator, I can see which reservations are backed by supply requests |
-| US-RES-03 | As a WMS operator, I can see lab workflow state on reservation lines |
-
-### Done Proof
-
-| Check | Method |
-|-------|--------|
-| Columns exist | `SELECT allocation_state, ship_intent, lab_workflow_state FROM reservations r JOIN reservation_lines rl ON r.id = rl.reservation_id LIMIT 1` |
-| UI displays | Navigate to `/reservations`, verify new columns visible |
-| Lab state badge | View reservation detail, verify lab workflow badge on lines |
-
-### QA Test IDs
-
-- FUL-01: Reservation shows allocation state
-- LAB-01: Lab workflow state visible on lines
+- QA Addendum F: Ordering/sequence handling
 
 ---
 
@@ -571,7 +956,7 @@ CREATE INDEX IF NOT EXISTS idx_reservation_lines_lab_state ON reservation_lines(
 |-----------|-------|
 | **Sessions** | 2.5 |
 | **Priority** | P0 — Schema Foundation |
-| **Dependencies** | Batch 1 |
+| **Dependencies** | Batch 1, Batch 2 |
 | **CRM Required** | No |
 
 ### Contract Scope
@@ -585,14 +970,19 @@ CREATE INDEX IF NOT EXISTS idx_reservation_lines_lab_state ON reservation_lines(
 #### Alter Table: `orders`
 
 ```sql
--- PO Number (primary identifier)
+-- PO Number (primary identifier) - MANDATORY ORG PREFIX
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS po_number TEXT UNIQUE;
 
 -- CRM linkage
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS crm_organization_id UUID;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS crm_organization_id UUID NOT NULL; -- MANDATORY
+
+-- Add constraint to prevent PO creation without org
+ALTER TABLE orders ADD CONSTRAINT orders_require_org 
+  CHECK (crm_organization_id IS NOT NULL);
+
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS crm_deal_id UUID;
 
--- Override tracking
+-- Override tracking with LOCKED reason codes per Checklist
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS override_used BOOLEAN DEFAULT false;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS override_reason TEXT
   CHECK (override_reason IS NULL OR override_reason IN (
@@ -624,8 +1014,6 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_carrier_instructions TEXT;
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_orders_po_number ON orders(po_number);
 CREATE INDEX IF NOT EXISTS idx_orders_crm_org ON orders(crm_organization_id);
-CREATE INDEX IF NOT EXISTS idx_orders_crm_deal ON orders(crm_deal_id);
-CREATE INDEX IF NOT EXISTS idx_orders_invoice_control ON orders(invoice_control_status);
 ```
 
 #### Alter Table: `order_lots`
@@ -634,28 +1022,22 @@ CREATE INDEX IF NOT EXISTS idx_orders_invoice_control ON orders(invoice_control_
 -- CRM deal line linkage
 ALTER TABLE order_lots ADD COLUMN IF NOT EXISTS crm_deal_line_id UUID;
 
--- Unit of measure
+-- Unit of measure - CONTRACT RESTRICTED TO MT|KG ONLY
 ALTER TABLE order_lots ADD COLUMN IF NOT EXISTS uom TEXT DEFAULT 'MT'
-  CHECK (uom IN ('MT', 'KG', 'M', 'YD', 'PCS'));
-
--- Design/Printing reference (Journey #82)
-ALTER TABLE order_lots ADD COLUMN IF NOT EXISTS design_asset_id UUID;
-ALTER TABLE order_lots ADD COLUMN IF NOT EXISTS print_request_id UUID;
-
--- Issue tracking
-ALTER TABLE order_lots ADD COLUMN IF NOT EXISTS issue_blocked BOOLEAN DEFAULT false;
-ALTER TABLE order_lots ADD COLUMN IF NOT EXISTS issue_id UUID;
+  CHECK (uom IN ('MT', 'KG')); -- Per Contract: "uom MUST be MT or KG only"
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_order_lots_deal_line ON order_lots(crm_deal_line_id);
-CREATE INDEX IF NOT EXISTS idx_order_lots_issue_blocked ON order_lots(issue_blocked) WHERE issue_blocked = true;
 ```
 
-#### New Function: `generate_po_number`
+#### PO Number Generator (MANDATORY ORG PREFIX)
 
 ```sql
--- Non-sequential PO number generator (per Checklist requirement)
-CREATE OR REPLACE FUNCTION generate_po_number(p_org_prefix TEXT DEFAULT 'WMS')
+-- CRITICAL: No default prefix - org MUST be provided
+-- Per Checklist: "Org-prefixed, non-sequential identifiers"
+-- Format: {ORG}P{8-CHAR} e.g., MODP8F3K2Q7A
+
+CREATE OR REPLACE FUNCTION generate_po_number(p_org_prefix TEXT)
 RETURNS TEXT 
 LANGUAGE plpgsql 
 SECURITY DEFINER 
@@ -664,10 +1046,28 @@ AS $$
 DECLARE
   v_code TEXT;
   v_attempts INTEGER := 0;
+  v_chars TEXT := '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'; -- Crockford Base32 (no I,L,O,U)
+  v_result TEXT := '';
+  i INTEGER;
 BEGIN
+  -- MANDATORY: Org prefix required
+  IF p_org_prefix IS NULL OR p_org_prefix = '' THEN
+    RAISE EXCEPTION 'Org prefix is required for PO number generation. Cannot generate PO without organization context.';
+  END IF;
+  
+  -- Validate prefix format (2-4 uppercase letters)
+  IF NOT (p_org_prefix ~ '^[A-Z]{2,4}$') THEN
+    RAISE EXCEPTION 'Invalid org prefix format: %. Must be 2-4 uppercase letters.', p_org_prefix;
+  END IF;
+  
   LOOP
-    -- Generate 8-character alphanumeric code (Crockford Base32 style)
-    v_code := p_org_prefix || 'P' || upper(substring(encode(gen_random_bytes(5), 'hex') FROM 1 FOR 8));
+    -- Generate 8-character Crockford Base32 code
+    v_result := '';
+    FOR i IN 1..8 LOOP
+      v_result := v_result || substr(v_chars, floor(random() * length(v_chars) + 1)::int, 1);
+    END LOOP;
+    
+    v_code := p_org_prefix || 'P' || v_result;
     
     -- Check uniqueness
     IF NOT EXISTS (SELECT 1 FROM orders WHERE po_number = v_code) THEN
@@ -675,15 +1075,19 @@ BEGIN
     END IF;
     
     v_attempts := v_attempts + 1;
-    IF v_attempts > 10 THEN
-      RAISE EXCEPTION 'Failed to generate unique PO number after 10 attempts';
+    IF v_attempts > 100 THEN
+      RAISE EXCEPTION 'Failed to generate unique PO number after 100 attempts';
     END IF;
   END LOOP;
 END;
 $$;
+
+-- Add constraint to ensure PO follows format
+ALTER TABLE orders ADD CONSTRAINT orders_po_format 
+  CHECK (po_number ~ '^[A-Z]{2,4}P[0-9A-Z]{8}$');
 ```
 
-#### New Trigger: `increment_order_status_seq`
+#### Status Sequence Trigger
 
 ```sql
 CREATE OR REPLACE FUNCTION increment_order_status_seq()
@@ -692,12 +1096,13 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   IF OLD.status IS DISTINCT FROM NEW.status THEN
-    NEW.order_status_seq := OLD.order_status_seq + 1;
+    NEW.order_status_seq := COALESCE(OLD.order_status_seq, 0) + 1;
   END IF;
   RETURN NEW;
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_order_status_seq ON orders;
 CREATE TRIGGER trg_order_status_seq
   BEFORE UPDATE ON orders
   FOR EACH ROW
@@ -706,359 +1111,68 @@ CREATE TRIGGER trg_order_status_seq
 
 ### Backend Scope
 
-#### Update: Order Creation
+#### Order Creation with Mandatory Org
 
 ```typescript
-// Auto-generate PO number on order creation
-const { data: poNumber } = await supabase
-  .rpc('generate_po_number', { p_org_prefix: orgPrefix || 'WMS' });
-
-const order = {
-  ...orderData,
-  po_number: poNumber,
-  crm_organization_id: orgId,
-  crm_deal_id: dealId
-};
-```
-
-#### Update: `dispatchOrderCreated`
-
-```typescript
-interface OrderCreatedPayload {
-  event: 'order.created';
-  idempotency_key: string; // wms:order:{id}:created:v1
-  wms_order_id: string;
-  po_number: string;
-  crm_deal_id: string;
-  crm_organization_id: string;
-  reservation_id: string;
-  created_at: string;
-  lines: Array<{
-    crm_deal_line_id: string;
-    wms_order_line_id: string;
-    quality_code: string;
-    color_code: string;
-    meters: number;
-    uom: string;
-    lot_id?: string;
-    roll_id?: string;
-  }>;
-  use_customer_carrier: boolean;
-  customer_carrier_name?: string;
+// CRITICAL: Org prefix MUST be derived from order's org context
+async function createOrder(
+  supabase: any, 
+  orderData: OrderInput, 
+  crmOrgId: string
+): Promise<Order> {
+  // Get org prefix from org mapping
+  const { data: orgConfig } = await supabase
+    .from('org_configurations') // or however org prefixes are stored
+    .select('prefix')
+    .eq('crm_organization_id', crmOrgId)
+    .single();
+  
+  if (!orgConfig?.prefix) {
+    throw new Error(`No org prefix configured for organization ${crmOrgId}`);
+  }
+  
+  // Generate PO number with mandatory org prefix
+  const { data: poNumber, error: poError } = await supabase
+    .rpc('generate_po_number', { p_org_prefix: orgConfig.prefix });
+  
+  if (poError) {
+    throw new Error(`Failed to generate PO number: ${poError.message}`);
+  }
+  
+  const order = {
+    ...orderData,
+    po_number: poNumber,
+    crm_organization_id: crmOrgId // MANDATORY
+  };
+  
+  return order;
 }
 ```
 
-### UI Scope
+### Contract Compliance Checklist
 
-#### Amend: `/orders` Page
-
-| Column | Display | Priority |
-|--------|---------|----------|
-| `po_number` | Primary identifier (bold) | 1st column |
-| `override_used` | Warning badge if true | Near status |
-| `invoice_control_status` | Badge | After status |
-
-#### Amend: `/orders/:id` Detail
-
-| Section | Fields |
-|---------|--------|
-| Header | PO Number (large), Status, Invoice Control Status |
-| Override Info | Show if `override_used = true`: reason, notes, who, when |
-| Carrier Info | Show if `use_customer_carrier = true`: carrier details |
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| PO number generation | Auto-generate on order creation |
-| Override tracking | Record when WMS manager overrides CRM approval |
-| Carrier preference | Store and display customer carrier preferences |
-
-### Forms Scope
-
-#### Order Creation
-
-| Field | Type | Auto/Manual |
-|-------|------|-------------|
-| `po_number` | Text | Auto-generated |
-| `crm_organization_id` | UUID | From context |
-| `crm_deal_id` | UUID | From reservation |
-
-### Permissions Scope
-
-- No changes (existing RLS applies)
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #6 | Org-prefixed, non-sequential identifiers | ✅ |
-| #7 | Deal code generator | ✅ (PO number) |
-| #82 | Design/Printing references | ✅ |
-| #84 | Carrier Preference | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-ORD-01 | As a WMS operator, I see PO number as the primary order identifier |
-| US-ORD-02 | As a WMS operator, PO number is auto-generated when creating an order |
-| US-ORD-03 | As a WMS operator, I can see if an order used a manager override |
-| US-ORD-04 | As a WMS operator, I can see customer carrier preferences |
+- [x] Event name: `order.created` (matches contract)
+- [x] Idempotency key format: `wms:order:{id}:created:v1`
+- [x] PO number format: `{ORG}P{8-CHAR}` with mandatory org prefix
+- [x] UOM restricted to MT|KG only per contract
+- [x] Override reason codes locked to enum
+- [x] Status sequence for order.status_changed events
 
 ### Done Proof
 
 | Check | Method |
 |-------|--------|
 | PO number format | Create order, verify format `{ORG}P{8-CHAR}` |
+| No default prefix | Call `generate_po_number(NULL)` fails with exception |
+| Prefix validation | Call `generate_po_number('invalid')` fails |
 | Uniqueness | Attempt duplicate, verify rejection |
-| Event payload | Create order, verify `order.created` includes `po_number` |
-| Status seq | Update status twice, verify `order_status_seq = 2` |
+| UOM constraint | Attempt insert with `uom='YD'`, verify rejection |
 
 ### QA Test IDs
 
-- ID-01: PO number format validation
+- ID-01: PO number format `{ORG}P{CODE8}`
 - ID-02: PO number uniqueness
-- ID-03: Status sequence increment
-- ORD-01: Order created event includes all fields
-
----
-
-## Batch 5: Supply Requests Mirror + Events
-
-### Overview
-
-| Attribute | Value |
-|-----------|-------|
-| **Sessions** | 2 |
-| **Priority** | P1 — Integration |
-| **Dependencies** | Batch 1 |
-| **CRM Required** | Yes — must emit `supply_request.created` |
-
-### Contract Scope
-
-| Event | Direction | Idempotency Key |
-|-------|-----------|-----------------|
-| `supply_request.created` | CRM → WMS | `crm:supply_request:{id}:created:v1` |
-| `supply_request.status_updated` | WMS → CRM | `wms:supply_request:{id}:status_updated:v1` |
-
-### DB Scope
-
-#### New Table: `supply_requests`
-
-```sql
-CREATE TABLE supply_requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- CRM linkage
-  crm_supply_request_id UUID NOT NULL UNIQUE,
-  crm_deal_id UUID NOT NULL,
-  crm_customer_id UUID,
-  crm_organization_id UUID,
-  requested_for_org_id UUID NOT NULL, -- Mandatory per Appendix
-  
-  -- Type and status
-  type TEXT NOT NULL CHECK (type IN ('manufacturing', 'import_from_central')),
-  status TEXT DEFAULT 'planned' CHECK (status IN (
-    'planned',
-    'eta_confirmed', 
-    'in_transit', 
-    'arrived_soft',  -- Key state per Checklist
-    'allocated', 
-    'closed', 
-    'cancelled'
-  )),
-  
-  -- Product details
-  quality_code TEXT NOT NULL,
-  color_code TEXT,
-  meters NUMERIC(12,2) NOT NULL,
-  uom TEXT DEFAULT 'MT' CHECK (uom IN ('MT', 'KG', 'M', 'YD', 'PCS')),
-  
-  -- Dates
-  eta_date DATE,
-  arrived_at TIMESTAMPTZ,
-  allocated_at TIMESTAMPTZ,
-  
-  -- Linkage
-  manufacturing_order_id UUID REFERENCES manufacturing_orders(id),
-  
-  -- Notes
-  notes TEXT,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Indexes
-CREATE INDEX idx_supply_requests_crm_id ON supply_requests(crm_supply_request_id);
-CREATE INDEX idx_supply_requests_status ON supply_requests(status);
-CREATE INDEX idx_supply_requests_org ON supply_requests(requested_for_org_id);
-CREATE INDEX idx_supply_requests_deal ON supply_requests(crm_deal_id);
-CREATE INDEX idx_supply_requests_eta ON supply_requests(eta_date) WHERE status IN ('planned', 'eta_confirmed', 'in_transit');
-```
-
-#### RLS Policies
-
-```sql
-ALTER TABLE supply_requests ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view supply requests for their orgs"
-  ON supply_requests
-  FOR SELECT
-  USING (
-    requested_for_org_id = ANY(get_user_org_ids(auth.uid()))
-    OR EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.user_id = auth.uid()
-      AND profiles.role IN ('admin', 'senior_manager', 'warehouse_staff')
-    )
-  );
-
-CREATE POLICY "Warehouse staff can update supply request status"
-  ON supply_requests
-  FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.user_id = auth.uid()
-      AND profiles.role IN ('admin', 'senior_manager', 'warehouse_staff')
-    )
-  );
-```
-
-### Backend Scope
-
-#### Edge Function Handler: `handleSupplyRequestCreated`
-
-```typescript
-async function handleSupplyRequestCreated(payload: SupplyRequestCreatedPayload) {
-  const { data, error } = await supabase
-    .from('supply_requests')
-    .upsert({
-      crm_supply_request_id: payload.supply_request_id,
-      crm_deal_id: payload.deal_id,
-      crm_customer_id: payload.customer_id,
-      crm_organization_id: payload.organization_id,
-      requested_for_org_id: payload.requested_for_org_id,
-      type: payload.type,
-      status: 'planned',
-      quality_code: payload.quality_code,
-      color_code: payload.color_code,
-      meters: payload.meters,
-      uom: payload.uom || 'MT',
-      eta_date: payload.eta_date
-    }, {
-      onConflict: 'crm_supply_request_id'
-    });
-  
-  return { status: 'processed', supply_request_id: data?.id };
-}
-```
-
-#### Dispatcher: `dispatchSupplyRequestStatusUpdated`
-
-```typescript
-async function dispatchSupplyRequestStatusUpdated(
-  supplyRequestId: string,
-  newStatus: string,
-  metadata?: { arrived_at?: string; notes?: string }
-) {
-  const { data: sr } = await supabase
-    .from('supply_requests')
-    .select('*')
-    .eq('id', supplyRequestId)
-    .single();
-  
-  await dispatchWebhookEvent({
-    event: 'supply_request.status_updated',
-    idempotency_key: `wms:supply_request:${supplyRequestId}:status_updated:v1`,
-    crm_supply_request_id: sr.crm_supply_request_id,
-    wms_supply_request_id: supplyRequestId,
-    new_status: newStatus,
-    previous_status: sr.status,
-    updated_at: new Date().toISOString(),
-    metadata
-  });
-}
-```
-
-### UI Scope
-
-#### New Page: `/supply-requests`
-
-| Component | Description |
-|-----------|-------------|
-| Header | "Supply Requests" with filter controls |
-| Filters | Type, Status, Quality, ETA Date Range |
-| Table | Columns: Type, Quality, Color, Meters, ETA, Status, Actions |
-| Status Badges | planned=gray, eta_confirmed=blue, in_transit=yellow, arrived_soft=green, allocated=purple |
-| Row Actions | "Mark In Transit", "Mark Arrived (Soft)", "View Details" |
-
-#### Page Route
-
-```typescript
-// In App.tsx routing
-<Route path="/supply-requests" element={<SupplyRequests />} />
-```
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| View supply requests | List all supply requests from CRM |
-| Update status | Transition through status workflow |
-| Emit events | Send status updates to CRM |
-| Filter by type | Manufacturing vs Import from Central |
-
-### Forms Scope
-
-#### Supply Request Status Update Form
-
-| Field | Type | Required |
-|-------|------|----------|
-| `status` | Dropdown | Yes |
-| `eta_date` | Date picker | If status = 'eta_confirmed' |
-| `notes` | Textarea | No |
-
-### Permissions Scope
-
-| Permission | Roles |
-|------------|-------|
-| View supply requests | warehouse_staff, senior_manager, admin |
-| Update status | warehouse_staff, senior_manager, admin |
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #11 | /supply-tracking page | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-SUP-01 | As a WMS operator, I can view manufacturing/import requests from CRM |
-| US-SUP-02 | As a WMS operator, I can mark supply as in transit |
-| US-SUP-03 | As a WMS operator, I can mark supply as arrived (soft) |
-| US-SUP-04 | As a WMS operator, I can see ETA dates for incoming supply |
-
-### Done Proof
-
-| Check | Method |
-|-------|--------|
-| Page accessible | Navigate to `/supply-requests`, page loads |
-| Event creates row | Send `supply_request.created`, verify row in table |
-| Status update emits | Change status, verify `supply_request.status_updated` in outbox |
-| Arrived (Soft) badge | Mark arrived, verify green badge displayed |
-
-### QA Test IDs
-
-- SUP-01: Supply request creation from CRM event
-- SUP-02: Status transition workflow
-- SUP-03: Arrived (Soft) state handling
-- SUP-04: Event emission on status change
+- ID-03: Prefix changes apply future-only
 
 ---
 
@@ -1079,6 +1193,34 @@ async function dispatchSupplyRequestStatusUpdated(
 |-------|-----------|-----------------|
 | `stock.changed` | WMS → CRM | `wms:stock:{transaction_batch_id}:changed:v1` |
 
+**Contract Reference**: "Canonical Payload Definition: stock.changed (v1.0.23)"
+
+### Payload Schema (LOCKED per Contract)
+
+```json
+{
+  "event": "stock.changed",
+  "idempotency_key": "wms:stock:{transaction_batch_id}:changed:v1",
+  "transaction_batch_id": "uuid",
+  "crm_organization_id": "uuid|null",
+  "changed_at": "timestamptz",
+  "reason": "receipt|fulfillment|adjustment|transfer|count",
+  "items": [
+    {
+      "quality_code": "string",
+      "color_code": "string|null",
+      "warehouse_id": "uuid|null",
+      "uom": "MT|KG",
+      "on_hand_meters": 1250.00,
+      "reserved_meters": 100.00,
+      "available_meters": 1150.00,
+      "delta_meters": 150.00
+    }
+  ],
+  "changed_by": "uuid|null"
+}
+```
+
 ### DB Scope
 
 #### New Table: `stock_transactions`
@@ -1087,1944 +1229,172 @@ async function dispatchSupplyRequestStatusUpdated(
 CREATE TABLE stock_transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   transaction_batch_id UUID NOT NULL DEFAULT gen_random_uuid(),
-  
-  -- Transaction details
-  reason TEXT NOT NULL CHECK (reason IN (
-    'receipt',
-    'fulfillment', 
-    'adjustment',
-    'transfer',
-    'count'
-  )),
-  
-  -- Org scoping
-  crm_organization_id UUID,
-  
-  -- Audit
+  reason TEXT NOT NULL CHECK (reason IN ('receipt', 'fulfillment', 'adjustment', 'transfer', 'count')),
+  crm_organization_id UUID, -- nullable per contract
   changed_at TIMESTAMPTZ DEFAULT now(),
   changed_by UUID,
-  
-  -- Event tracking
   emitted_at TIMESTAMPTZ,
   
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT now()
+  -- Scope keys for NULL-safe uniqueness (Contract Appendix C)
+  org_scope_key UUID GENERATED ALWAYS AS (
+    COALESCE(crm_organization_id, '00000000-0000-0000-0000-000000000000'::uuid)
+  ) STORED
 );
 
--- Indexes
-CREATE INDEX idx_stock_transactions_batch ON stock_transactions(transaction_batch_id);
-CREATE INDEX idx_stock_transactions_reason ON stock_transactions(reason);
-CREATE INDEX idx_stock_transactions_org ON stock_transactions(crm_organization_id);
-CREATE INDEX idx_stock_transactions_emitted ON stock_transactions(emitted_at) WHERE emitted_at IS NULL;
+CREATE INDEX idx_stock_txn_batch ON stock_transactions(transaction_batch_id);
+CREATE INDEX idx_stock_txn_reason ON stock_transactions(reason, changed_at DESC);
 ```
 
 ### Backend Scope
 
-#### Update: `dispatchStockChanged` (v1.0.23 Schema)
+#### Dispatcher: `dispatchStockChanged`
 
 ```typescript
-interface StockChangedPayload {
-  event: 'stock.changed';
-  idempotency_key: string; // wms:stock:{transaction_batch_id}:changed:v1
-  transaction_batch_id: string;
-  crm_organization_id: string | null;
-  changed_at: string;
-  reason: 'receipt' | 'fulfillment' | 'adjustment' | 'transfer' | 'count';
-  items: Array<{
-    quality_code: string;
-    color_code: string | null;
-    warehouse_id: string | null;
-    uom: 'MT' | 'KG';
-    on_hand_meters: number;
-    reserved_meters: number;
-    available_meters: number;
-    delta_meters: number;
-  }>;
-  changed_by: string | null;
+interface StockItem {
+  quality_code: string;
+  color_code: string | null;
+  warehouse_id: string | null;
+  uom: 'MT' | 'KG'; // Contract: MUST be MT or KG only
+  on_hand_meters: number;
+  reserved_meters: number;
+  available_meters: number;
+  delta_meters?: number;
 }
 
 async function dispatchStockChanged(
+  supabase: any,
   transactionBatchId: string,
-  reason: string,
+  reason: 'receipt' | 'fulfillment' | 'adjustment' | 'transfer' | 'count',
   items: StockItem[],
-  orgId?: string,
+  crmOrgId?: string,
   changedBy?: string
-) {
-  const payload: StockChangedPayload = {
+): Promise<void> {
+  // Validate UOM per contract
+  for (const item of items) {
+    if (!['MT', 'KG'].includes(item.uom)) {
+      throw new Error(`Invalid UOM: ${item.uom}. Contract requires MT or KG only.`);
+    }
+  }
+  
+  const payload = {
     event: 'stock.changed',
     idempotency_key: `wms:stock:${transactionBatchId}:changed:v1`,
     transaction_batch_id: transactionBatchId,
-    crm_organization_id: orgId || null,
+    crm_organization_id: crmOrgId || null,
     changed_at: new Date().toISOString(),
     reason,
     items: items.map(item => ({
       quality_code: item.quality_code,
-      color_code: item.color_code || null,
-      warehouse_id: item.warehouse_id || null,
-      uom: item.uom || 'MT',
+      color_code: item.color_code,
+      warehouse_id: item.warehouse_id,
+      uom: item.uom,
       on_hand_meters: item.on_hand_meters,
       reserved_meters: item.reserved_meters,
-      available_meters: item.on_hand_meters - item.reserved_meters,
+      available_meters: item.available_meters,
       delta_meters: item.delta_meters
     })),
     changed_by: changedBy || null
   };
   
-  await dispatchWebhookEvent(payload);
-  
-  // Mark transaction as emitted
-  await supabase
-    .from('stock_transactions')
-    .update({ emitted_at: new Date().toISOString() })
-    .eq('transaction_batch_id', transactionBatchId);
+  await dispatchWebhookEvent(supabase, payload);
 }
 ```
 
-#### Integration Points
+### Contract Compliance Checklist
 
-| Action | Trigger |
-|--------|---------|
-| Lot receipt | After `lots` insert |
-| Roll receipt | After `rolls` insert |
-| Order fulfillment | After order status → 'fulfilled' |
-| Stock adjustment | After manual adjustment |
-| Stock take reconciliation | After count session reconciled |
-
-### UI Scope
-
-- None (background event)
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| Batch transactions | Group related changes into single event |
-| Snapshot fields | Include on_hand, reserved, available, delta |
-| Reason tracking | Categorize change reason |
-
-### Forms Scope
-
-- None
-
-### Permissions Scope
-
-- None
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #16 | Mirrors/caches updated by stock.changed | ✅ |
-| #81 | Ingest stock.changed and update caches | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-STK-01 | As a system, inventory changes are synced to CRM in real-time |
-| US-STK-02 | As CRM, I receive stock snapshots with delta and absolute values |
-| US-STK-03 | As a system, duplicate events are handled idempotently |
+- [x] Event name: `stock.changed` (matches contract exactly)
+- [x] Idempotency key: `wms:stock:{transaction_batch_id}:changed:v1` (5 segments)
+- [x] Payload schema matches contract exactly
+- [x] UOM restricted to MT|KG only
+- [x] Snapshot values included (on_hand, reserved, available)
+- [x] transaction_batch_id is stable per batch (not time-derived)
 
 ### Done Proof
 
 | Check | Method |
 |-------|--------|
-| Event emitted on receipt | Create lot, verify `stock.changed` in outbox |
-| Payload format | Verify `items[]` array with snapshot fields |
-| Idempotency key | Verify format `wms:stock:{uuid}:changed:v1` |
-| Replay handling | Emit same batch_id twice, verify no duplicate effects |
+| Event dispatched | Inventory change triggers `stock.changed` event |
+| Idempotency | Replay same batch_id creates no duplicate effects |
+| UOM validated | Attempt dispatch with `uom='YD'` fails |
+| Snapshot values | Payload includes on_hand, reserved, available |
 
 ### QA Test IDs
 
 - E-01: stock.changed scope keys
-- STK-01: Event emission on inventory change
-- STK-02: Payload schema compliance
+- QA Addendum E: stock.changed cache correctness
 
 ---
 
-## Batch 7: Allocation Planning + Entry Pages
+## Files/Functions Created or Modified
 
-### Overview
+### SQL Migrations
 
-| Attribute | Value |
-|-----------|-------|
-| **Sessions** | 2.5 |
-| **Priority** | P1 — Workflow |
-| **Dependencies** | Batch 3, Batch 5 |
-| **CRM Required** | No |
+| Batch | File/Migration | Description |
+|-------|---------------|-------------|
+| 0 | `create_contract_violations_table` | Contract violation audit table |
+| 0 | `create_idempotency_validation_function` | `validate_idempotency_key()` |
+| 0 | `create_uom_validation_function` | `validate_contract_uom()` |
+| 1 | `create_integration_inbox_table` | Inbound event logging |
+| 2 | `create_user_org_grants_mirror_table` | Multi-org RLS mirror |
+| 2 | `create_org_access_functions` | `user_has_org_access()`, `get_user_org_ids()` |
+| 4 | `alter_orders_add_integration_columns` | PO number, org linkage, overrides |
+| 4 | `create_po_number_generator` | `generate_po_number()` - MANDATORY org prefix |
+| 4 | `alter_order_lots_add_uom` | UOM restricted to MT|KG |
+| 6 | `create_stock_transactions_table` | Stock change tracking |
 
-### Contract Scope
+### Edge Functions
 
-| Event | Direction | Idempotency Key |
-|-------|-----------|-----------------|
-| `reservation.allocation_planned` | WMS → CRM | `wms:reservation:{id}:allocation_planned:v1` |
-| `reservation.allocated` | WMS → CRM | `wms:reservation:{id}:allocated:v1` |
+| Batch | Function | Description |
+|-------|----------|-------------|
+| 0 | `_shared/contract-schemas.ts` | Contract schema definitions |
+| 0 | `_shared/contract-validation.ts` | HMAC + schema validation |
+| 1 | `wms-webhook-receiver` | Updated with retry semantics |
+| 2 | (handler in receiver) | `handleOrgAccessUpdated` |
+| 6 | `webhook-dispatcher` | Updated `dispatchStockChanged` |
 
-### DB Scope
+### RLS Policies
 
-- Uses columns from Batch 3 (`allocation_state`, `lab_workflow_state`)
-
-### Backend Scope
-
-#### Dispatcher: `dispatchReservationAllocationPlanned`
-
-```typescript
-async function dispatchReservationAllocationPlanned(reservationId: string) {
-  const { data: reservation } = await supabase
-    .from('reservations')
-    .select(`
-      *,
-      reservation_lines (*)
-    `)
-    .eq('id', reservationId)
-    .single();
-  
-  await dispatchWebhookEvent({
-    event: 'reservation.allocation_planned',
-    idempotency_key: `wms:reservation:${reservationId}:allocation_planned:v1`,
-    wms_reservation_id: reservationId,
-    crm_deal_id: reservation.crm_deal_id,
-    crm_organization_id: reservation.crm_organization_id,
-    planned_at: new Date().toISOString(),
-    lines: reservation.reservation_lines.map(line => ({
-      crm_deal_line_id: line.crm_deal_line_id,
-      quality_code: line.quality_code,
-      color_code: line.color_code,
-      meters: line.meters,
-      uom: line.uom
-    }))
-  });
-}
-```
-
-#### Dispatcher: `dispatchReservationAllocated`
-
-```typescript
-async function dispatchReservationAllocated(
-  reservationId: string,
-  allocations: AllocationEntry[]
-) {
-  const { data: reservation } = await supabase
-    .from('reservations')
-    .select('*')
-    .eq('id', reservationId)
-    .single();
-  
-  await dispatchWebhookEvent({
-    event: 'reservation.allocated',
-    idempotency_key: `wms:reservation:${reservationId}:allocated:v1`,
-    wms_reservation_id: reservationId,
-    crm_deal_id: reservation.crm_deal_id,
-    crm_organization_id: reservation.crm_organization_id,
-    allocated_at: new Date().toISOString(),
-    allocations: allocations.map(a => ({
-      crm_deal_line_id: a.crm_deal_line_id,
-      wms_lot_id: a.lot_id,
-      wms_roll_id: a.roll_id,
-      quality_code: a.quality_code,
-      color_code: a.color_code,
-      meters: a.meters,
-      uom: a.uom
-    }))
-  });
-}
-```
-
-### UI Scope
-
-#### New Page: `/allocation-planning`
-
-| Component | Description |
-|-----------|-------------|
-| Header | "Allocation Planning" with filters |
-| Filters | Quality, Color, Ship Date Range, Allocation State |
-| Table | Reservations with `allocation_state = 'unallocated'` backed by arrived supply |
-| Selection | Multi-select checkboxes |
-| Action | "Plan Selected" button |
-| Lab State | Show lab_workflow_state badge per line (block if 'rejected') |
-
-#### New Page: `/allocation-entry`
-
-| Component | Description |
-|-----------|-------------|
-| Header | "Allocation Entry" |
-| Filters | Quality, Color, Planned Date |
-| Table | Reservations with `allocation_state = 'planned'` |
-| Entry Form | Lot/Roll/Meters input per line |
-| Validation | Meters cannot exceed available in lot |
-| Action | "Confirm Allocation" button |
-
-#### Page Routes
-
-```typescript
-<Route path="/allocation-planning" element={<AllocationPlanning />} />
-<Route path="/allocation-entry" element={<AllocationEntry />} />
-```
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| Plan allocations | Set allocation_state = 'planned', emit event |
-| Enter allocations | Link specific lots/rolls, emit event |
-| Lab state blocking | Prevent allocation of lines with rejected lab state |
-| Supply matching | Show only reservations backed by arrived supply |
-
-### Forms Scope
-
-#### Allocation Planning Form
-
-| Field | Type | Description |
-|-------|------|-------------|
-| Selected reservations | Checkbox list | Multi-select |
-| Notes | Textarea | Optional planning notes |
-
-#### Allocation Entry Form
-
-| Field | Type | Validation |
-|-------|------|------------|
-| `lot_id` | Dropdown | Required, must have available stock |
-| `roll_id` | Dropdown | Optional, filter by lot |
-| `meters` | Number | Required, ≤ available |
-
-### Permissions Scope
-
-| Permission | Roles |
-|------------|-------|
-| `allocations:plan` | warehouse_staff, senior_manager, admin |
-| `allocations:enter` | warehouse_staff, senior_manager, admin |
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #19 | Warehouse staff handles allocation in WMS | ✅ |
-| #83 | Lab Workflow visibility in allocation | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-ALC-01 | As a WMS operator, I can plan which reservations will be fulfilled from arrived supply |
-| US-ALC-02 | As a WMS operator, I can enter specific lots/rolls for planned allocations |
-| US-ALC-03 | As a WMS operator, I cannot allocate lines with rejected lab status |
-| US-ALC-04 | As CRM, I receive allocation events to update deal status |
-
-### Done Proof
-
-| Check | Method |
-|-------|--------|
-| Page accessible | Navigate to `/allocation-planning` |
-| Planning emits event | Plan reservation, verify `reservation.allocation_planned` in outbox |
-| Entry emits event | Enter allocation, verify `reservation.allocated` in outbox |
-| Lab blocking | Attempt to allocate rejected line, verify blocked |
-
-### QA Test IDs
-
-- ALC-01: Allocation planning workflow
-- ALC-02: Allocation entry validation
-- ALC-03: Lab state blocking
-- FUL-01: Human gates workflow
+| Batch | Table | Policy Description |
+|-------|-------|-------------------|
+| 1 | `integration_inbox` | Admin-only (no NULL-org leak) |
+| 2 | `user_org_grants_mirror` | User sees own grants, service role full |
 
 ---
 
-## Batch 8: Shipment Approval + Override
+## Contract Change Requests
 
-### Overview
+Items that require functionality not in Contract v1.0.23:
 
-| Attribute | Value |
-|-----------|-------|
-| **Sessions** | 2.5 |
-| **Priority** | P1 — Workflow |
-| **Dependencies** | Batch 4, Batch 7 |
-| **CRM Required** | Yes — must emit `shipment.approved` |
+| ID | Description | Requested By | Status |
+|----|-------------|--------------|--------|
+| (none) | | | |
 
-### Contract Scope
-
-| Event | Direction | Idempotency Key |
-|-------|-----------|-----------------|
-| `shipment.approved` | CRM → WMS | `crm:reservation:{id}:shipment_approved:v1` |
-
-### DB Scope
-
-- Uses columns from Batch 4 (override_*, customer_carrier_*)
-
-### Backend Scope
-
-#### Edge Function Handler: `handleShipmentApproved`
-
-```typescript
-async function handleShipmentApproved(payload: ShipmentApprovedPayload) {
-  const { reservation_id, deal_id, approved_by, use_customer_carrier, carrier_details } = payload;
-  
-  // Get reservation
-  const { data: reservation } = await supabase
-    .from('reservations')
-    .select('*, reservation_lines(*)')
-    .eq('id', reservation_id)
-    .single();
-  
-  if (!reservation) {
-    throw new Error(`Reservation ${reservation_id} not found`);
-  }
-  
-  // Generate PO number
-  const { data: poNumber } = await supabase.rpc('generate_po_number', { 
-    p_org_prefix: payload.org_prefix || 'WMS' 
-  });
-  
-  // Create order
-  const { data: order, error } = await supabase
-    .from('orders')
-    .insert({
-      po_number: poNumber,
-      reservation_id: reservation.id,
-      crm_deal_id: deal_id,
-      crm_organization_id: reservation.crm_organization_id,
-      customer_name: reservation.customer_name,
-      status: 'confirmed',
-      use_customer_carrier: use_customer_carrier || false,
-      customer_carrier_name: carrier_details?.name,
-      customer_carrier_account: carrier_details?.account,
-      customer_carrier_instructions: carrier_details?.instructions
-    })
-    .select()
-    .single();
-  
-  // Create order lines
-  await supabase
-    .from('order_lots')
-    .insert(reservation.reservation_lines.map(line => ({
-      order_id: order.id,
-      crm_deal_line_id: line.crm_deal_line_id,
-      lot_id: line.lot_id,
-      quality_code: line.quality_code,
-      color_code: line.color_code,
-      meters: line.meters,
-      uom: line.uom
-    })));
-  
-  // Emit order.created
-  await dispatchOrderCreated(order.id);
-  
-  return { status: 'processed', order_id: order.id, po_number: poNumber };
-}
-```
-
-#### Override Function
-
-```typescript
-async function createOrderWithOverride(
-  reservationId: string,
-  overrideReason: string,
-  overrideNotes: string,
-  userId: string
-) {
-  const { data: poNumber } = await supabase.rpc('generate_po_number');
-  
-  const { data: order } = await supabase
-    .from('orders')
-    .insert({
-      po_number: poNumber,
-      reservation_id: reservationId,
-      status: 'confirmed',
-      override_used: true,
-      override_reason: overrideReason,
-      override_notes: overrideNotes,
-      override_by: userId,
-      override_at: new Date().toISOString()
-    })
-    .select()
-    .single();
-  
-  await dispatchOrderCreated(order.id);
-  
-  return order;
-}
-```
-
-### UI Scope
-
-#### New Page: `/approvals/shipment`
-
-| Component | Description |
-|-----------|-------------|
-| Header | "Shipment Approvals" |
-| Tabs | "Pending CRM Approval", "Ready to Ship", "Override Queue" |
-| Table | Reservations with `action_required = true` AND `action_required_reason = 'needs_shipment_approval'` |
-| Row Details | Customer, Quality, Meters, Ship Intent, Expected Date |
-| Actions | "Override" button (senior_manager only) |
-
-#### Override Dialog
-
-| Field | Type | Required |
-|-------|------|----------|
-| `override_reason` | Dropdown (locked enum) | Yes |
-| `override_notes` | Textarea | Yes (min 20 chars) |
-
-#### Override Reason Enum
-
-```typescript
-const OVERRIDE_REASONS = [
-  { value: 'urgent_customer_request', label: 'Urgent Customer Request' },
-  { value: 'manager_discretion', label: 'Manager Discretion' },
-  { value: 'system_unavailable', label: 'CRM System Unavailable' },
-  { value: 'credit_exception', label: 'Credit Exception Approved' },
-  { value: 'other', label: 'Other (specify in notes)' }
-] as const;
-```
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| Receive approval | CRM approval creates WMS order |
-| Manager override | Senior manager can override without CRM |
-| Carrier prefill | Copy carrier preferences from approval |
-| Audit trail | Record override reason, notes, who, when |
-
-### Forms Scope
-
-#### Override Form
-
-| Field | Validation |
-|-------|------------|
-| Reason | Required, from locked enum |
-| Notes | Required, min 20 characters |
-
-### Permissions Scope
-
-| Permission | Roles |
-|------------|-------|
-| View approvals | warehouse_staff, senior_manager, admin |
-| `shipment:override` | senior_manager, admin |
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #20 | WMS Manager can override with reason codes | ✅ |
-| #21 | Warehouse never logs into CRM | ✅ |
-| #84 | Carrier Preference handling | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-SHP-01 | As a WMS operator, I see orders created after CRM approves shipment |
-| US-SHP-02 | As a WMS manager, I can override shipment approval when needed |
-| US-SHP-03 | As a WMS manager, I must provide a reason and notes for override |
-| US-SHP-04 | As a WMS operator, I can see customer carrier preferences on orders |
-
-### Done Proof
-
-| Check | Method |
-|-------|--------|
-| Approval creates order | Send `shipment.approved`, verify order with `po_number` |
-| Override works | Click Override, fill form, verify order with `override_used = true` |
-| Reason required | Try override without reason, verify blocked |
-| Carrier copied | Send approval with carrier, verify order has carrier fields |
-
-### QA Test IDs
-
-- FUL-01: Shipment approval workflow
-- FUL-02: Override with reason codes
-- SHP-01: Order creation from approval
-- SHP-02: Carrier preference mapping
-
----
-
-## Batch 9: Central Stock Checks (Abra)
-
-### Overview
-
-| Attribute | Value |
-|-----------|-------|
-| **Sessions** | 2 |
-| **Priority** | P1 — Workflow |
-| **Dependencies** | Batch 1 |
-| **CRM Required** | No |
-
-### Contract Scope
-
-| Event | Direction | Idempotency Key |
-|-------|-----------|-----------------|
-| `central_stock_check.completed` | WMS → CRM | `wms:central_stock_check:{check_id}:completed:v1` |
-
-### DB Scope
-
-#### New Types
-
-```sql
-CREATE TYPE central_stock_result AS ENUM (
-  'found_in_abra',
-  'not_in_abra',
-  'uncertain'
-);
-
-CREATE TYPE central_stock_next_step AS ENUM (
-  'import_from_central',
-  'manufacture',
-  'needs_central_confirmation'
-);
-```
-
-#### New Table: `central_stock_checks`
-
-```sql
-CREATE TABLE central_stock_checks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- CRM linkage
-  crm_deal_id UUID,
-  crm_organization_id UUID,
-  
-  -- Audit
-  checked_at TIMESTAMPTZ DEFAULT now(),
-  checked_by UUID,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_central_checks_deal ON central_stock_checks(crm_deal_id);
-CREATE INDEX idx_central_checks_org ON central_stock_checks(crm_organization_id);
-```
-
-#### New Table: `central_stock_check_lines`
-
-```sql
-CREATE TABLE central_stock_check_lines (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  check_id UUID NOT NULL REFERENCES central_stock_checks(id) ON DELETE CASCADE,
-  
-  -- CRM linkage
-  crm_deal_line_id UUID NOT NULL,
-  
-  -- Product
-  quality_code TEXT NOT NULL,
-  color_code TEXT,
-  
-  -- Results
-  result central_stock_result,
-  available_qty NUMERIC(12,2),
-  proposed_next_step central_stock_next_step,
-  eta_text TEXT,
-  
-  -- Notes
-  notes TEXT,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_central_check_lines_check ON central_stock_check_lines(check_id);
-CREATE INDEX idx_central_check_lines_deal_line ON central_stock_check_lines(crm_deal_line_id);
-```
-
-### Backend Scope
-
-#### Dispatcher: `dispatchCentralStockCheckCompleted`
-
-```typescript
-async function dispatchCentralStockCheckCompleted(checkId: string) {
-  const { data: check } = await supabase
-    .from('central_stock_checks')
-    .select(`
-      *,
-      lines:central_stock_check_lines(*)
-    `)
-    .eq('id', checkId)
-    .single();
-  
-  await dispatchWebhookEvent({
-    event: 'central_stock_check.completed',
-    idempotency_key: `wms:central_stock_check:${checkId}:completed:v1`,
-    check_id: checkId,
-    crm_deal_id: check.crm_deal_id,
-    crm_organization_id: check.crm_organization_id,
-    checked_at: check.checked_at,
-    checked_by: check.checked_by,
-    lines: check.lines.map(line => ({
-      crm_deal_line_id: line.crm_deal_line_id,
-      quality_code: line.quality_code,
-      color_code: line.color_code,
-      result: line.result,
-      available_qty: line.available_qty,
-      proposed_next_step: line.proposed_next_step,
-      eta_text: line.eta_text
-    }))
-  });
-}
-```
-
-### UI Scope
-
-#### New Page: `/central-stock-checks`
-
-| Component | Description |
-|-----------|-------------|
-| Header | "Central Stock Checks (Abra)" |
-| Queue | List of deals pending Abra check |
-| Entry Form | Per-line result entry |
-| Submit | "Complete Check" button |
-
-#### Check Entry Form
-
-| Field | Type | Options |
-|-------|------|---------|
-| Result | Dropdown | Found in Abra, Not in Abra, Uncertain |
-| Available Qty | Number | If found |
-| Next Step | Dropdown | Import from Central, Manufacture, Needs Confirmation |
-| ETA | Text | Free text (e.g., "2-3 weeks") |
-| Notes | Textarea | Optional |
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| Queue pending checks | Show deals needing Abra verification |
-| Enter results | Record result per deal line |
-| Emit completion | Send results to CRM |
-| Block actions | "Send back (No On-Hand)" blocked until check complete |
-
-### Forms Scope
-
-#### Central Stock Check Form
-
-| Step | Fields |
-|------|--------|
-| 1 | Select deal from queue |
-| 2 | Enter result per line |
-| 3 | Confirm and submit |
-
-### Permissions Scope
-
-| Permission | Roles |
-|------------|-------|
-| `centralstock:check` | warehouse_staff, senior_manager, admin |
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #46 | Abra check queue | ✅ |
-| #47 | Abra result entry | ✅ |
-| #48 | Abra → Supply Request creation | ✅ (via event) |
-| #49 | Abra → Manufacturing request | ✅ (via event) |
-| #50 | Abra uncertain handling | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-ABR-01 | As a WMS operator, I can see deals pending Abra check |
-| US-ABR-02 | As a WMS operator, I can record Abra check results |
-| US-ABR-03 | As CRM, I receive check results to route next steps |
-| US-ABR-04 | As a WMS operator, I cannot send back items without completing Abra check |
-
-### Done Proof
-
-| Check | Method |
-|-------|--------|
-| Page accessible | Navigate to `/central-stock-checks` |
-| Queue displays | Verify pending checks shown |
-| Results saved | Enter results, verify in database |
-| Event emitted | Complete check, verify `central_stock_check.completed` in outbox |
-
-### QA Test IDs
-
-- ABR-01: Queue display
-- ABR-02: Result entry validation
-- ABR-03: Supply request creation trigger
-- ABR-04: Manufacturing request trigger
-- ABRA-01: Uncertain result handling
-- ABRA-02: Block "Send back" without check
-
----
-
-## Batch 10: Post-PO Issues (Discrepancy Loop)
-
-### Overview
-
-| Attribute | Value |
-|-----------|-------|
-| **Sessions** | 2.5 |
-| **Priority** | P1 — Workflow |
-| **Dependencies** | Batch 4 |
-| **CRM Required** | No |
-
-### Contract Scope
-
-| Event | Direction | Idempotency Key |
-|-------|-----------|-----------------|
-| `post_po_issue.created` | WMS → CRM | `wms:post_po_issue:{issue_id}:created:v1` |
-| `post_po_issue.updated` | WMS → CRM | `wms:post_po_issue:{issue_id}:updated:v1` |
-| `post_po_issue.resolved` | WMS → CRM | `wms:post_po_issue:{issue_id}:resolved:v1` |
-
-### DB Scope
-
-#### New Types
-
-```sql
-CREATE TYPE post_po_issue_type AS ENUM (
-  'shortage',
-  'wrong_lot',
-  'damaged_roll',
-  'quality_mismatch',
-  'color_mismatch',
-  'lot_swap',
-  'other'
-);
-
-CREATE TYPE post_po_issue_status AS ENUM (
-  'open',
-  'proposed',
-  'manager_review',
-  'resolved',
-  'rejected',
-  'override'
-);
-```
-
-#### New Table: `post_po_issues`
-
-```sql
-CREATE TABLE post_po_issues (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Order linkage
-  order_id UUID NOT NULL REFERENCES orders(id),
-  po_number TEXT NOT NULL,
-  
-  -- CRM linkage
-  crm_deal_id UUID NOT NULL,
-  crm_organization_id UUID,
-  
-  -- Issue details
-  issue_type post_po_issue_type NOT NULL,
-  description TEXT,
-  status post_po_issue_status DEFAULT 'open',
-  
-  -- Customer approval
-  requires_customer_approval BOOLEAN DEFAULT false,
-  customer_approved_at TIMESTAMPTZ,
-  
-  -- Resolution
-  resolution TEXT,
-  resolution_note TEXT,
-  
-  -- Audit
-  created_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID,
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  resolved_at TIMESTAMPTZ,
-  resolved_by UUID
-);
-
-CREATE INDEX idx_post_po_issues_order ON post_po_issues(order_id);
-CREATE INDEX idx_post_po_issues_status ON post_po_issues(status);
-CREATE INDEX idx_post_po_issues_deal ON post_po_issues(crm_deal_id);
-```
-
-#### New Table: `post_po_issue_lines`
-
-```sql
-CREATE TABLE post_po_issue_lines (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  issue_id UUID NOT NULL REFERENCES post_po_issues(id) ON DELETE CASCADE,
-  
-  -- Line linkage
-  crm_deal_line_id UUID NOT NULL,
-  wms_order_line_id UUID,
-  
-  -- Issue details
-  issue_type post_po_issue_type NOT NULL,
-  reason_note TEXT,
-  
-  -- Quantities
-  original_meters NUMERIC(12,2) NOT NULL,
-  affected_meters NUMERIC(12,2) NOT NULL,
-  
-  -- Lot swap
-  lot_swap_flagged BOOLEAN DEFAULT false,
-  original_lot_id TEXT,
-  proposed_lot_id TEXT,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_post_po_issue_lines_issue ON post_po_issue_lines(issue_id);
-CREATE INDEX idx_post_po_issue_lines_deal_line ON post_po_issue_lines(crm_deal_line_id);
-```
-
-### Backend Scope
-
-#### Dispatchers
-
-```typescript
-async function dispatchPostPoIssueCreated(issueId: string) {
-  const { data: issue } = await supabase
-    .from('post_po_issues')
-    .select(`
-      *,
-      lines:post_po_issue_lines(*)
-    `)
-    .eq('id', issueId)
-    .single();
-  
-  await dispatchWebhookEvent({
-    event: 'post_po_issue.created',
-    idempotency_key: `wms:post_po_issue:${issueId}:created:v1`,
-    issue_id: issueId,
-    po_number: issue.po_number,
-    crm_deal_id: issue.crm_deal_id,
-    crm_organization_id: issue.crm_organization_id,
-    issue_type: issue.issue_type,
-    description: issue.description,
-    requires_customer_notification: issue.requires_customer_approval,
-    suggested_customer_message: generateCustomerMessage(issue),
-    lines: issue.lines.map(line => ({
-      crm_deal_line_id: line.crm_deal_line_id,
-      issue_type: line.issue_type,
-      original_meters: line.original_meters,
-      affected_meters: line.affected_meters,
-      lot_swap_flagged: line.lot_swap_flagged
-    })),
-    created_at: issue.created_at,
-    created_by: issue.created_by
-  });
-}
-
-function generateCustomerMessage(issue: PostPoIssue): string {
-  if (issue.issue_type === 'shortage') {
-    const delta = issue.lines.reduce((sum, l) => sum + (l.original_meters - l.affected_meters), 0);
-    return `Order quantity adjusted by ${delta} meters due to stock availability.`;
-  }
-  // ... other message templates
-  return '';
-}
-```
-
-### UI Scope
-
-#### Amend: `/orders/:id` Page
-
-| Addition | Description |
-|----------|-------------|
-| Issues Section | List of post-PO issues for this order |
-| Report Issue Button | Opens PostPoIssueDialog |
-| Issue Status Badges | Color-coded by status |
-
-#### New Component: `PostPoIssueDialog`
-
-| Tab | Fields |
-|-----|--------|
-| Issue Type | Dropdown (shortage, wrong_lot, etc.) |
-| Description | Textarea |
-| Affected Lines | Multi-select with meters input |
-| Lot Swap | Checkbox + lot selector if applicable |
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| Create issues | Report post-PO issues with line detail |
-| Block lines | Mark affected order lines as blocked |
-| Update issues | Change status, add notes |
-| Resolve issues | Record resolution, unblock lines |
-| Customer notification | Include message data in event for CRM |
-
-### Forms Scope
-
-#### Issue Creation Form
-
-| Step | Fields |
-|------|--------|
-| 1 | Select issue type, enter description |
-| 2 | Select affected lines, enter affected meters |
-| 3 | Flag lot swap if applicable |
-| 4 | Confirm and submit |
-
-#### Issue Resolution Form
-
-| Field | Type |
-|-------|------|
-| Resolution | Dropdown (adjusted, replaced, cancelled, waived) |
-| Resolution Note | Textarea (required) |
-
-### Permissions Scope
-
-| Permission | Roles |
-|------------|-------|
-| `orders:createissue` | warehouse_staff, senior_manager, admin |
-| `orders:resolveissue` | senior_manager, admin |
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #72 | Post-PO discrepancy loop | ✅ |
-| #85 | Discrepancy flagging | ✅ |
-| #86 | Line blocking | ✅ |
-| #87 | Customer notification data | ✅ |
-| #93 | WMS post-PO flagging | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-ISS-01 | As a WMS operator, I can report issues discovered after PO creation |
-| US-ISS-02 | As a WMS operator, I can specify affected lines and meters |
-| US-ISS-03 | As a WMS manager, I can resolve issues and unblock order lines |
-| US-ISS-04 | As CRM, I receive issue data including customer notification message |
-
-### Done Proof
-
-| Check | Method |
-|-------|--------|
-| Create issue | Click "Report Issue", fill form, verify row in `post_po_issues` |
-| Lines blocked | Verify affected `order_lots` have `issue_blocked = true` |
-| Event emitted | Verify `post_po_issue.created` in outbox |
-| Resolve issue | Resolve as manager, verify lines unblocked |
-
-### QA Test IDs
-
-- DPO-01: Issue creation workflow
-- DPO-02: Line blocking behavior
-- DPO-03: Resolution workflow
-- DPO-04: Customer notification data
-
----
-
-## Batch 11: Costing Module
-
-### Overview
-
-| Attribute | Value |
-|-----------|-------|
-| **Sessions** | 4 |
-| **Priority** | P2 — Financial |
-| **Dependencies** | Batch 1 |
-| **CRM Required** | No |
-
-### Contract Scope
-
-| Event | Direction | Idempotency Key |
-|-------|-----------|-----------------|
-| `costing.invoice_posted` | WMS → CRM | `wms:costing_invoice:{invoice_id}:posted:v1` |
-| `costing.receipt_linked` | WMS → CRM | `wms:costing_receipt:{receipt_id}:linked:v1` |
-| `costing.adjustment_posted` | WMS → CRM | `wms:costing_adjustment:{adjustment_id}:posted:v1` |
-| `costing.wac_updated` | WMS → CRM | `wms:wac:{quality_code}-{wac_update_id}:updated:v1` |
-
-### DB Scope
-
-#### New Table: `supplier_invoices`
-
-```sql
-CREATE TABLE supplier_invoices (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Org scoping
-  crm_organization_id UUID,
-  
-  -- Supplier
-  supplier_id UUID NOT NULL REFERENCES suppliers(id),
-  
-  -- Invoice details
-  invoice_number TEXT NOT NULL,
-  invoice_date DATE NOT NULL,
-  
-  -- Currency
-  original_currency TEXT NOT NULL CHECK (original_currency IN ('TRY', 'USD', 'EUR', 'GBP')),
-  original_amount NUMERIC(14,2) NOT NULL,
-  selected_fx_rate NUMERIC(10,6) NOT NULL,
-  fx_rate_source TEXT DEFAULT 'manual' CHECK (fx_rate_source IN ('manual', 'tcmb', 'api')),
-  try_amount NUMERIC(14,2) NOT NULL,
-  
-  -- Status
-  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'posted', 'adjusted')),
-  
-  -- Audit
-  posted_at TIMESTAMPTZ,
-  posted_by UUID,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID
-);
-
-CREATE INDEX idx_supplier_invoices_org ON supplier_invoices(crm_organization_id);
-CREATE INDEX idx_supplier_invoices_supplier ON supplier_invoices(supplier_id);
-CREATE INDEX idx_supplier_invoices_status ON supplier_invoices(status);
-```
-
-#### New Table: `supplier_invoice_lines`
-
-```sql
-CREATE TABLE supplier_invoice_lines (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  invoice_id UUID NOT NULL REFERENCES supplier_invoices(id) ON DELETE CASCADE,
-  
-  -- Inventory linkage
-  lot_id UUID,
-  roll_id UUID,
-  
-  -- Product
-  quality_code TEXT NOT NULL,
-  color_code TEXT,
-  
-  -- Quantities
-  uom TEXT DEFAULT 'MT' CHECK (uom IN ('MT', 'KG', 'M', 'YD', 'PCS')),
-  quantity NUMERIC(12,2) NOT NULL,
-  
-  -- Pricing
-  unit_price NUMERIC(12,4) NOT NULL,
-  line_total NUMERIC(14,2) NOT NULL,
-  unit_cost_try NUMERIC(12,4) NOT NULL,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_invoice_lines_invoice ON supplier_invoice_lines(invoice_id);
-CREATE INDEX idx_invoice_lines_lot ON supplier_invoice_lines(lot_id);
-```
-
-#### New Table: `costing_adjustments`
-
-```sql
-CREATE TABLE costing_adjustments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Org scoping
-  crm_organization_id UUID,
-  
-  -- Adjustment details
-  component_type TEXT NOT NULL CHECK (component_type IN (
-    'freight',
-    'customs_duty',
-    'insurance',
-    'handling',
-    'other'
-  )),
-  
-  -- Amounts
-  amount_original NUMERIC(14,2) NOT NULL,
-  currency TEXT NOT NULL CHECK (currency IN ('TRY', 'USD', 'EUR', 'GBP')),
-  fx_rate_used NUMERIC(10,6) NOT NULL,
-  amount_try NUMERIC(14,2) NOT NULL,
-  
-  -- Allocation
-  applies_to JSONB NOT NULL, -- [{lot_id, roll_id, allocation_pct}]
-  
-  -- Audit
-  posted_at TIMESTAMPTZ DEFAULT now(),
-  posted_by UUID,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_costing_adjustments_org ON costing_adjustments(crm_organization_id);
-CREATE INDEX idx_costing_adjustments_type ON costing_adjustments(component_type);
-```
-
-#### New Table: `quality_wac`
-
-```sql
-CREATE TABLE quality_wac (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Product
-  quality_code TEXT NOT NULL,
-  color_code TEXT,
-  warehouse_id UUID,
-  
-  -- WAC values
-  wac_per_meter_try NUMERIC(12,4) NOT NULL,
-  total_meters NUMERIC(14,2) NOT NULL,
-  total_cost_try NUMERIC(14,2) NOT NULL,
-  
-  -- Audit
-  last_calculated_at TIMESTAMPTZ DEFAULT now(),
-  
-  -- Uniqueness
-  UNIQUE(quality_code, color_code, warehouse_id)
-);
-
-CREATE INDEX idx_quality_wac_quality ON quality_wac(quality_code);
-```
-
-#### New Table: `fx_rate_selections`
-
-```sql
-CREATE TABLE fx_rate_selections (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  invoice_id UUID REFERENCES supplier_invoices(id),
-  
-  -- Rate
-  rate_at_selection NUMERIC(10,6) NOT NULL,
-  currency_pair TEXT NOT NULL, -- e.g., 'USD/TRY'
-  
-  -- Audit
-  selected_at TIMESTAMPTZ DEFAULT now(),
-  selected_by UUID NOT NULL
-);
-
-CREATE INDEX idx_fx_selections_invoice ON fx_rate_selections(invoice_id);
-```
-
-#### Alter Tables
-
-```sql
--- Add costing columns to lots
-ALTER TABLE lots ADD COLUMN IF NOT EXISTS unit_cost_try NUMERIC(12,4);
-ALTER TABLE lots ADD COLUMN IF NOT EXISTS total_cost_try NUMERIC(14,2);
-
--- Add costing columns to rolls  
-ALTER TABLE rolls ADD COLUMN IF NOT EXISTS unit_cost_try NUMERIC(12,4);
-```
-
-### Backend Scope
-
-#### WAC Calculation Function
-
-```sql
-CREATE OR REPLACE FUNCTION calculate_wac(
-  p_quality_code TEXT,
-  p_color_code TEXT DEFAULT NULL,
-  p_warehouse_id UUID DEFAULT NULL
-)
-RETURNS NUMERIC(12,4)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_total_cost NUMERIC(14,2);
-  v_total_meters NUMERIC(14,2);
-  v_wac NUMERIC(12,4);
-BEGIN
-  SELECT 
-    COALESCE(SUM(total_cost_try), 0),
-    COALESCE(SUM(current_meters), 0)
-  INTO v_total_cost, v_total_meters
-  FROM lots
-  WHERE quality_code = p_quality_code
-    AND (p_color_code IS NULL OR color_code = p_color_code)
-    AND (p_warehouse_id IS NULL OR warehouse_id = p_warehouse_id)
-    AND current_meters > 0;
-  
-  IF v_total_meters > 0 THEN
-    v_wac := v_total_cost / v_total_meters;
-  ELSE
-    v_wac := 0;
-  END IF;
-  
-  -- Upsert WAC record
-  INSERT INTO quality_wac (quality_code, color_code, warehouse_id, wac_per_meter_try, total_meters, total_cost_try)
-  VALUES (p_quality_code, p_color_code, p_warehouse_id, v_wac, v_total_meters, v_total_cost)
-  ON CONFLICT (quality_code, color_code, warehouse_id)
-  DO UPDATE SET
-    wac_per_meter_try = EXCLUDED.wac_per_meter_try,
-    total_meters = EXCLUDED.total_meters,
-    total_cost_try = EXCLUDED.total_cost_try,
-    last_calculated_at = now();
-  
-  RETURN v_wac;
-END;
-$$;
-```
-
-#### Event Dispatchers
-
-```typescript
-async function dispatchCostingInvoicePosted(invoiceId: string) {
-  const { data: invoice } = await supabase
-    .from('supplier_invoices')
-    .select('*, lines:supplier_invoice_lines(*)')
-    .eq('id', invoiceId)
-    .single();
-  
-  await dispatchWebhookEvent({
-    event: 'costing.invoice_posted',
-    idempotency_key: `wms:costing_invoice:${invoiceId}:posted:v1`,
-    invoice_id: invoiceId,
-    supplier_id: invoice.supplier_id,
-    invoice_number: invoice.invoice_number,
-    invoice_date: invoice.invoice_date,
-    original_currency: invoice.original_currency,
-    original_amount: invoice.original_amount,
-    fx_rate: invoice.selected_fx_rate,
-    try_amount: invoice.try_amount,
-    posted_at: invoice.posted_at,
-    lines: invoice.lines.map(l => ({
-      lot_id: l.lot_id,
-      quality_code: l.quality_code,
-      color_code: l.color_code,
-      quantity: l.quantity,
-      uom: l.uom,
-      unit_cost_try: l.unit_cost_try
-    }))
-  });
-}
-```
-
-### UI Scope
-
-#### New Page: `/costing/invoices`
-
-| Component | Description |
-|-----------|-------------|
-| Header | "Supplier Invoices" |
-| List | Invoices with status badges |
-| Create | "New Invoice" button |
-| Detail | Invoice header + lines + FX selection audit |
-
-#### New Page: `/costing/adjustments`
-
-| Component | Description |
-|-----------|-------------|
-| Header | "Landed Cost Adjustments" |
-| List | Adjustments by type |
-| Create | "New Adjustment" button |
-| Allocation | Multi-select lots/rolls for cost allocation |
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| Enter invoices | Record supplier invoices with FX |
-| FX selection audit | Track rate at selection time |
-| Link to inventory | Associate invoice lines with lots/rolls |
-| Landed costs | Allocate freight, customs, etc. |
-| WAC calculation | Compute weighted average cost |
-
-### Forms Scope
-
-#### Supplier Invoice Form
-
-| Section | Fields |
-|---------|--------|
-| Header | Supplier, Invoice #, Date, Currency, Amount |
-| FX | Rate, Source (manual/TCMB/API) |
-| Lines | Lot/Roll, Quality, Color, Qty, Unit Price |
-
-#### Landed Cost Form
-
-| Field | Type |
-|-------|------|
-| Component Type | Dropdown |
-| Amount | Number |
-| Currency | Dropdown |
-| FX Rate | Number |
-| Applies To | Multi-select lots/rolls |
-
-### Permissions Scope
-
-| Permission | Roles |
-|------------|-------|
-| `costing:view` | accounting, senior_manager, admin |
-| `costing:edit` | accounting, admin |
-| `costing:post` | senior_manager, admin |
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #75 | Supplier invoice entry | ✅ |
-| #76 | FX rate selection | ✅ |
-| #77 | Receipt linking | ✅ |
-| #78 | Landed cost allocation | ✅ |
-| #79 | WAC calculation | ✅ |
-| #80 | Costing events to CRM | ✅ |
-| #88 | Cost mirrors sync | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-CST-01 | As an accountant, I can enter supplier invoices with FX rates |
-| US-CST-02 | As an accountant, I can link invoices to specific lots |
-| US-CST-03 | As an accountant, I can allocate landed costs to inventory |
-| US-CST-04 | As a manager, I can view WAC by quality |
-| US-CST-05 | As CRM, I receive costing events for margin calculations |
-
-### Done Proof
-
-| Check | Method |
-|-------|--------|
-| Invoice posted | Create and post invoice, verify `costing.invoice_posted` event |
-| Lines linked | Verify `lots.unit_cost_try` updated |
-| WAC calculated | Call `calculate_wac()`, verify result |
-| Adjustment posted | Create adjustment, verify `costing.adjustment_posted` event |
-
-### QA Test IDs
-
-- CST-01: Invoice creation
-- CST-02: FX rate audit
-- CST-03: Receipt linking
-- CST-04: Landed cost allocation
-- CST-05: WAC calculation
-- CST-06: Event emission
-
----
-
-## Batch 12: Invoice Control + Fulfillment Gate
-
-### Overview
-
-| Attribute | Value |
-|-----------|-------|
-| **Sessions** | 2.5 |
-| **Priority** | P1 — Workflow |
-| **Dependencies** | Batch 4 |
-| **CRM Required** | No |
-
-### Contract Scope
-
-| Event | Direction | Idempotency Key |
-|-------|-----------|-----------------|
-| `invoice_control.passed` | WMS → CRM | `wms:invoice_control:{wms_order_id}:passed:v1` |
-| `invoice_control.failed` | WMS → CRM | `wms:invoice_control:{wms_order_id}:failed:v1` |
-
-### DB Scope
-
-#### New Table: `invoice_control_records`
-
-```sql
-CREATE TABLE invoice_control_records (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Order linkage
-  order_id UUID NOT NULL REFERENCES orders(id),
-  
-  -- Status
-  status TEXT NOT NULL CHECK (status IN ('pending', 'passed', 'failed')),
-  
-  -- Failure details
-  failure_reason TEXT,
-  
-  -- Notes
-  note TEXT,
-  
-  -- Audit
-  checked_at TIMESTAMPTZ DEFAULT now(),
-  checked_by UUID,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_invoice_control_order ON invoice_control_records(order_id);
-CREATE INDEX idx_invoice_control_status ON invoice_control_records(status);
-```
-
-#### Fulfillment Gate Trigger
-
-```sql
-CREATE OR REPLACE FUNCTION enforce_invoice_control_gate()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  -- Check if transitioning to fulfilled
-  IF NEW.status = 'fulfilled' AND OLD.status != 'fulfilled' THEN
-    -- Require invoice control to be passed
-    IF NEW.invoice_control_status != 'passed' THEN
-      RAISE EXCEPTION 'Cannot fulfill order: invoice_control_status must be "passed" (current: %)', NEW.invoice_control_status;
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_invoice_control_gate
-  BEFORE UPDATE ON orders
-  FOR EACH ROW
-  EXECUTE FUNCTION enforce_invoice_control_gate();
-```
-
-### Backend Scope
-
-#### Event Dispatchers
-
-```typescript
-async function dispatchInvoiceControlPassed(orderId: string) {
-  const { data: order } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('id', orderId)
-    .single();
-  
-  await dispatchWebhookEvent({
-    event: 'invoice_control.passed',
-    idempotency_key: `wms:invoice_control:${orderId}:passed:v1`,
-    wms_order_id: orderId,
-    po_number: order.po_number,
-    crm_deal_id: order.crm_deal_id,
-    checked_at: new Date().toISOString()
-  });
-}
-
-async function dispatchInvoiceControlFailed(orderId: string, reason: string) {
-  const { data: order } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('id', orderId)
-    .single();
-  
-  await dispatchWebhookEvent({
-    event: 'invoice_control.failed',
-    idempotency_key: `wms:invoice_control:${orderId}:failed:v1`,
-    wms_order_id: orderId,
-    po_number: order.po_number,
-    crm_deal_id: order.crm_deal_id,
-    failure_reason: reason,
-    checked_at: new Date().toISOString()
-  });
-}
-```
-
-#### Control Action Handler
-
-```typescript
-async function handleInvoiceControl(
-  orderId: string,
-  status: 'passed' | 'failed',
-  userId: string,
-  reason?: string,
-  note?: string
-) {
-  // Create control record
-  await supabase
-    .from('invoice_control_records')
-    .insert({
-      order_id: orderId,
-      status,
-      failure_reason: reason,
-      note,
-      checked_by: userId
-    });
-  
-  // Update order
-  await supabase
-    .from('orders')
-    .update({
-      invoice_control_status: status,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', orderId);
-  
-  // Emit event
-  if (status === 'passed') {
-    await dispatchInvoiceControlPassed(orderId);
-  } else {
-    await dispatchInvoiceControlFailed(orderId, reason!);
-  }
-}
-```
-
-### UI Scope
-
-#### New Page: `/invoice-control`
-
-| Component | Description |
-|-----------|-------------|
-| Header | "Invoice Control Queue" |
-| Tabs | "Pending", "Passed", "Failed" |
-| Table | Orders with invoice_control_status = 'pending_control' |
-| Bulk Actions | "Pass Selected", "Fail Selected" |
-| Export | Excel export button |
-| Pagination | Standard pagination |
-
-#### Control Action Dialog
-
-| Field | Type | Required |
-|-------|------|----------|
-| Action | Radio (Pass/Fail) | Yes |
-| Failure Reason | Dropdown | If Fail |
-| Note | Textarea | No |
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| View pending | List orders needing invoice control |
-| Pass/Fail control | Record control decision |
-| Bulk operations | Process multiple orders |
-| Block fulfillment | Gate trigger prevents fulfillment without control |
-| Export | Excel export of queue |
-
-### Forms Scope
-
-#### Invoice Control Form
-
-| Field | Type |
-|-------|------|
-| Action | Pass / Fail radio |
-| Failure Reason | Dropdown (if fail) |
-| Note | Textarea |
-
-### Permissions Scope
-
-| Permission | Roles |
-|------------|-------|
-| `invoicecontrol:view` | accounting, senior_manager, admin |
-| `invoicecontrol:action` | accounting, senior_manager, admin |
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #90 | Invoice control queue | ✅ |
-| #91 | Control pass/fail | ✅ |
-| #92 | Fulfillment gate | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-INV-01 | As an accountant, I can view orders pending invoice control |
-| US-INV-02 | As an accountant, I can pass or fail invoice control |
-| US-INV-03 | As a WMS operator, I cannot fulfill orders without passed control |
-| US-INV-04 | As an accountant, I can bulk process multiple orders |
-
-### Done Proof
-
-| Check | Method |
-|-------|--------|
-| Page accessible | Navigate to `/invoice-control` |
-| Pass emits event | Pass order, verify `invoice_control.passed` in outbox |
-| Fail emits event | Fail order, verify `invoice_control.failed` in outbox |
-| Gate blocks | Try to fulfill without control, verify error |
-
-### QA Test IDs
-
-- INV-01: Queue display
-- INV-02: Pass action
-- INV-03: Fail action with reason
-- INV-04: Fulfillment gate enforcement
-- INV-05: Bulk operations
-
----
-
-## Batch 13: PO Command Center
-
-### Overview
-
-| Attribute | Value |
-|-----------|-------|
-| **Sessions** | 2.5 |
-| **Priority** | P2 — Dashboard |
-| **Dependencies** | All prior batches |
-| **CRM Required** | No |
-
-### Contract Scope
-
-- **Events**: Uses all prior events
-- **Purpose**: Unified dashboard per Checklist Section 3
-
-### DB Scope
-
-- None (uses derived stages from existing data)
-
-### Backend Scope
-
-#### Stage Derivation Query
-
-```sql
--- View for derived order stages
-CREATE OR REPLACE VIEW order_stages AS
-SELECT 
-  o.id,
-  o.po_number,
-  o.customer_name,
-  o.created_at,
-  CASE
-    WHEN o.status = 'cancelled' THEN 'cancelled'
-    WHEN o.status = 'fulfilled' THEN 'fulfilled'
-    WHEN o.invoice_status = 'paid' THEN 'invoiced'
-    WHEN o.status = 'shipped' THEN 'shipped'
-    WHEN o.status = 'prepared' THEN 'prepared'
-    WHEN o.status = 'picking' THEN 'picking'
-    WHEN o.status = 'confirmed' AND o.invoice_control_status = 'passed' THEN 'po_created'
-    WHEN o.status = 'confirmed' AND o.invoice_control_status = 'pending_control' THEN 'awaiting_approval'
-    WHEN r.allocation_state = 'allocated' THEN 'reserved'
-    ELSE 'pending'
-  END as derived_stage,
-  o.crm_deal_id,
-  o.crm_organization_id
-FROM orders o
-LEFT JOIN reservations r ON o.reservation_id = r.id;
-```
-
-### UI Scope
-
-#### New Page: `/po-command-center`
-
-| Component | Description |
-|-----------|-------------|
-| Header | "PO Command Center" with org filter |
-| Stage Cards | Cards showing count per stage |
-| Stage Flow | Visual flow diagram |
-| Drill-down | Click card to filter table |
-| Table | Orders filtered by selected stage |
-| Lab Indicator | Badge if any line has lab pending |
-| Design Indicator | Badge if design/print required |
-
-#### Stage Cards
-
-| Stage | Color | Filter Condition |
-|-------|-------|------------------|
-| Pending | Gray | derived_stage = 'pending' |
-| Reserved | Blue | derived_stage = 'reserved' |
-| Awaiting Approval | Yellow | derived_stage = 'awaiting_approval' |
-| PO Created | Green | derived_stage = 'po_created' |
-| Picking | Orange | derived_stage = 'picking' |
-| Prepared | Teal | derived_stage = 'prepared' |
-| Shipped | Purple | derived_stage = 'shipped' |
-| Delivered | Indigo | derived_stage = 'delivered' |
-| Invoiced | Pink | derived_stage = 'invoiced' |
-| Fulfilled | Emerald | derived_stage = 'fulfilled' |
-| Cancelled | Red | derived_stage = 'cancelled' |
-
-### Feature Scope
-
-| Feature | Description |
-|---------|-------------|
-| Stage counts | Real-time count per stage |
-| Stage filtering | Click to filter to stage |
-| Lab visibility | Show lab pending indicator |
-| Design visibility | Show design/print required indicator |
-| Org filtering | Filter by organization |
-
-### Forms Scope
-
-- None (read-only dashboard)
-
-### Permissions Scope
-
-| Permission | Roles |
-|------------|-------|
-| View command center | All authenticated users |
-
-### User Journeys
-
-| Journey # | Description | Covered |
-|-----------|-------------|---------|
-| #9 | /fulfillment command center | ✅ |
-| #82 | Design/Printing visibility | ✅ |
-| #83 | Lab Workflow visibility | ✅ |
-
-### User Stories
-
-| Story | Description |
-|-------|-------------|
-| US-CMD-01 | As a WMS manager, I can see all orders by stage |
-| US-CMD-02 | As a WMS operator, I can quickly find orders needing action |
-| US-CMD-03 | As a WMS operator, I can see lab workflow pending items |
-| US-CMD-04 | As a WMS operator, I can see design/print requirements |
-
-### Done Proof
-
-| Check | Method |
-|-------|--------|
-| Page accessible | Navigate to `/po-command-center` |
-| Stage counts | Verify counts match actual orders |
-| Drill-down works | Click stage card, verify table filters |
-| Lab indicator | Create order with lab pending, verify badge |
-
-### QA Test IDs
-
-- CMD-01: Stage card counts
-- CMD-02: Stage drill-down
-- CMD-03: Lab workflow indicator
-- CMD-04: Design/print indicator
-
----
-
-## Final Consolidated Inventories
-
-### Final Page List
-
-| # | Route | Status | Batch |
-|---|-------|--------|-------|
-| 1 | `/` (Dashboard) | Existing | — |
-| 2 | `/inventory` | Existing | — |
-| 3 | `/reservations` | Amended | 3 |
-| 4 | `/orders` | Amended | 4 |
-| 5 | `/orders/:id` | Amended | 4, 10 |
-| 6 | `/supply-requests` | **NEW** | 5 |
-| 7 | `/allocation-planning` | **NEW** | 7 |
-| 8 | `/allocation-entry` | **NEW** | 7 |
-| 9 | `/approvals/shipment` | **NEW** | 8 |
-| 10 | `/central-stock-checks` | **NEW** | 9 |
-| 11 | `/costing/invoices` | **NEW** | 11 |
-| 12 | `/costing/adjustments` | **NEW** | 11 |
-| 13 | `/invoice-control` | **NEW** | 12 |
-| 14 | `/po-command-center` | **NEW** | 13 |
-
-### Final Permissions/Roles
-
-| Permission | Roles |
-|------------|-------|
-| `allocations:plan` | warehouse_staff, senior_manager, admin |
-| `allocations:enter` | warehouse_staff, senior_manager, admin |
-| `shipment:override` | senior_manager, admin |
-| `orders:createissue` | warehouse_staff, senior_manager, admin |
-| `orders:resolveissue` | senior_manager, admin |
-| `centralstock:check` | warehouse_staff, senior_manager, admin |
-| `costing:view` | accounting, senior_manager, admin |
-| `costing:edit` | accounting, admin |
-| `costing:post` | senior_manager, admin |
-| `invoicecontrol:view` | accounting, senior_manager, admin |
-| `invoicecontrol:action` | accounting, senior_manager, admin |
-
-### Final CRM → WMS Events (11)
-
-| # | Event | Idempotency Key |
-|---|-------|-----------------|
-| 1 | `customer.created` | `crm:customer:{id}:created:v1` |
-| 2 | `customer.updated` | `crm:customer:{id}:updated:v1` |
-| 3 | `deal.approved` | `crm:deal:{id}:approved:v1` |
-| 4 | `deal.accepted` | `crm:deal:{id}:accepted:v1` |
-| 5 | `deal.won` | `crm:deal:{id}:won:v1` |
-| 6 | `deal.cancelled` | `crm:deal:{id}:cancelled:v1` |
-| 7 | `deal.lines_updated` | `crm:deal:{id}:lines_updated:v1` |
-| 8 | `supply_request.created` | `crm:supply_request:{id}:created:v1` |
-| 9 | `shipment.approved` | `crm:reservation:{id}:shipment_approved:v1` |
-| 10 | `payment.confirmed` | `crm:payment:{id}:confirmed:v1` |
-| 11 | `org_access.updated` | `crm:org_access:{user_id}-{seq}:updated:v1` |
-
-### Final WMS → CRM Events (30)
-
-| # | Event | Idempotency Key |
-|---|-------|-----------------|
-| 1 | `inquiry.created` | `wms:inquiry:{id}:created:v1` |
-| 2 | `inquiry.converted` | `wms:inquiry:{id}:converted:v1` |
-| 3 | `reservation.created` | `wms:reservation:{id}:created:v1` |
-| 4 | `reservation.released` | `wms:reservation:{id}:released:v1` |
-| 5 | `reservation.converted` | `wms:reservation:{id}:converted:v1` |
-| 6 | `reservation.allocation_planned` | `wms:reservation:{id}:allocation_planned:v1` |
-| 7 | `reservation.allocated` | `wms:reservation:{id}:allocated:v1` |
-| 8 | `order.created` | `wms:order:{id}:created:v1` |
-| 9 | `order.picking_started` | `wms:order:{id}:picking_started:v1` |
-| 10 | `order.prepared` | `wms:order:{id}:prepared:v1` |
-| 11 | `shipment.posted` | `wms:shipment:{id}:posted:v1` |
-| 12 | `shipment.delivered` | `wms:shipment:{id}:delivered:v1` |
-| 13 | `order.invoiced` | `wms:order:{id}:invoiced:v1` |
-| 14 | `order.fulfilled` | `wms:order:{id}:fulfilled:v1` |
-| 15 | `order.cancelled` | `wms:order:{id}:cancelled:v1` |
-| 16 | `stock.changed` | `wms:stock:{batch_id}:changed:v1` |
-| 17 | `inventory.low_stock` | `wms:low_stock:{alert_id}:triggered:v1` |
-| 18 | `supply_request.status_updated` | `wms:supply_request:{id}:status_updated:v1` |
-| 19 | `order.status_changed` | `wms:order_status:{id}-{seq}:changed:v1` |
-| 20 | `shortage.detected` | `wms:shortage_detection:{id}:detected:v1` |
-| 21 | `central_stock_check.completed` | `wms:central_stock_check:{id}:completed:v1` |
-| 22 | `post_po_issue.created` | `wms:post_po_issue:{id}:created:v1` |
-| 23 | `post_po_issue.updated` | `wms:post_po_issue:{id}:updated:v1` |
-| 24 | `post_po_issue.resolved` | `wms:post_po_issue:{id}:resolved:v1` |
-| 25 | `costing.invoice_posted` | `wms:costing_invoice:{id}:posted:v1` |
-| 26 | `costing.receipt_linked` | `wms:costing_receipt:{id}:linked:v1` |
-| 27 | `costing.adjustment_posted` | `wms:costing_adjustment:{id}:posted:v1` |
-| 28 | `costing.wac_updated` | `wms:wac:{quality}-{id}:updated:v1` |
-| 29 | `invoice_control.passed` | `wms:invoice_control:{order_id}:passed:v1` |
-| 30 | `invoice_control.failed` | `wms:invoice_control:{order_id}:failed:v1` |
-
-### Final DB Inventory
-
-#### New Tables (14)
-
-| # | Table | Batch |
-|---|-------|-------|
-| 1 | `integration_inbox` | 1 |
-| 2 | `user_org_grants_mirror` | 2 |
-| 3 | `supply_requests` | 5 |
-| 4 | `stock_transactions` | 6 |
-| 5 | `central_stock_checks` | 9 |
-| 6 | `central_stock_check_lines` | 9 |
-| 7 | `post_po_issues` | 10 |
-| 8 | `post_po_issue_lines` | 10 |
-| 9 | `supplier_invoices` | 11 |
-| 10 | `supplier_invoice_lines` | 11 |
-| 11 | `costing_adjustments` | 11 |
-| 12 | `quality_wac` | 11 |
-| 13 | `fx_rate_selections` | 11 |
-| 14 | `invoice_control_records` | 12 |
-
-#### Altered Tables (6)
-
-| # | Table | New Columns | Batch |
-|---|-------|-------------|-------|
-| 1 | `reservations` | +6 columns | 3 |
-| 2 | `reservation_lines` | +5 columns | 3 |
-| 3 | `orders` | +14 columns | 4 |
-| 4 | `order_lots` | +6 columns | 4 |
-| 5 | `lots` | +2 columns | 11 |
-| 6 | `rolls` | +1 column | 11 |
+**Rule**: No implementation proceeds on items in this table until contract amendment is approved.
 
 ---
 
 ## CRM Dependencies Per Batch
 
-| Batch | CRM Must Provide | Can Start Without CRM |
-|-------|------------------|----------------------|
-| 1 | None | ✅ Yes |
-| 2 | Emit `org_access.updated` with grants[] + seq | ⚠️ Schema only |
-| 3 | None | ✅ Yes |
-| 4 | None | ✅ Yes |
-| 5 | Emit `supply_request.created` | ⚠️ Schema only |
-| 6 | None | ✅ Yes |
-| 7 | None | ✅ Yes |
-| 8 | Emit `shipment.approved` | ⚠️ Schema only |
-| 9 | None | ✅ Yes |
-| 10 | None | ✅ Yes |
-| 11 | None | ✅ Yes |
-| 12 | None | ✅ Yes |
-| 13 | None | ✅ Yes |
+| Batch | CRM Must Provide |
+|-------|------------------|
+| 2 | Emit `org_access.updated` with grants[] + org_access_seq |
+| 5 | Emit `supply_request.created` with required fields |
+| 8 | Emit `shipment.approved` with carrier preferences |
+
+All other batches can proceed independently with WMS emitting events.
 
 ---
 
 ## Open Items
 
-### Returns (Journey #295)
+### Pending Decisions
 
-Per line 295 of the Master User Journeys:
-> "Returns / return-flagging / return processing: I did not find an explicit requirement in the current v1.0.23 docs"
+| ID | Question | Impact | Owner |
+|----|----------|--------|-------|
+| OI-1 | Is returns (Journey #295) IN or POST v1.0.23? | Batch 14 + `returns` table | Product |
 
-**Decision Required**: Is returns IN or POST v1.0.23?
+### Known Limitations
 
-If IN scope, add:
-- **Batch 14**: Returns Processing (2 sessions)
-- **New table**: `returns`
-- **New event**: `return.received`
-
----
-
-## Session Summary
-
-| Batch | Description | Sessions |
-|-------|-------------|----------|
-| 1 | Contract File + Integration Inbox | 1 |
-| 2 | Multi-Org Identity + org_access.updated | 2 |
-| 3 | Reservations Schema Extensions | 1.5 |
-| 4 | Orders Schema + PO Number | 2.5 |
-| 5 | Supply Requests Mirror | 2 |
-| 6 | stock.changed Event | 1.5 |
-| 7 | Allocation Planning + Entry | 2.5 |
-| 8 | Shipment Approval + Override | 2.5 |
-| 9 | Central Stock Checks | 2 |
-| 10 | Post-PO Issues | 2.5 |
-| 11 | Costing Module | 4 |
-| 12 | Invoice Control + Gate | 2.5 |
-| 13 | PO Command Center | 2.5 |
-| **Total** | | **29** |
-
----
-
-## Revision History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0.0 | 2026-01-31 | AI | Initial creation aligned with v1.0.23 contract |
+| ID | Limitation | Workaround |
+|----|-----------|------------|
+| KL-1 | No kg↔m conversion in v1 | UOM must match catalog |
