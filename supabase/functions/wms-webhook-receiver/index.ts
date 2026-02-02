@@ -87,17 +87,27 @@ async function verifySignature(
 }
 
 // Check idempotency - has this event already been processed?
+// Returns existing record with attempt_count for null-safe retry (per Contract Appendix D.3)
 async function checkIdempotency(
   supabase: ReturnType<typeof createClient>,
   idempotencyKey: string
-): Promise<boolean> {
+): Promise<{ exists: boolean; status?: string; attemptCount?: number; id?: string }> {
   const { data } = await supabase
     .from('integration_outbox')
-    .select('id')
+    .select('id, status, attempt_count')
     .eq('idempotency_key', idempotencyKey)
     .single();
   
-  return !!data;
+  if (!data) {
+    return { exists: false };
+  }
+  
+  return { 
+    exists: true, 
+    status: data.status, 
+    attemptCount: data.attempt_count ?? 0,
+    id: data.id 
+  };
 }
 
 // Log received event
@@ -403,18 +413,43 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Check idempotency
+    // Check idempotency with full record for retry semantics (per Contract Appendix D.3)
     if (event.idempotency_key) {
-      const isDuplicate = await checkIdempotency(supabase, event.idempotency_key);
-      if (isDuplicate) {
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: 'Event already processed (idempotent)',
-            idempotency_key: event.idempotency_key,
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      const existing = await checkIdempotency(supabase, event.idempotency_key);
+      
+      if (existing.exists) {
+        // Already processed - return 200 per contract
+        if (['sent', 'processing', 'pending'].includes(existing.status || '')) {
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: 'Event already processed (idempotent)',
+              idempotency_key: event.idempotency_key,
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Failed status - update to pending for retry with null-safe increment
+        if (existing.status === 'failed' && existing.id) {
+          await supabase.from('integration_outbox')
+            .update({
+              status: 'pending',
+              attempt_count: (existing.attemptCount ?? 0) + 1,
+              last_error: null,
+            })
+            .eq('id', existing.id);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: 'Queued for retry',
+              idempotency_key: event.idempotency_key,
+              attempt: (existing.attemptCount ?? 0) + 1,
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
     }
     
