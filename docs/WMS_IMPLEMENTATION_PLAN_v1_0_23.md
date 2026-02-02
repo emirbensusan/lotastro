@@ -53,6 +53,12 @@ All idempotency keys MUST:
 - Use dashes (not colons) for composite entity_ids
 - End with `:v1` (version segment)
 
+### DR-6: Table Naming Authority
+
+**WMS canonical table name**: `user_org_grants_mirror`
+
+This table mirrors CRM's `user_org_roles` table via the `org_access.updated` event. Throughout all WMS implementation artifacts (code, snippets, tests, QA steps), use **only** `user_org_grants_mirror`. The CRM table name exists only as documentation context and must not appear in WMS execution code.
+
 ---
 
 ## MULTI-ORG UI RULES (LOCKED)
@@ -81,14 +87,48 @@ Policy requirements:
   - **Org toggle hidden**
   - **Org badges/columns hidden** (minimized UI)
 
-### Implementation Rule (use policy, not grant-count)
+### Implementation Rule (use policy + persisted Active Org, caller-bound functions)
 ```typescript
-// Use this pattern in all list pages
-const { data: uiPolicy } = await supabase.rpc('user_wms_ui_policy', { p_user_id: user.id });
+// Complete pattern for org-scoped list pages
+// All RPC calls are caller-bound (use auth.uid() internally) — NO p_user_id parameter
 
+// 1. Get UI policy (caller-bound, uses auth.uid() internally)
+const { data: uiPolicy } = await supabase.rpc('user_wms_ui_policy');
+
+// 2. Get user's persisted Active Org preference (caller-bound)
+const { data: activeOrgId } = await supabase.rpc('get_active_org_id');
+
+// 3. Manage org scope state
+const [orgScope, setOrgScope] = useState<'active' | 'all'>('active');
+
+// 4. Determine visibility based on policy (NOT grant count)
 const showOrgToggle = Boolean(uiPolicy?.show_org_toggle);
 const showOrgColumn = Boolean(uiPolicy?.show_org_labels_in_all_scope) && orgScope === 'all';
 const showOrgBadge = Boolean(uiPolicy?.show_org_labels_in_all_scope) && orgScope === 'all';
+
+// 5. Compute org filter based on scope
+// IMPORTANT: null activeOrgId in Active scope = block queries, not show everything
+if (orgScope === 'active' && !activeOrgId) {
+  // Force org selection before showing data
+  return <OrgSelectionRequired onSelect={handleActiveOrgChange} />;
+}
+const orgFilter = orgScope === 'all' 
+  ? undefined  // No filter = all accessible orgs (RLS enforces)
+  : activeOrgId;  // Filter to persisted Active Org
+
+// 6. Handle Active Org selection with error feedback
+const handleActiveOrgChange = async (newOrgId: string) => {
+  const { data: success, error } = await supabase.rpc('set_active_org_id', { p_org_id: newOrgId });
+  
+  if (error || success === false) {
+    toast.error('Unable to switch organization. You may not have access.');
+    return;  // Revert UI selection if needed
+  }
+  
+  // Refetch activeOrgId after successful update
+  refetchActiveOrg();
+  toast.success('Organization switched');
+};
 ```
 
 ---
@@ -144,7 +184,7 @@ Every batch MUST map to at least one QA test case from QA_TestPlan_CRM_WMS_v1_0_
 |-------|--------------|-----------------|---------------|
 | 0 | #72, #81, #82, #83 | (infrastructure) | B-01, B-02, QA Addendum A-F |
 | 1 | #72 | (infrastructure) | B-01, B-02 |
-| 2 | #1, #2 | `org_access.updated` | RLS-01, RLS-02, RLS-03, F-01, D-01 |
+| 2 | #1, #2 | `org_access.updated` | RLS-01, RLS-02, RLS-03, F-01, D-01, PREF-01, PREF-02, PREF-03, PREF-04, SEC-01, SEC-02, SEC-03, SEC-04, UX-01 |
 | 3 | #10, #83 | (prepares allocation events) | FUL-01, LAB-01 |
 | 4 | #6, #7, #82, #84 | `order.created` | ID-01, ID-02, ID-03, ORD-01 |
 | 5 | #11 | `supply_request.created`, `supply_request.status_updated` | (supply tracking) |
@@ -822,11 +862,34 @@ CREATE INDEX idx_org_grants_active ON user_org_grants_mirror(user_id, is_active)
 CREATE INDEX idx_org_grants_seq ON user_org_grants_mirror(user_id, org_access_seq DESC);
 ```
 
+#### New Table: `user_active_org_preferences`
+
+```sql
+-- Active Org Preference (per Checklist: "Store an Active Org per user")
+CREATE TABLE user_active_org_preferences (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  active_org_id UUID NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_user_active_org ON user_active_org_preferences(active_org_id);
+
+-- RLS: User can only see/update their own preference
+ALTER TABLE user_active_org_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "users_manage_own_org_preference"
+  ON user_active_org_preferences
+  FOR ALL
+  TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+```
+
 #### New Functions
 
 ```sql
--- Check if user has access to specific org
-CREATE OR REPLACE FUNCTION user_has_org_access(p_user_id UUID, p_org_id UUID)
+-- Check if CURRENT USER has access to specific org (caller-bound)
+CREATE OR REPLACE FUNCTION user_has_org_access(p_org_id UUID)
 RETURNS BOOLEAN 
 LANGUAGE SQL 
 STABLE 
@@ -835,14 +898,18 @@ SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM user_org_grants_mirror
-    WHERE user_id = p_user_id 
+    WHERE user_id = auth.uid() 
       AND crm_organization_id = p_org_id 
       AND is_active = true
   );
 $$;
 
--- Get all org IDs user has access to
-CREATE OR REPLACE FUNCTION get_user_org_ids(p_user_id UUID)
+-- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
+REVOKE ALL ON FUNCTION user_has_org_access(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION user_has_org_access(UUID) TO authenticated;
+
+-- Get all org IDs CURRENT USER has access to (caller-bound)
+CREATE OR REPLACE FUNCTION get_user_org_ids()
 RETURNS UUID[] 
 LANGUAGE SQL 
 STABLE 
@@ -854,13 +921,106 @@ AS $$
     ARRAY[]::UUID[]
   )
   FROM user_org_grants_mirror
-  WHERE user_id = p_user_id AND is_active = true;
+  WHERE user_id = auth.uid() AND is_active = true;
 $$;
 
--- UI gating MUST NOT be derived from multi-org grant count.
--- Keep `role_in_org` contract-defined (CRM taxonomy). Implement WMS UI policy here.
--- Returns a JSON policy consumed by frontend list pages.
-CREATE OR REPLACE FUNCTION public.user_wms_ui_policy(p_user_id UUID)
+-- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
+REVOKE ALL ON FUNCTION get_user_org_ids() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION get_user_org_ids() TO authenticated;
+
+-- Get active org for CURRENT USER with fallback to first available grant
+-- Returns NULL for unauthenticated users (UI must handle this defensively)
+CREATE OR REPLACE FUNCTION get_active_org_id()
+RETURNS UUID
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_active_org UUID;
+  v_first_grant UUID;
+BEGIN
+  v_user_id := auth.uid();
+  
+  IF v_user_id IS NULL THEN
+    RETURN NULL;  -- UI must handle: don't treat NULL as "show all"
+  END IF;
+  
+  -- Get stored preference
+  SELECT active_org_id INTO v_active_org
+  FROM user_active_org_preferences
+  WHERE user_id = v_user_id;
+  
+  -- If no preference or stored org is no longer accessible, use first available grant
+  IF v_active_org IS NULL OR NOT EXISTS (
+    SELECT 1 FROM user_org_grants_mirror
+    WHERE user_id = v_user_id
+      AND crm_organization_id = v_active_org
+      AND is_active = true
+  ) THEN
+    SELECT crm_organization_id INTO v_first_grant
+    FROM user_org_grants_mirror
+    WHERE user_id = v_user_id AND is_active = true
+    ORDER BY synced_at ASC
+    LIMIT 1;
+    
+    v_active_org := v_first_grant;
+  END IF;
+  
+  RETURN v_active_org;
+END;
+$$;
+
+-- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
+REVOKE ALL ON FUNCTION get_active_org_id() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION get_active_org_id() TO authenticated;
+
+-- Set active org for CURRENT USER with validation
+-- Returns false if user doesn't have access (UI should show toast/revert)
+CREATE OR REPLACE FUNCTION set_active_org_id(p_org_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  v_user_id := auth.uid();
+  
+  IF v_user_id IS NULL THEN
+    RETURN false;
+  END IF;
+  
+  -- Validate CURRENT USER has access to this org
+  IF NOT EXISTS (
+    SELECT 1 FROM user_org_grants_mirror
+    WHERE user_id = v_user_id
+      AND crm_organization_id = p_org_id
+      AND is_active = true
+  ) THEN
+    RETURN false;  -- UI should show error toast
+  END IF;
+  
+  -- Upsert preference
+  INSERT INTO user_active_org_preferences (user_id, active_org_id, updated_at)
+  VALUES (v_user_id, p_org_id, now())
+  ON CONFLICT (user_id)
+  DO UPDATE SET active_org_id = p_org_id, updated_at = now();
+  
+  RETURN true;
+END;
+$$;
+
+-- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
+REVOKE ALL ON FUNCTION set_active_org_id(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION set_active_org_id(UUID) TO authenticated;
+
+-- UI policy function: CALLER-BOUND (no p_user_id parameter)
+-- Uses auth.uid() internally to prevent privilege escalation
+CREATE OR REPLACE FUNCTION public.user_wms_ui_policy()
 RETURNS JSONB
 LANGUAGE plpgsql
 STABLE
@@ -868,11 +1028,24 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_user_id UUID;
   v_is_warehouse_role BOOLEAN;
   v_can_toggle_all_orgs BOOLEAN;
 BEGIN
-  -- WMS operational role override: warehouse users do NOT get org toggle/labels.
-  v_is_warehouse_role := public.has_role(p_user_id, 'warehouse_staff'::user_role);
+  -- Caller-bound: use authenticated user, not parameter
+  v_user_id := auth.uid();
+  
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'show_org_toggle', false,
+      'show_org_labels_in_all_scope', false,
+      'default_scope', 'active',
+      'error', 'unauthenticated'
+    );
+  END IF;
+  
+  -- WMS operational role override: warehouse users do NOT get org toggle/labels
+  v_is_warehouse_role := public.has_role(v_user_id, 'warehouse_staff'::user_role);
 
   IF v_is_warehouse_role THEN
     v_can_toggle_all_orgs := false;
@@ -883,7 +1056,7 @@ BEGIN
     v_can_toggle_all_orgs := EXISTS (
       SELECT 1
       FROM public.user_org_grants_mirror g
-      WHERE g.user_id = p_user_id
+      WHERE g.user_id = v_user_id
         AND g.is_active = true
         AND g.role_in_org IN ('sales_manager', 'accounting', 'pricing', 'admin')
     );
@@ -896,6 +1069,45 @@ BEGIN
   );
 END;
 $$;
+
+-- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
+REVOKE ALL ON FUNCTION public.user_wms_ui_policy() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.user_wms_ui_policy() TO authenticated;
+```
+
+#### Permission Grant Summary (Defense-in-Depth)
+
+All security-sensitive functions follow the REVOKE-then-GRANT pattern to ensure anonymous callers cannot execute them under any Postgres configuration:
+
+```sql
+-- Applied to all caller-bound functions
+REVOKE ALL ON FUNCTION public.user_wms_ui_policy() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.user_has_org_access(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_user_org_ids() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_active_org_id() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.set_active_org_id(UUID) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.user_wms_ui_policy() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.user_has_org_access(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_org_ids() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_active_org_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.set_active_org_id(UUID) TO authenticated;
+```
+
+**Verification query:**
+```sql
+-- Should return false for all functions
+SELECT 
+  'user_wms_ui_policy' as fn, 
+  has_function_privilege('anon', 'user_wms_ui_policy()', 'EXECUTE') as anon_can_exec
+UNION ALL
+SELECT 'get_active_org_id', has_function_privilege('anon', 'get_active_org_id()', 'EXECUTE')
+UNION ALL
+SELECT 'set_active_org_id', has_function_privilege('anon', 'set_active_org_id(uuid)', 'EXECUTE')
+UNION ALL
+SELECT 'user_has_org_access', has_function_privilege('anon', 'user_has_org_access(uuid)', 'EXECUTE')
+UNION ALL
+SELECT 'get_user_org_ids', has_function_privilege('anon', 'get_user_org_ids()', 'EXECUTE');
 ```
 
 ### Backend Scope
@@ -971,10 +1183,17 @@ async function handleOrgAccessUpdated(supabase: any, payload: OrgAccessUpdatedPa
 | Check | Method |
 |-------|--------|
 | Table populated | Send `org_access.updated` event, verify rows in `user_org_grants_mirror` |
-| Function works | `SELECT user_has_org_access('user-uuid', 'org-uuid')` returns correct boolean |
-| UI policy (warehouse) | For a `warehouse_staff` user with **multiple** org grants: `SELECT (user_wms_ui_policy('user-uuid')->>'show_org_toggle')::boolean` returns false |
+| Active Org table exists | `SELECT * FROM user_active_org_preferences LIMIT 1` succeeds |
+| Function works | `SELECT user_has_org_access('org-uuid')` returns correct boolean (caller-bound) |
+| get_active_org_id() works | `SELECT get_active_org_id()` returns valid org UUID or NULL |
+| set_active_org_id() works | `SELECT set_active_org_id('valid-org-uuid')` returns true |
+| Invalid org rejected | `SELECT set_active_org_id('no-access-org-uuid')` returns false |
+| UI policy (warehouse) | For a `warehouse_staff` user with **multiple** org grants: `SELECT (user_wms_ui_policy()->>'show_org_toggle')::boolean` returns false |
 | UI policy (manager) | For a user with any grant `role_in_org IN ('sales_manager','accounting','pricing','admin')`: policy returns `show_org_toggle=true` and `show_org_labels_in_all_scope=true` |
 | UI policy (sales_owner) | For a user with only `role_in_org='sales_owner'` grants (even across orgs): policy returns `show_org_toggle=false` |
+| Anon blocked from policy fn | `SELECT has_function_privilege('anon', 'user_wms_ui_policy()', 'EXECUTE')` returns false |
+| Anon blocked from org fn | `SELECT has_function_privilege('anon', 'get_active_org_id()', 'EXECUTE')` returns false |
+| EXECUTE grants applied | `SELECT has_function_privilege('authenticated', 'get_active_org_id()', 'EXECUTE')` returns true |
 | Sequence guard | Send older seq, verify warning log and no data change |
 
 ### QA Test IDs
@@ -989,6 +1208,17 @@ async function handleOrgAccessUpdated(supabase: any, payload: OrgAccessUpdatedPa
   - Manager roles show toggle + org column only when scope=All
   - sales_owner never sees org toggle even if multi-org grants exist
 - QA Addendum F: Ordering/sequence handling
+
+**Security & Preference Tests:**
+- SEC-01: Anonymous caller cannot execute `user_wms_ui_policy()` (permission denied) OR function returns `error: 'unauthenticated'` if exec is allowed — either outcome is acceptable, goal is no data leakage
+- SEC-02: `set_active_org_id(p_org_id)` cannot affect another user's preference (caller-bound via `auth.uid()`)
+- SEC-03: All SECURITY DEFINER functions use `auth.uid()` internally, not parameters
+- SEC-04: All security functions have `REVOKE ALL FROM PUBLIC` applied — verify with `SELECT has_function_privilege('anon', 'get_active_org_id()', 'EXECUTE')` returns false
+- PREF-01: Active Org preference persists across sessions
+- PREF-02: `get_active_org_id()` falls back to first grant if stored org is inaccessible
+- PREF-03: `set_active_org_id(p_org_id)` returns false for orgs user doesn't have access to
+- PREF-04: UI blocks data display when `activeOrgId = null` in Active scope (no data leakage)
+- UX-01: UI shows toast when `set_active_org_id()` returns false
 
 ---
 
