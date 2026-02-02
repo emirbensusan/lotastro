@@ -1,529 +1,877 @@
 
-
-# Plan: Security Fixes, Naming Alignment & Hardening for WMS Implementation Plan v1.0.23
+# WMS Implementation Plan v1.0.23 — Session Breakdown
 
 ## Overview
 
-This plan applies all required security and naming fixes to `docs/WMS_IMPLEMENTATION_PLAN_v1_0_23.md`, plus hygiene improvements for production robustness, including explicit REVOKE from PUBLIC for defense-in-depth.
+This document breaks down the 14 batches (0-13) into discrete execution sessions. Each session is designed to be:
+- **Completable in 45-90 minutes** (typical Lovable session)
+- **Self-contained** with clear acceptance gates
+- **Sequentially safe** (no dependencies on incomplete work)
 
 ---
 
-## Part 1: Security & Alignment Fixes (BLOCKERS)
+## Batch Summary & Session Allocation
 
-### 1.1 BLOCKER: Remove `p_user_id` from SECURITY DEFINER Functions
-
-All SECURITY DEFINER functions must use `auth.uid()` internally instead of accepting user ID parameters.
-
-**Functions to update:**
-- `user_wms_ui_policy()` — remove parameter, use `auth.uid()` 
-- `user_has_org_access(p_org_id)` — keep org param only, use `auth.uid()` for user
-- `get_user_org_ids()` — remove parameter, use `auth.uid()`
-- `get_active_org_id()` — no parameter, use `auth.uid()`
-- `set_active_org_id(p_org_id)` — keep org param only, use `auth.uid()` for user
-
-### 1.2 BLOCKER: Add Active Org Persistence
-
-Add to Batch 2:
-- Table: `user_active_org_preferences`
-- Function: `get_active_org_id()` (caller-bound)
-- Function: `set_active_org_id(p_org_id)` (caller-bound)
-
-### 1.3 Naming Alignment (Option B)
-
-Add DR-6 terminology section clarifying:
-- CRM source: `user_org_roles`
-- WMS mirror: `user_org_grants_mirror`
-- WMS code never references CRM table name
+| Batch | Name | Sessions | Total Est. |
+|-------|------|----------|------------|
+| 0 | Contract Alignment & Guards | 3 | 3 |
+| 1 | Integration Inbox | 3 | 3 |
+| 2 | Multi-Org Identity | 5 | 5 |
+| 3 | Reservations Schema Extensions | 3 | 3 |
+| 4 | Orders Schema + PO Generator | 4 | 4 |
+| 5 | Supply Requests Mirror | 3 | 3 |
+| 6 | stock.changed Event | 3 | 3 |
+| 7 | Allocation Planning + Entry | 5 | 5 |
+| 8 | Shipment Approval + Override | 4 | 4 |
+| 9 | Central Stock Checks (Abra) | 5 | 5 |
+| 10 | Post-PO Issues | 4 | 4 |
+| 11 | Costing Module | 5 | 5 |
+| 12 | Invoice Control | 3 | 3 |
+| 13 | PO Command Center | 4 | 4 |
+| **TOTAL** | | | **54 sessions** |
 
 ---
 
-## Part 2: Hygiene Improvements (Non-blocking, Production Safety)
-
-### 2.1 Handle Unauthenticated Callers Consistently
-
-**Issue:** `get_active_org_id()` returns NULL for unauthenticated users. UI must not interpret `activeOrgId = null` as "show all orgs" when in Active scope.
-
-**Fix:** Update UI snippet to handle null activeOrgId defensively — block queries until org is resolved.
-
-### 2.2 Handle `set_active_org_id()` Failure in UI
-
-**Issue:** Current snippet doesn't check the boolean return value.
-
-**Fix:** Add error handling with toast feedback.
-
-### 2.3 Explicit REVOKE FROM PUBLIC + GRANT TO authenticated (Defense-in-Depth)
-
-**Issue:** In Postgres, PUBLIC may retain execute privileges depending on defaults. Even though we grant to authenticated, anonymous callers might still be able to execute functions if PUBLIC isn't explicitly revoked.
-
-**Fix:** For all security-sensitive functions, apply:
-```sql
-REVOKE ALL ON FUNCTION <function> FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION <function> TO authenticated;
-```
-
-This ensures anonymous callers cannot execute the functions under any configuration.
-
-### 2.4 Consistent Unauthenticated Test Expectations
-
-**Issue:** SEC-01 tests that `user_wms_ui_policy()` returns error JSON for unauthenticated callers. But if REVOKE works correctly, anonymous callers get "permission denied" instead of the JSON response.
-
-**Fix:** Clarify test expectation to handle both scenarios:
-- **Expected:** Anonymous cannot execute (permission denied) OR function returns `error: 'unauthenticated'` if exec is somehow allowed
-- **Pass criteria:** Either outcome is acceptable — the goal is no data leakage
+## Detailed Session Breakdown
 
 ---
 
-## Part 3: Files to Modify
+### BATCH 0: Contract Alignment & Guards (3 Sessions)
 
-| File | Changes |
-|------|---------|
-| `docs/WMS_IMPLEMENTATION_PLAN_v1_0_23.md` | All patches below |
+**Purpose:** Establish drift prevention infrastructure before any integration work.
 
----
+#### Session 0.1: Contract Violations Table + Validation Functions
+**Scope:**
+- Create `integration_contract_violations` table with all columns
+- Create `validate_idempotency_key()` function
+- Create `validate_contract_uom()` function
+- Add indexes for violations table
 
-## Part 4: Exact Patches
-
-### Patch 1: Add DR-6 Terminology Section
-
-**Location:** After line 56 (after "Any deviation from contract schemas is a blocking defect.")
-
-**Insert:**
-```markdown
-
-### DR-6: Table Naming Authority
-
-**WMS canonical table name**: `user_org_grants_mirror`
-
-This table mirrors CRM's `user_org_roles` table via the `org_access.updated` event. Throughout all WMS implementation artifacts (code, snippets, tests, QA steps), use **only** `user_org_grants_mirror`. The CRM table name exists only as documentation context and must not appear in WMS execution code.
-```
+**Acceptance Gates:**
+- [ ] `SELECT * FROM integration_contract_violations LIMIT 1` succeeds
+- [ ] `SELECT * FROM validate_idempotency_key('wms:order:123:created:v1')` returns valid=true
+- [ ] `SELECT * FROM validate_idempotency_key('wms:order:123:created')` returns valid=false (4 segments)
+- [ ] `SELECT validate_contract_uom('MT')` = true
+- [ ] `SELECT validate_contract_uom('YD')` = false
 
 ---
 
-### Patch 2: Replace Implementation Rule (lines 84-92)
+#### Session 0.2: Contract Schema Definitions (TypeScript)
+**Scope:**
+- Create `supabase/functions/_shared/contract-schemas.ts`
+- Define `CONTRACT_UOM_VALUES`, `validateIdempotencyKey()`, `validatePayloadSchema()`
+- Define `logContractViolation()` helper
+- Define `EVENT_SCHEMAS` for all 11 CRM→WMS events
 
-**Replace with:**
-```markdown
-### Implementation Rule (use policy + persisted Active Org, caller-bound functions)
-```typescript
-// Complete pattern for org-scoped list pages
-// All RPC calls are caller-bound (use auth.uid() internally) — NO p_user_id parameter
-
-// 1. Get UI policy (caller-bound, uses auth.uid() internally)
-const { data: uiPolicy } = await supabase.rpc('user_wms_ui_policy');
-
-// 2. Get user's persisted Active Org preference (caller-bound)
-const { data: activeOrgId } = await supabase.rpc('get_active_org_id');
-
-// 3. Manage org scope state
-const [orgScope, setOrgScope] = useState<'active' | 'all'>('active');
-
-// 4. Determine visibility based on policy (NOT grant count)
-const showOrgToggle = Boolean(uiPolicy?.show_org_toggle);
-const showOrgColumn = Boolean(uiPolicy?.show_org_labels_in_all_scope) && orgScope === 'all';
-const showOrgBadge = Boolean(uiPolicy?.show_org_labels_in_all_scope) && orgScope === 'all';
-
-// 5. Compute org filter based on scope
-// IMPORTANT: null activeOrgId in Active scope = block queries, not show everything
-if (orgScope === 'active' && !activeOrgId) {
-  // Force org selection before showing data
-  return <OrgSelectionRequired onSelect={handleActiveOrgChange} />;
-}
-const orgFilter = orgScope === 'all' 
-  ? undefined  // No filter = all accessible orgs (RLS enforces)
-  : activeOrgId;  // Filter to persisted Active Org
-
-// 6. Handle Active Org selection with error feedback
-const handleActiveOrgChange = async (newOrgId: string) => {
-  const { data: success, error } = await supabase.rpc('set_active_org_id', { p_org_id: newOrgId });
-  
-  if (error || success === false) {
-    toast.error('Unable to switch organization. You may not have access.');
-    return;  // Revert UI selection if needed
-  }
-  
-  // Refetch activeOrgId after successful update
-  refetchActiveOrg();
-  toast.success('Organization switched');
-};
-```
-```
+**Acceptance Gates:**
+- [ ] File created and deployable
+- [ ] `validateIdempotencyKey()` unit tests pass
+- [ ] All event schemas match contract exactly
 
 ---
 
-### Patch 3: Replace `user_wms_ui_policy` Function (lines 863-898)
+#### Session 0.3: HMAC + Schema Validation (TypeScript)
+**Scope:**
+- Create `supabase/functions/_shared/contract-validation.ts`
+- Implement `validateInboundEvent()` with HMAC, schema, UOM validation
+- Add unknown field detection and logging
+- Configure STRICT_MODE behavior
 
-**Replace with:**
-```sql
--- UI policy function: CALLER-BOUND (no p_user_id parameter)
--- Uses auth.uid() internally to prevent privilege escalation
-CREATE OR REPLACE FUNCTION public.user_wms_ui_policy()
-RETURNS JSONB
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_user_id UUID;
-  v_is_warehouse_role BOOLEAN;
-  v_can_toggle_all_orgs BOOLEAN;
-BEGIN
-  -- Caller-bound: use authenticated user, not parameter
-  v_user_id := auth.uid();
-  
-  IF v_user_id IS NULL THEN
-    RETURN jsonb_build_object(
-      'show_org_toggle', false,
-      'show_org_labels_in_all_scope', false,
-      'default_scope', 'active',
-      'error', 'unauthenticated'
-    );
-  END IF;
-  
-  -- WMS operational role override: warehouse users do NOT get org toggle/labels
-  v_is_warehouse_role := public.has_role(v_user_id, 'warehouse_staff'::user_role);
-
-  IF v_is_warehouse_role THEN
-    v_can_toggle_all_orgs := false;
-  ELSE
-    -- Contract-defined CRM taxonomy gating (NOT org-count):
-    -- Allowed: sales_manager, accounting, pricing, admin
-    -- Disallowed: sales_owner
-    v_can_toggle_all_orgs := EXISTS (
-      SELECT 1
-      FROM public.user_org_grants_mirror g
-      WHERE g.user_id = v_user_id
-        AND g.is_active = true
-        AND g.role_in_org IN ('sales_manager', 'accounting', 'pricing', 'admin')
-    );
-  END IF;
-
-  RETURN jsonb_build_object(
-    'show_org_toggle', v_can_toggle_all_orgs,
-    'show_org_labels_in_all_scope', v_can_toggle_all_orgs AND NOT v_is_warehouse_role,
-    'default_scope', 'active'
-  );
-END;
-$$;
-
--- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
-REVOKE ALL ON FUNCTION public.user_wms_ui_policy() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.user_wms_ui_policy() TO authenticated;
-```
+**Acceptance Gates:**
+- [ ] Valid request with correct HMAC passes
+- [ ] Invalid HMAC returns 401
+- [ ] Unknown fields logged and rejected (strict mode)
+- [ ] Missing required fields return 400 with details
+- [ ] Invalid UOM rejected with 400
 
 ---
 
-### Patch 4: Replace Helper Functions (lines 827-858)
+### BATCH 1: Integration Inbox (3 Sessions)
 
-**Replace with:**
-```sql
--- Check if CURRENT USER has access to specific org (caller-bound)
-CREATE OR REPLACE FUNCTION user_has_org_access(p_org_id UUID)
-RETURNS BOOLEAN 
-LANGUAGE SQL 
-STABLE 
-SECURITY DEFINER 
-SET search_path = public 
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM user_org_grants_mirror
-    WHERE user_id = auth.uid() 
-      AND crm_organization_id = p_org_id 
-      AND is_active = true
-  );
-$$;
+**Purpose:** Create inbound event logging table and webhook receiver.
 
--- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
-REVOKE ALL ON FUNCTION user_has_org_access(UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION user_has_org_access(UUID) TO authenticated;
+#### Session 1.1: Integration Inbox Table + RLS
+**Scope:**
+- Create `integration_inbox` table with all columns
+- Add indexes (idempotency, status, event_type, retry)
+- Configure RLS (admin-only read, service role write)
+- Revoke authenticated access
 
--- Get all org IDs CURRENT USER has access to (caller-bound)
-CREATE OR REPLACE FUNCTION get_user_org_ids()
-RETURNS UUID[] 
-LANGUAGE SQL 
-STABLE 
-SECURITY DEFINER 
-SET search_path = public 
-AS $$
-  SELECT COALESCE(
-    array_agg(crm_organization_id),
-    ARRAY[]::UUID[]
-  )
-  FROM user_org_grants_mirror
-  WHERE user_id = auth.uid() AND is_active = true;
-$$;
-
--- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
-REVOKE ALL ON FUNCTION get_user_org_ids() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION get_user_org_ids() TO authenticated;
-```
+**Acceptance Gates:**
+- [ ] `SELECT * FROM integration_inbox LIMIT 1` succeeds for admin
+- [ ] Non-admin authenticated user cannot SELECT
+- [ ] Indexes created and verified
 
 ---
 
-### Patch 5: Add `user_active_org_preferences` Table and Functions
+#### Session 1.2: Webhook Receiver Core Logic
+**Scope:**
+- Update `wms-webhook-receiver` edge function
+- Implement `handleInboundEvent()` with idempotency check
+- Implement payload hash computation
+- Add "Failed → Pending" retry logic (Contract Appendix D.3)
 
-**Insert after line 822** (after `CREATE INDEX idx_org_grants_seq...`):
-
-```markdown
-
-#### New Table: `user_active_org_preferences`
-
-```sql
--- Active Org Preference (per Checklist: "Store an Active Org per user")
-CREATE TABLE user_active_org_preferences (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  active_org_id UUID NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_user_active_org ON user_active_org_preferences(active_org_id);
-
--- RLS: User can only see/update their own preference
-ALTER TABLE user_active_org_preferences ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "users_manage_own_org_preference"
-  ON user_active_org_preferences
-  FOR ALL
-  TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-```
-
-#### New Functions: Active Org Helpers (CALLER-BOUND)
-
-```sql
--- Get active org for CURRENT USER with fallback to first available grant
--- Returns NULL for unauthenticated users (UI must handle this defensively)
-CREATE OR REPLACE FUNCTION get_active_org_id()
-RETURNS UUID
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_user_id UUID;
-  v_active_org UUID;
-  v_first_grant UUID;
-BEGIN
-  v_user_id := auth.uid();
-  
-  IF v_user_id IS NULL THEN
-    RETURN NULL;  -- UI must handle: don't treat NULL as "show all"
-  END IF;
-  
-  -- Get stored preference
-  SELECT active_org_id INTO v_active_org
-  FROM user_active_org_preferences
-  WHERE user_id = v_user_id;
-  
-  -- If no preference or stored org is no longer accessible, use first available grant
-  IF v_active_org IS NULL OR NOT EXISTS (
-    SELECT 1 FROM user_org_grants_mirror
-    WHERE user_id = v_user_id
-      AND crm_organization_id = v_active_org
-      AND is_active = true
-  ) THEN
-    SELECT crm_organization_id INTO v_first_grant
-    FROM user_org_grants_mirror
-    WHERE user_id = v_user_id AND is_active = true
-    ORDER BY synced_at ASC
-    LIMIT 1;
-    
-    v_active_org := v_first_grant;
-  END IF;
-  
-  RETURN v_active_org;
-END;
-$$;
-
--- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
-REVOKE ALL ON FUNCTION get_active_org_id() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION get_active_org_id() TO authenticated;
-
--- Set active org for CURRENT USER with validation
--- Returns false if user doesn't have access (UI should show toast/revert)
-CREATE OR REPLACE FUNCTION set_active_org_id(p_org_id UUID)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_user_id UUID;
-BEGIN
-  v_user_id := auth.uid();
-  
-  IF v_user_id IS NULL THEN
-    RETURN false;
-  END IF;
-  
-  -- Validate CURRENT USER has access to this org
-  IF NOT EXISTS (
-    SELECT 1 FROM user_org_grants_mirror
-    WHERE user_id = v_user_id
-      AND crm_organization_id = p_org_id
-      AND is_active = true
-  ) THEN
-    RETURN false;  -- UI should show error toast
-  END IF;
-  
-  -- Upsert preference
-  INSERT INTO user_active_org_preferences (user_id, active_org_id, updated_at)
-  VALUES (v_user_id, p_org_id, now())
-  ON CONFLICT (user_id)
-  DO UPDATE SET active_org_id = p_org_id, updated_at = now();
-  
-  RETURN true;
-END;
-$$;
-
--- Defense-in-depth: revoke from PUBLIC, grant only to authenticated
-REVOKE ALL ON FUNCTION set_active_org_id(UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION set_active_org_id(UUID) TO authenticated;
-```
-```
+**Acceptance Gates:**
+- [ ] New event creates row with status='pending'
+- [ ] Duplicate idempotency_key returns 200 (no new row)
+- [ ] Failed status converts to pending on retry
+- [ ] Payload hash drift logged
 
 ---
 
-### Patch 6: Add QA Test Cases
+#### Session 1.3: Webhook Receiver Integration + QA
+**Scope:**
+- Integrate contract validation into receiver
+- Deploy and test end-to-end
+- Test all rejection scenarios
 
-**Insert in Batch 2 QA section:**
-
-```markdown
-**Security & Preference Tests:**
-- SEC-01: Anonymous caller cannot execute `user_wms_ui_policy()` (permission denied) OR function returns `error: 'unauthenticated'` if exec is allowed — either outcome is acceptable, goal is no data leakage
-- SEC-02: `set_active_org_id(p_org_id)` cannot affect another user's preference (caller-bound via `auth.uid()`)
-- SEC-03: All SECURITY DEFINER functions use `auth.uid()` internally, not parameters
-- SEC-04: All security functions have `REVOKE ALL FROM PUBLIC` applied — verify with `SELECT has_function_privilege('anon', 'get_active_org_id()', 'EXECUTE')` returns false
-- PREF-01: Active Org preference persists across sessions
-- PREF-02: `get_active_org_id()` falls back to first grant if stored org is inaccessible
-- PREF-03: `set_active_org_id(p_org_id)` returns false for orgs user doesn't have access to
-- PREF-04: UI blocks data display when `activeOrgId = null` in Active scope (no data leakage)
-- UX-01: UI shows toast when `set_active_org_id()` returns false
-```
+**Acceptance Gates:**
+- [ ] Valid event logged successfully
+- [ ] Invalid 4-segment key returns 400
+- [ ] Invalid HMAC returns 401
+- [ ] Unknown event type rejected
 
 ---
 
-### Patch 7: Update QA Traceability Matrix
+### BATCH 2: Multi-Org Identity (5 Sessions)
 
-**Update line 147:**
-```markdown
-| 2 | #1, #2 | `org_access.updated` | RLS-01, RLS-02, RLS-03, F-01, D-01, PREF-01, PREF-02, PREF-03, PREF-04, SEC-01, SEC-02, SEC-03, SEC-04, UX-01 |
-```
+**Purpose:** Implement org grants mirroring, active org persistence, and UI policy.
 
----
+#### Session 2.1: Org Grants Mirror Table
+**Scope:**
+- Create `user_org_grants_mirror` table
+- Add role_in_org CHECK constraint (contract taxonomy)
+- Create all indexes
+- Configure basic RLS
 
-### Patch 8: Update Done Proof Table (Batch 2)
-
-**Insert after line 978:**
-```markdown
-| Active Org table exists | `SELECT * FROM user_active_org_preferences LIMIT 1` succeeds |
-| get_active_org_id() works | `SELECT get_active_org_id()` returns valid org UUID or NULL |
-| set_active_org_id() works | `SELECT set_active_org_id('valid-org-uuid')` returns true |
-| Invalid org rejected | `SELECT set_active_org_id('no-access-org-uuid')` returns false |
-| Anon blocked from policy fn | `SELECT has_function_privilege('anon', 'user_wms_ui_policy()', 'EXECUTE')` returns false |
-| Anon blocked from org fn | `SELECT has_function_privilege('anon', 'get_active_org_id()', 'EXECUTE')` returns false |
-| EXECUTE grants applied | `SELECT has_function_privilege('authenticated', 'get_active_org_id()', 'EXECUTE')` returns true |
-```
+**Acceptance Gates:**
+- [ ] Table created with correct schema
+- [ ] Invalid role_in_org rejected
+- [ ] Indexes verified
 
 ---
 
-### Patch 9: Add Permission Grant Summary Block
+#### Session 2.2: Active Org Preferences Table + Functions
+**Scope:**
+- Create `user_active_org_preferences` table
+- Create `get_active_org_id()` function (caller-bound)
+- Create `set_active_org_id(p_org_id)` function (caller-bound)
+- Apply REVOKE/GRANT pattern
 
-**Insert after the function definitions in Batch 2 DB section:**
-
-```markdown
-#### Permission Grant Summary (Defense-in-Depth)
-
-All security-sensitive functions follow the REVOKE-then-GRANT pattern to ensure anonymous callers cannot execute them under any Postgres configuration:
-
-```sql
--- Applied to all caller-bound functions
-REVOKE ALL ON FUNCTION public.user_wms_ui_policy() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.user_has_org_access(UUID) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_user_org_ids() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_active_org_id() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.set_active_org_id(UUID) FROM PUBLIC;
-
-GRANT EXECUTE ON FUNCTION public.user_wms_ui_policy() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.user_has_org_access(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_user_org_ids() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_active_org_id() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.set_active_org_id(UUID) TO authenticated;
-```
-
-**Verification query:**
-```sql
--- Should return false for all functions
-SELECT 
-  'user_wms_ui_policy' as fn, 
-  has_function_privilege('anon', 'user_wms_ui_policy()', 'EXECUTE') as anon_can_exec
-UNION ALL
-SELECT 'get_active_org_id', has_function_privilege('anon', 'get_active_org_id()', 'EXECUTE')
-UNION ALL
-SELECT 'set_active_org_id', has_function_privilege('anon', 'set_active_org_id(uuid)', 'EXECUTE')
-UNION ALL
-SELECT 'user_has_org_access', has_function_privilege('anon', 'user_has_org_access(uuid)', 'EXECUTE')
-UNION ALL
-SELECT 'get_user_org_ids', has_function_privilege('anon', 'get_user_org_ids()', 'EXECUTE');
-```
-```
+**Acceptance Gates:**
+- [ ] `SELECT get_active_org_id()` returns org or NULL
+- [ ] `SELECT set_active_org_id('valid-org')` returns true
+- [ ] `SELECT set_active_org_id('invalid-org')` returns false
+- [ ] `SELECT has_function_privilege('anon', 'get_active_org_id()', 'EXECUTE')` = false
 
 ---
 
-## Part 5: Execution Readiness
+#### Session 2.3: Org Access Helper Functions
+**Scope:**
+- Create `user_has_org_access(p_org_id)` function
+- Create `get_user_org_ids()` function
+- Apply REVOKE/GRANT pattern
+- Test caller-bound security
 
-### Decision: **GO** (after applying all 9 patches)
-
-| Check | Status |
-|-------|--------|
-| SECURITY DEFINER with p_user_id | Fixed — all functions caller-bound |
-| Active Org persistence | Fixed — table + functions added |
-| Naming alignment (Option B) | Fixed — DR-6 added |
-| Multi-org UI gating | Confirmed role-based |
-| Null activeOrgId handling | Fixed — UI blocks queries |
-| set_active_org_id error handling | Fixed — toast on failure |
-| REVOKE FROM PUBLIC | Fixed — all functions revoked from PUBLIC |
-| Explicit EXECUTE grants | Fixed — all functions granted to authenticated |
-| Test expectation consistency | Fixed — SEC-01 handles both permission denied and error JSON |
-
-### First 3 Batches
-
-| Batch | Name | Acceptance Gates |
-|-------|------|------------------|
-| **0** | Contract Alignment & Guards | `integration_contract_violations` table exists; UOM/idempotency validation works |
-| **1** | Integration Inbox | Webhook receiver logs events; duplicate detection returns 200; retry increments attempt_count |
-| **2** | Multi-Org Identity | All tables exist; functions work without parameters; SEC/PREF tests pass; `has_function_privilege('anon', ...)` returns false for all security functions |
+**Acceptance Gates:**
+- [ ] Functions work for authenticated users
+- [ ] Anon cannot execute any function
+- [ ] Correct org list returned
 
 ---
 
-## Technical Notes
+#### Session 2.4: UI Policy Function
+**Scope:**
+- Create `user_wms_ui_policy()` function
+- Implement role-based toggle visibility logic
+- Handle warehouse role override
+- Handle unauthenticated callers
 
-### Why REVOKE FROM PUBLIC Matters
+**Acceptance Gates:**
+- [ ] Warehouse user with multi-org: `show_org_toggle = false`
+- [ ] Manager role: `show_org_toggle = true`
+- [ ] Sales_owner only: `show_org_toggle = false`
+- [ ] Unauthenticated: returns error JSON
 
-```sql
--- Default Postgres behavior can surprise you:
--- Even if you only GRANT to authenticated, PUBLIC might still have execute
+---
 
--- VULNERABLE (depending on database defaults):
-CREATE FUNCTION my_func() ...;
-GRANT EXECUTE ON FUNCTION my_func() TO authenticated;
--- PUBLIC might still be able to execute!
+#### Session 2.5: org_access.updated Handler + QA
+**Scope:**
+- Implement `handleOrgAccessUpdated()` in webhook receiver
+- Add sequence guard for out-of-order protection
+- Implement snapshot replacement logic
+- Full QA verification
 
--- SECURE (explicit revoke-then-grant):
-CREATE FUNCTION my_func() ...;
-REVOKE ALL ON FUNCTION my_func() FROM PUBLIC;  -- Remove any inherited permissions
-GRANT EXECUTE ON FUNCTION my_func() TO authenticated;
--- Now only authenticated can execute, guaranteed
-```
+**Acceptance Gates:**
+- [ ] Event processed, rows created in mirror table
+- [ ] Older sequence ignored with warning
+- [ ] Snapshot replaces previous grants
+- [ ] All SEC-* and PREF-* tests pass
 
-### SEC-01 Test Clarification
+---
 
-The test for unauthenticated access should pass under either scenario:
+### BATCH 3: Reservations Schema Extensions (3 Sessions)
 
-1. **Permission denied** (expected if REVOKE works): Anonymous caller cannot execute the function at all
-2. **Error JSON returned** (fallback if somehow executable): Function returns `{"error": "unauthenticated"}`
+**Purpose:** Extend reservations for allocation and lab workflow.
 
-Both outcomes achieve the security goal: no data is leaked to unauthenticated callers.
+#### Session 3.1: Reservation Table Extensions
+**Scope:**
+- Add allocation_state column with CHECK constraint
+- Add allocation planning columns (planned_at, planned_by)
+- Add action_required_reason column
+- Add sample/lab workflow columns
 
+**Acceptance Gates:**
+- [ ] All columns added
+- [ ] Invalid allocation_state rejected
+- [ ] Indexes created
+
+---
+
+#### Session 3.2: Reservation Line Extensions
+**Scope:**
+- Add lab_status column (requested, in_progress, sent, approved, rejected)
+- Add cutting audit columns
+- Add CRM deal line linkage
+- Add UOM column (MT/KG only)
+
+**Acceptance Gates:**
+- [ ] Line-level columns added
+- [ ] Invalid UOM rejected
+- [ ] Lab status workflow functional
+
+---
+
+#### Session 3.3: Reservation Event Handlers
+**Scope:**
+- Implement reservation event dispatchers
+- Create `dispatchReservationAllocated()`
+- Create `dispatchReservationAllocationPlanned()`
+- QA verification
+
+**Acceptance Gates:**
+- [ ] Events dispatched with correct schema
+- [ ] Idempotency keys 5 segments
+- [ ] UOM validated
+
+---
+
+### BATCH 4: Orders Schema + PO Generator (4 Sessions)
+
+**Purpose:** Extend orders for CRM integration with org-prefixed PO numbers.
+
+#### Session 4.1: Orders Table Extensions
+**Scope:**
+- Add po_number column (unique)
+- Add crm_organization_id (NOT NULL constraint)
+- Add crm_deal_id column
+- Add override tracking columns
+
+**Acceptance Gates:**
+- [ ] Columns added
+- [ ] Order without org_id rejected
+- [ ] Override reason enum enforced
+
+---
+
+#### Session 4.2: PO Number Generator
+**Scope:**
+- Create `generate_po_number(p_org_prefix)` function
+- Implement Crockford Base32 generation
+- Add format constraint `{ORG}P{8-CHAR}`
+- Handle uniqueness with retry loop
+
+**Acceptance Gates:**
+- [ ] `generate_po_number('MOD')` returns `MODPXXXXXXXX`
+- [ ] `generate_po_number(NULL)` raises exception
+- [ ] `generate_po_number('invalid')` raises exception
+- [ ] Duplicate PO never generated
+
+---
+
+#### Session 4.3: Order Lots + Status Tracking
+**Scope:**
+- Add order_lots columns (crm_deal_line_id, uom)
+- Create order_status_seq trigger
+- Add invoice tracking columns
+- Add carrier preference columns
+
+**Acceptance Gates:**
+- [ ] UOM restricted to MT/KG
+- [ ] Status change increments sequence
+- [ ] Invoice status enum enforced
+
+---
+
+#### Session 4.4: Order Creation + order.created Event
+**Scope:**
+- Implement order creation with mandatory org
+- Create `dispatchOrderCreated()` event
+- Integration with PO generator
+- QA verification
+
+**Acceptance Gates:**
+- [ ] Order created with correct PO format
+- [ ] order.created event dispatched
+- [ ] Idempotency key format correct
+
+---
+
+### BATCH 5: Supply Requests Mirror (3 Sessions)
+
+**Purpose:** Mirror supply request data from CRM for allocation planning.
+
+#### Session 5.1: Supply Requests Mirror Table
+**Scope:**
+- Create `supply_requests_mirror` table
+- Add all required columns from contract
+- Configure indexes and RLS
+
+**Acceptance Gates:**
+- [ ] Table created with correct schema
+- [ ] RLS configured
+
+---
+
+#### Session 5.2: supply_request Event Handlers
+**Scope:**
+- Implement `handleSupplyRequestCreated()`
+- Implement `handleSupplyRequestStatusUpdated()`
+- Add sequence guard
+
+**Acceptance Gates:**
+- [ ] Events processed correctly
+- [ ] Out-of-order rejected
+
+---
+
+#### Session 5.3: Supply Tracking Integration + QA
+**Scope:**
+- Connect to allocation planning
+- Test milestone updates (eta_confirmed, in_transit, arrived_soft)
+- QA verification
+
+**Acceptance Gates:**
+- [ ] Status transitions work
+- [ ] Milestone timestamps recorded
+
+---
+
+### BATCH 6: stock.changed Event (3 Sessions)
+
+**Purpose:** Emit stock change events to CRM.
+
+#### Session 6.1: Stock Transactions Table
+**Scope:**
+- Create `stock_transactions` table
+- Add NULL-safe scope keys (Contract Appendix C)
+- Configure indexes
+
+**Acceptance Gates:**
+- [ ] Table created
+- [ ] Scope keys generated correctly
+
+---
+
+#### Session 6.2: dispatchStockChanged Implementation
+**Scope:**
+- Create `dispatchStockChanged()` function
+- Validate UOM (MT/KG only)
+- Build payload per contract schema
+- Include snapshot values (on_hand, reserved, available)
+
+**Acceptance Gates:**
+- [ ] Payload matches contract exactly
+- [ ] Invalid UOM rejected
+- [ ] delta_meters calculated
+
+---
+
+#### Session 6.3: Integration + Cache Update
+**Scope:**
+- Wire stock changes to dispatcher
+- Update `stock_by_quality_cache`
+- QA verification
+
+**Acceptance Gates:**
+- [ ] Inventory change triggers event
+- [ ] Cache updated correctly
+- [ ] Idempotency verified
+
+---
+
+### BATCH 7: Allocation Planning + Entry (5 Sessions)
+
+**Purpose:** Create allocation planning and entry UI pages.
+
+#### Session 7.1: Allocation Planning Page Structure
+**Scope:**
+- Create `/allocation-planning` route
+- Implement basic page layout
+- Add org scope filtering
+- Connect to reservations data
+
+**Acceptance Gates:**
+- [ ] Page renders
+- [ ] Org filtering works
+
+---
+
+#### Session 7.2: Allocation Planning Grid
+**Scope:**
+- Build reservation lines grid
+- Show incoming supply matches
+- Implement planning actions
+
+**Acceptance Gates:**
+- [ ] Grid displays data
+- [ ] Filtering works
+
+---
+
+#### Session 7.3: Allocation Entry Page Structure
+**Scope:**
+- Create `/allocation-entry` route
+- Implement lot/roll selection UI
+- Connect to planned allocations
+
+**Acceptance Gates:**
+- [ ] Page renders
+- [ ] Planned items displayed
+
+---
+
+#### Session 7.4: Allocation Entry Actions
+**Scope:**
+- Implement lot/roll/meters assignment
+- Update allocation_state
+- Emit reservation.allocated event
+
+**Acceptance Gates:**
+- [ ] Allocation persisted
+- [ ] State updated correctly
+- [ ] Event dispatched
+
+---
+
+#### Session 7.5: Allocation QA + Polish
+**Scope:**
+- Full workflow testing
+- Error handling
+- Performance optimization
+
+**Acceptance Gates:**
+- [ ] End-to-end workflow passes
+- [ ] FUL-01 tests pass
+
+---
+
+### BATCH 8: Shipment Approval + Override (4 Sessions)
+
+**Purpose:** Handle inbound shipment.approved and implement override queue.
+
+#### Session 8.1: shipment.approved Handler
+**Scope:**
+- Implement `handleShipmentApproved()` event handler
+- Validate allocation_state = allocated
+- Create order from approved shipment
+
+**Acceptance Gates:**
+- [ ] Event processed
+- [ ] Order created
+- [ ] Validation enforced
+
+---
+
+#### Session 8.2: Approval Override Queue Page
+**Scope:**
+- Create `/approvals/shipment` route
+- Display pending approvals requiring override
+- Show reason codes
+
+**Acceptance Gates:**
+- [ ] Page renders
+- [ ] Pending items displayed
+
+---
+
+#### Session 8.3: Override Actions + Reason Capture
+**Scope:**
+- Implement override form
+- Capture reason code and notes
+- Record override_by and override_at
+
+**Acceptance Gates:**
+- [ ] Override persisted
+- [ ] Reason code required
+- [ ] Audit trail complete
+
+---
+
+#### Session 8.4: Override Integration + QA
+**Scope:**
+- Connect override to order creation
+- Emit order.created after override
+- QA verification
+
+**Acceptance Gates:**
+- [ ] Override triggers order
+- [ ] FUL-02 tests pass
+
+---
+
+### BATCH 9: Central Stock Checks - Abra (5 Sessions)
+
+**Purpose:** Implement central stock check workflow for on-hand verification.
+
+#### Session 9.1: Central Stock Checks Table
+**Scope:**
+- Create `central_stock_checks` table
+- Add status workflow columns
+- Configure indexes and RLS
+
+**Acceptance Gates:**
+- [ ] Table created
+- [ ] Status enum enforced
+
+---
+
+#### Session 9.2: Stock Checks Queue Page
+**Scope:**
+- Create `/central-stock-checks` route
+- Display pending checks queue
+- Add filtering by status
+
+**Acceptance Gates:**
+- [ ] Page renders
+- [ ] Queue displayed
+
+---
+
+#### Session 9.3: Check Result Entry
+**Scope:**
+- Implement result form (found_in_abra, not_in_abra, uncertain)
+- Capture available_qty and proposed_next_step
+- Update check status
+
+**Acceptance Gates:**
+- [ ] Results persisted
+- [ ] ETA captured when needed
+
+---
+
+#### Session 9.4: central_stock_check.completed Event
+**Scope:**
+- Emit completion event to CRM
+- Include all required fields
+- Wire to UI action
+
+**Acceptance Gates:**
+- [ ] Event dispatched
+- [ ] Schema matches contract
+
+---
+
+#### Session 9.5: Abra Integration + QA
+**Scope:**
+- Enforce check completion before "Send back"
+- Weekly digest email support
+- QA verification
+
+**Acceptance Gates:**
+- [ ] ABR-01 to ABR-04 tests pass
+- [ ] ABRA-01, ABRA-02 tests pass
+
+---
+
+### BATCH 10: Post-PO Issues (4 Sessions)
+
+**Purpose:** Implement discrepancy reporting and resolution loop.
+
+#### Session 10.1: Post-PO Issues Table
+**Scope:**
+- Create `post_po_issues` table
+- Add issue_type, status, line-level blocking
+- Configure indexes
+
+**Acceptance Gates:**
+- [ ] Table created
+- [ ] Issue types enforced
+
+---
+
+#### Session 10.2: Issue Reporting UI
+**Scope:**
+- Add issue flagging on order lines
+- Capture issue details and reason
+- Block affected lines
+
+**Acceptance Gates:**
+- [ ] Issues can be created
+- [ ] Lines blocked correctly
+
+---
+
+#### Session 10.3: Post-PO Issue Events
+**Scope:**
+- Emit `post_po_issue.created`
+- Emit `post_po_issue.updated`
+- Emit `post_po_issue.resolved`
+
+**Acceptance Gates:**
+- [ ] Events dispatched correctly
+- [ ] Idempotency maintained
+
+---
+
+#### Session 10.4: Issue Resolution + QA
+**Scope:**
+- Implement resolution workflow
+- Sync to CRM timeline
+- QA verification
+
+**Acceptance Gates:**
+- [ ] DPO-01 to DPO-04 tests pass
+
+---
+
+### BATCH 11: Costing Module (5 Sessions)
+
+**Purpose:** Implement supplier invoice capture and landed cost allocation.
+
+#### Session 11.1: Costing Tables
+**Scope:**
+- Create `supplier_invoices` table
+- Create `supplier_invoice_lines` table
+- Create `landed_cost_allocations` table
+
+**Acceptance Gates:**
+- [ ] Tables created
+- [ ] Relationships correct
+
+---
+
+#### Session 11.2: Invoice Capture UI
+**Scope:**
+- Create invoice entry form
+- Capture header + lines
+- FX rate selection with override
+
+**Acceptance Gates:**
+- [ ] Invoice persisted
+- [ ] FX rate recorded with audit
+
+---
+
+#### Session 11.3: Landed Cost Allocation
+**Scope:**
+- Allocate costs to receipts/lots
+- Support later adjustments with audit
+- Update WAC calculation
+
+**Acceptance Gates:**
+- [ ] Costs allocated
+- [ ] WAC updated in TRY
+
+---
+
+#### Session 11.4: Costing Events
+**Scope:**
+- Emit `costing.invoice_posted`
+- Emit `costing.receipt_linked`
+- Emit `costing.adjustment_posted`
+- Emit `costing.wac_updated`
+
+**Acceptance Gates:**
+- [ ] All events dispatched
+- [ ] Schema correct
+
+---
+
+#### Session 11.5: Costing QA + Mirror to CRM
+**Scope:**
+- Send cost mirrors to CRM
+- Store overhead pools per org
+- QA verification
+
+**Acceptance Gates:**
+- [ ] CST-01 to CST-06 tests pass
+
+---
+
+### BATCH 12: Invoice Control (3 Sessions)
+
+**Purpose:** Implement invoice control queue and fulfillment gate.
+
+#### Session 12.1: Invoice Control Columns + Queue
+**Scope:**
+- Add invoice_status, invoice_control_status to orders
+- Create invoice control queue page
+- Pagination + Excel export
+
+**Acceptance Gates:**
+- [ ] Columns added
+- [ ] Queue page renders
+
+---
+
+#### Session 12.2: Pass/Fail Actions
+**Scope:**
+- Implement pass action
+- Implement fail action with required note
+- Role gating (WMS Ops only)
+
+**Acceptance Gates:**
+- [ ] Status transitions work
+- [ ] Failure requires note
+
+---
+
+#### Session 12.3: Invoice Control Events + QA
+**Scope:**
+- Emit `invoice_control.passed`
+- Emit `invoice_control.failed`
+- QA verification
+
+**Acceptance Gates:**
+- [ ] INV-01 to INV-03 tests pass
+
+---
+
+### BATCH 13: PO Command Center (4 Sessions)
+
+**Purpose:** Create unified PO management dashboard.
+
+#### Session 13.1: Command Center Page Structure
+**Scope:**
+- Create `/po-command-center` route
+- Implement stage cards layout
+- Connect to orders data
+
+**Acceptance Gates:**
+- [ ] Page renders
+- [ ] Stage counts displayed
+
+---
+
+#### Session 13.2: Universal Orders Table
+**Scope:**
+- Build orders table with all statuses
+- Implement column configuration
+- Add inline actions
+
+**Acceptance Gates:**
+- [ ] Table renders
+- [ ] Filtering works
+
+---
+
+#### Session 13.3: Human Gates Tabs
+**Scope:**
+- Add Warehouse Confirmation tab
+- Add Payment Confirmation tab
+- Add Shipment Approval tab
+- Add Shortage Decisions tab
+
+**Acceptance Gates:**
+- [ ] Tabs render
+- [ ] Filtered correctly
+
+---
+
+#### Session 13.4: Command Center Polish + QA
+**Scope:**
+- Performance optimization
+- Real-time updates
+- Full QA verification
+
+**Acceptance Gates:**
+- [ ] Sub-second load times
+- [ ] All filters work
+
+---
+
+## Execution Timeline
+
+### Phase 1: Foundation (Batches 0-2) — 11 sessions
+Critical infrastructure for all subsequent work.
+
+### Phase 2: Schema & Events (Batches 3-6) — 13 sessions
+Core data model extensions and event infrastructure.
+
+### Phase 3: Workflows (Batches 7-9) — 14 sessions
+Allocation and verification workflows.
+
+### Phase 4: Operations (Batches 10-13) — 16 sessions
+Operational features and command center.
+
+---
+
+## Quick Reference: Session IDs
+
+| Session | Description |
+|---------|-------------|
+| 0.1 | Contract violations table |
+| 0.2 | Contract schemas (TS) |
+| 0.3 | HMAC validation (TS) |
+| 1.1 | Integration inbox table |
+| 1.2 | Webhook receiver core |
+| 1.3 | Webhook receiver QA |
+| 2.1 | Org grants mirror table |
+| 2.2 | Active org preferences |
+| 2.3 | Org access functions |
+| 2.4 | UI policy function |
+| 2.5 | org_access.updated handler |
+| 3.1 | Reservation table extensions |
+| 3.2 | Reservation line extensions |
+| 3.3 | Reservation event handlers |
+| 4.1 | Orders table extensions |
+| 4.2 | PO number generator |
+| 4.3 | Order lots + status tracking |
+| 4.4 | order.created event |
+| 5.1 | Supply requests mirror table |
+| 5.2 | Supply request handlers |
+| 5.3 | Supply tracking integration |
+| 6.1 | Stock transactions table |
+| 6.2 | dispatchStockChanged |
+| 6.3 | Stock change integration |
+| 7.1 | Allocation planning structure |
+| 7.2 | Allocation planning grid |
+| 7.3 | Allocation entry structure |
+| 7.4 | Allocation entry actions |
+| 7.5 | Allocation QA |
+| 8.1 | shipment.approved handler |
+| 8.2 | Override queue page |
+| 8.3 | Override actions |
+| 8.4 | Override integration |
+| 9.1 | Central stock checks table |
+| 9.2 | Stock checks queue page |
+| 9.3 | Check result entry |
+| 9.4 | check.completed event |
+| 9.5 | Abra integration QA |
+| 10.1 | Post-PO issues table |
+| 10.2 | Issue reporting UI |
+| 10.3 | Post-PO issue events |
+| 10.4 | Issue resolution QA |
+| 11.1 | Costing tables |
+| 11.2 | Invoice capture UI |
+| 11.3 | Landed cost allocation |
+| 11.4 | Costing events |
+| 11.5 | Costing QA |
+| 12.1 | Invoice control queue |
+| 12.2 | Pass/fail actions |
+| 12.3 | Invoice control events |
+| 13.1 | Command center structure |
+| 13.2 | Universal orders table |
+| 13.3 | Human gates tabs |
+| 13.4 | Command center polish |
+
+---
+
+## Notes
+
+1. **Session duration estimate:** 45-90 minutes each
+2. **Buffer sessions:** Add 10-15% buffer for unexpected complexity
+3. **Parallel work:** Sessions within a batch can sometimes be parallelized if multiple developers
+4. **QA sessions:** Each batch ends with integration QA — don't skip
+5. **Checkpoint rule:** Never proceed to next batch until all acceptance gates pass
