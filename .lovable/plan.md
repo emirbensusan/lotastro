@@ -11,9 +11,9 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 
 ## Current Progress
 
-- **Current Session:** 0.3 (Next to execute)
-- **Last Completed:** Session 0.2 ✅
-- **Status:** Contract schema definitions for edge functions created
+- **Current Session:** 1.1 (Next to execute)
+- **Last Completed:** Session 0.3 ✅
+- **Status:** HMAC + Schema validation module created
 
 ---
 
@@ -21,7 +21,7 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 
 | Batch | Name | Sessions | Status |
 |-------|------|----------|--------|
-| 0 | Contract Alignment & Guards | 3 | 🔄 In Progress (1/3) |
+| 0 | Contract Alignment & Guards | 3 | ✅ Complete |
 | 1 | Integration Inbox | 3 | ⬜ Not Started |
 | 2 | Multi-Org Identity | 5 | ⬜ Not Started |
 | 3 | Reservations Schema Extensions | 3 | ⬜ Not Started |
@@ -91,11 +91,15 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 - Configure STRICT_MODE behavior
 
 **Acceptance Gates:**
-- [ ] Valid request with correct HMAC passes
-- [ ] Invalid HMAC returns 401
-- [ ] Unknown fields logged and rejected (strict mode)
-- [ ] Missing required fields return 400 with details
-- [ ] Invalid UOM rejected with 400
+- [x] Valid request with correct HMAC passes ✅
+- [x] Invalid HMAC returns 401 ✅
+- [x] Unknown fields logged and rejected (strict mode) ✅
+- [x] Missing required fields return 400 with details ✅
+- [x] Invalid UOM rejected with 400 ✅
+
+**Completed:** 2025-02-02 | **Files Created:**
+- `supabase/functions/_shared/contract-validation.ts` - HMAC + schema validation
+- Secret added: `WMS_CRM_HMAC_SECRET`
 
 ---
 
