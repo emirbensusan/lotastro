@@ -2522,6 +2522,78 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_inbox: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          event_type: string
+          hmac_verified: boolean
+          id: string
+          idempotency_key: string
+          last_attempt_at: string | null
+          next_retry_at: string | null
+          payload: Json
+          payload_hash: string
+          processed_at: string | null
+          received_at: string
+          received_signature: string | null
+          received_timestamp: number | null
+          schema_valid: boolean | null
+          source_system: string
+          status: Database["public"]["Enums"]["integration_inbox_status"]
+          updated_at: string
+          validation_errors: Json | null
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          event_type: string
+          hmac_verified?: boolean
+          id?: string
+          idempotency_key: string
+          last_attempt_at?: string | null
+          next_retry_at?: string | null
+          payload: Json
+          payload_hash: string
+          processed_at?: string | null
+          received_at?: string
+          received_signature?: string | null
+          received_timestamp?: number | null
+          schema_valid?: boolean | null
+          source_system: string
+          status?: Database["public"]["Enums"]["integration_inbox_status"]
+          updated_at?: string
+          validation_errors?: Json | null
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          event_type?: string
+          hmac_verified?: boolean
+          id?: string
+          idempotency_key?: string
+          last_attempt_at?: string | null
+          next_retry_at?: string | null
+          payload?: Json
+          payload_hash?: string
+          processed_at?: string | null
+          received_at?: string
+          received_signature?: string | null
+          received_timestamp?: number | null
+          schema_valid?: boolean | null
+          source_system?: string
+          status?: Database["public"]["Enums"]["integration_inbox_status"]
+          updated_at?: string
+          validation_errors?: Json | null
+        }
+        Relationships: []
+      }
       integration_outbox: {
         Row: {
           created_at: string | null
@@ -4707,6 +4779,13 @@ export type Database = {
         | "stock_take"
         | "qa_investigation"
       inquiry_status: "draft" | "active" | "converted" | "expired" | "cancelled"
+      integration_inbox_status:
+        | "pending"
+        | "processing"
+        | "processed"
+        | "failed"
+        | "rejected"
+        | "skipped"
       inventory_transaction_type:
         | "INCOMING_RECEIPT"
         | "ORDER_FULFILLMENT"
@@ -4922,6 +5001,14 @@ export const Constants = {
         "qa_investigation",
       ],
       inquiry_status: ["draft", "active", "converted", "expired", "cancelled"],
+      integration_inbox_status: [
+        "pending",
+        "processing",
+        "processed",
+        "failed",
+        "rejected",
+        "skipped",
+      ],
       inventory_transaction_type: [
         "INCOMING_RECEIPT",
         "ORDER_FULFILLMENT",
