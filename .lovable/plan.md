@@ -11,9 +11,9 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 
 ## Current Progress
 
-- **Current Session:** 0.2 (Next to execute)
-- **Last Completed:** Session 0.1 ✅
-- **Status:** Contract violations table + validation functions created
+- **Current Session:** 0.3 (Next to execute)
+- **Last Completed:** Session 0.2 ✅
+- **Status:** Contract schema definitions for edge functions created
 
 ---
 
@@ -74,9 +74,12 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 - Define `EVENT_SCHEMAS` for all 11 CRM→WMS events
 
 **Acceptance Gates:**
-- [ ] File created and deployable
-- [ ] `validateIdempotencyKey()` unit tests pass
-- [ ] All event schemas match contract exactly
+- [x] File created and deployable ✅
+- [x] `validateIdempotencyKey()` unit tests pass ✅
+- [x] All event schemas match contract exactly ✅
+
+**Completed:** 2025-02-02 | **Files Created:**
+- `supabase/functions/_shared/contract-schemas.ts` - Edge function contract definitions
 
 ---
 
