@@ -1,4 +1,3 @@
-
 # WMS Implementation Plan v1.0.23 — Session Breakdown
 
 ## Overview
@@ -10,25 +9,33 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 
 ---
 
+## Current Progress
+
+- **Current Session:** 0.1 (Next to execute)
+- **Last Completed:** Plan approved
+- **Status:** Ready to begin implementation
+
+---
+
 ## Batch Summary & Session Allocation
 
-| Batch | Name | Sessions | Total Est. |
-|-------|------|----------|------------|
-| 0 | Contract Alignment & Guards | 3 | 3 |
-| 1 | Integration Inbox | 3 | 3 |
-| 2 | Multi-Org Identity | 5 | 5 |
-| 3 | Reservations Schema Extensions | 3 | 3 |
-| 4 | Orders Schema + PO Generator | 4 | 4 |
-| 5 | Supply Requests Mirror | 3 | 3 |
-| 6 | stock.changed Event | 3 | 3 |
-| 7 | Allocation Planning + Entry | 5 | 5 |
-| 8 | Shipment Approval + Override | 4 | 4 |
-| 9 | Central Stock Checks (Abra) | 5 | 5 |
-| 10 | Post-PO Issues | 4 | 4 |
-| 11 | Costing Module | 5 | 5 |
-| 12 | Invoice Control | 3 | 3 |
-| 13 | PO Command Center | 4 | 4 |
-| **TOTAL** | | | **54 sessions** |
+| Batch | Name | Sessions | Status |
+|-------|------|----------|--------|
+| 0 | Contract Alignment & Guards | 3 | ⬜ Not Started |
+| 1 | Integration Inbox | 3 | ⬜ Not Started |
+| 2 | Multi-Org Identity | 5 | ⬜ Not Started |
+| 3 | Reservations Schema Extensions | 3 | ⬜ Not Started |
+| 4 | Orders Schema + PO Generator | 4 | ⬜ Not Started |
+| 5 | Supply Requests Mirror | 3 | ⬜ Not Started |
+| 6 | stock.changed Event | 3 | ⬜ Not Started |
+| 7 | Allocation Planning + Entry | 5 | ⬜ Not Started |
+| 8 | Shipment Approval + Override | 4 | ⬜ Not Started |
+| 9 | Central Stock Checks (Abra) | 5 | ⬜ Not Started |
+| 10 | Post-PO Issues | 4 | ⬜ Not Started |
+| 11 | Costing Module | 5 | ⬜ Not Started |
+| 12 | Invoice Control | 3 | ⬜ Not Started |
+| 13 | PO Command Center | 4 | ⬜ Not Started |
+| **TOTAL** | | **54 sessions** | |
 
 ---
 
