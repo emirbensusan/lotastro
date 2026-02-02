@@ -11,9 +11,9 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 
 ## Current Progress
 
-- **Current Session:** 1.1 (Next to execute)
-- **Last Completed:** Session 0.3 ✅
-- **Status:** HMAC + Schema validation module created
+- **Current Session:** 1.2 (Next to execute)
+- **Last Completed:** Session 1.1 ✅
+- **Status:** Integration Inbox table created with RLS
 
 ---
 
@@ -22,7 +22,7 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 | Batch | Name | Sessions | Status |
 |-------|------|----------|--------|
 | 0 | Contract Alignment & Guards | 3 | ✅ Complete |
-| 1 | Integration Inbox | 3 | ⬜ Not Started |
+| 1 | Integration Inbox | 3 | 🔄 In Progress (1/3) |
 | 2 | Multi-Org Identity | 5 | ⬜ Not Started |
 | 3 | Reservations Schema Extensions | 3 | ⬜ Not Started |
 | 4 | Orders Schema + PO Generator | 4 | ⬜ Not Started |
@@ -115,9 +115,12 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 - Revoke authenticated access
 
 **Acceptance Gates:**
-- [ ] `SELECT * FROM integration_inbox LIMIT 1` succeeds for admin
-- [ ] Non-admin authenticated user cannot SELECT
-- [ ] Indexes created and verified
+- [x] `SELECT * FROM integration_inbox LIMIT 1` succeeds for admin ✅
+- [x] Non-admin authenticated user cannot SELECT ✅
+- [x] Indexes created and verified ✅
+
+**Completed:** 2025-02-02 | **Files Created:**
+- `supabase/functions/_tests/session_1_1_test.ts` - Integration inbox tests
 
 ---
 
