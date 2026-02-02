@@ -2441,6 +2441,60 @@ export type Database = {
           },
         ]
       }
+      integration_contract_violations: {
+        Row: {
+          created_at: string
+          event_type: string
+          expected_value: string | null
+          field_name: string | null
+          field_value: string | null
+          id: string
+          idempotency_key: string | null
+          inbox_id: string | null
+          payload_snapshot: Json | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          source_system: string
+          violation_message: string
+          violation_type: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          expected_value?: string | null
+          field_name?: string | null
+          field_value?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inbox_id?: string | null
+          payload_snapshot?: Json | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_system: string
+          violation_message: string
+          violation_type: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          expected_value?: string | null
+          field_name?: string | null
+          field_value?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inbox_id?: string | null
+          payload_snapshot?: Json | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          source_system?: string
+          violation_message?: string
+          violation_type?: string
+        }
+        Relationships: []
+      }
       integration_feature_flags: {
         Row: {
           description: string | null
@@ -4561,6 +4615,21 @@ export type Database = {
         }
         Returns: string
       }
+      log_contract_violation: {
+        Args: {
+          p_event_type: string
+          p_expected_value?: string
+          p_field_name?: string
+          p_field_value?: string
+          p_idempotency_key: string
+          p_inbox_id?: string
+          p_payload_snapshot?: Json
+          p_source_system: string
+          p_violation_message: string
+          p_violation_type: string
+        }
+        Returns: string
+      }
       log_security_event: {
         Args: {
           details?: Json
@@ -4574,6 +4643,19 @@ export type Database = {
       record_login_attempt: {
         Args: { p_email: string; p_ip_address?: string; p_success: boolean }
         Returns: undefined
+      }
+      validate_contract_uom: { Args: { p_uom: string }; Returns: boolean }
+      validate_idempotency_key: {
+        Args: { p_key: string }
+        Returns: {
+          action: string
+          entity: string
+          entity_id: string
+          error_message: string
+          is_valid: boolean
+          source_system: string
+          version: string
+        }[]
       }
     }
     Enums: {

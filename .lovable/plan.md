@@ -11,9 +11,9 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 
 ## Current Progress
 
-- **Current Session:** 0.1 (Next to execute)
-- **Last Completed:** Plan approved
-- **Status:** Ready to begin implementation
+- **Current Session:** 0.2 (Next to execute)
+- **Last Completed:** Session 0.1 ✅
+- **Status:** Contract violations table + validation functions created
 
 ---
 
@@ -21,7 +21,7 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 
 | Batch | Name | Sessions | Status |
 |-------|------|----------|--------|
-| 0 | Contract Alignment & Guards | 3 | ⬜ Not Started |
+| 0 | Contract Alignment & Guards | 3 | 🔄 In Progress (1/3) |
 | 1 | Integration Inbox | 3 | ⬜ Not Started |
 | 2 | Multi-Org Identity | 5 | ⬜ Not Started |
 | 3 | Reservations Schema Extensions | 3 | ⬜ Not Started |
@@ -55,11 +55,14 @@ This document breaks down the 14 batches (0-13) into discrete execution sessions
 - Add indexes for violations table
 
 **Acceptance Gates:**
-- [ ] `SELECT * FROM integration_contract_violations LIMIT 1` succeeds
-- [ ] `SELECT * FROM validate_idempotency_key('wms:order:123:created:v1')` returns valid=true
-- [ ] `SELECT * FROM validate_idempotency_key('wms:order:123:created')` returns valid=false (4 segments)
-- [ ] `SELECT validate_contract_uom('MT')` = true
-- [ ] `SELECT validate_contract_uom('YD')` = false
+- [x] `SELECT * FROM integration_contract_violations LIMIT 1` succeeds ✅
+- [x] `SELECT * FROM validate_idempotency_key('wms:order:123:created:v1')` returns valid=true ✅
+- [x] `SELECT * FROM validate_idempotency_key('wms:order:123:created')` returns valid=false (4 segments) ✅
+- [x] `SELECT validate_contract_uom('MT')` = true ✅
+- [x] `SELECT validate_contract_uom('YD')` = false ✅
+
+**Completed:** 2025-02-02 | **Files Created:**
+- `src/lib/contractValidation.ts` - Client-side validation helpers
 
 ---
 
