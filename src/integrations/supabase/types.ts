@@ -4253,6 +4253,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_active_org_preferences: {
+        Row: {
+          active_org_id: string
+          created_at: string
+          set_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_org_id: string
+          created_at?: string
+          set_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_org_id?: string
+          created_at?: string
+          set_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_invitations: {
         Row: {
           accepted_at: string | null
@@ -4583,6 +4607,7 @@ export type Database = {
       generate_order_number: { Args: never; Returns: string }
       generate_reservation_number: { Args: never; Returns: string }
       generate_stock_take_session_number: { Args: never; Returns: string }
+      get_active_org_id: { Args: never; Returns: string }
       get_available_rolls_count: { Args: { p_lot_id: string }; Returns: number }
       get_available_rolls_meters: {
         Args: { p_lot_id: string }
@@ -4752,6 +4777,7 @@ export type Database = {
         Args: { p_email: string; p_ip_address?: string; p_success: boolean }
         Returns: undefined
       }
+      set_active_org_id: { Args: { p_org_id: string }; Returns: boolean }
       validate_contract_uom: { Args: { p_uom: string }; Returns: boolean }
       validate_idempotency_key: {
         Args: { p_key: string }
