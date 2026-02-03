@@ -4780,6 +4780,7 @@ export type Database = {
       }
       set_active_org_id: { Args: { p_org_id: string }; Returns: boolean }
       user_has_org_access: { Args: { p_org_id: string }; Returns: boolean }
+      user_wms_ui_policy: { Args: never; Returns: Json }
       validate_contract_uom: { Args: { p_uom: string }; Returns: boolean }
       validate_idempotency_key: {
         Args: { p_key: string }
