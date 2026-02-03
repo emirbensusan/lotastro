@@ -4367,6 +4367,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_org_grants_sync_state: {
+        Row: {
+          last_org_access_seq: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_org_access_seq?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_org_access_seq?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           assigned_at: string
@@ -4777,6 +4795,10 @@ export type Database = {
       record_login_attempt: {
         Args: { p_email: string; p_ip_address?: string; p_success: boolean }
         Returns: undefined
+      }
+      replace_user_org_grants_snapshot: {
+        Args: { p_grants: Json; p_org_access_seq: number; p_user_id: string }
+        Returns: Json
       }
       set_active_org_id: { Args: { p_org_id: string }; Returns: boolean }
       user_has_org_access: { Args: { p_org_id: string }; Returns: boolean }
