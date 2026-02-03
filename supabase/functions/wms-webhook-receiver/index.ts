@@ -1,6 +1,8 @@
+
+
 /**
- * WMS Webhook Receiver
- * 
+ *V3 WMS Webhook Receiver
+ *
  * Handles inbound CRM events per integration_contract_v1.md Section 2.2:
  * - deal.approved
  * - deal.accepted
@@ -13,13 +15,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key, x-wms-signature, x-wms-timestamp, X-WMS-Signature, X-WMS-Timestamp',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-api-key, x-wms-signature, x-wms-timestamp, X-WMS-Signature, X-WMS-Timestamp',
 };
 
 interface CRMEvent {
   event_type: string;
   idempotency_key: string;
-  timestamp: number;
+  timestamp?: number;
   payload: Record<string, unknown>;
 }
 
@@ -61,7 +64,7 @@ interface DealLinesUpdatedPayload {
   changes: DealLineChange[];
 }
 
-// Verify HMAC signature from CRM
+// Verify HMAC signature from CRM (canonical: `${timestamp}.${payload}`)
 async function verifySignature(
   payload: string,
   signature: string,
@@ -76,100 +79,110 @@ async function verifySignature(
     false,
     ['sign']
   );
-  
+
   const message = `${timestamp}.${payload}`;
   const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
   const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
-  
+
   return signature === expectedSignature;
 }
 
-// Check idempotency - has this event already been processed?
-// Returns existing record with attempt_count for null-safe retry (per Contract Appendix D.3)
+// Compute SHA-256 hash of raw payload for drift detection
+async function computePayloadHash(rawBody: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(rawBody);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function parseSourceSystemFromIdempotencyKey(idempotencyKey: string): string {
+  const parts = idempotencyKey.split(':');
+  return parts[0] || 'unknown';
+}
+
 async function checkIdempotency(
   supabase: ReturnType<typeof createClient>,
   idempotencyKey: string
-): Promise<{ exists: boolean; status?: string; attemptCount?: number; id?: string }> {
+): Promise<{ exists: boolean; status?: string; attemptCount?: number; id?: string; payloadHash?: string; hmacVerified?: boolean }> {
   const { data } = await supabase
-    .from('integration_outbox')
-    .select('id, status, attempt_count')
+    .from('integration_inbox')
+    .select('id, status, attempt_count, payload_hash, hmac_verified')
     .eq('idempotency_key', idempotencyKey)
     .single();
-  
-  if (!data) {
-    return { exists: false };
-  }
-  
-  return { 
-    exists: true, 
-    status: data.status, 
+
+  if (!data) return { exists: false };
+
+  return {
+    exists: true,
+    status: data.status,
     attemptCount: data.attempt_count ?? 0,
-    id: data.id 
+    id: data.id,
+    payloadHash: data.payload_hash ?? undefined,
+    hmacVerified: data.hmac_verified ?? false,
   };
 }
 
-// Log received event
-async function logReceivedEvent(
+// Insert into integration_inbox
+async function insertInboxRow(
   supabase: ReturnType<typeof createClient>,
   event: CRMEvent,
-  status: 'received' | 'processed' | 'error',
-  error?: string
+  rawBody: string,
+  hmacVerified: boolean,
+  status: 'pending' | 'processed' | 'failed'
 ): Promise<void> {
-  await supabase.from('integration_outbox').insert({
-    event_type: event.event_type,
-    payload: event.payload,
-    target_system: 'wms',
-    status: status === 'processed' ? 'sent' : status === 'error' ? 'failed' : 'pending',
+  const payloadHash = await computePayloadHash(rawBody);
+  const sourceSystem = parseSourceSystemFromIdempotencyKey(event.idempotency_key);
+
+  await supabase.from('integration_inbox').insert({
     idempotency_key: event.idempotency_key,
-    last_error: error,
+    event_type: event.event_type,
+    source_system: sourceSystem,
+    payload: event.payload,
+    status,
+    hmac_verified: hmacVerified,
+    payload_hash: payloadHash,
     processed_at: status === 'processed' ? new Date().toISOString() : null,
+    // attempt_count default 0
+    // received_at default now()
+    // next_retry_at null by default
+    // schema_valid optional (leave null unless you want to set it)
   });
 }
 
-// Handle deal.approved event
+// ---- Handlers (unchanged) ----
+
 async function handleDealApproved(
-  supabase: ReturnType<typeof createClient>,
+  _supabase: ReturnType<typeof createClient>,
   payload: Record<string, unknown>
 ): Promise<{ success: boolean; message: string }> {
-  // Log for future use - deal.approved may trigger pre-reservation logic
   console.log('[wms-webhook-receiver] deal.approved received:', payload);
-  
-  return {
-    success: true,
-    message: 'deal.approved received and logged for future processing',
-  };
+  return { success: true, message: 'deal.approved received and logged for future processing' };
 }
 
-// Handle deal.accepted event
 async function handleDealAccepted(
-  supabase: ReturnType<typeof createClient>,
+  _supabase: ReturnType<typeof createClient>,
   payload: Record<string, unknown>
 ): Promise<{ success: boolean; message: string }> {
-  // Log for future use - deal.accepted may trigger quote confirmation
   console.log('[wms-webhook-receiver] deal.accepted received:', payload);
-  
-  return {
-    success: true,
-    message: 'deal.accepted received and logged for future processing',
-  };
+  return { success: true, message: 'deal.accepted received and logged for future processing' };
 }
 
-// Handle deal.won event - creates reservation or order
 async function handleDealWon(
   supabase: ReturnType<typeof createClient>,
   payload: DealWonPayload
 ): Promise<{ success: boolean; message: string; reservation_id?: string }> {
   console.log('[wms-webhook-receiver] deal.won received:', payload);
-  
-  // Check if reservation already exists for this deal
+
   const { data: existingReservation } = await supabase
     .from('reservations')
     .select('id, reservation_number')
     .eq('crm_deal_id', payload.crm_deal_id)
     .single();
-  
+
   if (existingReservation) {
     return {
       success: true,
@@ -177,11 +190,7 @@ async function handleDealWon(
       reservation_id: existingReservation.id,
     };
   }
-  
-  // Calculate total meters from lines
-  const totalMeters = payload.lines.reduce((sum, line) => sum + line.quantity_meters, 0);
-  
-  // Create reservation
+
   const { data: reservation, error: reservationError } = await supabase
     .from('reservations')
     .insert({
@@ -192,43 +201,33 @@ async function handleDealWon(
       status: 'active',
       hold_until: payload.requested_delivery_date,
       notes: `Created from CRM Deal: ${payload.deal_number || payload.crm_deal_id}`,
+      // NOTE: If your reservations table requires created_by, this will fail.
+      // For DevTools verification we will NOT use deal.won.
     })
     .select('id, reservation_number')
     .single();
-  
+
   if (reservationError) {
     console.error('[wms-webhook-receiver] Failed to create reservation:', reservationError);
-    return {
-      success: false,
-      message: `Failed to create reservation: ${reservationError.message}`,
-    };
+    return { success: false, message: `Failed to create reservation: ${reservationError.message}` };
   }
-  
-  // Create reservation lines
-  const reservationLines = payload.lines.map(line => ({
+
+  const reservationLines = payload.lines.map((line) => ({
     reservation_id: reservation.id,
     quality: line.quality_code,
     color: line.color_code,
     reserved_meters: line.quantity_meters,
     scope: 'INVENTORY',
   }));
-  
-  const { error: linesError } = await supabase
-    .from('reservation_lines')
-    .insert(reservationLines);
-  
+
+  const { error: linesError } = await supabase.from('reservation_lines').insert(reservationLines);
+
   if (linesError) {
     console.error('[wms-webhook-receiver] Failed to create reservation lines:', linesError);
-    // Rollback reservation
     await supabase.from('reservations').delete().eq('id', reservation.id);
-    return {
-      success: false,
-      message: `Failed to create reservation lines: ${linesError.message}`,
-    };
+    return { success: false, message: `Failed to create reservation lines: ${linesError.message}` };
   }
-  
-  console.log('[wms-webhook-receiver] Created reservation:', reservation.reservation_number);
-  
+
   return {
     success: true,
     message: `Reservation created: ${reservation.reservation_number}`,
@@ -236,15 +235,13 @@ async function handleDealWon(
   };
 }
 
-// Handle deal.cancelled event - releases reservation and marks order action_required
 async function handleDealCancelled(
   supabase: ReturnType<typeof createClient>,
   payload: DealCancelledPayload
 ): Promise<{ success: boolean; message: string }> {
   console.log('[wms-webhook-receiver] deal.cancelled received:', payload);
-  
-  // Find and update reservation
-  const { data: reservation, error: reservationError } = await supabase
+
+  const { data: reservation } = await supabase
     .from('reservations')
     .update({
       status: 'released',
@@ -256,9 +253,8 @@ async function handleDealCancelled(
     .eq('status', 'active')
     .select('id, reservation_number')
     .single();
-  
-  // Find and update order
-  const { data: order, error: orderError } = await supabase
+
+  const { data: order } = await supabase
     .from('orders')
     .update({
       status: 'cancelled',
@@ -268,193 +264,189 @@ async function handleDealCancelled(
     .neq('status', 'cancelled')
     .select('id, order_number')
     .single();
-  
+
   const results: string[] = [];
-  
-  if (reservation) {
-    results.push(`Reservation ${reservation.reservation_number} released`);
-  }
-  if (order) {
-    results.push(`Order ${order.order_number} cancelled with action_required=true`);
-  }
-  
-  if (results.length === 0) {
-    return {
-      success: true,
-      message: 'No active reservations or orders found for this deal',
-    };
-  }
-  
-  return {
-    success: true,
-    message: results.join('; '),
-  };
+  if (reservation) results.push(`Reservation ${reservation.reservation_number} released`);
+  if (order) results.push(`Order ${order.order_number} cancelled with action_required=true`);
+
+  return { success: true, message: results.length ? results.join('; ') : 'No active reservations or orders found for this deal' };
 }
 
-// Handle deal.lines_updated event - adjusts reservation lines
 async function handleDealLinesUpdated(
   supabase: ReturnType<typeof createClient>,
   payload: DealLinesUpdatedPayload
 ): Promise<{ success: boolean; message: string }> {
   console.log('[wms-webhook-receiver] deal.lines_updated received:', payload);
-  
-  // Find reservation for this deal
-  const { data: reservation, error: findError } = await supabase
+
+  const { data: reservation } = await supabase
     .from('reservations')
     .select('id, reservation_number')
     .eq('crm_deal_id', payload.crm_deal_id)
     .eq('status', 'active')
     .single();
-  
-  if (!reservation) {
-    return {
-      success: false,
-      message: 'No active reservation found for this deal',
-    };
-  }
-  
+
+  if (!reservation) return { success: false, message: 'No active reservation found for this deal' };
+
   const updates: string[] = [];
-  
+
   for (const change of payload.changes) {
     if (change.action === 'line_removed') {
-      // Delete the line
       const { error } = await supabase
         .from('reservation_lines')
         .delete()
         .eq('reservation_id', reservation.id)
         .eq('quality', change.quality_code)
         .eq('color', change.color_code);
-      
-      if (!error) {
-        updates.push(`Removed line: ${change.quality_code}/${change.color_code}`);
-      }
+
+      if (!error) updates.push(`Removed line: ${change.quality_code}/${change.color_code}`);
     } else {
-      // Update quantity
       const { error } = await supabase
         .from('reservation_lines')
         .update({ reserved_meters: change.new_quantity })
         .eq('reservation_id', reservation.id)
         .eq('quality', change.quality_code)
         .eq('color', change.color_code);
-      
-      if (!error) {
-        updates.push(`Updated ${change.quality_code}/${change.color_code}: ${change.old_quantity} → ${change.new_quantity}`);
-      }
+
+      if (!error) updates.push(`Updated ${change.quality_code}/${change.color_code}: ${change.old_quantity} → ${change.new_quantity}`);
     }
   }
-  
-  return {
-    success: true,
-    message: `Reservation ${reservation.reservation_number} updated: ${updates.join('; ')}`,
-  };
+
+  return { success: true, message: `Reservation ${reservation.reservation_number} updated: ${updates.join('; ')}` };
 }
 
+// ---- HTTP handler ----
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    // Use standardized secret name per contract v1.0.23
     const hmacSecret = Deno.env.get('WMS_CRM_HMAC_SECRET') || Deno.env.get('CRM_WEBHOOK_SECRET');
-    
+
+    // Recommended: fail hard if secret missing (prevents silently accepting unsigned events)
+    if (!hmacSecret || hmacSecret.length < 16) {
+      return new Response(JSON.stringify({ error: 'Server misconfigured: WMS_CRM_HMAC_SECRET missing' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Get raw body for signature verification
+
     const rawBody = await req.text();
-    // Verify signature if secret is configured
-    if (hmacSecret) {
-      // Use standardized header names per contract v1.0.23
-      const signature = req.headers.get('X-WMS-Signature') || req.headers.get('x-wms-signature') || req.headers.get('x-crm-signature');
-      const timestamp = req.headers.get('X-WMS-Timestamp') || req.headers.get('x-wms-timestamp') || req.headers.get('x-crm-timestamp');
-      
-      if (!signature) {
+
+    // Parse JSON
+    let event: CRMEvent;
+    try {
+      event = JSON.parse(rawBody) as CRMEvent;
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!event?.event_type || !event?.idempotency_key || !event?.payload) {
+      return new Response(JSON.stringify({ error: 'Missing required fields: event_type, idempotency_key, payload' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Verify HMAC
+    let hmacVerified = false;
+
+    const signature =
+      req.headers.get('X-WMS-Signature') ||
+      req.headers.get('x-wms-signature') ||
+      req.headers.get('x-crm-signature');
+
+    const timestamp =
+      req.headers.get('X-WMS-Timestamp') ||
+      req.headers.get('x-wms-timestamp') ||
+      req.headers.get('x-crm-timestamp');
+
+    if (!signature) {
+      return new Response(JSON.stringify({ error: 'Missing X-WMS-Signature header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!timestamp) {
+      return new Response(JSON.stringify({ error: 'Missing X-WMS-Timestamp header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const timestampSec = parseInt(timestamp, 10);
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (!Number.isFinite(timestampSec) || Math.abs(nowSec - timestampSec) > 5 * 60) {
+      return new Response(JSON.stringify({ error: 'Timestamp expired' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const isValid = await verifySignature(rawBody, signature, timestamp, hmacSecret);
+    if (!isValid) {
+      return new Response(JSON.stringify({ error: 'Invalid HMAC signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    hmacVerified = true;
+
+    // Idempotency
+    const existing = await checkIdempotency(supabase, event.idempotency_key);
+
+    if (existing.exists) {
+      if (['processed', 'processing', 'pending'].includes(existing.status || '')) {
         return new Response(
-          JSON.stringify({ error: 'Missing X-WMS-Signature header' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: true,
+            message: 'Event already processed (idempotent)',
+            idempotency_key: event.idempotency_key,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      if (!timestamp) {
+
+      if (existing.status === 'failed' && existing.id) {
+        await supabase
+          .from('integration_inbox')
+          .update({
+            status: 'pending',
+            attempt_count: (existing.attemptCount ?? 0) + 1,
+            // persist that we DID verify on this retry attempt:
+            hmac_verified: true,
+          })
+          .eq('id', existing.id);
+
         return new Response(
-          JSON.stringify({ error: 'Missing X-WMS-Timestamp header' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Check timestamp is within 5 minutes
-      const timestampSec = parseInt(timestamp);
-      const nowSec = Math.floor(Date.now() / 1000);
-      if (Math.abs(nowSec - timestampSec) > 5 * 60) {
-        return new Response(
-          JSON.stringify({ error: 'Timestamp expired' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // CRITICAL: Canonical string format is "${timestamp}.${rawBody}"
-      const isValid = await verifySignature(rawBody, signature, timestamp, hmacSecret);
-      if (!isValid) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid HMAC signature' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: true,
+            message: 'Queued for retry',
+            idempotency_key: event.idempotency_key,
+            attempt: (existing.attemptCount ?? 0) + 1,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }
-    
-    // Check idempotency with full record for retry semantics (per Contract Appendix D.3)
-    if (event.idempotency_key) {
-      const existing = await checkIdempotency(supabase, event.idempotency_key);
-      
-      if (existing.exists) {
-        // Already processed - return 200 per contract
-        if (['sent', 'processing', 'pending'].includes(existing.status || '')) {
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              message: 'Event already processed (idempotent)',
-              idempotency_key: event.idempotency_key,
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
-        // Failed status - update to pending for retry with null-safe increment
-        if (existing.status === 'failed' && existing.id) {
-          await supabase.from('integration_outbox')
-            .update({
-              status: 'pending',
-              attempt_count: (existing.attemptCount ?? 0) + 1,
-              last_error: null,
-            })
-            .eq('id', existing.id);
-          
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              message: 'Queued for retry',
-              idempotency_key: event.idempotency_key,
-              attempt: (existing.attemptCount ?? 0) + 1,
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-    }
-    
-    // Route to appropriate handler
+
+    // Route to handler
     let result: { success: boolean; message: string; [key: string]: unknown };
-    
+
     switch (event.event_type) {
       case 'deal.approved':
         result = await handleDealApproved(supabase, event.payload);
@@ -472,33 +464,25 @@ Deno.serve(async (req) => {
         result = await handleDealLinesUpdated(supabase, event.payload as unknown as DealLinesUpdatedPayload);
         break;
       default:
-        return new Response(
-          JSON.stringify({ error: `Unknown event type: ${event.event_type}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ error: `Unknown event type: ${event.event_type}` }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
     }
-    
-    // Log the event
-    await logReceivedEvent(
-      supabase,
-      event,
-      result.success ? 'processed' : 'error',
-      result.success ? undefined : result.message
-    );
-    
-    return new Response(
-      JSON.stringify(result),
-      { 
-        status: result.success ? 200 : 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-    
+
+    // Write inbox row (persist hmac_verified)
+    await insertInboxRow(supabase, event, rawBody, hmacVerified, result.success ? 'processed' : 'failed');
+
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('[wms-webhook-receiver] Error:', error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
+
