@@ -1,5 +1,3 @@
-
-
 /**
  *V3 WMS Webhook Receiver
  *
@@ -107,7 +105,14 @@ function parseSourceSystemFromIdempotencyKey(idempotencyKey: string): string {
 async function checkIdempotency(
   supabase: ReturnType<typeof createClient>,
   idempotencyKey: string
-): Promise<{ exists: boolean; status?: string; attemptCount?: number; id?: string; payloadHash?: string; hmacVerified?: boolean }> {
+): Promise<{
+  exists: boolean;
+  status?: string;
+  attemptCount?: number;
+  id?: string;
+  payloadHash?: string;
+  hmacVerified?: boolean;
+}> {
   const { data } = await supabase
     .from('integration_inbox')
     .select('id, status, attempt_count, payload_hash, hmac_verified')
@@ -427,8 +432,10 @@ Deno.serve(async (req) => {
       if (existing.status === 'failed' && existing.id) {
         // DRIFT DETECTION: Compare payload hashes before allowing retry
         const newHash = await computePayloadHash(rawBody);
-        
+
         if (existing.payloadHash && existing.payloadHash !== newHash) {
+          const driftAttempt = (existing.attemptCount ?? 0) + 1;
+
           // Log drift violation to integration_contract_violations
           await supabase.from('integration_contract_violations').insert({
             event_type: event.event_type,
@@ -441,27 +448,30 @@ Deno.serve(async (req) => {
             expected_value: existing.payloadHash,
             inbox_id: existing.id,
           });
-          
-          // Also update inbox row with error marker
+
+          // Also update inbox row with error marker + increment attempt_count + set hmac_verified=true
           await supabase
             .from('integration_inbox')
             .update({
               error_message: 'Payload drift detected on retry',
               last_attempt_at: new Date().toISOString(),
+              attempt_count: driftAttempt,
+              hmac_verified: true,
             })
             .eq('id', existing.id);
-          
+
           // Reject with 409 Conflict (do NOT flip to pending)
           return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
               error: 'Payload drift detected',
               message: 'Same idempotency_key but different payload content',
               idempotency_key: event.idempotency_key,
+              attempt: driftAttempt, // tiny extra for consistency
             }),
             { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        
+
         // Hashes match - proceed with retry
         await supabase
           .from('integration_inbox')
@@ -535,4 +545,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-
