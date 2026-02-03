@@ -27,23 +27,34 @@ import {
 // Test secret for HMAC verification
 const TEST_SECRET = 'test-hmac-secret-for-unit-tests';
 
-// Helper to create a mock request
-function createMockRequest(
+// Helper to create a mock request with proper canonical HMAC
+// CRITICAL: HMAC must be computed over "${timestamp}.${rawBody}"
+async function createMockRequest(
   body: object | string,
   signature?: string,
-  timestamp?: number
-): Request {
+  timestamp?: number,
+  computeValidSignature: boolean = false
+): Promise<Request> {
   const bodyString = typeof body === 'string' ? body : JSON.stringify(body);
   const headers = new Headers({
     'Content-Type': 'application/json',
   });
   
-  if (signature) {
-    headers.set(HMAC_HEADER, signature);
-  }
+  const ts = timestamp ?? Math.floor(Date.now() / 1000);
   
-  if (timestamp !== undefined) {
-    headers.set(TIMESTAMP_HEADER, timestamp.toString());
+  if (computeValidSignature) {
+    // CORRECT: Canonical string is "${timestamp}.${rawBody}"
+    const canonicalString = `${ts}.${bodyString}`;
+    const validSig = await computeHmac(canonicalString, TEST_SECRET);
+    headers.set(HMAC_HEADER, validSig);
+    headers.set(TIMESTAMP_HEADER, ts.toString());
+  } else {
+    if (signature) {
+      headers.set(HMAC_HEADER, signature);
+    }
+    if (timestamp !== undefined) {
+      headers.set(TIMESTAMP_HEADER, timestamp.toString());
+    }
   }
   
   return new Request('https://example.com/webhook', {
@@ -176,11 +187,9 @@ Deno.test("T7: validateTimestamp rejects missing timestamp", () => {
 // ============================================
 Deno.test("T8: validateInboundEvent passes for valid request", async () => {
   const envelope = createValidEnvelope();
-  const bodyString = JSON.stringify(envelope);
-  const signature = await computeHmac(bodyString, TEST_SECRET);
-  const timestamp = Math.floor(Date.now() / 1000);
   
-  const req = createMockRequest(envelope, signature, timestamp);
+  // Use helper with computeValidSignature=true to get proper canonical HMAC
+  const req = await createMockRequest(envelope, undefined, undefined, true);
   const { result, event } = await validateInboundEvent(req, TEST_SECRET);
   
   console.log('T8 Valid request result:', { valid: result.valid, statusCode: result.statusCode });
@@ -200,8 +209,16 @@ Deno.test("T9: validateInboundEvent returns 401 for missing HMAC", async () => {
   const envelope = createValidEnvelope();
   const timestamp = Math.floor(Date.now() / 1000);
   
-  // No signature provided
-  const req = createMockRequest(envelope, undefined, timestamp);
+  // No signature provided, only timestamp
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+    [TIMESTAMP_HEADER]: timestamp.toString(),
+  });
+  const req = new Request('https://example.com/webhook', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(envelope),
+  });
   const { result } = await validateInboundEvent(req, TEST_SECRET);
   
   console.log('T9 Missing HMAC result:', { statusCode: result.statusCode, error: result.error });
@@ -218,7 +235,7 @@ Deno.test("T10: validateInboundEvent returns 401 for invalid HMAC", async () => 
   const envelope = createValidEnvelope();
   const timestamp = Math.floor(Date.now() / 1000);
   
-  const req = createMockRequest(envelope, 'invalid-signature', timestamp);
+  const req = await createMockRequest(envelope, 'invalid-signature-abcdef1234567890abcdef1234567890ab', timestamp);
   const { result } = await validateInboundEvent(req, TEST_SECRET);
   
   console.log('T10 Invalid HMAC result:', { statusCode: result.statusCode, errorCode: result.errorCode });
@@ -233,11 +250,8 @@ Deno.test("T10: validateInboundEvent returns 401 for invalid HMAC", async () => 
 // ============================================
 Deno.test("T11: validateInboundEvent returns 400 for unknown event type", async () => {
   const envelope = createValidEnvelope({ event_type: 'unknown.event' });
-  const bodyString = JSON.stringify(envelope);
-  const signature = await computeHmac(bodyString, TEST_SECRET);
-  const timestamp = Math.floor(Date.now() / 1000);
   
-  const req = createMockRequest(envelope, signature, timestamp);
+  const req = await createMockRequest(envelope, undefined, undefined, true);
   const { result } = await validateInboundEvent(req, TEST_SECRET);
   
   console.log('T11 Unknown event type result:', { statusCode: result.statusCode, errorCode: result.errorCode });
@@ -253,11 +267,8 @@ Deno.test("T11: validateInboundEvent returns 400 for unknown event type", async 
 Deno.test("T12: validateInboundEvent returns 400 for invalid idempotency key (4 segments)", async () => {
   // 4-segment key (missing version)
   const envelope = createValidEnvelope({ idempotency_key: 'crm:reservation:123:created' });
-  const bodyString = JSON.stringify(envelope);
-  const signature = await computeHmac(bodyString, TEST_SECRET);
-  const timestamp = Math.floor(Date.now() / 1000);
   
-  const req = createMockRequest(envelope, signature, timestamp);
+  const req = await createMockRequest(envelope, undefined, undefined, true);
   const { result } = await validateInboundEvent(req, TEST_SECRET);
   
   console.log('T12 Invalid idempotency key result:', { 
@@ -282,11 +293,8 @@ Deno.test("T13: validateInboundEvent returns 400 for missing required fields", a
       // Missing: crm_organization_id, crm_customer_id, customer_name, reserved_date, lines
     }
   });
-  const bodyString = JSON.stringify(envelope);
-  const signature = await computeHmac(bodyString, TEST_SECRET);
-  const timestamp = Math.floor(Date.now() / 1000);
   
-  const req = createMockRequest(envelope, signature, timestamp);
+  const req = await createMockRequest(envelope, undefined, undefined, true);
   const { result } = await validateInboundEvent(req, TEST_SECRET);
   
   console.log('T13 Missing fields result:', { 
@@ -323,11 +331,8 @@ Deno.test("T14: validateInboundEvent returns 400 for invalid UOM", async () => {
       ],
     }
   });
-  const bodyString = JSON.stringify(envelope);
-  const signature = await computeHmac(bodyString, TEST_SECRET);
-  const timestamp = Math.floor(Date.now() / 1000);
   
-  const req = createMockRequest(envelope, signature, timestamp);
+  const req = await createMockRequest(envelope, undefined, undefined, true);
   const { result } = await validateInboundEvent(req, TEST_SECRET);
   
   console.log('T14 Invalid UOM result:', { 
@@ -358,11 +363,8 @@ Deno.test("T15: validateInboundEvent detects unknown fields", async () => {
       another_unknown: 123,
     }
   });
-  const bodyString = JSON.stringify(envelope);
-  const signature = await computeHmac(bodyString, TEST_SECRET);
-  const timestamp = Math.floor(Date.now() / 1000);
   
-  const req = createMockRequest(envelope, signature, timestamp);
+  const req = await createMockRequest(envelope, undefined, undefined, true);
   const { result } = await validateInboundEvent(req, TEST_SECRET);
   
   console.log('T15 Unknown fields result:', { 

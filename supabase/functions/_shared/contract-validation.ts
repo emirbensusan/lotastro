@@ -211,7 +211,7 @@ export async function validateInboundEvent(
     };
   }
   
-  // 2. Verify HMAC signature
+  // 2. Check HMAC signature header exists
   const providedSignature = req.headers.get(HMAC_HEADER);
   if (!providedSignature) {
     return {
@@ -225,21 +225,22 @@ export async function validateInboundEvent(
     };
   }
   
-  const hmacValid = await verifyHmac(rawBody, providedSignature, hmacSecret);
-  if (!hmacValid) {
+  // 3. Check timestamp header exists
+  const timestampHeader = req.headers.get(TIMESTAMP_HEADER);
+  if (!timestampHeader) {
     return {
       result: {
         valid: false,
         statusCode: 401,
-        error: 'Invalid HMAC signature',
-        errorCode: 'INVALID_HMAC',
-        violations: [{ type: 'hmac_failure', message: 'HMAC signature verification failed' }],
+        error: `Missing ${TIMESTAMP_HEADER} header`,
+        errorCode: 'MISSING_TIMESTAMP',
+        violations: [{ type: 'hmac_failure', message: 'Missing timestamp header' }],
       }
     };
   }
   
-  // 3. Validate timestamp (replay protection)
-  const timestampResult = validateTimestamp(req.headers.get(TIMESTAMP_HEADER));
+  // 4. Validate timestamp freshness (replay protection)
+  const timestampResult = validateTimestamp(timestampHeader);
   if (!timestampResult.valid) {
     return {
       result: {
@@ -248,6 +249,22 @@ export async function validateInboundEvent(
         error: timestampResult.error,
         errorCode: 'INVALID_TIMESTAMP',
         violations: [{ type: 'hmac_failure', message: timestampResult.error || 'Timestamp validation failed' }],
+      }
+    };
+  }
+  
+  // 5. Build canonical string and verify HMAC
+  // CRITICAL: Canonical format is "${timestamp}.${rawBody}" - this prevents replay attacks
+  const canonicalString = `${timestampHeader}.${rawBody}`;
+  const hmacValid = await verifyHmac(canonicalString, providedSignature, hmacSecret);
+  if (!hmacValid) {
+    return {
+      result: {
+        valid: false,
+        statusCode: 401,
+        error: 'Invalid HMAC signature',
+        errorCode: 'INVALID_HMAC',
+        violations: [{ type: 'hmac_failure', message: 'HMAC signature verification failed' }],
       }
     };
   }
