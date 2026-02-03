@@ -62,6 +62,21 @@ interface DealLinesUpdatedPayload {
   changes: DealLineChange[];
 }
 
+// Session 2.5: org_access.updated interfaces
+interface OrgAccessGrant {
+  crm_organization_id: string;
+  role_in_org: 'sales_owner' | 'sales_manager' | 'pricing' | 'accounting' | 'admin';
+  is_active?: boolean;
+}
+
+interface OrgAccessUpdatedPayload {
+  user_id: string;
+  org_access_seq: number;
+  grants: OrgAccessGrant[];
+  updated_at?: string;
+  updated_by?: string | null;
+}
+
 // Verify HMAC signature from CRM (canonical: `${timestamp}.${payload}`)
 async function verifySignature(
   payload: string,
@@ -322,6 +337,158 @@ async function handleDealLinesUpdated(
   return { success: true, message: `Reservation ${reservation.reservation_number} updated: ${updates.join('; ')}` };
 }
 
+// Session 2.5: org_access.updated handler
+async function handleOrgAccessUpdated(
+  supabase: ReturnType<typeof createClient>,
+  payload: OrgAccessUpdatedPayload
+): Promise<{ success: boolean; message: string }> {
+  const { user_id, org_access_seq, grants } = payload;
+
+  // Validate required fields
+  if (!user_id || typeof org_access_seq !== 'number') {
+    return { 
+      success: false, 
+      message: 'Missing required fields: user_id or org_access_seq' 
+    };
+  }
+
+  // ========================================
+  // SEQUENCE GUARD: Read from sync_state table (survives empty snapshots)
+  // ========================================
+  const { data: syncState, error: syncError } = await supabase
+    .from('user_org_grants_sync_state')
+    .select('last_org_access_seq')
+    .eq('user_id', user_id)
+    .maybeSingle();  // Use maybeSingle() to handle first-event case
+
+  if (syncError) {
+    console.error('[org_access.updated] Sync state lookup failed:', syncError);
+    return { success: false, message: `Sync state lookup failed: ${syncError.message}` };
+  }
+
+  const currentSeq = syncState?.last_org_access_seq ?? 0;
+
+  if (currentSeq >= org_access_seq) {
+    // Log as contract violation (sequence out of order)
+    await supabase.from('integration_contract_violations').insert({
+      event_type: 'org_access.updated',
+      idempotency_key: `crm:org_access:${user_id}-${org_access_seq}:updated:v1`,
+      source_system: 'crm',
+      violation_type: 'sequence_out_of_order',
+      violation_message: `Received seq ${org_access_seq} but current is ${currentSeq}`,
+      field_name: 'org_access_seq',
+      field_value: String(org_access_seq),
+      expected_value: `> ${currentSeq}`,
+    });
+
+    console.warn(
+      `[org_access.updated] Ignoring out-of-order event: ` +
+      `received seq ${org_access_seq}, current ${currentSeq}`
+    );
+
+    return {
+      success: true,
+      message: `Ignored: sequence ${org_access_seq} <= current ${currentSeq}`,
+    };
+  }
+
+  // ========================================
+  // VALIDATE + FILTER GRANTS
+  // ========================================
+  const rawGrants = grants || [];
+  
+  // Filter out grants with missing/invalid crm_organization_id
+  const malformedGrants = rawGrants.filter(
+    g => typeof g.crm_organization_id !== 'string' || g.crm_organization_id.length === 0
+  );
+  
+  if (malformedGrants.length > 0) {
+    await supabase.from('integration_contract_violations').insert({
+      event_type: 'org_access.updated',
+      idempotency_key: `crm:org_access:${user_id}-${org_access_seq}:updated:v1`,
+      source_system: 'crm',
+      violation_type: 'schema_violation',
+      violation_message: `Received ${malformedGrants.length} grants with missing/invalid crm_organization_id`,
+      field_name: 'grants[].crm_organization_id',
+      field_value: 'undefined or empty',
+      expected_value: 'valid UUID string',
+    });
+
+    console.warn(
+      `[org_access.updated] Schema violation: ${malformedGrants.length} malformed grants filtered out`
+    );
+  }
+
+  // Filter out inactive grants (contract requires active-only snapshot)
+  const inactiveGrants = rawGrants.filter(g => g.is_active === false);
+  
+  if (inactiveGrants.length > 0) {
+    await supabase.from('integration_contract_violations').insert({
+      event_type: 'org_access.updated',
+      idempotency_key: `crm:org_access:${user_id}-${org_access_seq}:updated:v1`,
+      source_system: 'crm',
+      violation_type: 'schema_violation',
+      violation_message: `Received ${inactiveGrants.length} inactive grants in snapshot (contract requires active-only)`,
+      field_name: 'grants[].is_active',
+      field_value: 'false',
+      expected_value: 'true or omitted',
+    });
+
+    console.warn(
+      `[org_access.updated] Schema violation: ${inactiveGrants.length} inactive grants filtered out`
+    );
+  }
+
+  // Apply both filters: valid org_id AND active
+  const validGrants = rawGrants.filter(
+    g => typeof g.crm_organization_id === 'string' && 
+         g.crm_organization_id.length > 0 &&
+         g.is_active !== false
+  );
+
+  // Deduplicate by crm_organization_id (last wins)
+  const deduplicatedGrants = new Map<string, OrgAccessGrant>();
+  for (const grant of validGrants) {
+    deduplicatedGrants.set(grant.crm_organization_id, grant);
+  }
+
+  const grantArray = Array.from(deduplicatedGrants.values()).map(g => ({
+    crm_organization_id: g.crm_organization_id,
+    role_in_org: g.role_in_org,
+    is_active: true,  // Always true after filtering
+  }));
+
+  // ========================================
+  // ATOMIC SNAPSHOT REPLACEMENT via RPC
+  // ========================================
+  const { data: rpcResult, error: rpcError } = await supabase.rpc(
+    'replace_user_org_grants_snapshot',
+    {
+      p_user_id: user_id,
+      p_org_access_seq: org_access_seq,
+      p_grants: grantArray,
+    }
+  );
+
+  if (rpcError) {
+    console.error('[org_access.updated] RPC failed:', rpcError);
+    return { success: false, message: `Snapshot replacement failed: ${rpcError.message}` };
+  }
+
+  const insertedCount = (rpcResult as { inserted_count?: number })?.inserted_count ?? grantArray.length;
+
+  console.log(
+    `[org_access.updated] User ${user_id}: replaced grants with ${insertedCount} orgs (seq ${org_access_seq})`
+  );
+
+  return {
+    success: true,
+    message: insertedCount > 0
+      ? `Synced ${insertedCount} grants for user (seq ${org_access_seq})`
+      : `Removed all grants for user (seq ${org_access_seq})`,
+  };
+}
+
 // ---- HTTP handler ----
 
 Deno.serve(async (req) => {
@@ -513,6 +680,12 @@ Deno.serve(async (req) => {
         break;
       case 'deal.lines_updated':
         result = await handleDealLinesUpdated(supabase, event.payload as unknown as DealLinesUpdatedPayload);
+        break;
+      case 'org_access.updated':
+        result = await handleOrgAccessUpdated(
+          supabase, 
+          event.payload as unknown as OrgAccessUpdatedPayload
+        );
         break;
       default:
         return new Response(JSON.stringify({ error: `Unknown event type: ${event.event_type}` }), {
