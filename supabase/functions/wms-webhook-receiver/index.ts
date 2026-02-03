@@ -13,7 +13,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key, x-crm-signature, x-crm-timestamp',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key, x-wms-signature, x-wms-timestamp, X-WMS-Signature, X-WMS-Timestamp',
 };
 
 interface CRMEvent {
@@ -365,49 +365,48 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const crmWebhookSecret = Deno.env.get('CRM_WEBHOOK_SECRET');
+    // Use standardized secret name per contract v1.0.23
+    const hmacSecret = Deno.env.get('WMS_CRM_HMAC_SECRET') || Deno.env.get('CRM_WEBHOOK_SECRET');
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Get raw body for signature verification
     const rawBody = await req.text();
-    let event: CRMEvent;
-    
-    try {
-      event = JSON.parse(rawBody);
-    } catch {
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON body' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
     // Verify signature if secret is configured
-    if (crmWebhookSecret) {
-      const signature = req.headers.get('x-crm-signature');
-      const timestamp = req.headers.get('x-crm-timestamp');
+    if (hmacSecret) {
+      // Use standardized header names per contract v1.0.23
+      const signature = req.headers.get('X-WMS-Signature') || req.headers.get('x-wms-signature') || req.headers.get('x-crm-signature');
+      const timestamp = req.headers.get('X-WMS-Timestamp') || req.headers.get('x-wms-timestamp') || req.headers.get('x-crm-timestamp');
       
-      if (!signature || !timestamp) {
+      if (!signature) {
         return new Response(
-          JSON.stringify({ error: 'Missing signature or timestamp headers' }),
+          JSON.stringify({ error: 'Missing X-WMS-Signature header' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (!timestamp) {
+        return new Response(
+          JSON.stringify({ error: 'Missing X-WMS-Timestamp header' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       // Check timestamp is within 5 minutes
-      const timestampMs = parseInt(timestamp);
-      const now = Date.now();
-      if (Math.abs(now - timestampMs) > 5 * 60 * 1000) {
+      const timestampSec = parseInt(timestamp);
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (Math.abs(nowSec - timestampSec) > 5 * 60) {
         return new Response(
-          JSON.stringify({ error: 'Timestamp too old' }),
+          JSON.stringify({ error: 'Timestamp expired' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      const isValid = await verifySignature(rawBody, signature, timestamp, crmWebhookSecret);
+      // CRITICAL: Canonical string format is "${timestamp}.${rawBody}"
+      const isValid = await verifySignature(rawBody, signature, timestamp, hmacSecret);
       if (!isValid) {
         return new Response(
-          JSON.stringify({ error: 'Invalid signature' }),
+          JSON.stringify({ error: 'Invalid HMAC signature' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
