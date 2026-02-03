@@ -4714,6 +4714,7 @@ export type Database = {
           total_reserved_meters: number
         }[]
       }
+      get_user_org_ids: { Args: never; Returns: string[] }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
@@ -4778,6 +4779,7 @@ export type Database = {
         Returns: undefined
       }
       set_active_org_id: { Args: { p_org_id: string }; Returns: boolean }
+      user_has_org_access: { Args: { p_org_id: string }; Returns: boolean }
       validate_contract_uom: { Args: { p_uom: string }; Returns: boolean }
       validate_idempotency_key: {
         Args: { p_key: string }
