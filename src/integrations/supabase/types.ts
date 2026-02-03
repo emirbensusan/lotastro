@@ -4307,6 +4307,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_org_grants_mirror: {
+        Row: {
+          created_at: string
+          crm_organization_id: string
+          id: string
+          is_active: boolean
+          org_access_seq: number
+          role_in_org: string
+          synced_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          crm_organization_id: string
+          id?: string
+          is_active?: boolean
+          org_access_seq: number
+          role_in_org: string
+          synced_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          crm_organization_id?: string
+          id?: string
+          is_active?: boolean
+          org_access_seq?: number
+          role_in_org?: string
+          synced_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           assigned_at: string
