@@ -126,13 +126,15 @@ async function checkIdempotency(
   };
 }
 
-// Insert into integration_inbox
+// Insert into integration_inbox with audit columns
 async function insertInboxRow(
   supabase: ReturnType<typeof createClient>,
   event: CRMEvent,
   rawBody: string,
   hmacVerified: boolean,
-  status: 'pending' | 'processed' | 'failed'
+  status: 'pending' | 'processed' | 'failed',
+  receivedSignature: string | null,
+  receivedTimestamp: number | null
 ): Promise<void> {
   const payloadHash = await computePayloadHash(rawBody);
   const sourceSystem = parseSourceSystemFromIdempotencyKey(event.idempotency_key);
@@ -146,10 +148,11 @@ async function insertInboxRow(
     hmac_verified: hmacVerified,
     payload_hash: payloadHash,
     processed_at: status === 'processed' ? new Date().toISOString() : null,
-    // attempt_count default 0
-    // received_at default now()
-    // next_retry_at null by default
-    // schema_valid optional (leave null unless you want to set it)
+    // Audit columns (Session 1.3)
+    received_signature: receivedSignature ?? null,
+    received_timestamp: Number.isFinite(receivedTimestamp as number) ? receivedTimestamp : null,
+    schema_valid: true,
+    validation_errors: null,
   });
 }
 
@@ -422,13 +425,51 @@ Deno.serve(async (req) => {
       }
 
       if (existing.status === 'failed' && existing.id) {
+        // DRIFT DETECTION: Compare payload hashes before allowing retry
+        const newHash = await computePayloadHash(rawBody);
+        
+        if (existing.payloadHash && existing.payloadHash !== newHash) {
+          // Log drift violation to integration_contract_violations
+          await supabase.from('integration_contract_violations').insert({
+            event_type: event.event_type,
+            idempotency_key: event.idempotency_key,
+            source_system: parseSourceSystemFromIdempotencyKey(event.idempotency_key),
+            violation_type: 'payload_hash_drift',
+            violation_message: 'Payload changed on retry - same idempotency_key but different content',
+            field_name: 'payload_hash',
+            field_value: newHash,
+            expected_value: existing.payloadHash,
+            inbox_id: existing.id,
+          });
+          
+          // Also update inbox row with error marker
+          await supabase
+            .from('integration_inbox')
+            .update({
+              error_message: 'Payload drift detected on retry',
+              last_attempt_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id);
+          
+          // Reject with 409 Conflict (do NOT flip to pending)
+          return new Response(
+            JSON.stringify({ 
+              error: 'Payload drift detected',
+              message: 'Same idempotency_key but different payload content',
+              idempotency_key: event.idempotency_key,
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Hashes match - proceed with retry
         await supabase
           .from('integration_inbox')
           .update({
             status: 'pending',
             attempt_count: (existing.attemptCount ?? 0) + 1,
-            // persist that we DID verify on this retry attempt:
             hmac_verified: true,
+            last_attempt_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
 
@@ -470,8 +511,17 @@ Deno.serve(async (req) => {
         });
     }
 
-    // Write inbox row (persist hmac_verified)
-    await insertInboxRow(supabase, event, rawBody, hmacVerified, result.success ? 'processed' : 'failed');
+    // Write inbox row with audit columns (Session 1.3)
+    const parsedTimestamp = parseInt(timestamp, 10);
+    await insertInboxRow(
+      supabase,
+      event,
+      rawBody,
+      hmacVerified,
+      result.success ? 'processed' : 'failed',
+      signature,
+      Number.isFinite(parsedTimestamp) ? parsedTimestamp : null
+    );
 
     return new Response(JSON.stringify(result), {
       status: result.success ? 200 : 500,
