@@ -9,105 +9,207 @@
 | 0.3 | ✅ COMPLETE | HMAC + Schema validation for Edge Functions |
 | 1.1 | ✅ COMPLETE | Integration inbox table + security fix |
 | 1.2 | ✅ COMPLETE | Webhook receiver core logic + canonical HMAC |
-| 1.3 | 🔲 PENDING | Webhook receiver integration + QA |
+| 1.3 | ✅ COMPLETE | Webhook receiver integration + QA |
+| 2.1 | ✅ COMPLETE | Org Grants Mirror Table |
+| 2.2 | 🔲 PENDING | Active Org Preferences |
+| 2.3 | 🔲 PENDING | Org Access Helper Functions |
+| 2.4 | 🔲 PENDING | UI Policy Function |
+| 2.5 | 🔲 PENDING | org_access.updated Event Handler |
 
 ---
 
-## Session 1.2: Webhook Receiver Core Logic ✅ COMPLETE
+## Batch 2: Multi-Org Identity
 
-### Implementation Summary
+### Session 2.1: Org Grants Mirror Table ✅ COMPLETE
 
 **Completed 2026-02-03**
 
-#### Key Changes
+#### Implementation Summary
 
-1. **Canonical HMAC Convention Enforced**
-   - `computeHmac(message, secret)` hashes EXACTLY the input message (no internal canonicalization)
-   - `validateInboundEvent()` builds canonical string as `${timestampHeader}.${rawBody}`
-   - HMAC verified over the canonical string, not raw body alone
+Created `user_org_grants_mirror` table to store CRM organization grants for multi-org RLS enforcement.
 
-2. **Updated contract-validation.ts**
-   - Validation order: Signature header → Timestamp header → Timestamp freshness → Canonical HMAC → JSON parse → Schema validation
-   - Returns 401 for missing/invalid HMAC or timestamp
-   - Returns 400 for schema violations (idempotency key, unknown event, unknown fields, invalid UOM)
+#### Key Features
 
-3. **Updated wms-webhook-receiver**
-   - Uses `X-WMS-Signature` and `X-WMS-Timestamp` headers (with fallback to legacy headers)
-   - Uses `WMS_CRM_HMAC_SECRET` secret (with fallback to `CRM_WEBHOOK_SECRET`)
-   - Deployed and tested
+1. **Schema (9 columns)**
+   - `id` (UUID PK)
+   - `user_id`, `crm_organization_id` (UUID, composite unique)
+   - `role_in_org` (TEXT, CHECK constraint: sales_owner, sales_manager, pricing, accounting, admin)
+   - `is_active` (BOOLEAN, default true)
+   - `org_access_seq` (INTEGER, CHECK >= 0)
+   - `synced_at`, `created_at`, `updated_at` (TIMESTAMPTZ)
 
-4. **Comprehensive Test Coverage (session_1_2_test.ts)**
-   - 23 tests total, all passing
-   - 401 tests: Missing signature, missing timestamp, expired timestamp, invalid signature, body-only HMAC
-   - 400 tests: Invalid idempotency key (4 segments, v2, invalid source), unknown event type, unknown fields, invalid UOM
-   - 200 tests: Valid event with canonical HMAC, valid UOM (MT, KG)
-   - HMAC unit tests: Exact message hashing, canonical string format verification
+2. **Constraints**
+   - Explicit naming: `user_org_grants_mirror_user_org_key`
+   - Non-negative sequence: `CHECK (org_access_seq >= 0)`
+   - Contract-locked roles: 5 allowed values only
 
-### Test Results
+3. **Indexes**
+   - `idx_org_grants_user` (user_id)
+   - `idx_org_grants_org` (crm_organization_id)
+   - `idx_org_grants_active` (partial: WHERE is_active = true)
 
-```
-Session 1.2 Tests: 23 passed | 0 failed
-Session 0.3 Tests: 18 passed | 0 failed (canonical HMAC updated)
-```
+4. **Security (Defense-in-Depth)**
+   - RLS enabled + forced
+   - REVOKE ALL from PUBLIC, anon
+   - GRANT SELECT to authenticated
+   - GRANT ALL to service_role
+   - Policy: users see own grants only
+   - Policy: admins see all (via `has_role()`)
 
-### Critical HMAC Test Case (401-5)
+5. **Idempotent Trigger**
+   - `DROP TRIGGER IF EXISTS` before CREATE
+   - Uses existing `update_updated_at_column()` function
 
-```typescript
-// Body-only HMAC MUST fail with 401
-const wrongSig = computeHmac(body, secret);  // WRONG - no timestamp
-const correctSig = computeHmac(`${ts}.${body}`, secret);  // CORRECT
+#### Verification Tests
 
-// wrongSig → 401 INVALID_HMAC ✓
-// correctSig → 200 ✓
-```
+Run in Supabase SQL Editor:
 
----
-
-## Session 1.1 Security Fix ✅ COMPLETE
-
-### Summary
-Fixed critical vulnerability where `anon` role had full privileges on `public.integration_inbox`.
-
-### Migration Applied
 ```sql
-REVOKE ALL PRIVILEGES ON TABLE public.integration_inbox FROM anon;
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLE public.integration_inbox FROM authenticated;
-ALTER TABLE public.integration_inbox ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.integration_inbox FORCE ROW LEVEL SECURITY;
-```
+-- Test 1: Structure (expect 9 columns)
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'user_org_grants_mirror'
+ORDER BY ordinal_position;
 
-### Defense-in-Depth Architecture
+-- Test 2: Valid role (expect success)
+INSERT INTO user_org_grants_mirror 
+  (user_id, crm_organization_id, role_in_org, org_access_seq)
+VALUES (gen_random_uuid(), gen_random_uuid(), 'sales_owner', 1)
+RETURNING id;
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    ACCESS CONTROL LAYERS                        │
-├─────────────────────────────────────────────────────────────────┤
-│  Layer 1: Table Privileges (GRANT/REVOKE)                       │
-│  ├─ anon: NO privileges                                         │
-│  └─ authenticated: SELECT only                                  │
-├─────────────────────────────────────────────────────────────────┤
-│  Layer 2: Row-Level Security (RLS)                              │
-│  └─ SELECT: Only if has_role(uid, 'admin')                      │
-├─────────────────────────────────────────────────────────────────┤
-│  Layer 3: Service Role Bypass                                   │
-│  └─ Edge Functions use service_role key → bypasses RLS          │
-│  └─ Only trusted Edge Functions can INSERT/UPDATE               │
-└─────────────────────────────────────────────────────────────────┘
+-- Test 3: Invalid role (expect CHECK violation)
+INSERT INTO user_org_grants_mirror 
+  (user_id, crm_organization_id, role_in_org, org_access_seq)
+VALUES (gen_random_uuid(), gen_random_uuid(), 'warehouse_staff', 1);
+
+-- Test 4: Negative sequence (expect CHECK violation)
+INSERT INTO user_org_grants_mirror 
+  (user_id, crm_organization_id, role_in_org, org_access_seq)
+VALUES (gen_random_uuid(), gen_random_uuid(), 'admin', -1);
+
+-- Test 5: Indexes (expect 3 custom + PK + unique = 5 total)
+SELECT indexname FROM pg_indexes 
+WHERE tablename = 'user_org_grants_mirror';
+
+-- Test 6: RLS enabled
+SELECT relrowsecurity, relforcerowsecurity 
+FROM pg_class WHERE relname = 'user_org_grants_mirror';
+
+-- Test 7: updated_at trigger
+DO $$
+DECLARE
+  v_id UUID;
+  v_created TIMESTAMPTZ;
+  v_updated TIMESTAMPTZ;
+BEGIN
+  INSERT INTO user_org_grants_mirror 
+    (user_id, crm_organization_id, role_in_org, org_access_seq)
+  VALUES (gen_random_uuid(), gen_random_uuid(), 'pricing', 1)
+  RETURNING id, created_at, updated_at INTO v_id, v_created, v_updated;
+  
+  PERFORM pg_sleep(0.1);
+  
+  UPDATE user_org_grants_mirror SET is_active = false WHERE id = v_id;
+  
+  SELECT updated_at INTO v_updated FROM user_org_grants_mirror WHERE id = v_id;
+  
+  IF v_updated > v_created THEN
+    RAISE NOTICE 'PASS: updated_at auto-updated';
+  ELSE
+    RAISE EXCEPTION 'FAIL: updated_at not updated';
+  END IF;
+  
+  DELETE FROM user_org_grants_mirror WHERE id = v_id;
+END $$;
+
+-- Cleanup test data
+DELETE FROM user_org_grants_mirror 
+WHERE created_at > now() - interval '5 minutes';
 ```
 
 ---
 
-## Next: Session 1.3 - Webhook Receiver Integration + QA
+### Session 2.2: Active Org Preferences (NEXT)
 
-### Scope
-- Integrate contract validation into wms-webhook-receiver for full inbox-based event handling
-- Write to `integration_inbox` with idempotency check
-- Compute SHA-256 `payload_hash` for drift detection
-- Retry logic: Convert "failed" status to "pending" on retry (Contract Appendix D.3)
-- End-to-end testing of all rejection scenarios
+#### Scope
+- Create `user_active_org_preferences` table
+- SQL functions: `get_active_org_id()`, `set_active_org_id()`
+- Fallback logic when no preference set
 
-### Acceptance Gates
-1. New event creates row in `integration_inbox` with `status='pending'`
-2. Duplicate `idempotency_key` returns 200 (no new row)
-3. Failed status converts to pending on retry with `attempt_count` increment
-4. Payload hash drift logged to `integration_contract_violations`
+#### Schema
+```sql
+CREATE TABLE public.user_active_org_preferences (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id),
+  active_org_id UUID NOT NULL,
+  set_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+---
+
+### Session 2.3: Org Access Helper Functions
+
+#### Scope
+- `user_has_org_access(user_id, org_id)` → boolean
+- `get_user_org_ids(user_id)` → UUID[]
+
+---
+
+### Session 2.4: UI Policy Function
+
+#### Scope
+- `user_wms_ui_policy(user_id)` → JSON
+- Returns role-based visibility flags for frontend
+
+---
+
+### Session 2.5: org_access.updated Event Handler
+
+#### Scope
+- Handler in wms-webhook-receiver for `org_access.updated`
+- Snapshot replacement logic (DELETE + INSERT)
+- Sequence guard for out-of-order events
+- Write to `user_org_grants_mirror`
+
+---
+
+## Batch 1 Summary (COMPLETE)
+
+### Session 1.3 ✅ COMPLETE
+
+**Completed 2026-02-03**
+
+Full webhook receiver integration with:
+- Inbox-based event handling
+- SHA-256 payload hash for drift detection
+- Retry logic (failed → pending with attempt_count increment)
+- 409 Conflict on payload drift
+
+### Session 1.2 ✅ COMPLETE
+
+Canonical HMAC: `${timestampHeader}.${rawBody}`
+
+### Session 1.1 ✅ COMPLETE
+
+Integration inbox table with defense-in-depth security.
+
+---
+
+## Architecture Notes
+
+### Defense-in-Depth Pattern
+```
+Layer 1: REVOKE from PUBLIC, anon
+Layer 2: GRANT SELECT to authenticated
+Layer 3: RLS policies (user sees own, admin sees all)
+Layer 4: service_role bypasses RLS for Edge Functions
+```
+
+### Snapshot Replacement Pattern (Session 2.5)
+```sql
+-- On org_access.updated event:
+DELETE FROM user_org_grants_mirror WHERE user_id = $1;
+INSERT INTO user_org_grants_mirror (...) VALUES ... -- all grants
+```
